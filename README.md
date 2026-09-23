@@ -12,8 +12,12 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 ## Prerequisites
 
 - .NET 10 SDK
+- `dotnet tool install --global dotnet-ef` (EF Core CLI - not bundled with the SDK)
 - Node.js 20+ and Angular CLI 22 (`npm i -g @angular/cli`)
 - Docker Desktop (for local PostgreSQL)
+- Trust the local HTTPS dev certificate once per machine: `dotnet dev-certs https --trust`
+  (skip this and the Angular dev server's calls to the API will fail with a cert error, not
+  a CORS one - the symptoms look similar in the browser console, don't confuse them)
 
 ## Backend setup
 
@@ -31,8 +35,11 @@ dotnet ef database update --project src/SmartDesk.Infrastructure --startup-proje
 dotnet run --project src/SmartDesk.API
 ```
 
-The API starts on the URL/port in `src/SmartDesk.API/Properties/launchSettings.json`. In
-development, OpenAPI docs are served at `/openapi/v1.json`.
+The API starts on the URL/port in `src/SmartDesk.API/Properties/launchSettings.json`
+(`https://localhost:7065` by default - matches `frontend/src/environments/environment.development.ts`,
+update both together if you change it). In development, OpenAPI docs are served at
+`/openapi/v1.json`. Allowed frontend origins for CORS are `Cors:AllowedOrigins` in
+`appsettings.Development.json` (see `docs/DECISIONS.md`, ADR-0006).
 
 ## Frontend setup
 
@@ -42,10 +49,14 @@ npm install
 ng serve
 ```
 
+Serves on `http://localhost:4200` by default - already in the API's CORS allow-list. If
+your build serves on a different port, add it to `Cors:AllowedOrigins` too.
+
 ## Running tests
 
 ```bash
-dotnet test
+dotnet test               # backend
+cd frontend && ng test    # frontend
 ```
 
 ## Project structure

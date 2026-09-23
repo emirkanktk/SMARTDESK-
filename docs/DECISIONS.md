@@ -58,3 +58,17 @@ README's setup steps.
 
 **Why:** project brief requirement; also just good practice for a repo more than one
 person pushes to.
+
+## ADR-0006: CORS origins are configuration, not a hardcoded allow-list
+
+**Decision:** allowed frontend origins live in config (`Cors:AllowedOrigins` in
+`appsettings.Development.json`, currently just `http://localhost:4200`, Angular's default
+dev port), read into an `AddCors` policy in `Program.cs` rather than hardcoded in code.
+
+**Why:** caught while checking the skeleton actually works end-to-end rather than just
+compiling - `ng serve` on `localhost:4200` calling the API on `localhost:7065` is a
+cross-origin request by definition, and without a CORS policy the browser blocks every
+frontend HTTP call outright. Verified with a real request: `curl -H "Origin:
+http://localhost:4200"` gets `Access-Control-Allow-Origin` back, an unlisted origin
+doesn't. Config (not code) so each environment can set its own allowed origins without a
+rebuild once there's a real deployed frontend URL to add.
