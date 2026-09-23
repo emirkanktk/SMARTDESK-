@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Role, Roles } from '../constants/roles';
-import { SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
+import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
 import { CurrentUser, LoginRequest, LoginResponse } from '../models/auth.model';
 import { JwtClaims, decodeJwtClaims, isJwtExpired } from '../utils/jwt';
 
@@ -51,8 +51,11 @@ export class AuthService {
   }
 
   login(request: LoginRequest): Observable<LoginResponse> {
-    // The login form shows its own error message, so no toast on top of it.
-    const context = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
+    // Sent without a session, so its 401 means "wrong password", not "session ended"; and
+    // the login form shows its own error message, so no toast on top of it.
+    const context = new HttpContext()
+      .set(ANONYMOUS_REQUEST, true)
+      .set(SKIP_ERROR_NOTIFICATION, true);
     return this.http
       .post<LoginResponse>(`${environment.apiUrl}/auth/login`, request, { context })
       .pipe(

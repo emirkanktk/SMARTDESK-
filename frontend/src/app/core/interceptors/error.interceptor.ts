@@ -5,11 +5,14 @@ import { catchError, throwError } from 'rxjs';
 import { ApiError } from '../models/api-error.model';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
-import { SKIP_ERROR_NOTIFICATION } from './http-context.tokens';
+import { isApiUrl } from '../utils/api-url';
+import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from './http-context.tokens';
+
+const SESSION_ENDED_MESSAGE = 'Your session has expired. Please sign in again.';
 
 /**
  * Turns every failed API call into an ApiError and handles the cases no single screen
- * should have to: an expired session, a forbidden action, an unreachable or failing server.
+ * should have to: an ended session, a forbidden action, an unreachable or failing server.
  * 400 and 409 are left to the caller - they carry form- or business-rule-specific messages.
  */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
@@ -24,15 +27,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       const apiError = ApiError.fromHttpError(error);
-      const notify = !req.context.get(SKIP_ERROR_NOTIFICATION);
 
-      // Only a request that carried a token can mean "your session ended"; a 401 from the
-      // login endpoint is just a wrong password.
-      if (apiError.status === 401 && req.headers.has('Authorization')) {
-        authService.logout();
-        notifications.info('Your session has expired. Please sign in again.');
-        void router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
-      } else if (notify) {
+      // A 401 from the API means the session is over - expired, revoked, or the token was
+      // already dropped as expired before the request went out. Only anonymous calls
+      // (login) get a 401 for another reason: a wrong password.
+      if (apiError.status === 401 && isApiUrl(req.url) && !req.context.get(ANONYMOUS_REQUEST)) {
+        endSession(authService, notifications, router);
+      } else if (!req.context.get(SKIP_ERROR_NOTIFICATION)) {
         const message = messageFor(apiError);
         if (message) {
           notifications.error(message);
@@ -43,6 +44,33 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     }),
   );
 };
+
+/**
+ * Signs the user out and sends them to login. Safe to call for each of several requests
+ * that fail together: the toast is de-duplicated by NotificationService, and only the first
+ * call navigates.
+ */
+function endSession(
+  authService: AuthService,
+  notifications: NotificationService,
+  router: Router,
+): void {
+  authService.logout();
+  notifications.info(SESSION_ENDED_MESSAGE);
+
+  if (isOnOrGoingToLogin(router)) {
+    return;
+  }
+  void router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
+}
+
+function isOnOrGoingToLogin(router: Router): boolean {
+  const navigation = router.currentNavigation();
+  const target = navigation
+    ? router.serializeUrl(navigation.finalUrl ?? navigation.extractedUrl)
+    : router.url;
+  return target === '/login' || target.startsWith('/login?');
+}
 
 function messageFor(error: ApiError): string | null {
   switch (true) {

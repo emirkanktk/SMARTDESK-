@@ -136,10 +136,11 @@ frontend/src/app/
   core/
     constants/       Roles (mirrors SmartDesk.Domain.Constants.Roles)
     guards/          authGuard, guestGuard, roleGuard(...roles) / adminGuard
-    interceptors/    jwtInterceptor, errorInterceptor, SKIP_ERROR_NOTIFICATION
+    interceptors/    jwtInterceptor, errorInterceptor, ANONYMOUS_REQUEST,
+                     SKIP_ERROR_NOTIFICATION
     models/          request/response types, ApiError
     services/        AuthService, NotificationService, ReservationHubService
-    utils/           JWT claim decoding
+    utils/           JWT claim decoding, isApiUrl
   layout/
     shell/           top bar + navigation around every signed-in screen
     notification-host/  toast messages
@@ -158,10 +159,15 @@ frontend/src/app/
   `/admin`.
 - **HTTP.** `jwtInterceptor` attaches `Authorization: Bearer` to requests for our own API
   only. `errorInterceptor` then turns every failure into an `ApiError` (status, title,
-  detail, field errors from `ProblemDetails`). A 401 on a request that carried a token ends
-  the session and redirects to login; 0, 403, 404 and 5xx show a toast. 400 and 409 are left
-  to the calling screen, because they carry form- or rule-specific messages. A caller that
-  shows its own message sets `SKIP_ERROR_NOTIFICATION` on the request.
+  detail, field errors from `ProblemDetails`).
+  - A 401 from our API ends the session and redirects to login, whether or not a token was
+    sent: a token that expired while a screen was open is dropped before the request goes
+    out, and that request's 401 still has to end the session. The only exception is a
+    request marked `ANONYMOUS_REQUEST` (login), whose 401 just means a wrong password.
+  - Several requests failing together produce one redirect and one toast.
+  - 0, 403, 404 and 5xx show a toast. 400 and 409 are left to the calling screen, because
+    they carry form- or rule-specific messages. A caller that shows its own message sets
+    `SKIP_ERROR_NOTIFICATION` on the request.
 - **Styling.** Plain SCSS. Design tokens (colors, spacing, radius) and shared building blocks
   (`.btn`, `.field`, `.input`, `.card`, `.alert-error`) live in `src/styles.scss`. Component
   styles use those variables instead of hardcoded values.
