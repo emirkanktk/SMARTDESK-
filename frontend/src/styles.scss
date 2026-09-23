@@ -13,6 +13,9 @@
   --color-danger: #dc2626;
   --color-danger-soft: #fdecec;
   --color-success: #16a34a;
+  --color-success-soft: #e7f6ec;
+  --color-warning: #b45309;
+  --color-warning-soft: #fdf3e1;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -69,6 +72,7 @@ a {
   border-radius: var(--radius);
   font: inherit;
   font-weight: 500;
+  text-decoration: none;
   cursor: pointer;
   transition: background-color 0.15s;
 
@@ -172,4 +176,82 @@ a {
 
 .text-muted {
   color: var(--color-text-muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// Page layout
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+
+  h1 {
+    margin: 0;
+  }
+}
+
+// Tables
+
+.table-wrap {
+  padding: 0;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .num {
+    text-align: right;
+  }
+}
+
+// Chips
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  background: var(--color-surface);
 }
