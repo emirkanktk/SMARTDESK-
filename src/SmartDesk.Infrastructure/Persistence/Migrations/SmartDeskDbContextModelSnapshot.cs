@@ -181,7 +181,10 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ResourceId", "Status", "StartDateTime", "EndDateTime");
 
-                    b.ToTable("Reservations");
+                    b.ToTable("Reservations", t =>
+                        {
+                            t.HasCheckConstraint("CK_Reservations_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\"");
+                        });
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.Resource", b =>

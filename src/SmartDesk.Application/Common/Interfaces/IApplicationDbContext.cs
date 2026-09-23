@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using SmartDesk.Domain.Entities;
 
 namespace SmartDesk.Application.Common.Interfaces;
@@ -14,4 +15,11 @@ public interface IApplicationDbContext
     DbSet<Reservation> Reservations { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
+
+    // Must run inside a transaction. Locks the resource until that transaction ends, so
+    // concurrent bookings of the same resource run one after another instead of racing
+    // (ADR-0011). Bookings of different resources don't wait on each other.
+    Task LockResourceForBookingAsync(Guid resourceId, CancellationToken cancellationToken = default);
 }
