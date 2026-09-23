@@ -34,6 +34,7 @@
   color: var(--color-text-muted);
   text-decoration: none;
   font-weight: 500;
+  white-space: nowrap;
 
   &:hover {
     background: var(--color-bg);
@@ -62,4 +63,31 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-5);
+}
+
+// Narrow screens: brand and user on the first row, the navigation on its own row below
+// that scrolls sideways instead of stacking one link per line.
+@media (max-width: 760px) {
+  .topbar {
+    padding: var(--space-2) var(--space-4) 0;
+    gap: var(--space-2);
+  }
+
+  .brand {
+    flex: 1;
+  }
+
+  .nav {
+    order: 3;
+    flex-basis: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 calc(-1 * var(--space-4));
+    padding: 0 var(--space-4) var(--space-2);
+  }
+
+  .content {
+    padding: var(--space-4);
+  }
 }
