@@ -41,15 +41,20 @@ touches someone else's area still needs only the author's designated reviewer.
 
 GitHub does not enforce this for us: branch protection and rulesets aren't available on a
 private repo under a free plan, so the merge button works even on an unapproved PR. The
-rule holds only because we follow it - don't click merge until the designated reviewer has
-approved.
+rule holds only because we follow it - only the designated reviewer clicks merge, and only
+after approving.
 
 - Nobody pushes directly to `main`. Every change reaches `main` through a PR.
 - Answer or resolve every review comment before merging. If you push substantial changes
   after getting an approval, re-request review from the designated reviewer instead of
   merging on the old approval.
-- The PR author merges once the designated reviewer has approved and the branch still
-  builds and passes tests.
+- **The reviewer who approved the PR merges it - not the author.** Before merging, check
+  that nothing was pushed after your approval (if something was, review it first) and that
+  the branch still builds and passes tests. Use a merge commit, not squash, so stacked PRs
+  built on the branch keep a clean diff.
+- After merging a PR that another open PR is stacked on, retarget that PR to `main`
+  (`gh pr edit <n> --base main`). GitHub only does it automatically when the merged branch
+  is deleted.
 - Use the checklist in `.github/pull_request_template.md` - it's filled in automatically
   when you open a PR on GitHub.
 
