@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using SmartDesk.API.Hubs;
 using SmartDesk.API.Middleware;
 using SmartDesk.API.OpenApi;
+using SmartDesk.API.RateLimiting;
 using SmartDesk.API.Services;
 using SmartDesk.Application;
 using SmartDesk.Application.Common.Interfaces;
@@ -96,6 +97,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+builder.Services.AddSmartDeskRateLimiting(builder.Configuration);
+
 var app = builder.Build();
 
 // Roles in every environment; demo users and resources only in Development (ADR-0007).
@@ -114,10 +117,15 @@ app.UseHttpsRedirection();
 
 app.UseCors(FrontendCorsPolicy);
 
+// After CORS so a 429 still carries the CORS headers the browser needs to read it; before
+// authentication so rejected requests cost as little as possible.
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ReservationHub>("/hubs/reservations");
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.Run();

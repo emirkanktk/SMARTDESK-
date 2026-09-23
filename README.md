@@ -53,7 +53,11 @@ ADR-0007). All three share the password `SmartDesk123!`.
 | `employee1@smartdesk.local` | Employee |
 | `employee2@smartdesk.local` | Employee |
 
-Five wrong passwords in a row lock an account for five minutes.
+Five wrong passwords in a row lock an account for five minutes, and one client can try at
+most 60 logins a minute in Development (10 elsewhere; `RateLimiting:LoginPermitsPerMinute`).
+
+`GET /health` answers `Healthy` once the API can reach PostgreSQL - a quick check that the
+backend is up and configured.
 
 The Development seed also creates eight sample resources (meeting rooms, desks, a company
 car, a projector, and a camera under maintenance) when the database has none. The five

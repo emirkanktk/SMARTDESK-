@@ -19,6 +19,10 @@ public static class DependencyInjection
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<SmartDeskDbContext>());
 
+        // Backs GET /health: "Healthy" only if PostgreSQL answers, so a container orchestrator
+        // or uptime check can tell "process up" from "service usable".
+        services.AddHealthChecks().AddDbContextCheck<SmartDeskDbContext>("database");
+
         // AddIdentityCore rather than AddIdentity: this is a bearer-token API, and AddIdentity
         // also registers cookie authentication, which turns a 403 into a 302 redirect to a
         // login page that doesn't exist.
