@@ -146,7 +146,10 @@ frontend/src/app/
     notification-host/  toast messages
   shared/
     components/      small reusable UI pieces (e.g. StatusBadge)
-    utils/           form helpers (applyServerErrors: API 400 messages -> form controls)
+    utils/           form helpers (applyServerErrors: API 400 messages -> form controls),
+                     datetime-local <-> Date conversion
+    validators/      dateRangeValidator (end after start, max length, not in the past),
+                     integerValidator
   features/<screen>/ one lazy-loaded standalone component per screen; sub-screens in
                      sub-folders (e.g. resources/resource-form)
 ```
@@ -154,6 +157,11 @@ frontend/src/app/
 Typed API clients (`AuthService`, `ResourceService`, ...) live in `core/services` and return
 the DTO shapes from `docs/API_CONTRACTS.md` as-is (`core/models`). Screens hold their own
 state in signals and never call `HttpClient` directly.
+
+Times are picked in the browser's local time (`<input type="datetime-local">`) and sent to
+the API as UTC ISO strings (`Date.toISOString()`); API timestamps are shown back in local
+time. Client-side range rules mirror the API's (e.g. availability's 31-day window is 31 x 24 h
+of elapsed time, not calendar days) and only give fast feedback - the API decides.
 
 - **Session.** `AuthService` keeps the access token in memory, mirrored to `localStorage`
   so a reload stays signed in. The current user (id, name, email, roles) is read from the

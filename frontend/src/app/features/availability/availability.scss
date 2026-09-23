@@ -1,0 +1,99 @@
+.search {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1.4fr)) minmax(0, 1fr) minmax(0, 0.7fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+
+  .field {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Line the button up with the inputs, below their labels.
+.search-button {
+  margin-top: 1.625rem;
+
+  @media (max-width: 900px) {
+    margin-top: 0;
+  }
+}
+
+.hint {
+  font-size: 0.8125rem;
+}
+
+.results.stale {
+  opacity: 0.6;
+}
+
+.summary {
+  margin: 0 0 var(--space-4);
+}
+
+.empty {
+  padding: var(--space-6) 0;
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resource {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+
+  h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.resource-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+
+  .badge {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+.meta,
+.description {
+  font-size: 0.875rem;
+}
+
+// Keep the button at the bottom so cards in a row line up.
+.book {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.note {
+  margin-top: var(--space-4);
+  font-size: 0.875rem;
+}

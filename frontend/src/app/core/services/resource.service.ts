@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  AvailabilityQuery,
   CreateResourceRequest,
   Resource,
   ResourceFilter,
@@ -28,6 +29,23 @@ export class ResourceService {
       params = params.set('status', filter.status);
     }
     return this.http.get<Resource[]>(this.baseUrl, { params });
+  }
+
+  /**
+   * Active resources with no confirmed reservation overlapping [start, end). A snapshot:
+   * a slot shown as free can still be taken before it's booked.
+   */
+  getAvailable(query: AvailabilityQuery): Observable<Resource[]> {
+    let params = new HttpParams()
+      .set('startDateTime', query.startDateTime)
+      .set('endDateTime', query.endDateTime);
+    if (query.resourceTypeId) {
+      params = params.set('resourceTypeId', query.resourceTypeId);
+    }
+    if (query.minCapacity) {
+      params = params.set('minCapacity', query.minCapacity);
+    }
+    return this.http.get<Resource[]>(`${this.baseUrl}/available`, { params });
   }
 
   getResource(id: string): Observable<Resource> {

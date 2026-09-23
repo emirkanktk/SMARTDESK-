@@ -25,6 +25,17 @@ export interface ResourceFilter {
   status?: ResourceStatus | null;
 }
 
+/** Query for `GET /api/resources/available`. Times are UTC ISO-8601 strings. */
+export interface AvailabilityQuery {
+  startDateTime: string;
+  endDateTime: string;
+  resourceTypeId?: string | null;
+  minCapacity?: number | null;
+}
+
+/** Longest window `GET /api/resources/available` accepts. */
+export const AVAILABILITY_MAX_DAYS = 31;
+
 export interface CreateResourceRequest {
   name: string;
   resourceTypeId: string;
