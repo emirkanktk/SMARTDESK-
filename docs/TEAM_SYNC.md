@@ -12,7 +12,8 @@ Two-person fallback: one person leans backend, one leans frontend; authenticatio
 SignalR are handled together since both sides need to agree on the contract.
 
 Don't change another owner's area without coordinating first - open a PR and tag them, or
-raise it in whatever channel the team actually uses day to day.
+raise it in whatever channel the team actually uses day to day. Tagging the module owner
+is a notice. It does not add a second required approval.
 
 ## Branching
 
@@ -25,20 +26,30 @@ raise it in whatever channel the team actually uses day to day.
 
 ## Review and merge rules
 
-**No PR is merged without at least one approving review from someone other than its
-author.** This applies to everyone and every change - including your own PRs, one-line
-fixes, and docs-only changes.
+Each author has exactly one reviewer responsible for approving their PRs. That approval is
+required before merge, including one-line fixes and docs-only changes. The other two may
+comment, but their approval is not required. The author does not approve their own PR.
+
+| Author | Responsible reviewer |
+|---|---|
+| Emirkan | Burak |
+| Lütfi | Emirkan |
+| Burak | Lütfi |
+
+Request that reviewer on every PR. Approval follows the author, not the module: a PR that
+touches someone else's area still needs only the author's designated reviewer.
 
 GitHub does not enforce this for us: branch protection and rulesets aren't available on a
 private repo under a free plan, so the merge button works even on an unapproved PR. The
-rule holds only because we follow it - don't click merge until the PR shows an approval.
+rule holds only because we follow it - don't click merge until the designated reviewer has
+approved.
 
 - Nobody pushes directly to `main`. Every change reaches `main` through a PR.
-- Any of the three of us can review any PR, but the module owner (see the table above)
-  must be one of the reviewers for changes to their area.
 - Answer or resolve every review comment before merging. If you push substantial changes
-  after getting an approval, re-request review instead of merging on the old approval.
-- The PR author merges once it's approved and the branch still builds and passes tests.
+  after getting an approval, re-request review from the designated reviewer instead of
+  merging on the old approval.
+- The PR author merges once the designated reviewer has approved and the branch still
+  builds and passes tests.
 - Use the checklist in `.github/pull_request_template.md` - it's filled in automatically
   when you open a PR on GitHub.
 
