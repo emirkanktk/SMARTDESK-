@@ -72,8 +72,18 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
 
 - `ResourceTypes(Name)` - unique.
 - `Reservations(ResourceId, Status, StartDateTime, EndDateTime)` - composite index backing
-  the overlap-check query every `CreateReservationCommand` will run (same resource, active
+  the overlap-check query every `CreateReservationCommand` runs (same resource, active
   reservations, does the new range intersect an existing one).
+
+## Constraints
+
+- `CK_Reservations_EndAfterStart` - `CHECK ("EndDateTime" > "StartDateTime")` (rule 2).
+- `EX_Reservations_NoOverlap` - `EXCLUDE USING gist ("ResourceId" WITH =,
+  tstzrange("StartDateTime", "EndDateTime", '[)') WITH &&) WHERE ("Status" = 0)`: no two
+  `Confirmed` reservations of one resource may overlap (rule 1). The range is half-open,
+  like `ReservationOverlap`. Requires the `btree_gist` extension; both are created in raw
+  SQL by the `AddReservationOverlapConstraint` migration, since EF Core can't model an
+  exclusion constraint.
 
 ## Business rules (enforced in Application-layer handlers, backend-side - never frontend-only)
 
@@ -88,18 +98,18 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
    reserved. Changing a resource to `Inactive`/`Maintenance` stops new bookings but leaves
    its existing reservations in place; an admin cancels those individually if needed.
 4. A reservation's owner can cancel their own reservation; `Admin` can manage any
-   reservation.
+   reservation. Cancelling is idempotent, and a reservation that has already ended can't
+   be cancelled.
 5. Concurrent requests for the same resource/time range must not both succeed - the
-   overlap check has to hold under concurrent writes, not just sequentially (a transaction
-   or a DB-level constraint, not only an in-handler read-then-write check with no
-   protection between the read and the write).
-6. A reservation cannot be created for a start time in the past.
+   overlap check has to hold under concurrent writes, not just sequentially. Enforced in
+   two layers (ADR-0011): `CreateReservationCommand` locks the resource row for the
+   duration of its transaction, so bookings of one resource run one at a time; and the
+   `EX_Reservations_NoOverlap` exclusion constraint makes the database itself reject an
+   overlapping `Confirmed` row, whatever wrote it.
+6. A reservation cannot be created for a start time in the past (5 minutes of grace, so
+   booking "from now" isn't rejected by clock drift). A reservation lasts at most 31 days.
 
-## Open question for the team
+## Concurrency (formerly an open question)
 
-Rule 5 (concurrency safety) is easiest to get exactly right with a Postgres exclusion
-constraint (`EXCLUDE USING gist` over a `tstzrange`, requiring the `btree_gist` extension)
-rather than an application-level check-then-insert, which has a race window between the
-check and the write under concurrent requests. This isn't wired up yet - worth deciding
-together before `CreateReservationCommand` is implemented, and recording the decision in
-`docs/DECISIONS.md`.
+Settled in `docs/DECISIONS.md`, ADR-0011: an exclusion constraint *and* a per-resource lock -
+see rule 5 above and the Constraints section.

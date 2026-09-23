@@ -130,3 +130,43 @@ only while the `Resources` table is empty.
 and fixed ids let seeds, tests, and the frontend refer to them reliably. Sample resources are
 demo data, so they follow ADR-0007's Development-only rule. The empty-table check means
 the seed never re-creates or overwrites resources someone edited by hand.
+
+## ADR-0011: Overlap safety under concurrency - per-resource lock plus exclusion constraint
+
+Settles the open question left in ADR-0004.
+
+**Decision:** Two layers.
+1. `CreateReservationCommand` runs in a transaction that first takes a row lock on the
+   resource (`SELECT ... FOR UPDATE`, via `IApplicationDbContext.LockResourceForBookingAsync`).
+   It then re-reads the resource status, runs the overlap check, inserts, and commits.
+   Bookings of the same resource therefore run one at a time, and each sees the previous
+   one's committed row. Bookings of different resources don't wait on each other.
+2. A PostgreSQL exclusion constraint, `EX_Reservations_NoOverlap`, over
+   `("ResourceId" =, tstzrange(start, end, '[)') &&)` on `Confirmed` rows. The database
+   itself refuses an overlap, however the row got there: a future code path, a script, or
+   manual SQL. If it ever fires through EF, `SmartDeskDbContext` turns the `23P01` error
+   into the same `ConflictException` (409) the handler throws.
+
+SignalR events are sent only after commit.
+
+**Why:** a check-then-insert alone has a race window. The constraint alone is correct, but it
+behaved badly under load. In a race test, 30 threads were released at the same instant to
+book the same slot, repeated over 15 slots. Every slot still ended up with exactly one row,
+but in some rounds all 29 losers got **500s**. The waiting inserts had deadlocked on the
+constraint (`40P01`).
+
+Retrying on transient errors (`EnableRetryOnFailure`) made that worse. The retried inserts
+collided again, deadlocks multiplied, and requests piled up waiting on locks.
+
+With the row lock, the same test (25 slots × 30 simultaneous requests) finished in about
+3 s: exactly one 201 and 29 clean 409s per slot, zero deadlocks, zero 500s. The lock also
+closes a smaller race: an admin can no longer deactivate a resource between the status
+check and the insert.
+
+The constraint is kept even though the lock makes it redundant for requests that go
+through the handler. It's what makes rule 5 a property of the data rather than of one code
+path. Its translation to 409 was verified against the real database by inserting
+overlapping rows directly, bypassing the handler.
+
+SQLite, used for unit tests, has neither the lock nor the constraint. Those tests cover the
+handler logic; the concurrency guarantees were verified against PostgreSQL.
