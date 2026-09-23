@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SmartDesk.API/SmartDesk.API.csproj" />
+    <Project Path="src/SmartDesk.Application/SmartDesk.Application.csproj" />
+    <Project Path="src/SmartDesk.Domain/SmartDesk.Domain.csproj" />
+    <Project Path="src/SmartDesk.Infrastructure/SmartDesk.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SmartDesk.Tests/SmartDesk.Tests.csproj" />
+  </Folder>
+</Solution>
