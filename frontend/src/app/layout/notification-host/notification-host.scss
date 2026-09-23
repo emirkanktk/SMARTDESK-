@@ -1,0 +1,47 @@
+.stack {
+  position: fixed;
+  // Bottom corner, so toasts never cover the top bar's user menu and sign-out button.
+  bottom: var(--space-4);
+  right: var(--space-4);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: min(420px, calc(100vw - 2 * var(--space-4)));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  border-left: 4px solid;
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+
+  &.success {
+    border-color: var(--color-success);
+  }
+
+  &.info {
+    border-color: var(--color-primary);
+  }
+
+  &.error {
+    border-color: var(--color-danger);
+  }
+
+  span {
+    flex: 1;
+  }
+}
+
+.close {
+  border: 0;
+  background: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}

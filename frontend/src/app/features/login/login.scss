@@ -1,0 +1,22 @@
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-4);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow);
+}
+
+h1 {
+  margin-bottom: var(--space-1);
+  color: var(--color-primary);
+}
+
+.subtitle {
+  margin: 0 0 var(--space-5);
+}

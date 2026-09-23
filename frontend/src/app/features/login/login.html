@@ -1,1 +1,54 @@
-<p>login works!</p>
+<div class="card login-card">
+  <h1>SmartDesk</h1>
+  <p class="text-muted subtitle">Sign in to book meeting rooms, desks and equipment.</p>
+
+  @if (errorMessage(); as message) {
+    <div class="alert-error" role="alert">{{ message }}</div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="field">
+      <label for="email">Email</label>
+      <input
+        id="email"
+        type="email"
+        class="input"
+        formControlName="email"
+        autocomplete="username"
+        [class.invalid]="showError('email')"
+        [attr.aria-invalid]="showError('email')"
+        aria-describedby="email-error"
+      />
+      @if (showError('email')) {
+        <span id="email-error" class="field-error">
+          @if (form.controls.email.hasError('required')) {
+            Email is required.
+          } @else {
+            Enter a valid email address.
+          }
+        </span>
+      }
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input
+        id="password"
+        type="password"
+        class="input"
+        formControlName="password"
+        autocomplete="current-password"
+        [class.invalid]="showError('password')"
+        [attr.aria-invalid]="showError('password')"
+        aria-describedby="password-error"
+      />
+      @if (showError('password')) {
+        <span id="password-error" class="field-error">Password is required.</span>
+      }
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-block" [disabled]="submitting()">
+      {{ submitting() ? 'Signing in…' : 'Sign in' }}
+    </button>
+  </form>
+</div>

@@ -129,6 +129,49 @@ app's state needs (a list of resources, a set of reservations, the current user)
 enough not to need one. Routing uses a functional route guard that reads the JWT/claims to
 gate `Admin`-only routes (e.g. resource management).
 
+### 7.1 Frontend core
+
+```
+frontend/src/app/
+  core/
+    constants/       Roles (mirrors SmartDesk.Domain.Constants.Roles)
+    guards/          authGuard, guestGuard, roleGuard(...roles) / adminGuard
+    interceptors/    jwtInterceptor, errorInterceptor, ANONYMOUS_REQUEST,
+                     SKIP_ERROR_NOTIFICATION
+    models/          request/response types, ApiError
+    services/        AuthService, NotificationService, ReservationHubService
+    utils/           JWT claim decoding, isApiUrl
+  layout/
+    shell/           top bar + navigation around every signed-in screen
+    notification-host/  toast messages
+  features/<screen>/ one lazy-loaded standalone component per screen
+```
+
+- **Session.** `AuthService` keeps the access token in memory, mirrored to `localStorage`
+  so a reload stays signed in. The current user (id, name, email, roles) is read from the
+  token's claims, so guards and the top bar work without an extra request. An expired token
+  counts as signed out, both when the app loads and on every guarded navigation. The claims
+  only drive the UI: the API re-checks the token and roles on every request.
+- **Routing.** `/login` is guarded by `guestGuard`. Every other screen is a child of the
+  `Shell` route, which is guarded by `authGuard` (`canActivate` + `canActivateChild`). An
+  unauthenticated visit is redirected to `/login?returnUrl=...` and sent back after sign-in,
+  and only in-app paths are followed. `adminGuard` (`roleGuard(Roles.Admin)`) protects
+  `/admin`.
+- **HTTP.** `jwtInterceptor` attaches `Authorization: Bearer` to requests for our own API
+  only. `errorInterceptor` then turns every failure into an `ApiError` (status, title,
+  detail, field errors from `ProblemDetails`).
+  - A 401 from our API ends the session and redirects to login, whether or not a token was
+    sent: a token that expired while a screen was open is dropped before the request goes
+    out, and that request's 401 still has to end the session. The only exception is a
+    request marked `ANONYMOUS_REQUEST` (login), whose 401 just means a wrong password.
+  - Several requests failing together produce one redirect and one toast.
+  - 0, 403, 404 and 5xx show a toast. 400 and 409 are left to the calling screen, because
+    they carry form- or rule-specific messages. A caller that shows its own message sets
+    `SKIP_ERROR_NOTIFICATION` on the request.
+- **Styling.** Plain SCSS. Design tokens (colors, spacing, radius) and shared building blocks
+  (`.btn`, `.field`, `.input`, `.card`, `.alert-error`) live in `src/styles.scss`. Component
+  styles use those variables instead of hardcoded values.
+
 ## 8. Team ownership boundaries
 
 See [TEAM_SYNC.md](TEAM_SYNC.md) for who owns which module and how branches/PRs are
