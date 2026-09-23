@@ -26,9 +26,10 @@ is a notice. It does not add a second required approval.
 
 ## Review and merge rules
 
-Each author has exactly one reviewer responsible for approving their PRs. That approval is
-required before merge, including one-line fixes and docs-only changes. The other two may
-comment, but their approval is not required. The author does not approve their own PR.
+Each author has exactly one reviewer, and that reviewer is the only person who approves
+and merges their PRs. This applies to every change, including one-line fixes and docs-only
+changes. The other two may comment, but their approval is not required and they do not
+merge. The author does not approve or merge their own PR.
 
 | Author | Responsible reviewer |
 |---|---|
@@ -40,16 +41,16 @@ Request that reviewer on every PR. Approval follows the author, not the module: 
 touches someone else's area still needs only the author's designated reviewer.
 
 GitHub does not enforce this for us: branch protection and rulesets aren't available on a
-private repo under a free plan, so the merge button works even on an unapproved PR. The
-rule holds only because we follow it - don't click merge until the designated reviewer has
-approved.
+private repo under a free plan, so the merge button works for anyone with write access.
+The rule holds only because we follow it.
 
 - Nobody pushes directly to `main`. Every change reaches `main` through a PR.
-- Answer or resolve every review comment before merging. If you push substantial changes
-  after getting an approval, re-request review from the designated reviewer instead of
-  merging on the old approval.
-- The PR author merges once the designated reviewer has approved and the branch still
-  builds and passes tests.
+- Only the designated reviewer merges, and only after their own approval. The author does
+  not merge their own PR.
+- The reviewer merges only while the branch still builds and passes tests.
+- Answer or resolve every review comment before merging. If the author pushes substantial
+  changes after an approval, the reviewer reviews again instead of merging on the old
+  approval.
 - Use the checklist in `.github/pull_request_template.md` - it's filled in automatically
   when you open a PR on GitHub.
 
