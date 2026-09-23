@@ -8,4 +8,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/SmartDesk.Tests/SmartDesk.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/SmartDesk.BookingRace/SmartDesk.BookingRace.csproj" />
+  </Folder>
 </Solution>

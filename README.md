@@ -7,7 +7,7 @@ SignalR.
 
 Docs: [Architecture](docs/ARCHITECTURE.md) · [Data model](docs/DATA_MODEL.md) ·
 [API contracts](docs/API_CONTRACTS.md) · [Decisions](docs/DECISIONS.md) ·
-[Team sync](docs/TEAM_SYNC.md)
+[Team sync](docs/TEAM_SYNC.md) · [Demo runbook](docs/DEMO.md)
 
 ## What it does
 
@@ -153,6 +153,9 @@ src/
 tests/
   SmartDesk.Tests/           unit tests: handlers against EF Core on in-memory SQLite,
                              validators, domain rules
+tools/
+  SmartDesk.BookingRace/     reproduces ADR-0011's concurrency test against a running API
+                             (see docs/DEMO.md)
 frontend/
   src/app/features/          one folder per screen (login, dashboard, resources, ...)
   src/app/core/               interceptors, guards, shared services
