@@ -72,3 +72,32 @@ frontend HTTP call outright. Verified with a real request: `curl -H "Origin:
 http://localhost:4200"` gets `Access-Control-Allow-Origin` back, an unlisted origin
 doesn't. Config (not code) so each environment can set its own allowed origins without a
 rebuild once there's a real deployed frontend URL to add.
+
+## ADR-0007: Demo users are seeded in Development only; roles in every environment
+
+**Decision:** On startup the API seeds the `Admin` and `Employee` roles in every environment
+(the app can't work without them). The demo accounts (`admin@smartdesk.local`,
+`employee1@smartdesk.local`, `employee2@smartdesk.local`, shared password listed in the
+README) are created only when `ASPNETCORE_ENVIRONMENT=Development`. Seeding is idempotent
+and skips itself with a warning if migrations haven't been applied yet.
+
+**Why:** the brief asks for seed data and sample login details in the README, so anyone can
+clone, run, and log in. A known password is fine for a local database nobody else can
+reach, but must never exist in a shared or deployed environment - gating on the
+environment, not on a config flag someone could forget to flip, keeps it that way. Two
+employees exist so the SignalR scenario (user A books, user B sees it live) can be demoed
+with two browser sessions.
+
+## ADR-0008: Authenticated-by-default API, bearer-token-only Identity
+
+**Decision:** A fallback authorization policy requires an authenticated user on every
+endpoint that doesn't declare its own `[Authorize]`/`[AllowAnonymous]`; anonymous endpoints
+(login, the OpenAPI document) opt out explicitly. Identity is registered with
+`AddIdentityCore` + `AddSignInManager` rather than `AddIdentity`.
+
+**Why:** secure by default - a new controller that forgets `[Authorize]` stays closed
+instead of silently public. `AddIdentity` also registers cookie authentication, which makes
+a forbidden request answer with a 302 redirect to a non-existent login page instead of a
+403; this API only uses bearer tokens, so the cookie handlers are left out entirely.
+`SignInManager` is still used for password checks because it applies Identity's lockout
+(5 failed attempts → 5 minutes), which a bare `UserManager.CheckPasswordAsync` does not.
