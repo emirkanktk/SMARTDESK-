@@ -22,9 +22,25 @@ raise it in whatever channel the team actually uses day to day.
 - Stack a branch on whichever other open branch it actually depends on (e.g. a feature
   that needs `feature/backend-core`'s DbContext branches from that branch, not from `main`,
   until it merges) rather than redoing work once the dependency lands.
-- PRs are merged only after review. Since the team is small, any of the three of us can
-  review any PR, but the module owner (see the table above) should always be one of the
-  reviewers for changes to their area.
+
+## Review and merge rules
+
+**No PR is merged without at least one approving review from someone other than its
+author.** This applies to everyone and every change - including your own PRs, one-line
+fixes, and docs-only changes.
+
+GitHub does not enforce this for us: branch protection and rulesets aren't available on a
+private repo under a free plan, so the merge button works even on an unapproved PR. The
+rule holds only because we follow it - don't click merge until the PR shows an approval.
+
+- Nobody pushes directly to `main`. Every change reaches `main` through a PR.
+- Any of the three of us can review any PR, but the module owner (see the table above)
+  must be one of the reviewers for changes to their area.
+- Answer or resolve every review comment before merging. If you push substantial changes
+  after getting an approval, re-request review instead of merging on the old approval.
+- The PR author merges once it's approved and the branch still builds and passes tests.
+- Use the checklist in `.github/pull_request_template.md` - it's filled in automatically
+  when you open a PR on GitHub.
 
 ## Claiming shared or cross-cutting work
 
