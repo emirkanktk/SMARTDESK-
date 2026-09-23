@@ -1,10 +1,8 @@
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import {
-  AbstractControl,
   FormControl,
   NonNullableFormBuilder,
   ReactiveFormsModule,
-  ValidationErrors,
   Validators,
 } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -20,6 +18,7 @@ import {
 import { NotificationService } from '../../../core/services/notification.service';
 import { ResourceService } from '../../../core/services/resource.service';
 import { applyServerErrors } from '../../../shared/utils/server-errors';
+import { integerValidator } from '../../../shared/validators/integer.validator';
 
 const L = RESOURCE_LIMITS;
 
@@ -47,7 +46,12 @@ export class ResourceForm implements OnInit {
     resourceTypeId: ['', Validators.required],
     capacity: [
       1,
-      [Validators.required, Validators.min(L.capacityMin), Validators.max(L.capacityMax), integer],
+      [
+        Validators.required,
+        Validators.min(L.capacityMin),
+        Validators.max(L.capacityMax),
+        integerValidator,
+      ],
     ],
     location: ['', [Validators.required, Validators.maxLength(L.locationMaxLength)]],
     description: ['', Validators.maxLength(L.descriptionMaxLength)],
@@ -183,13 +187,6 @@ export class ResourceForm implements OnInit {
     // Other failures already raised a toast; keep a note on the form as well.
     this.formError.set('The resource could not be saved.');
   }
-}
-
-function integer(control: AbstractControl): ValidationErrors | null {
-  const value = control.value;
-  return value === null || value === '' || Number.isInteger(Number(value))
-    ? null
-    : { integer: true };
 }
 
 // Mirrors the API's feature rules: at most 20, 1-100 characters, no duplicates ignoring case.
