@@ -9,11 +9,53 @@ Docs: [Architecture](docs/ARCHITECTURE.md) · [Data model](docs/DATA_MODEL.md) �
 [API contracts](docs/API_CONTRACTS.md) · [Decisions](docs/DECISIONS.md) ·
 [Team sync](docs/TEAM_SYNC.md)
 
+## What it does
+
+- **Sign in** with email and password (JWT). Two roles: `Employee` and `Admin`.
+- **Resources** - meeting rooms, desks, company cars, projectors, cameras - with type,
+  capacity, location, features and a status (`Active` / `Inactive` / `Maintenance`).
+  Admins create and edit them; everyone can browse and filter.
+- **Availability search** - which resources are free for a time range, by type and capacity.
+- **Reservations** - book, change, and cancel. The backend refuses overlapping bookings,
+  bookings in the past, and bookings of resources that aren't active, and it holds under
+  concurrent requests. The owner or an Admin can change or cancel.
+- **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
+  overview: today's reservations, what's in use right now, and your upcoming bookings, with
+  "today" computed in the user's time zone.
+- **Live updates** - reservation create/update/cancel events for open screens over SignalR.
+  The backend raises the events after every committed change; the hub broadcast that
+  delivers them to browsers is being wired in as part of the integration work.
+
+| Layer | Stack |
+|---|---|
+| Frontend | Angular 22 (standalone components, Signals, Reactive Forms) |
+| Backend | .NET 10 Web API, Onion Architecture, CQRS with MediatR, FluentValidation |
+| Data | PostgreSQL via EF Core; ASP.NET Core Identity for users and roles |
+| Real-time | SignalR |
+
+### Design highlights
+
+- **Overlaps are impossible, not just unlikely.** Bookings of one resource are serialized by
+  a row lock, and a PostgreSQL exclusion constraint rejects an overlapping row however it
+  arrives. Tested with 30 simultaneous requests for the same slot: exactly one succeeds, the
+  rest get a clean 409 ([ADR-0011](docs/DECISIONS.md), [ADR-0013](docs/DECISIONS.md)).
+- **One overlap rule everywhere.** Search, booking, updates and the calendar all use the
+  same half-open `[start, end)` definition from the Domain layer, so back-to-back bookings
+  work and "shown as free" and "can be booked" can't disagree.
+- **Times are UTC on the wire, "today" is local.** The dashboard takes the browser's IANA
+  time zone, so the day boundary is right in Istanbul and on daylight-saving days
+  ([ADR-0012](docs/DECISIONS.md)).
+- **Secure by default.** Every endpoint requires a signed-in user unless explicitly marked
+  anonymous; account lockout plus a per-client login rate limit ([ADR-0008](docs/DECISIONS.md)).
+- **Every error is RFC 7807 ProblemDetails**, and the 409 messages are written to be shown to
+  users as-is.
+
 ## Prerequisites
 
 - .NET 10 SDK
 - `dotnet tool install --global dotnet-ef` (EF Core CLI - not bundled with the SDK)
-- Node.js 20+ and Angular CLI 22 (`npm i -g @angular/cli`)
+- Node.js 22.22+ or 24.15+ (what Angular 22 supports; CI uses 24) and Angular CLI 22
+  (`npm i -g @angular/cli`)
 - Docker Desktop (for local PostgreSQL)
 - Trust the local HTTPS dev certificate once per machine: `dotnet dev-certs https --trust`
   (skip this and the Angular dev server's calls to the API will fail with a cert error, not
@@ -39,8 +81,9 @@ The API starts on the URL/port in `src/SmartDesk.API/Properties/launchSettings.j
 (`https://localhost:7065` by default - matches `frontend/src/environments/environment.development.ts`,
 update both together if you change it). In development, Swagger UI is served at `/swagger`
 (raw OpenAPI document at `/openapi/v1.json`): call `POST /api/auth/login`, copy the
-`accessToken`, and paste it into **Authorize** to try the protected endpoints. Allowed frontend origins for CORS are `Cors:AllowedOrigins` in
-`appsettings.Development.json` (see `docs/DECISIONS.md`, ADR-0006).
+`accessToken`, and paste it into **Authorize** to try the protected endpoints. Allowed
+frontend origins for CORS are `Cors:AllowedOrigins` in `appsettings.Development.json` (see
+`docs/DECISIONS.md`, ADR-0006).
 
 ### Demo users (Development only)
 
@@ -62,6 +105,19 @@ backend is up and configured.
 The Development seed also creates eight sample resources (meeting rooms, desks, a company
 car, a projector, and a camera under maintenance) when the database has none. The five
 resource types come from a migration and exist in every environment (ADR-0010).
+
+### API at a glance
+
+Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS.md).
+
+| Area | Endpoints |
+|---|---|
+| Auth | `POST /api/auth/login`, `GET /api/auth/me` |
+| Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin) |
+| Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
+| Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
+| Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` |
+| Ops | `GET /health` |
 
 ## Frontend setup
 
@@ -85,12 +141,18 @@ cd frontend && ng test    # frontend
 
 ```
 src/
-  SmartDesk.Domain/          entities, enums, constants - no framework dependencies
-  SmartDesk.Application/     commands, queries, handlers, validators (CQRS + MediatR)
-  SmartDesk.Infrastructure/  EF Core, PostgreSQL, ASP.NET Identity
-  SmartDesk.API/             composition root, controllers, SignalR hubs
+  SmartDesk.Domain/          entities, enums, constants, domain rules (reservation overlap)
+                             - no framework dependencies
+  SmartDesk.Application/     Features/<Area>/Commands|Queries - request, handler, validator,
+                             DTO side by side (CQRS + MediatR); Common/ for the pipeline,
+                             exceptions and interfaces Infrastructure implements
+  SmartDesk.Infrastructure/  EF Core + PostgreSQL (DbContext, migrations, seed data),
+                             ASP.NET Identity, JWT
+  SmartDesk.API/             composition root, controllers, SignalR hub, error handling,
+                             rate limiting, health check
 tests/
-  SmartDesk.Tests/
+  SmartDesk.Tests/           unit tests: handlers against EF Core on in-memory SQLite,
+                             validators, domain rules
 frontend/
   src/app/features/          one folder per screen (login, dashboard, resources, ...)
   src/app/core/               interceptors, guards, shared services
