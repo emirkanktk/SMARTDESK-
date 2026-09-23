@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: smartdesk-postgres
+    environment:
+      POSTGRES_DB: smartdesk
+      POSTGRES_USER: smartdesk
+      POSTGRES_PASSWORD: smartdesk_dev_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - smartdesk-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  smartdesk-postgres-data:
