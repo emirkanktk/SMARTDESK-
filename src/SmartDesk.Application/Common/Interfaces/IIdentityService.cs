@@ -9,4 +9,9 @@ public interface IIdentityService
     Task<UserProfile?> CheckCredentialsAsync(string email, string password, CancellationToken cancellationToken);
 
     Task<UserProfile?> FindByIdAsync(Guid userId, CancellationToken cancellationToken);
+
+    // "First Last" (or the email when both are blank) for each id that exists, in one query.
+    // Unknown ids are simply missing from the result.
+    Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken);
 }

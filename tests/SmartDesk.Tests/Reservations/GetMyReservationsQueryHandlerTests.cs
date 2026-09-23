@@ -23,7 +23,7 @@ public class GetMyReservationsQueryHandlerTests : IDisposable
         await _database.AddReservationAsync(room.Id, Day.AddHours(11), Day.AddHours(12), userId: Guid.NewGuid());
 
         await using var context = _database.CreateContext();
-        var result = await new GetMyReservationsQueryHandler(context, new FakeCurrentUser(me))
+        var result = await new GetMyReservationsQueryHandler(context, new FakeCurrentUser(me), new FakeIdentityService())
             .Handle(new GetMyReservationsQuery(), CancellationToken.None);
 
         result.Should().HaveCount(2).And.OnlyContain(r => r.UserId == me);

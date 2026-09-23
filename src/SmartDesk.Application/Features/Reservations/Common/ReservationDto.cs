@@ -18,6 +18,11 @@ public sealed record ReservationDto(
     ReservationStatus Status,
     string? Note)
 {
+    // Who booked it ("Ayşe Yılmaz"), for calendars, the dashboard and live events. Not part
+    // of Projection - users live in Identity, outside IApplicationDbContext - so handlers
+    // fill it afterwards with WithUserNamesAsync.
+    public string? UserDisplayName { get; init; }
+
     public static readonly Expression<Func<Reservation, ReservationDto>> Projection = r => new ReservationDto(
         r.Id,
         r.ResourceId,

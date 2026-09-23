@@ -12,6 +12,7 @@ namespace SmartDesk.Application.Features.Reservations.Commands.CancelReservation
 public sealed class CancelReservationCommandHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
+    IIdentityService identityService,
     IReservationNotifier notifier,
     TimeProvider timeProvider) : IRequestHandler<CancelReservationCommand, ReservationDto>
 {
@@ -49,10 +50,14 @@ public sealed class CancelReservationCommandHandler(
         return dto;
     }
 
-    private Task<ReservationDto> ToDtoAsync(Guid id, CancellationToken cancellationToken) =>
-        db.Reservations
+    private async Task<ReservationDto> ToDtoAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var dto = await db.Reservations
             .AsNoTracking()
             .Where(r => r.Id == id)
             .Select(ReservationDto.Projection)
             .SingleAsync(cancellationToken);
+
+        return await identityService.WithUserNameAsync(dto, cancellationToken);
+    }
 }
