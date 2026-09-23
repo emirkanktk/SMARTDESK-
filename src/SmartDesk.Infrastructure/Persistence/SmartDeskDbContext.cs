@@ -1,13 +1,15 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Infrastructure.Identity;
+using SmartDesk.Infrastructure.Persistence.Seed;
 
 namespace SmartDesk.Infrastructure.Persistence;
 
 public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
-    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IApplicationDbContext
 {
     public DbSet<ResourceType> ResourceTypes => Set<ResourceType>();
     public DbSet<Resource> Resources => Set<Resource>();
@@ -21,6 +23,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
         builder.Entity<ResourceType>(entity =>
         {
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasData(ResourceTypeSeedData.All);
         });
 
         builder.Entity<Resource>(entity =>
