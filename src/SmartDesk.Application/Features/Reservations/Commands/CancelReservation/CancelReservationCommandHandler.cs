@@ -19,33 +19,43 @@ public sealed class CancelReservationCommandHandler(
     public async Task<ReservationDto> Handle(CancelReservationCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId ?? throw new UnauthorizedException();
+        bool cancelledNow;
 
-        var reservation = await db.Reservations.SingleOrDefaultAsync(r => r.Id == request.Id, cancellationToken)
-            ?? throw new NotFoundException(nameof(Reservation), request.Id);
-
-        // Business rule 4: the owner, or an Admin managing reservations.
-        if (reservation.UserId != userId && !currentUser.IsInRole(Roles.Admin))
+        // Locked so a concurrent update of the same reservation can't interleave with this.
+        await using (var transaction = await db.BeginTransactionAsync(cancellationToken))
         {
-            throw new ForbiddenAccessException("You can only cancel your own reservations.");
+            await db.LockReservationAsync(request.Id, cancellationToken);
+
+            var reservation = await db.Reservations.SingleOrDefaultAsync(r => r.Id == request.Id, cancellationToken)
+                ?? throw new NotFoundException(nameof(Reservation), request.Id);
+
+            // Business rule 4: the owner, or an Admin managing reservations.
+            if (reservation.UserId != userId && !currentUser.IsInRole(Roles.Admin))
+            {
+                throw new ForbiddenAccessException("You can only cancel your own reservations.");
+            }
+
+            // Idempotent: a retried or double-clicked cancel succeeds without changing anything
+            // or broadcasting a second event.
+            cancelledNow = reservation.Status != ReservationStatus.Cancelled;
+            if (cancelledNow)
+            {
+                if (reservation.EndDateTime <= timeProvider.GetUtcNow().UtcDateTime)
+                {
+                    throw new ConflictException("This reservation has already ended and can't be cancelled.");
+                }
+
+                reservation.Status = ReservationStatus.Cancelled;
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
         }
 
-        // Idempotent: a retried or double-clicked cancel succeeds without changing anything
-        // or broadcasting a second event.
-        if (reservation.Status == ReservationStatus.Cancelled)
+        var dto = await ToDtoAsync(request.Id, cancellationToken);
+        if (cancelledNow)
         {
-            return await ToDtoAsync(reservation.Id, cancellationToken);
+            await notifier.ReservationCancelledAsync(dto, cancellationToken);
         }
-
-        if (reservation.EndDateTime <= timeProvider.GetUtcNow().UtcDateTime)
-        {
-            throw new ConflictException("This reservation has already ended and can't be cancelled.");
-        }
-
-        reservation.Status = ReservationStatus.Cancelled;
-        await db.SaveChangesAsync(cancellationToken);
-
-        var dto = await ToDtoAsync(reservation.Id, cancellationToken);
-        await notifier.ReservationCancelledAsync(dto, cancellationToken);
 
         return dto;
     }

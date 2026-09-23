@@ -96,6 +96,15 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
         }
     }
 
+    public async Task LockReservationAsync(Guid reservationId, CancellationToken cancellationToken = default)
+    {
+        if (Database.IsNpgsql())
+        {
+            await Database.ExecuteSqlAsync(
+                $"SELECT 1 FROM \"Reservations\" WHERE \"Id\" = {reservationId} FOR UPDATE", cancellationToken);
+        }
+    }
+
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         try
