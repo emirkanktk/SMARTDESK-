@@ -144,7 +144,7 @@ A single hub (`SmartDesk.API/Hubs/ReservationHub.cs`) broadcasts reservation
 create/cancel events to connected clients so an open calendar/dashboard screen updates
 without a page reload. The hub itself carries no business logic.
 
-Handlers don't know about SignalR. After a committed create/cancel they call
+Handlers don't know about SignalR. After a committed create/update/cancel they call
 `IReservationNotifier` (Application), passing the `ReservationDto` that becomes the event
 payload. Until the SignalR implementation (`IHubContext<ReservationHub>`, Burak's scope) is
 registered in `Program.cs`, `NullReservationNotifier` stands in, so reservations work fully

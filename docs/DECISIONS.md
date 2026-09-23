@@ -185,3 +185,33 @@ Sending a zone id rather than an offset keeps daylight-saving days right, becaus
 day can be 23 or 25 hours long, and the server has the zone rules to handle that. Returning
 the bounds means the screen and the server never silently disagree about which day is
 shown.
+
+## ADR-0013: Reservation updates - what can change when, and how updates stay race-free
+
+**Decision:** `PUT /api/reservations/{id}` is a full replace of resource, start, end and note.
+What may change depends on the reservation's state:
+- **Upcoming:** anything can change.
+- **In progress:** only the end and the note can change. This covers the common "the meeting
+  runs over" case; the start is in the past and the resource is in use.
+- **Ended or cancelled:** nothing can change.
+
+A change of resource or time is checked exactly like a new booking. The only difference is
+that the reservation's own current slot is excluded from the overlap check.
+
+Concurrency extends ADR-0011:
+- Update and cancel both take a row lock on the reservation (`SELECT ... FOR UPDATE`)
+  before reading it, so they serialize with each other.
+- A change of resource or time additionally takes the target resource's lock, like create
+  does.
+- A transaction takes at most one reservation lock followed by at most one resource lock,
+  always in that order, so no two transactions can wait on each other in a cycle.
+
+**Why:** "güncelleme" is part of the brief's reservation module. Without the reservation lock,
+a cancel and an update racing on the same row could both read "Confirmed". The update could
+then broadcast `ReservationUpdated` for a reservation that had just been cancelled.
+
+Verified on PostgreSQL with two tests:
+- 10 reservations moved into the same free slot at the same instant: exactly one 200 and nine
+  409s.
+- Cancel and update of one reservation fired together, 10 rounds: every round ended in one
+  of the two valid serial orders, with 0 errors and 0 deadlocks.

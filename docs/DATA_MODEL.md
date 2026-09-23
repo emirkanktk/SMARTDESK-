@@ -97,9 +97,11 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
 3. A `Resource` with `Status` other than `Active` (`Inactive` or `Maintenance`) cannot be
    reserved. Changing a resource to `Inactive`/`Maintenance` stops new bookings but leaves
    its existing reservations in place; an admin cancels those individually if needed.
-4. A reservation's owner can cancel their own reservation; `Admin` can manage any
+4. A reservation's owner can cancel or change their own reservation; `Admin` can manage any
    reservation. Cancelling is idempotent, and a reservation that has already ended can't
-   be cancelled.
+   be cancelled or changed. Once a reservation has started, only its end time and note can
+   change; moving it in time or to another resource is checked like a new booking (rules
+   1, 3, 6), ignoring its own current slot.
 5. Concurrent requests for the same resource/time range must not both succeed - the
    overlap check has to hold under concurrent writes, not just sequentially. Enforced in
    two layers (ADR-0011): `CreateReservationCommand` locks the resource row for the
