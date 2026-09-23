@@ -1,11 +1,12 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { environment } from '../../../environments/environment';
 import { AuthService } from '../services/auth.service';
+import { isApiUrl } from '../utils/api-url';
+import { ANONYMOUS_REQUEST } from './http-context.tokens';
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  // Never hand the token to anything but our own API.
-  if (!isApiUrl(req.url)) {
+  // Never hand the token to anything but our own API, and not to anonymous calls (login).
+  if (!isApiUrl(req.url) || req.context.get(ANONYMOUS_REQUEST)) {
     return next(req);
   }
 
@@ -21,7 +22,3 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
     }),
   );
 };
-
-function isApiUrl(url: string): boolean {
-  return url === environment.apiUrl || url.startsWith(`${environment.apiUrl}/`);
-}

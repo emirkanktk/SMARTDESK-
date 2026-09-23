@@ -1,31 +1,34 @@
-import {
-  HttpClient,
-  HttpContext,
-  HttpHeaders,
-  provideHttpClient,
-  withInterceptors,
-} from '@angular/common/http';
+import { ApplicationRef, Component } from '@angular/core';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { ApiError } from '../models/api-error.model';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
 import { errorInterceptor } from './error.interceptor';
-import { SKIP_ERROR_NOTIFICATION } from './http-context.tokens';
+import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from './http-context.tokens';
+
+@Component({ template: '' })
+class Blank {}
 
 describe('errorInterceptor', () => {
+  const url = `${environment.apiUrl}/thing`;
   let http: HttpClient;
   let backend: HttpTestingController;
   let notifications: NotificationService;
+  let router: Router;
   let logout: ReturnType<typeof vi.fn>;
-  let navigate: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     logout = vi.fn();
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([]),
+        provideRouter([
+          { path: 'login', component: Blank },
+          { path: '**', component: Blank },
+        ]),
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
         { provide: AuthService, useValue: { logout } },
@@ -34,26 +37,29 @@ describe('errorInterceptor', () => {
     http = TestBed.inject(HttpClient);
     backend = TestBed.inject(HttpTestingController);
     notifications = TestBed.inject(NotificationService);
-    navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    router = TestBed.inject(Router);
   });
 
   afterEach(() => backend.verify());
 
-  function request(options: { authorized?: boolean; context?: HttpContext } = {}): {
+  function request(options: { url?: string; context?: HttpContext } = {}): {
     error: () => unknown;
   } {
     let error: unknown;
-    const headers = options.authorized ? new HttpHeaders({ Authorization: 'Bearer t' }) : undefined;
-    http.get('/api/thing', { headers, context: options.context }).subscribe({
+    http.get(options.url ?? url, { context: options.context }).subscribe({
       error: (e: unknown) => (error = e),
     });
     return { error: () => error };
   }
 
+  function flush401(target = url): void {
+    backend.expectOne(target).flush({}, { status: 401, statusText: 'Unauthorized' });
+  }
+
   it('maps a validation problem to an ApiError with field errors, without a toast', () => {
     const result = request();
     backend
-      .expectOne('/api/thing')
+      .expectOne(url)
       .flush(
         { title: 'One or more validation errors occurred.', errors: { Email: ['Required.'] } },
         { status: 400, statusText: 'Bad Request' },
@@ -66,39 +72,80 @@ describe('errorInterceptor', () => {
     expect(notifications.notifications()).toEqual([]);
   });
 
-  it('ends the session on a 401 for a request that carried a token', () => {
-    request({ authorized: true });
-    backend.expectOne('/api/thing').flush({}, { status: 401, statusText: 'Unauthorized' });
+  it('ends the session on a 401 from the API, even when no token was sent', async () => {
+    await router.navigateByUrl('/resources');
+    const navigate = vi.spyOn(router, 'navigate');
+
+    request();
+    flush401();
 
     expect(logout).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/' } });
+    expect(navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/resources' },
+    });
+    expect(notifications.notifications()[0]?.message).toContain('session has expired');
   });
 
-  it('does not end the session on a 401 without a token (failed login)', () => {
-    const result = request();
-    backend.expectOne('/api/thing').flush({}, { status: 401, statusText: 'Unauthorized' });
+  it('does not end the session on a 401 for an anonymous request (failed login)', () => {
+    const navigate = vi.spyOn(router, 'navigate');
+
+    const result = request({ context: new HttpContext().set(ANONYMOUS_REQUEST, true) });
+    flush401();
 
     expect(logout).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
     expect((result.error() as ApiError).status).toBe(401);
+  });
+
+  it('does not end the session on a 401 from another origin', () => {
+    request({ url: 'https://example.com/data' });
+    flush401('https://example.com/data');
+
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('handles several 401s arriving together with one redirect and one toast', async () => {
+    await router.navigateByUrl('/dashboard');
+    const navigate = vi.spyOn(router, 'navigate');
+
+    request();
+    request();
+    request();
+    backend.match(url).forEach((req) => req.flush({}, { status: 401, statusText: 'Unauthorized' }));
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(router.url).toBe('/login?returnUrl=%2Fdashboard');
+    expect(notifications.notifications().length).toBe(1);
+  });
+
+  it('does not redirect again when already on the login screen', async () => {
+    await router.navigateByUrl('/login');
+    const navigate = vi.spyOn(router, 'navigate');
+
+    request();
+    flush401();
+
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('shows a toast for server errors', () => {
     request();
-    backend.expectOne('/api/thing').flush({}, { status: 500, statusText: 'Server Error' });
+    backend.expectOne(url).flush({}, { status: 500, statusText: 'Server Error' });
 
     expect(notifications.notifications()[0]?.kind).toBe('error');
   });
 
   it('shows no toast when the caller opted out', () => {
     request({ context: new HttpContext().set(SKIP_ERROR_NOTIFICATION, true) });
-    backend.expectOne('/api/thing').flush({}, { status: 500, statusText: 'Server Error' });
+    backend.expectOne(url).flush({}, { status: 500, statusText: 'Server Error' });
 
     expect(notifications.notifications()).toEqual([]);
   });
 
   it('reports an unreachable server as status 0', () => {
     const result = request();
-    backend.expectOne('/api/thing').error(new ProgressEvent('error'));
+    backend.expectOne(url).error(new ProgressEvent('error'));
 
     expect((result.error() as ApiError).status).toBe(0);
     expect(notifications.notifications()[0]?.message).toContain('Cannot reach the server');

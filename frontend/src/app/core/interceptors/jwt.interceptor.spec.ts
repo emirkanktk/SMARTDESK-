@@ -1,8 +1,9 @@
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../services/auth.service';
+import { ANONYMOUS_REQUEST } from './http-context.tokens';
 import { jwtInterceptor } from './jwt.interceptor';
 
 describe('jwtInterceptor', () => {
@@ -40,6 +41,22 @@ describe('jwtInterceptor', () => {
     const req = backend.expectOne(`${environment.apiUrl}/resources`);
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush([]);
+  });
+
+  it('sends anonymous requests (login) without a token', () => {
+    http
+      .post(
+        `${environment.apiUrl}/auth/login`,
+        {},
+        {
+          context: new HttpContext().set(ANONYMOUS_REQUEST, true),
+        },
+      )
+      .subscribe();
+
+    const req = backend.expectOne(`${environment.apiUrl}/auth/login`);
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
   });
 
   it('never sends the token to another origin', () => {

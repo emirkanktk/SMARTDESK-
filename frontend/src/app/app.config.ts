@@ -9,8 +9,8 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
-    // Order matters: jwtInterceptor attaches the token first, so errorInterceptor can tell
-    // an expired session (401 with a token) from a failed login (401 without one).
+    // jwtInterceptor attaches the token; errorInterceptor maps failures and ends the session
+    // on a 401 (except for requests marked ANONYMOUS_REQUEST, i.e. login).
     provideHttpClient(withInterceptors([jwtInterceptor, errorInterceptor])),
   ],
 };
