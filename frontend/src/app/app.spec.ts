@@ -9,11 +9,15 @@ import { ReservationHubService } from './core/services/reservation-hub.service';
 const TOKEN_STORAGE_KEY = 'smartdesk_access_token';
 
 describe('App', () => {
-  let hub: jasmine.SpyObj<ReservationHubService>;
+  const hub = {
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  };
 
   beforeEach(async () => {
     localStorage.clear();
-    hub = jasmine.createSpyObj<ReservationHubService>('ReservationHubService', ['connect', 'disconnect']);
+    hub.connect.mockClear();
+    hub.disconnect.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
