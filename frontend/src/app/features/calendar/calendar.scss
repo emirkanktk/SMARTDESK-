@@ -113,6 +113,18 @@
 
   .meta {
     font-size: 0.8125rem;
+    font-weight: 400;
+  }
+}
+
+// Phones: a narrower pinned column leaves room for about a day and a half beside it.
+@media (max-width: 600px) {
+  .grid {
+    min-width: 44rem;
+  }
+
+  .grid .resource-col {
+    width: 7.5rem;
   }
 }
 

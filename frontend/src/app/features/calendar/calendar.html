@@ -55,7 +55,10 @@
 } @else {
   <p class="text-muted summary">
     {{ reservationCount() }} {{ reservationCount() === 1 ? 'reservation' : 'reservations' }}
-    this week. Select one to open it.
+    this week.
+    @if (reservationCount() > 0) {
+      Select one to open it.
+    }
   </p>
   <div class="grid-wrap">
     <table class="grid">
