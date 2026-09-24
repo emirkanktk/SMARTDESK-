@@ -26,6 +26,23 @@ describe('ReservationService', () => {
 
   afterEach(() => http.verify());
 
+  it("gets the caller's reservations", () => {
+    service.getMine().subscribe();
+
+    const req = http.expectOne(`${base}/mine`);
+    expect(req.request.method).toBe('GET');
+    req.flush([fakeReservation()]);
+  });
+
+  it('cancels with POST to the cancel action, without a body', () => {
+    service.cancel('rsv-1').subscribe();
+
+    const req = http.expectOne(`${base}/rsv-1/cancel`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeNull();
+    req.flush(fakeReservation({ status: 'Cancelled' }));
+  });
+
   it('gets one reservation by id', () => {
     service.getReservation('rsv-1').subscribe();
 
