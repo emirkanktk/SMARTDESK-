@@ -95,7 +95,8 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
 ```json
 {
   "id": "…", "resourceId": "…",
-  "resourceName": "Meeting Room A", "resourceTypeName": "Meeting Room", "resourceLocation": "2nd Floor",
+  "resourceName": "Meeting Room A", "resourceTypeId": "…", "resourceTypeName": "Meeting Room",
+  "resourceLocation": "2nd Floor",
   "userId": "…",
   "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:30:00Z",
   "status": "Confirmed",          // "Confirmed" | "Cancelled"
