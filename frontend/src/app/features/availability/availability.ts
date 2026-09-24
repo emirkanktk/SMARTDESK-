@@ -14,6 +14,7 @@ import {
 import { ResourceService } from '../../core/services/resource.service';
 import {
   addMinutes,
+  floorToQuarterHour,
   formatDuration,
   fromDateTimeLocal,
   nextHalfHour,
@@ -92,8 +93,8 @@ export class Availability implements OnInit {
     return start && end && end > start ? formatDuration(start, end) : null;
   });
 
-  /** Earliest value offered by the start picker. */
-  protected readonly minStart = toDateTimeLocal(new Date());
+  /** Earliest value offered by the start picker, on the quarter-hour grid its step expects. */
+  protected readonly minStart = toDateTimeLocal(floorToQuarterHour());
 
   private readonly searches = new Subject<AvailabilityQuery>();
 

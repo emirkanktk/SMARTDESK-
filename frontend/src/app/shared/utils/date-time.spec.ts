@@ -1,5 +1,6 @@
 import {
   addMinutes,
+  floorToQuarterHour,
   formatDuration,
   fromDateTimeLocal,
   nextHalfHour,
@@ -31,6 +32,14 @@ describe('date-time helpers', () => {
     expect(toDateTimeLocal(nextHalfHour(new Date(2026, 9, 5, 10, 7)))).toBe('2026-10-05T10:30');
     expect(toDateTimeLocal(nextHalfHour(new Date(2026, 9, 5, 10, 30)))).toBe('2026-10-05T11:00');
     expect(toDateTimeLocal(nextHalfHour(new Date(2026, 9, 5, 23, 45)))).toBe('2026-10-06T00:00');
+  });
+
+  it('rounds down to the quarter hour', () => {
+    expect(toDateTimeLocal(floorToQuarterHour(new Date(2026, 9, 5, 10, 7)))).toBe('2026-10-05T10:00');
+    expect(toDateTimeLocal(floorToQuarterHour(new Date(2026, 9, 5, 10, 15)))).toBe('2026-10-05T10:15');
+    expect(toDateTimeLocal(floorToQuarterHour(new Date(2026, 9, 5, 10, 59, 59)))).toBe(
+      '2026-10-05T10:45',
+    );
   });
 
   it('formats durations', () => {

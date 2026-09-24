@@ -38,6 +38,16 @@ export function nextHalfHour(now: Date = new Date()): Date {
   return new Date(Math.floor(now.getTime() / step) * step + step);
 }
 
+/**
+ * `date` rounded down to the quarter hour, e.g. 10:07 -> 10:00. Use it for the `min` of a
+ * picker with step="900": the browser counts steps from `min`, so an off-grid min (10:07)
+ * shifts every allowed value (10:22, 10:37...) and flags on-grid ones as a step mismatch.
+ */
+export function floorToQuarterHour(date: Date = new Date()): Date {
+  const step = 15 * MINUTE_MS;
+  return new Date(Math.floor(date.getTime() / step) * step);
+}
+
 export function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * MINUTE_MS);
 }

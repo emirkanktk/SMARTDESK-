@@ -73,6 +73,14 @@ describe('Availability', () => {
     expect(getAvailable).not.toHaveBeenCalled();
   });
 
+  it('keeps the start picker on the quarter-hour grid', async () => {
+    await render();
+
+    // The browser counts step="900" from min; an off-grid min (10:07) would shift the grid.
+    expect(input('#start').min).toBe('2026-10-05T10:00');
+    expect(input('#start').validity.stepMismatch).toBe(false);
+  });
+
   it('searches with UTC times and filters, and keeps the search in the URL', async () => {
     await render();
     await set('#type', MEETING_ROOM_TYPE.id);
