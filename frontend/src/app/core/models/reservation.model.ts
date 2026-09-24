@@ -16,8 +16,11 @@ export interface Reservation {
   endDateTime: string;
   status: ReservationStatus;
   note: string | null;
-  /** Who booked it: "First Last", or the email if both are blank. */
-  userDisplayName: string;
+  /**
+   * Who booked it: "First Last", or the email if both are blank. Null when the API can't
+   * resolve the user any more, e.g. a deleted account.
+   */
+  userDisplayName: string | null;
 }
 
 /** Body of `POST /api/reservations`. The owner is always the caller. */

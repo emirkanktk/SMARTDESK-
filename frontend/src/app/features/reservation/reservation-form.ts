@@ -100,7 +100,7 @@ export class ReservationForm implements OnInit {
   protected readonly bookedBy = computed(() => {
     const reservation = this.reservation();
     return reservation && reservation.userId !== this.authService.currentUser()?.id
-      ? reservation.userDisplayName
+      ? (reservation.userDisplayName ?? 'another user')
       : null;
   });
 
@@ -303,7 +303,8 @@ export class ReservationForm implements OnInit {
     // Same order of checks as the API, so the reason matches what a PUT would answer.
     let readOnlyReason: string | null = null;
     if (reservation.userId !== user?.id && !this.authService.isAdmin()) {
-      readOnlyReason = `Only ${reservation.userDisplayName} or an admin can change this reservation.`;
+      const owner = reservation.userDisplayName ?? 'the person who booked it';
+      readOnlyReason = `Only ${owner} or an admin can change this reservation.`;
     } else if (reservation.status === 'Cancelled') {
       readOnlyReason = 'This reservation was cancelled, so it can no longer be changed.';
     } else if (end.getTime() <= now) {
@@ -317,10 +318,11 @@ export class ReservationForm implements OnInit {
         : 'upcoming';
     this.mode.set(mode);
 
-    this.form.setValidators(dateRangeValidator(rangeRules(mode)));
+    const originalStart = toDateTimeLocal(start);
+    this.form.setValidators(dateRangeValidator({ ...rangeRules(mode), originalStart }));
     this.form.setValue({
       resourceId: reservation.resourceId,
-      startDateTime: toDateTimeLocal(start),
+      startDateTime: originalStart,
       endDateTime: toDateTimeLocal(end),
       note: reservation.note ?? '',
     });

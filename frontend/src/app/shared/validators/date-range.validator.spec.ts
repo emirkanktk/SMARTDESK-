@@ -50,6 +50,15 @@ describe('dateRangeValidator', () => {
     });
   });
 
+  it('never flags a start still at its originalStart, only a changed one', () => {
+    // Loaded at 11:30; it's now 12:00, so the reservation has started meanwhile.
+    const editing = { originalStart: '2026-10-05T11:30' };
+    expect(validate('2026-10-05T11:30', '2026-10-05T13:00', editing)).toBeNull();
+    expect(validate('2026-10-05T11:15', '2026-10-05T13:00', editing)).toEqual({
+      startInPast: true,
+    });
+  });
+
   it('with endInFuture, rejects an end that has passed and ignores a past start', () => {
     const inProgress = { futureOnly: false, endInFuture: true };
     expect(validate('2026-10-05T11:00', '2026-10-05T12:30', inProgress)).toBeNull();
