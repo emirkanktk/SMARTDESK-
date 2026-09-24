@@ -6,6 +6,7 @@ import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { DESK_TYPE, MEETING_ROOM_TYPE, fakeResource } from '../../../testing/resource-fixtures';
+import { simulateTurkishBrowser } from '../../../testing/turkish-locale';
 import { Resources } from './resources';
 
 describe('Resources', () => {
@@ -18,12 +19,13 @@ describe('Resources', () => {
     resourceTypeName: DESK_TYPE.name,
     capacity: 1,
     location: '3rd Floor',
-    features: [],
+    features: ['HDMI'],
     status: 'Maintenance',
   });
 
   let getResources: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
+  let getResource: ReturnType<typeof vi.fn>;
   let fixture: ComponentFixture<Resources>;
   let element: HTMLElement;
 
@@ -31,6 +33,7 @@ describe('Resources', () => {
     isAdmin.set(false);
     getResources = vi.fn(() => of([room, desk]));
     update = vi.fn();
+    getResource = vi.fn((id: string) => of([room, desk].find((r) => r.id === id)));
 
     await TestBed.configureTestingModule({
       imports: [Resources],
@@ -42,6 +45,7 @@ describe('Resources', () => {
           useValue: {
             getResourceTypes: () => of([DESK_TYPE, MEETING_ROOM_TYPE]),
             getResources,
+            getResource,
             update,
           },
         },
@@ -100,6 +104,21 @@ describe('Resources', () => {
     expect(getResources.mock.calls.length).toBe(calls);
   });
 
+  it('matches a capital I in a Turkish browser ("hdmi" finds "HDMI")', async () => {
+    const restore = simulateTurkishBrowser();
+    try {
+      await render();
+      const search = element.querySelector<HTMLInputElement>('#search')!;
+      search.value = 'hdmi';
+      search.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+
+      expect(rowNames()).toEqual(['Desk 12']);
+    } finally {
+      restore();
+    }
+  });
+
   it('shows an error when loading fails', async () => {
     getResources.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
     await render();
@@ -114,10 +133,13 @@ describe('Resources', () => {
     expect(element.querySelector('.actions')).toBeNull();
   });
 
-  it('lets an admin deactivate a resource, sending the full resource', async () => {
+  it('deactivates from the latest copy, so edits made since the list loaded are kept', async () => {
     isAdmin.set(true);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    update.mockReturnValue(of({ ...room, status: 'Inactive' }));
+    // Another admin raised the capacity after this list was loaded.
+    const latest = { ...room, capacity: 12, features: ['TV', 'Video Conference', 'Whiteboard'] };
+    getResource.mockReturnValue(of(latest));
+    update.mockReturnValue(of({ ...latest, status: 'Inactive' }));
     await render();
 
     const button = Array.from(element.querySelectorAll<HTMLButtonElement>('.actions button')).find(
@@ -126,7 +148,8 @@ describe('Resources', () => {
     button.click();
     await fixture.whenStable();
 
-    const { id, resourceTypeName: _, ...fields } = room;
+    const { id, resourceTypeName: _, ...fields } = latest;
+    expect(getResource).toHaveBeenCalledWith(id);
     expect(update).toHaveBeenCalledWith(id, { ...fields, status: 'Inactive' });
     expect(element.querySelector('tbody tr')?.textContent).toContain('Inactive');
   });

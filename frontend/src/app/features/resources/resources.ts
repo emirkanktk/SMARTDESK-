@@ -47,15 +47,15 @@ export class Resources {
   });
 
   protected readonly visibleResources = computed(() => {
-    const term = this.search().trim().toLocaleLowerCase();
+    const term = foldCase(this.search().trim());
     if (!term) {
       return this.resources();
     }
     return this.resources().filter(
       (r) =>
-        r.name.toLocaleLowerCase().includes(term) ||
-        r.location.toLocaleLowerCase().includes(term) ||
-        r.features.some((f) => f.toLocaleLowerCase().includes(term)),
+        foldCase(r.name).includes(term) ||
+        foldCase(r.location).includes(term) ||
+        r.features.some((f) => foldCase(f).includes(term)),
     );
   });
 
@@ -104,17 +104,24 @@ export class Resources {
     }
 
     this.busyId.set(resource.id);
+    // PUT is a full replace, so re-read the resource first: sending the copy loaded with the
+    // list would overwrite whatever another admin changed since then.
     this.resourceService
-      .update(resource.id, {
-        name: resource.name,
-        resourceTypeId: resource.resourceTypeId,
-        capacity: resource.capacity,
-        location: resource.location,
-        description: resource.description,
-        features: resource.features,
-        status: next,
-      })
-      .pipe(finalize(() => this.busyId.set(null)))
+      .getResource(resource.id)
+      .pipe(
+        switchMap((latest) =>
+          this.resourceService.update(latest.id, {
+            name: latest.name,
+            resourceTypeId: latest.resourceTypeId,
+            capacity: latest.capacity,
+            location: latest.location,
+            description: latest.description,
+            features: latest.features,
+            status: next,
+          }),
+        ),
+        finalize(() => this.busyId.set(null)),
+      )
       .subscribe({
         next: (updated) => {
           const statusFilter = this.filters.controls.status.value;
@@ -129,4 +136,11 @@ export class Resources {
         error: () => undefined,
       });
   }
+}
+
+// Locale-independent on purpose: toLocaleLowerCase() follows the browser's locale, and in
+// Turkish that can turn "I" into dotless "ı", so "hdmi" would not match "HDMI". Same rule
+// as the API's OrdinalIgnoreCase.
+function foldCase(value: string): string {
+  return value.toLowerCase();
 }
