@@ -32,10 +32,16 @@ export function parseIso(value: string | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** The next full or half hour after `now`, e.g. 10:07 -> 10:30, 10:30 -> 11:00. */
+/**
+ * The next full or half hour after `now` on the local clock, e.g. 10:07 -> 10:30,
+ * 10:30 -> 11:00. Rounded on the wall clock, not on epoch time: in a zone offset by 45
+ * minutes (Nepal, UTC+05:45) epoch half hours fall on :15 and :45.
+ */
 export function nextHalfHour(now: Date = new Date()): Date {
-  const step = 30 * MINUTE_MS;
-  return new Date(Math.floor(now.getTime() / step) * step + step);
+  const next = new Date(now);
+  next.setSeconds(0, 0);
+  next.setMinutes(next.getMinutes() < 30 ? 30 : 60);
+  return next;
 }
 
 /**
