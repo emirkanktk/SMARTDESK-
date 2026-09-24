@@ -1,0 +1,156 @@
+<div class="page-header">
+  <h1>{{ id() ? 'Change reservation' : 'Book a resource' }}</h1>
+  @if (id()) {
+    <a class="btn btn-secondary" routerLink="/reservations/mine">Back to my reservations</a>
+  } @else {
+    <a class="btn btn-secondary" routerLink="/availability" [queryParams]="searchParams()"
+      >Back to search</a
+    >
+  }
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status">Loading reservation…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error" role="alert">This reservation could not be loaded.</div>
+} @else if (mode() === 'readOnly') {
+  @if (reservation(); as r) {
+    <section class="card form">
+      <p class="notice" role="status">{{ readOnlyReason() }}</p>
+      <dl class="details">
+        <dt>Resource</dt>
+        <dd>
+          {{ r.resourceName }}
+          <span class="text-muted">· {{ r.resourceTypeName }}, {{ r.resourceLocation }}</span>
+        </dd>
+        <dt>When</dt>
+        <dd>
+          {{ r.startDateTime | date: 'EEE d MMM y, HH:mm' }} to
+          {{ r.endDateTime | date: 'EEE d MMM y, HH:mm' }}
+        </dd>
+        <dt>Booked by</dt>
+        <dd>{{ r.userDisplayName }}</dd>
+        <dt>Status</dt>
+        <dd>{{ r.status }}</dd>
+        @if (r.note) {
+          <dt>Note</dt>
+          <dd class="note">{{ r.note }}</dd>
+        }
+      </dl>
+    </section>
+  }
+} @else {
+  <form class="card form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (formError(); as message) {
+      <div class="alert-error" role="alert">{{ message }}</div>
+    }
+    @if (conflict(); as message) {
+      <div class="alert-error conflict" role="alert">
+        <span>{{ message }}</span>
+        @if (mode() !== 'inProgress' && alternativesParams(); as params) {
+          <a routerLink="/availability" [queryParams]="params">See what else is free then</a>
+        }
+      </div>
+    }
+    @if (mode() === 'inProgress') {
+      <p class="notice" role="status">
+        This reservation has already started, so only its end time and note can change.
+      </p>
+    }
+    @if (bookedBy(); as name) {
+      <p class="text-muted booked-by">Booked by {{ name }}</p>
+    }
+
+    <div class="field">
+      <label for="resource">Resource</label>
+      <select
+        id="resource"
+        class="input"
+        formControlName="resourceId"
+        [class.invalid]="resourceError()"
+      >
+        <option value="" disabled>Select a resource</option>
+        @for (group of resourceGroups(); track group.typeName) {
+          <optgroup [label]="group.typeName">
+            @for (option of group.options; track option.id) {
+              <option [value]="option.id">{{ option.name }}</option>
+            }
+          </optgroup>
+        }
+      </select>
+      @if (resourceError(); as error) {
+        <span class="field-error">{{ error }}</span>
+      } @else if (selectedResource(); as r) {
+        <span class="text-muted hint resource-info">
+          {{ r.location }}
+          @if (r.capacity !== null) {
+            · {{ r.capacity }} {{ r.capacity === 1 ? 'person' : 'people' }}
+          }
+          @if (r.features.length > 0) {
+            · {{ r.features.join(', ') }}
+          }
+        </span>
+      }
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="start">From</label>
+        <input
+          id="start"
+          class="input"
+          type="datetime-local"
+          step="900"
+          formControlName="startDateTime"
+          [min]="minStart"
+          [class.invalid]="startError()"
+        />
+        @if (startError(); as error) {
+          <span class="field-error">{{ error }}</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="end">To</label>
+        <input
+          id="end"
+          class="input"
+          type="datetime-local"
+          step="900"
+          formControlName="endDateTime"
+          [min]="form.controls.startDateTime.value"
+          [class.invalid]="endError()"
+        />
+        @if (endError(); as error) {
+          <span class="field-error">{{ error }}</span>
+        } @else if (duration(); as duration) {
+          <span class="text-muted hint">{{ duration }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="note">Note <span class="text-muted">(optional)</span></label>
+      <textarea
+        id="note"
+        class="input"
+        rows="3"
+        formControlName="note"
+        [maxlength]="limits.noteMaxLength"
+        [class.invalid]="noteError()"
+        placeholder="Sprint planning"
+      ></textarea>
+      @if (noteError(); as error) {
+        <span class="field-error">{{ error }}</span>
+      } @else {
+        <span class="text-muted hint">{{ noteLength() }} / {{ limits.noteMaxLength }}</span>
+      }
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : id() ? 'Save changes' : 'Book' }}
+      </button>
+    </div>
+  </form>
+}

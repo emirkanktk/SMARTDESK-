@@ -50,9 +50,16 @@ export const routes: Routes = [
       },
       {
         path: 'reservations/new',
-        title: 'New reservation · SmartDesk',
+        title: 'Book a resource · SmartDesk',
         loadComponent: () =>
-          import('./features/reservation/reservation').then((m) => m.Reservation),
+          import('./features/reservation/reservation-form').then((m) => m.ReservationForm),
+      },
+      {
+        // Owner or Admin; the form turns read-only for anyone else, and the API decides.
+        path: 'reservations/:id/edit',
+        title: 'Change reservation · SmartDesk',
+        loadComponent: () =>
+          import('./features/reservation/reservation-form').then((m) => m.ReservationForm),
       },
       {
         path: 'reservations/mine',
