@@ -19,7 +19,7 @@ reflects reservation changes to every open screen in real time.
 | Database | PostgreSQL (Npgsql) |
 | Auth | ASP.NET Core Identity + JWT bearer tokens |
 | Real-time | SignalR |
-| API docs | Built-in ASP.NET Core OpenAPI (`/openapi`) |
+| API docs | Built-in ASP.NET Core OpenAPI (`/openapi/v1.json`) + Swagger UI (`/swagger`), Development only |
 | Local infra | Docker Compose (PostgreSQL) |
 
 ## 3. Backend: Onion Architecture
@@ -47,9 +47,10 @@ reflects reservation changes to every open screen in real time.
 ```
 
 Dependencies point inward only. `Domain` never references EF Core, ASP.NET Core, or any
-other project - it is plain C#. `Application` depends only on `Domain` plus MediatR/
-FluentValidation abstractions. `Infrastructure` implements what `Application` needs
-(persistence, identity) and is the only place EF Core/Npgsql-specific code lives. `API` is
+other project - it is plain C#. `Application` depends on `Domain` plus MediatR,
+FluentValidation and EF Core's provider-agnostic abstractions (`DbSet`, LINQ - see ADR-0009).
+`Infrastructure` implements what `Application` needs (persistence, identity) and is the only
+place Npgsql/PostgreSQL-specific code lives. `API` is
 the composition root: it wires everything together in `Program.cs` and exposes it over HTTP.
 
 ### 3.1 Why the `ApplicationUser` identity type lives in Infrastructure, not Domain
@@ -72,7 +73,18 @@ Controller  →  IMediator.Send(command/query)  →  Handler  →  DbContext  �
 Handlers are where business rules live (e.g. `CreateReservationCommandHandler` runs the
 overlap check against the database - never trust a check the frontend already did, the
 frontend's own check is only a fast-feedback convenience). FluentValidation validators for
-each Command/Query will run as a MediatR pipeline behavior, ahead of the handler.
+each Command/Query run in `ValidationBehavior`, a MediatR pipeline behavior, ahead of the
+handler; a failure never reaches the handler and comes back as a 400.
+
+Application code that needs something from outside (Identity, token signing, the current
+HTTP caller) asks for it through an interface in `Application/Common/Interfaces`
+(`IIdentityService`, `IJwtTokenGenerator`, `ICurrentUserService`); Infrastructure or API
+provides the implementation. That keeps handlers unit-testable with plain mocks.
+
+Exceptions carry no HTTP knowledge. `GlobalExceptionHandler` is the single place that maps
+them to `ProblemDetails` responses: FluentValidation's `ValidationException` → 400,
+`UnauthorizedException` → 401, `ForbiddenAccessException` → 403, `NotFoundException` →
+404, `ConflictException` → 409, anything unexpected → 500 (logged).
 
 ### 3.3 Backend project structure
 
@@ -82,17 +94,31 @@ src/
     Entities/          Resource, ResourceType, ResourceFeature, Reservation
     Enums/              ResourceStatus, ReservationStatus
     Constants/          Roles (Admin, Employee)
+    Rules/              ReservationOverlap - the one definition of "time range taken"
   SmartDesk.Application/
-    (Commands, Queries, Handlers, DTOs, Validators land here per feature)
+    Common/             Behaviors/ (ValidationBehavior), Exceptions/, Extensions/,
+                          Interfaces/ (incl. IApplicationDbContext), Models/
+    Features/<Area>/    Commands/<Name>/ and Queries/<Name>/ - request, handler,
+                          validator and response DTO side by side
+    DependencyInjection.cs  AddApplication(): MediatR + pipeline + validators
   SmartDesk.Infrastructure/
-    Identity/           ApplicationUser
-    Persistence/         SmartDeskDbContext, Migrations/
+    Identity/           ApplicationUser, IdentityService, JwtTokenGenerator,
+                          JwtOptions, IdentityDataSeeder
+    Persistence/         SmartDeskDbContext, Migrations/, Seed/ (resource types,
+                          Development demo resources)
+    DependencyInjection.cs  AddInfrastructure(): DbContext, Identity, JWT options
   SmartDesk.API/
-    Program.cs           composition root: DbContext, Identity, JWT, MediatR,
-                          FluentValidation, exception handling, SignalR
+    Program.cs           composition root: JWT bearer, authorization, CORS,
+                          OpenAPI/Swagger UI, exception handling, SignalR, startup seed
+    Controllers/          thin - build a command/query, send it through MediatR
+    Services/             CurrentUserService (reads the caller from the JWT),
+                          NullReservationNotifier (until the SignalR one lands)
+    OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
 tests/
-  SmartDesk.Tests/        unit tests for Application handlers and Domain rules
+  SmartDesk.Tests/        unit tests for Application handlers and Domain rules;
+                          handlers that query run against SmartDeskDbContext on
+                          in-memory SQLite (TestSupport/SqliteTestDatabase)
 ```
 
 ## 4. Data model
@@ -105,18 +131,25 @@ rules that constrain them (overlap checks, past-date rejection, inactive-resourc
 ASP.NET Core Identity owns user storage and password hashing; roles are plain Identity
 roles (`Admin`, `Employee` - see `SmartDesk.Domain.Constants.Roles`), not a raw string
 column, so role checks use the framework's own `[Authorize(Roles = ...)]` and
-`RoleManager`. Login issues a JWT; the API validates it per request via the JWT bearer
-handler configured in `Program.cs`. The signing key is never committed - see
+`RoleManager`. Login (`POST /api/auth/login` → `LoginCommand`) checks the password through
+`SignInManager` (so Identity's lockout applies) and issues a signed HS256 JWT; the API
+validates it per request via the JWT bearer handler configured in `Program.cs`. Every
+endpoint requires an authenticated user unless it opts out with `[AllowAnonymous]`
+(ADR-0008). The signing key is never committed - see
 `docs/DECISIONS.md` (ADR-0005) and the README's setup steps for `dotnet user-secrets`.
 
 ## 6. Real-time updates (SignalR)
 
 A single hub (`SmartDesk.API/Hubs/ReservationHub.cs`) broadcasts reservation
 create/cancel events to connected clients so an open calendar/dashboard screen updates
-without a page reload. The hub itself carries no business logic - handlers publish to it
-after a successful write. Wiring (SignalR service registration, hub mapping) is part of
-the shared skeleton; the actual broadcast calls from handlers, reconnect/backoff handling,
-and the Angular-side connection service are Burak's scope (integration).
+without a page reload. The hub itself carries no business logic.
+
+Handlers don't know about SignalR. After a committed create/update/cancel they call
+`IReservationNotifier` (Application), passing the `ReservationDto` that becomes the event
+payload. Until the SignalR implementation (`IHubContext<ReservationHub>`, Burak's scope) is
+registered in `Program.cs`, `NullReservationNotifier` stands in, so reservations work fully
+without live updates. Reconnect/backoff handling and the Angular-side connection service
+are also Burak's scope (integration).
 
 ## 7. Frontend architecture
 

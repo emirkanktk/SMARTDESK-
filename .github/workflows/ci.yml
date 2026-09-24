@@ -1,0 +1,76 @@
+# Builds and tests both halves of the app on every pull request (whatever its base, so
+# stacked PRs are checked too) and on every push to main. Needs no secrets and no database:
+# backend tests run against in-memory SQLite, frontend tests against jsdom.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same PR or branch makes an in-flight run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend - build, test, migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - run: dotnet restore SmartDesk.slnx
+
+      - run: dotnet build SmartDesk.slnx --no-restore --configuration Release
+
+      - run: dotnet test SmartDesk.slnx --no-build --configuration Release --logger "console;verbosity=normal"
+
+      # The PR checklist asks for a migration whenever the model changes; this makes CI check
+      # it. Fails if SmartDeskDbContext's model differs from the latest migration snapshot.
+      - name: Model changes come with a migration
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.12
+          dotnet ef migrations has-pending-model-changes \
+            --project src/SmartDesk.Infrastructure \
+            --startup-project src/SmartDesk.API \
+            --configuration Release --no-build
+
+  frontend:
+    name: Frontend - build, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - run: npx ng build
+
+      - run: npx ng test --watch=false
