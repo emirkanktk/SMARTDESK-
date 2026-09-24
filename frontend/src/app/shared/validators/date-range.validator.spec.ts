@@ -1,10 +1,10 @@
 import { FormControl, FormGroup } from '@angular/forms';
-import { dateRangeValidator } from './date-range.validator';
+import { DateRangeOptions, dateRangeValidator } from './date-range.validator';
 
 describe('dateRangeValidator', () => {
   const now = new Date(2026, 9, 5, 12, 0).getTime();
 
-  function validate(start: string, end: string, options: { maxDays?: number } = {}) {
+  function validate(start: string, end: string, options: Partial<DateRangeOptions> = {}) {
     const group = new FormGroup(
       { start: new FormControl(start), end: new FormControl(end) },
       {
@@ -40,6 +40,22 @@ describe('dateRangeValidator', () => {
       rangeTooLong: { maxDays: 31 },
     });
     expect(validate('2027-01-05T00:00', '2027-02-05T00:00', { maxDays: 31 })).toBeNull();
+  });
+
+  it('allows a start up to graceMinutes in the past', () => {
+    const options = { graceMinutes: 5 };
+    expect(validate('2026-10-05T11:55', '2026-10-05T13:00', options)).toBeNull();
+    expect(validate('2026-10-05T11:54', '2026-10-05T13:00', options)).toEqual({
+      startInPast: true,
+    });
+  });
+
+  it('with endInFuture, rejects an end that has passed and ignores a past start', () => {
+    const inProgress = { futureOnly: false, endInFuture: true };
+    expect(validate('2026-10-05T11:00', '2026-10-05T12:30', inProgress)).toBeNull();
+    expect(validate('2026-10-05T11:00', '2026-10-05T12:00', inProgress)).toEqual({
+      endInPast: true,
+    });
   });
 
   it('leaves empty values to the controls own required validators', () => {
