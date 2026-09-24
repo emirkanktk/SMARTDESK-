@@ -47,15 +47,15 @@ export class Resources {
   });
 
   protected readonly visibleResources = computed(() => {
-    const term = this.search().trim().toLocaleLowerCase();
+    const term = foldCase(this.search().trim());
     if (!term) {
       return this.resources();
     }
     return this.resources().filter(
       (r) =>
-        r.name.toLocaleLowerCase().includes(term) ||
-        r.location.toLocaleLowerCase().includes(term) ||
-        r.features.some((f) => f.toLocaleLowerCase().includes(term)),
+        foldCase(r.name).includes(term) ||
+        foldCase(r.location).includes(term) ||
+        r.features.some((f) => foldCase(f).includes(term)),
     );
   });
 
@@ -129,4 +129,11 @@ export class Resources {
         error: () => undefined,
       });
   }
+}
+
+// Locale-independent on purpose: toLocaleLowerCase() follows the browser's locale, and in
+// Turkish that can turn "I" into dotless "ı", so "hdmi" would not match "HDMI". Same rule
+// as the API's OrdinalIgnoreCase.
+function foldCase(value: string): string {
+  return value.toLowerCase();
 }

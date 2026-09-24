@@ -193,11 +193,14 @@ function integer(control: AbstractControl): ValidationErrors | null {
 }
 
 // Mirrors the API's feature rules: at most 20, 1-100 characters, no duplicates ignoring case.
+// The case comparison is locale-independent like the API's OrdinalIgnoreCase:
+// toLocaleLowerCase() follows the browser's locale and in Turkish can let "WIFI" and "wifi"
+// through ("wıfı").
 function featureProblem(feature: string, existing: string[]): string | null {
   if (feature.length > L.featureMaxLength) {
     return `A feature can be at most ${L.featureMaxLength} characters.`;
   }
-  if (existing.some((f) => f.toLocaleLowerCase() === feature.toLocaleLowerCase())) {
+  if (existing.some((f) => f.toLowerCase() === feature.toLowerCase())) {
     return `"${feature}" is already in the list.`;
   }
   if (existing.length >= L.maxFeatures) {

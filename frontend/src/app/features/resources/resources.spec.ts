@@ -6,6 +6,7 @@ import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { DESK_TYPE, MEETING_ROOM_TYPE, fakeResource } from '../../../testing/resource-fixtures';
+import { simulateTurkishBrowser } from '../../../testing/turkish-locale';
 import { Resources } from './resources';
 
 describe('Resources', () => {
@@ -18,7 +19,7 @@ describe('Resources', () => {
     resourceTypeName: DESK_TYPE.name,
     capacity: 1,
     location: '3rd Floor',
-    features: [],
+    features: ['HDMI'],
     status: 'Maintenance',
   });
 
@@ -98,6 +99,21 @@ describe('Resources', () => {
 
     expect(rowNames()).toEqual(['Meeting Room A']);
     expect(getResources.mock.calls.length).toBe(calls);
+  });
+
+  it('matches a capital I in a Turkish browser ("hdmi" finds "HDMI")', async () => {
+    const restore = simulateTurkishBrowser();
+    try {
+      await render();
+      const search = element.querySelector<HTMLInputElement>('#search')!;
+      search.value = 'hdmi';
+      search.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+
+      expect(rowNames()).toEqual(['Desk 12']);
+    } finally {
+      restore();
+    }
   });
 
   it('shows an error when loading fails', async () => {

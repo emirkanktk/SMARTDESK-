@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error.model';
 import { ResourceService } from '../../../core/services/resource.service';
 import { MEETING_ROOM_TYPE, fakeResource } from '../../../../testing/resource-fixtures';
+import { simulateTurkishBrowser } from '../../../../testing/turkish-locale';
 import { ResourceForm } from './resource-form';
 
 describe('ResourceForm', () => {
@@ -120,6 +121,20 @@ describe('ResourceForm', () => {
 
     expect(element.querySelectorAll('.chip').length).toBe(1);
     expect(element.textContent).toContain('already in the list');
+  });
+
+  it('refuses "wifi" after "WIFI" in a Turkish browser, like the API does', async () => {
+    const restore = simulateTurkishBrowser();
+    try {
+      await render();
+      await addFeature('WIFI');
+      await addFeature('wifi');
+
+      expect(element.querySelectorAll('.chip').length).toBe(1);
+      expect(element.textContent).toContain('already in the list');
+    } finally {
+      restore();
+    }
   });
 
   it('removes a feature', async () => {
