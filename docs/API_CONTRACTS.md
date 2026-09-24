@@ -46,6 +46,7 @@ Camera (fixed ids, same in every environment). There's no endpoint to add types 
 | GET | `/api/resources/available` | any authenticated user | `GetAvailableResourcesQuery` | query params: `startDateTime`, `endDateTime`, optional `resourceTypeId`, `minCapacity`. Rules below. |
 | POST | `/api/resources` | Admin | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[] }` → 201 with `Location` header. Always created `Active`. |
 | PUT | `/api/resources/{id}` | Admin | `UpdateResourceCommand` | body: the POST fields plus `status`. Full replace: omitting `features` removes them all. |
+| PATCH | `/api/resources/{id}/status` | Admin | `ChangeResourceStatusCommand` | body: `{ "status": "Inactive" }` → 200 with the resource. Changes only the status, so an Activate/Deactivate button can't overwrite another admin's edit the way a full PUT can. Same status again is a no-op. Existing reservations are kept. |
 
 Every resource endpoint returns the same shape:
 
@@ -186,6 +187,9 @@ works, but open screens don't update live yet.
   display. A timestamp sent without an offset is treated as UTC.
 - Enums are serialized as their names (`"Active"`, `"Maintenance"`), not numbers, both in
   responses and in request bodies/query strings.
+- A body that can't be parsed (a malformed date, an unknown enum name) gets a 400 whose
+  `errors` key is the JSON path (`"$.status"`) with the generic message `"The input was not
+  valid."` - the serializer's own message isn't passed through.
 - List endpoints that can grow (reservations, resources) should be paginated once real
   data volume shows up - not needed for the MVP's expected data size.
 - DTOs are never the EF entities directly (see `docs/DECISIONS.md`, ADR-0002).
