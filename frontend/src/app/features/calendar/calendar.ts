@@ -18,6 +18,7 @@ import {
   startOfWeek,
   toDateParam,
 } from '../../shared/utils/date-time';
+import { EventBuffer } from '../../shared/utils/event-buffer';
 
 const DAYS_SHOWN = 7;
 const DEFAULT_BOOKING_HOUR = 9;
@@ -52,6 +53,12 @@ interface Row {
   cells: Cell[];
 }
 
+/** A reservation event from the hub. */
+interface LiveEvent {
+  cancelled: boolean;
+  reservation: Reservation;
+}
+
 /**
  * The shared office calendar: one week, a row per resource and a column per day, showing who
  * booked what. Entries open the reservation (editable for its owner or an admin, read-only
@@ -83,6 +90,7 @@ export class Calendar {
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
   private readonly retries = new Subject<void>();
+  private readonly liveEvents = new EventBuffer<LiveEvent>();
 
   // Re-evaluated every minute for "today", past days and the booking links.
   private readonly now = signal(Date.now());
@@ -163,7 +171,10 @@ export class Calendar {
       this.retries.pipe(map(() => query())),
     )
       .pipe(
-        tap(() => this.loadFailed.set(false)),
+        tap(() => {
+          this.loadFailed.set(false);
+          this.liveEvents.start();
+        }),
         switchMap(({ from, type }) =>
           forkJoin({
             resources: this.resourceService.getResources({ resourceTypeId: type }),
@@ -178,24 +189,27 @@ export class Calendar {
       )
       .subscribe((result) => {
         this.loading.set(false);
+        const missed = this.liveEvents.drain();
         if (result) {
           this.resources.set(result.resources);
           this.reservations.set(result.reservations);
+          // The result may predate changes that arrived while it loaded.
+          missed.forEach((event) => this.apply(event));
         } else {
           this.loadFailed.set(true);
         }
       });
 
-    // Created or changed: show it if it's Confirmed and in view, drop it otherwise (a change
-    // can move it to another week or resource). Cancelled: drop it.
-    merge(this.hub.created$, this.hub.updated$)
+    merge(
+      this.hub.created$.pipe(map((reservation) => ({ cancelled: false, reservation }))),
+      this.hub.updated$.pipe(map((reservation) => ({ cancelled: false, reservation }))),
+      this.hub.cancelled$.pipe(map((reservation) => ({ cancelled: true, reservation }))),
+    )
       .pipe(takeUntilDestroyed())
-      .subscribe((reservation) =>
-        this.isInView(reservation) ? this.upsert(reservation) : this.remove(reservation.id),
-      );
-    this.hub.cancelled$
-      .pipe(takeUntilDestroyed())
-      .subscribe((reservation) => this.remove(reservation.id));
+      .subscribe((event) => {
+        this.apply(event);
+        this.liveEvents.record(event);
+      });
 
     interval(60_000)
       .pipe(takeUntilDestroyed())
@@ -225,6 +239,18 @@ export class Calendar {
       queryParams,
       queryParamsHandling: 'merge',
     });
+  }
+
+  /**
+   * Created or changed: show it if it's Confirmed and in view, drop it otherwise (a change
+   * can move it to another week or resource). Cancelled: drop it.
+   */
+  private apply({ cancelled, reservation }: LiveEvent): void {
+    if (!cancelled && this.isInView(reservation)) {
+      this.upsert(reservation);
+    } else {
+      this.remove(reservation.id);
+    }
   }
 
   private isInView(reservation: Reservation): boolean {

@@ -317,6 +317,22 @@ describe('Calendar', () => {
       expect(entries('Desk 12', 2)).toEqual([]);
     });
 
+    it('keeps changes that arrive while the week is still loading', async () => {
+      const response = new Subject<Reservation[]>();
+      getCalendar.mockReturnValue(response);
+      await render();
+
+      hub.created$.next(booking('rsv-9', desk.id, '2026-10-09T13:00', '2026-10-09T14:00'));
+      hub.cancelled$.next({ ...theirs, status: 'Cancelled' });
+      // The server ran the query before either change was committed.
+      response.next([mine, theirs, overnight]);
+      response.complete();
+      await fixture.whenStable();
+
+      expect(entries('Desk 12', 4)).toEqual(['13:00-14:00 You']);
+      expect(entries('Desk 12', 2)).toEqual([]);
+    });
+
     it('refetches after the connection comes back', async () => {
       await render();
       hub.reconnected$.next();
