@@ -37,7 +37,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-// No-op until the SignalR notifier is registered above this line (see NullReservationNotifier).
+// Registered before the TryAdd below, so this wins and the null notifier stays a fallback.
+builder.Services.AddScoped<IReservationNotifier, SignalRReservationNotifier>();
 builder.Services.TryAddScoped<IReservationNotifier, NullReservationNotifier>();
 
 // Validated at startup by AddInfrastructure (JwtOptions.ValidateOnStart), so a missing or
@@ -82,7 +83,9 @@ builder.Services
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 const string FrontendCorsPolicy = "FrontendCorsPolicy";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

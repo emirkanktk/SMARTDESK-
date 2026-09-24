@@ -29,6 +29,20 @@ export const routes: Routes = [
         loadComponent: () => import('./features/resources/resources').then((m) => m.Resources),
       },
       {
+        path: 'resources/new',
+        title: 'New resource · SmartDesk',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/resources/resource-form/resource-form').then((m) => m.ResourceForm),
+      },
+      {
+        path: 'resources/:id/edit',
+        title: 'Edit resource · SmartDesk',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/resources/resource-form/resource-form').then((m) => m.ResourceForm),
+      },
+      {
         path: 'availability',
         title: 'Availability · SmartDesk',
         loadComponent: () =>

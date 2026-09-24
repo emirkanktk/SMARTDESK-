@@ -216,6 +216,19 @@ Verified on PostgreSQL with two tests:
 - Cancel and update of one reservation fired together, 10 rounds: every round ended in one
   of the two valid serial orders, with 0 errors and 0 deadlocks.
 
+## ADR-0014: Reservation events go to every connected client
+
+**Decision:** `SignalRReservationNotifier` sends `ReservationCreated`, `ReservationUpdated`
+and `ReservationCancelled` to `Clients.All`. There are no hub groups. The payload is the
+same `ReservationDto` as the HTTP API, with enum names. If the send throws, the notifier
+logs and returns; the reservation request still succeeds.
+
+**Why:** any signed-in screen that shows a shared calendar or the dashboard needs the same
+fact, and the office is one company, so a group per resource would only matter once
+connection count makes a full broadcast noisy. The hub stays `[Authorize]`, so anonymous
+browsers never receive the payload. Swallowing a failed push keeps the write path
+independent of who happens to be connected.
+
 ## ADR-0015: Resource blocks - time-boxed unavailability that never overrides a booking
 
 **Decision:**

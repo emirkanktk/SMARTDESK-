@@ -1,0 +1,48 @@
+.filters {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: var(--space-3);
+  align-items: end;
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+
+  .field {
+    margin-bottom: 0;
+  }
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.name {
+  font-weight: 600;
+}
+
+.description {
+  font-size: 0.875rem;
+}
+
+// Dim the data, not the admin buttons - those stay fully usable.
+.unavailable td:not(.actions) {
+  opacity: 0.55;
+}
+
+.actions {
+  white-space: nowrap;
+  text-align: right;
+
+  .btn + .btn {
+    margin-left: var(--space-2);
+  }
+}
+
+.empty {
+  padding: var(--space-6) 0;
+  text-align: center;
+}
+
+.count {
+  margin-top: var(--space-2);
+  font-size: 0.875rem;
+}
