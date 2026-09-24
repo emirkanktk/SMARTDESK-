@@ -41,6 +41,8 @@ describe('ReservationForm', () => {
   let getReservation: ReturnType<typeof vi.fn>;
   let create: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
+  let cancel: ReturnType<typeof vi.fn>;
+  let confirmSpy: ReturnType<typeof vi.spyOn>;
   let success: ReturnType<typeof vi.fn>;
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
   let fixture: ComponentFixture<ReservationForm>;
@@ -55,6 +57,8 @@ describe('ReservationForm', () => {
     getReservation = vi.fn(() => of(fakeReservation()));
     create = vi.fn(() => of(fakeReservation()));
     update = vi.fn(() => of(fakeReservation()));
+    cancel = vi.fn(() => of(fakeReservation({ status: 'Cancelled' })));
+    confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     success = vi.fn();
 
     await TestBed.configureTestingModule({
@@ -62,7 +66,7 @@ describe('ReservationForm', () => {
       providers: [
         provideRouter([]),
         { provide: ResourceService, useValue: { getResources } },
-        { provide: ReservationService, useValue: { getReservation, create, update } },
+        { provide: ReservationService, useValue: { getReservation, create, update, cancel } },
         { provide: AuthService, useValue: { currentUser, isAdmin } },
         { provide: NotificationService, useValue: { success } },
       ],
@@ -71,7 +75,10 @@ describe('ReservationForm', () => {
     navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    confirmSpy.mockRestore();
+  });
 
   async function render(inputs: Record<string, string> = {}): Promise<void> {
     fixture = TestBed.createComponent(ReservationForm);
@@ -380,6 +387,110 @@ describe('ReservationForm', () => {
       await render({ id: 'missing' });
 
       expect(element.textContent).toContain('This reservation could not be loaded.');
+    });
+  });
+
+  describe('cancelling', () => {
+    // Local times, so the wording is the same in every zone.
+    const upcoming = fakeReservation({
+      startDateTime: utc('2026-10-07T14:00'),
+      endDateTime: utc('2026-10-07T15:30'),
+    });
+
+    function cancelButton(): HTMLButtonElement | null {
+      return element.querySelector<HTMLButtonElement>('.cancel-reservation');
+    }
+
+    it('cancels your own reservation after confirming, then goes to my reservations', async () => {
+      getReservation.mockReturnValue(of(upcoming));
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Cancel your Meeting Room A reservation for Wed 7 Oct, 14:00-15:30?',
+      );
+      expect(cancel).toHaveBeenCalledWith('rsv-1');
+      expect(success).toHaveBeenCalledWith(
+        'Your Meeting Room A reservation for Wed 7 Oct, 14:00-15:30 was cancelled.',
+      );
+      expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
+    });
+
+    it("lets an admin cancel someone else's, naming them, then goes back to the admin panel", async () => {
+      isAdmin.set(true);
+      getReservation.mockReturnValue(
+        of({ ...upcoming, userId: 'someone-else', userDisplayName: 'Mehmet Demir' }),
+      );
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        "Cancel Mehmet Demir's Meeting Room A reservation for Wed 7 Oct, 14:00-15:30?",
+      );
+      expect(success).toHaveBeenCalledWith(
+        "Mehmet Demir's Meeting Room A reservation for Wed 7 Oct, 14:00-15:30 was cancelled.",
+      );
+      expect(navigateByUrl).toHaveBeenCalledWith('/admin');
+    });
+
+    it('is offered for a reservation in progress', async () => {
+      getReservation.mockReturnValue(of(inProgress()));
+      await render({ id: 'rsv-1' });
+
+      expect(cancelButton()).not.toBeNull();
+    });
+
+    it('is not offered when booking or for a read-only reservation', async () => {
+      await render();
+      expect(cancelButton()).toBeNull();
+
+      getReservation.mockReturnValue(of(fakeReservation({ status: 'Cancelled' })));
+      await render({ id: 'rsv-1' });
+      expect(cancelButton()).toBeNull();
+    });
+
+    it('does nothing when the confirmation is declined', async () => {
+      confirmSpy.mockReturnValue(false);
+      getReservation.mockReturnValue(of(upcoming));
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(cancel).not.toHaveBeenCalled();
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('shows it read-only when it ended in the meantime', async () => {
+      getReservation.mockReturnValueOnce(of(upcoming)).mockReturnValue(
+        of({
+          ...upcoming,
+          startDateTime: utc('2026-10-05T08:00'),
+          endDateTime: utc('2026-10-05T09:00'),
+        }),
+      );
+      cancel.mockReturnValue(
+        throwError(() => new ApiError(409, 'Conflict', 'This reservation has already ended.')),
+      );
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(getReservation).toHaveBeenCalledTimes(2);
+      expect(element.textContent).toContain('has ended, so it can no longer be changed');
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('keeps the form with a note when cancelling fails otherwise', async () => {
+      getReservation.mockReturnValue(of(upcoming));
+      cancel.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(element.textContent).toContain('The reservation could not be cancelled.');
+      expect(cancelButton()!.disabled).toBe(false);
     });
   });
 });

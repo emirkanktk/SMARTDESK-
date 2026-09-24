@@ -133,6 +133,7 @@ export class ReservationForm implements OnInit {
   protected readonly loading = signal(false);
   protected readonly loadFailed = signal(false);
   protected readonly saving = signal(false);
+  protected readonly cancelling = signal(false);
   protected readonly formError = signal<string | null>(null);
   /** A 409 from the API, e.g. the slot was taken meanwhile. Its detail is shown as-is. */
   protected readonly conflict = signal<string | null>(null);
@@ -280,6 +281,45 @@ export class ReservationForm implements OnInit {
       this.form.markAllAsTouched(); // e.g. an old link whose start is now in the past
     }
     this.keepDuration();
+  }
+
+  /** Cancels the reservation being changed, for its owner or an admin. */
+  protected cancelReservation(): void {
+    const reservation = this.reservation();
+    if (!reservation) {
+      return;
+    }
+    const someoneElse = this.bookedBy();
+    const owner = someoneElse ? `${someoneElse}'s` : 'your';
+    const when = this.formatRange(reservation);
+    if (!confirm(`Cancel ${owner} ${reservation.resourceName} reservation for ${when}?`)) {
+      return;
+    }
+
+    this.cancelling.set(true);
+    this.formError.set(null);
+    this.conflict.set(null);
+    this.reservationService
+      .cancel(reservation.id)
+      .pipe(finalize(() => this.cancelling.set(false)))
+      .subscribe({
+        next: (cancelled) => {
+          const sentence = owner.charAt(0).toUpperCase() + owner.slice(1);
+          this.notifications.success(
+            `${sentence} ${cancelled.resourceName} reservation for ${when} was cancelled.`,
+          );
+          // Back to the list it most likely came from: your own, or the admin overview.
+          void this.router.navigateByUrl(someoneElse ? '/admin' : '/reservations/mine');
+        },
+        error: (error: unknown) => {
+          if (error instanceof ApiError && error.status === 409) {
+            this.load(reservation.id); // it ended meanwhile: show it read-only, with why
+            return;
+          }
+          // 403/404/5xx already raised a toast; keep a note on the form as well.
+          this.formError.set('The reservation could not be cancelled.');
+        },
+      });
   }
 
   private load(id: string): void {
