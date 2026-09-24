@@ -1,2 +1,121 @@
-<h1>Welcome, {{ displayName() }}</h1>
-<p class="text-muted">Today's summary and upcoming reservations will appear here.</p>
+<div class="page-header">
+  <div>
+    <h1>Welcome, {{ displayName() }}</h1>
+    @if (data(); as d) {
+      <p class="text-muted today-date">{{ d.todayStart | date: 'EEEE d MMMM' }}</p>
+    }
+  </div>
+  <a class="btn btn-primary" routerLink="/availability">Find a free resource</a>
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status">Loading today's overview…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span>Today's overview could not be loaded.</span>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
+  </div>
+} @else {
+  <ul class="tiles">
+    @for (tile of tiles(); track tile.label) {
+      <li class="card tile">
+        @if (tile.link) {
+          <a [routerLink]="tile.link">
+            <span class="value">{{ tile.value }}</span>
+            <span class="label">{{ tile.label }}</span>
+          </a>
+        } @else {
+          <span class="value">{{ tile.value }}</span>
+          <span class="label">{{ tile.label }}</span>
+        }
+      </li>
+    }
+  </ul>
+
+  <div class="columns">
+    <section class="card panel today" aria-labelledby="today-heading">
+      <h2 id="today-heading">Today</h2>
+      @if (today().length === 0) {
+        <p class="text-muted empty">No reservations today.</p>
+      } @else {
+        <ul class="rows">
+          @for (row of today(); track row.reservation.id) {
+            <li class="row" [class.running]="row.runningNow" [class.mine]="row.mine">
+              <span class="time">
+                {{ row.reservation.startDateTime | date: row.startFormat }}-{{
+                  row.reservation.endDateTime | date: row.endFormat
+                }}
+              </span>
+              <span class="what">
+                <strong>{{ row.reservation.resourceName }}</strong>
+                <span class="text-muted">{{ row.reservation.resourceLocation }}</span>
+              </span>
+              <span class="who">
+                @if (row.runningNow) {
+                  <span class="pill now">Now</span>
+                }
+                {{ row.who }}
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <div class="side">
+      <section class="card panel" aria-labelledby="in-use-heading">
+        <h2 id="in-use-heading">In use now</h2>
+        @if (inUseNow().length === 0) {
+          <p class="text-muted empty">Nothing is in use right now.</p>
+        } @else {
+          <ul class="rows">
+            @for (row of inUseNow(); track row.reservation.id) {
+              <li class="row compact" [class.mine]="row.mine">
+                <span class="what">
+                  <strong>{{ row.reservation.resourceName }}</strong>
+                  <span class="text-muted">{{ row.who }}</span>
+                </span>
+                <span class="text-muted until">
+                  until {{ row.reservation.endDateTime | date: row.endFormat }}
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="card panel" aria-labelledby="upcoming-heading">
+        <h2 id="upcoming-heading">Your next reservations</h2>
+        @if (myUpcoming().length === 0) {
+          <p class="text-muted empty">
+            You have no upcoming reservations.
+            <a routerLink="/availability">Find a free resource</a>
+          </p>
+        } @else {
+          <ul class="rows">
+            @for (row of myUpcoming(); track row.reservation.id) {
+              <li class="row compact">
+                <span class="what">
+                  <strong>{{ row.reservation.resourceName }}</strong>
+                  <span class="text-muted">
+                    {{ row.reservation.startDateTime | date: 'EEE d MMM, HH:mm' }}
+                  </span>
+                </span>
+                <a
+                  class="btn btn-secondary btn-sm"
+                  [routerLink]="['/reservations', row.reservation.id, 'edit']"
+                  >Change</a
+                >
+              </li>
+            }
+          </ul>
+          @if (moreUpcoming() > 0) {
+            <a class="see-all" routerLink="/reservations/mine">See {{ moreUpcoming() }} more</a>
+          } @else {
+            <a class="see-all" routerLink="/reservations/mine">My reservations</a>
+          }
+        }
+      </section>
+    </div>
+  </div>
+}
