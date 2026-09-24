@@ -2,7 +2,8 @@
 
 A 15-minute walkthrough of the backend through Swagger UI, in the order the brief's scenarios
 build on each other. Each step says what to do, what should happen, and where the behaviour
-lives, so whoever presents can also answer "how does that work?".
+lives, so whoever presents can also answer "how does that work?". The same scenario in the
+browser is in [DEMO_UI.md](DEMO_UI.md).
 
 ## Before the demo
 
