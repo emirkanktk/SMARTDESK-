@@ -1,0 +1,157 @@
+<div class="page-header">
+  <h1>{{ isEdit() ? 'Edit resource' : 'New resource' }}</h1>
+  <a class="btn btn-secondary" routerLink="/resources">Back to resources</a>
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status">Loading resource…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error" role="alert">This resource could not be loaded.</div>
+} @else {
+  <form class="card form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (formError(); as message) {
+      <div class="alert-error" role="alert">{{ message }}</div>
+    }
+
+    <div class="field">
+      <label for="name">Name</label>
+      <input
+        id="name"
+        class="input"
+        formControlName="name"
+        [maxlength]="limits.nameMaxLength"
+        [class.invalid]="errorFor('name')"
+        placeholder="Meeting Room A"
+      />
+      @if (errorFor('name'); as error) {
+        <span class="field-error">{{ error }}</span>
+      }
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="type">Type</label>
+        <select
+          id="type"
+          class="input"
+          formControlName="resourceTypeId"
+          [class.invalid]="errorFor('resourceTypeId')"
+        >
+          <option value="" disabled>Select a type</option>
+          @for (type of types(); track type.id) {
+            <option [value]="type.id">{{ type.name }}</option>
+          }
+        </select>
+        @if (errorFor('resourceTypeId'); as error) {
+          <span class="field-error">{{ error }}</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="capacity">Capacity</label>
+        <input
+          id="capacity"
+          class="input"
+          type="number"
+          formControlName="capacity"
+          [min]="limits.capacityMin"
+          [max]="limits.capacityMax"
+          step="1"
+          [class.invalid]="errorFor('capacity')"
+        />
+        @if (errorFor('capacity'); as error) {
+          <span class="field-error">{{ error }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="location">Location</label>
+        <input
+          id="location"
+          class="input"
+          formControlName="location"
+          [maxlength]="limits.locationMaxLength"
+          [class.invalid]="errorFor('location')"
+          placeholder="2nd Floor"
+        />
+        @if (errorFor('location'); as error) {
+          <span class="field-error">{{ error }}</span>
+        }
+      </div>
+
+      @if (isEdit()) {
+        <div class="field">
+          <label for="status">Status</label>
+          <select id="status" class="input" formControlName="status">
+            @for (status of statuses; track status) {
+              <option [value]="status">{{ status }}</option>
+            }
+          </select>
+          <span class="text-muted hint">Inactive and maintenance resources can't be booked.</span>
+        </div>
+      }
+    </div>
+
+    <div class="field">
+      <label for="description">Description <span class="text-muted">(optional)</span></label>
+      <textarea
+        id="description"
+        class="input"
+        rows="3"
+        formControlName="description"
+        [maxlength]="limits.descriptionMaxLength"
+        [class.invalid]="errorFor('description')"
+      ></textarea>
+      @if (errorFor('description'); as error) {
+        <span class="field-error">{{ error }}</span>
+      }
+    </div>
+
+    <div class="field">
+      <label for="feature">Features <span class="text-muted">(optional)</span></label>
+      <div class="feature-input">
+        <input
+          id="feature"
+          class="input"
+          [formControl]="newFeature"
+          [maxlength]="limits.featureMaxLength"
+          placeholder="e.g. TV, Video Conference"
+          (keydown.enter)="addFeature($event)"
+        />
+        <button type="button" class="btn btn-secondary" (click)="addFeature()">Add</button>
+      </div>
+      @if (featureError(); as error) {
+        <span class="field-error">{{ error }}</span>
+      }
+      @if (form.controls.features.errors?.['server']; as error) {
+        <span class="field-error">{{ error }}</span>
+      }
+      @if (features.length > 0) {
+        <div class="chips">
+          @for (feature of features; track feature) {
+            <span class="chip">
+              {{ feature }}
+              <button
+                type="button"
+                class="chip-remove"
+                [attr.aria-label]="'Remove ' + feature"
+                (click)="removeFeature(feature)"
+              >
+                &times;
+              </button>
+            </span>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="form-actions">
+      <a class="btn btn-secondary" routerLink="/resources">Cancel</a>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : isEdit() ? 'Save changes' : 'Create resource' }}
+      </button>
+    </div>
+  </form>
+}

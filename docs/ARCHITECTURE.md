@@ -177,8 +177,16 @@ frontend/src/app/
   layout/
     shell/           top bar + navigation around every signed-in screen
     notification-host/  toast messages
-  features/<screen>/ one lazy-loaded standalone component per screen
+  shared/
+    components/      small reusable UI pieces (e.g. StatusBadge)
+    utils/           form helpers (applyServerErrors: API 400 messages -> form controls)
+  features/<screen>/ one lazy-loaded standalone component per screen; sub-screens in
+                     sub-folders (e.g. resources/resource-form)
 ```
+
+Typed API clients (`AuthService`, `ResourceService`, ...) live in `core/services` and return
+the DTO shapes from `docs/API_CONTRACTS.md` as-is (`core/models`). Screens hold their own
+state in signals and never call `HttpClient` directly.
 
 - **Session.** `AuthService` keeps the access token in memory, mirrored to `localStorage`
   so a reload stays signed in. The current user (id, name, email, roles) is read from the
