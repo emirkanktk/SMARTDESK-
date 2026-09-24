@@ -102,10 +102,10 @@ export class Dashboard {
     const now = data ? new Date(data.generatedAt).getTime() : Date.now();
     const todayStart = data ? new Date(data.todayStart).getTime() : 0;
     const todayEnd = data ? new Date(data.todayEnd).getTime() : 0;
-    const format = (iso: string) => {
-      const t = new Date(iso).getTime();
-      return t >= todayStart && t <= todayEnd ? TIME : DAY_AND_TIME;
-    };
+    // Time only when the moment is on today. Half-open like the API's ranges: a start at the
+    // next midnight belongs to tomorrow, while an end there still reads "-00:00".
+    const startFormat = (t: number) => (t >= todayStart && t < todayEnd ? TIME : DAY_AND_TIME);
+    const endFormat = (t: number) => (t > todayStart && t <= todayEnd ? TIME : DAY_AND_TIME);
 
     return reservations.map((reservation) => {
       const mine = reservation.userId === userId;
@@ -115,8 +115,8 @@ export class Dashboard {
         reservation,
         mine,
         who: mine ? 'You' : (reservation.userDisplayName ?? 'Someone'),
-        startFormat: format(reservation.startDateTime),
-        endFormat: format(reservation.endDateTime),
+        startFormat: startFormat(start),
+        endFormat: endFormat(end),
         runningNow: start <= now && end > now,
       };
     });

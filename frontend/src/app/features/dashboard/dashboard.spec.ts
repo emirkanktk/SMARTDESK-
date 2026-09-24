@@ -152,6 +152,19 @@ describe('Dashboard', () => {
     ]);
   });
 
+  it('reads an end at midnight as today, and a later one with its date', async () => {
+    const lateShift = booking('rsv-7', 'Desk 12', '2026-10-05T22:00', '2026-10-06T00:00');
+    const intoTomorrow = booking('rsv-8', 'Board Room', '2026-10-05T09:30', '2026-10-06T01:00', {
+      userId: 'someone-else',
+      userDisplayName: 'Mehmet Demir',
+    });
+    getDashboard.mockReturnValue(of(dashboard({ today: [lateShift], inUseNow: [intoTomorrow] })));
+    await render();
+
+    expect(rows('Today')).toEqual(['22:00-00:00 Desk 12 2nd Floor You']);
+    expect(rows('In use now')).toEqual(['Board Room Mehmet Demir until Tue 6 Oct, 01:00']);
+  });
+
   it('shows what is in use and until when', async () => {
     await render();
 

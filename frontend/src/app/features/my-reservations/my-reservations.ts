@@ -2,7 +2,18 @@ import { DatePipe, formatDate } from '@angular/common';
 import { Component, LOCALE_ID, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { filter, finalize, interval, merge } from 'rxjs';
+import {
+  Subject,
+  catchError,
+  filter,
+  finalize,
+  interval,
+  map,
+  merge,
+  of,
+  switchMap,
+  tap,
+} from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { Reservation } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -10,6 +21,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { formatDuration } from '../../shared/utils/date-time';
+import { EventBuffer } from '../../shared/utils/event-buffer';
 
 type Tab = 'upcoming' | 'past' | 'cancelled';
 
@@ -52,6 +64,10 @@ export class MyReservations implements OnInit {
   protected readonly loadFailed = signal(false);
   /** Id of the reservation being cancelled, to disable its button meanwhile. */
   protected readonly cancellingId = signal<string | null>(null);
+
+  /** Each value starts a load; true shows the loading state, false refreshes quietly. */
+  private readonly loads = new Subject<boolean>();
+  private readonly liveEvents = new EventBuffer<Reservation>();
 
   // Re-evaluated every minute, so a reservation moves to Past once it ends.
   private readonly now = signal(Date.now());
@@ -102,10 +118,44 @@ export class MyReservations implements OnInit {
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.now.set(Date.now()));
 
+    // switchMap: only the newest load counts, e.g. a reconnect during a refresh.
+    this.loads
+      .pipe(
+        tap((showLoading) => {
+          if (showLoading) {
+            this.loading.set(true);
+          }
+          this.liveEvents.start();
+        }),
+        switchMap((showLoading) =>
+          this.reservationService.getMine().pipe(
+            map((reservations) => ({ reservations, showLoading })),
+            catchError(() => of({ reservations: null, showLoading })),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe(({ reservations, showLoading }) => {
+        this.loading.set(false);
+        const missed = this.liveEvents.drain();
+        if (reservations) {
+          this.reservations.set(reservations);
+          this.loadFailed.set(false);
+          this.now.set(Date.now());
+          // The result may predate changes that arrived while it loaded.
+          missed.forEach((reservation) => this.upsert(reservation));
+        } else if (showLoading) {
+          this.loadFailed.set(true); // a failed quiet refresh keeps the list on screen
+        }
+      });
+
     const mine = (r: Reservation) => r.userId === this.authService.currentUser()?.id;
     merge(this.hub.created$, this.hub.updated$, this.hub.cancelled$)
       .pipe(filter(mine), takeUntilDestroyed())
-      .subscribe((reservation) => this.upsert(reservation));
+      .subscribe((reservation) => {
+        this.upsert(reservation);
+        this.liveEvents.record(reservation);
+      });
 
     // Events sent while the connection was down are lost; catch up from the API.
     this.hub.reconnected$.pipe(takeUntilDestroyed()).subscribe(() => this.load(false));
@@ -162,24 +212,7 @@ export class MyReservations implements OnInit {
    * the new one arrives.
    */
   private load(showLoading: boolean): void {
-    if (showLoading) {
-      this.loading.set(true);
-    }
-    this.reservationService
-      .getMine()
-      .pipe(finalize(() => this.loading.set(false)))
-      .subscribe({
-        next: (reservations) => {
-          this.reservations.set(reservations);
-          this.loadFailed.set(false);
-          this.now.set(Date.now());
-        },
-        error: () => {
-          if (showLoading) {
-            this.loadFailed.set(true);
-          }
-        },
-      });
+    this.loads.next(showLoading);
   }
 
   private upsert(reservation: Reservation): void {

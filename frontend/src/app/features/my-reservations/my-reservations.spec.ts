@@ -260,6 +260,32 @@ describe('MyReservations', () => {
       expect(names()).toEqual(['Board Room', 'Meeting Room B', 'Desk 12']);
     });
 
+    it('keeps a change that arrives while the list is still loading', async () => {
+      const response = new Subject<Reservation[]>();
+      getMine.mockReturnValue(response);
+      await render();
+
+      hub.created$.next(booking('rsv-9', 'Desk 7', '2026-10-06T09:00', '2026-10-06T10:00'));
+      response.next([soon]); // queried before rsv-9 was committed
+      response.complete();
+      await fixture.whenStable();
+
+      expect(names()).toEqual(['Desk 7', 'Meeting Room A']);
+    });
+
+    it('uses only the newest load when a reconnect overlaps one', async () => {
+      const slow = new Subject<Reservation[]>();
+      getMine.mockReturnValueOnce(slow).mockReturnValue(of([soon]));
+      await render();
+      hub.reconnected$.next();
+      await fixture.whenStable();
+
+      slow.next([later]); // the first answer arrives last
+      await fixture.whenStable();
+
+      expect(names()).toEqual(['Meeting Room A']);
+    });
+
     it('refetches after the connection comes back', async () => {
       await render();
       getMine.mockReturnValue(of([soon]));
