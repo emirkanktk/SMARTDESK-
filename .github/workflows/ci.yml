@@ -74,3 +74,9 @@ jobs:
       - run: npx ng build
 
       - run: npx ng test --watch=false
+
+      # The runner is on UTC, where local and UTC dates are the same and zone bugs stay
+      # hidden. Run the specs again in zones with DST changes and odd offsets (see
+      # frontend/scripts/test-time-zones.mjs for the list).
+      - name: Unit tests in other time zones
+        run: npm run test:time-zones
