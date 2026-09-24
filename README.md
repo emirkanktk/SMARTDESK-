@@ -16,6 +16,8 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   capacity, location, features and a status (`Active` / `Inactive` / `Maintenance`).
   Admins create and edit them; everyone can browse and filter.
 - **Availability search** - which resources are free for a time range, by type and capacity.
+- **Blocked windows** - Admins can take a resource out of booking for a specific window
+  (maintenance, an event) with a reason that booking attempts then show.
 - **Reservations** - book, change, and cancel. The backend refuses overlapping bookings,
   bookings in the past, and bookings of resources that aren't active, and it holds under
   concurrent requests. The owner or an Admin can change or cancel.
@@ -114,6 +116,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 |---|---|
 | Auth | `POST /api/auth/login`, `GET /api/auth/me` |
 | Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin) |
+| Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
 | Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` |

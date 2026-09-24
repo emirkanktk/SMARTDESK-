@@ -215,3 +215,32 @@ Verified on PostgreSQL with two tests:
   409s.
 - Cancel and update of one reservation fired together, 10 rounds: every round ended in one
   of the two valid serial orders, with 0 errors and 0 deadlocks.
+
+## ADR-0014: Resource blocks - time-boxed unavailability that never overrides a booking
+
+**Decision:**
+- An Admin can block a resource for one `[start, end)` window with a required reason, stored
+  as `ResourceBlock`. This is separate from `ResourceStatus.Maintenance`, which takes a
+  resource out indefinitely.
+- While the block exists, booking or moving a reservation into the window gets a 409 that
+  quotes the reason, and the availability search leaves the resource out.
+- A block can't be created over `Confirmed` reservations. The 409 says how many overlap,
+  and the admin cancels or moves those first with the existing endpoints. Nor can it
+  overlap another block on the same resource.
+- Creating a block takes the per-resource lock from ADR-0011, and so does every booking.
+  The booking checks (exists, Active, not blocked, no overlap) live in one place,
+  `BookingGuard`, which create and update both call.
+
+**Why:**
+- The brief lists "Kaynak bakım/bloke zamanları" as a bonus. `Maintenance` status is all or
+  nothing: it can't express "unavailable Thursday 10:00-14:00".
+- Cancelling people's reservations automatically when a block lands would be a silent side
+  effect with real consequences. Refusing, and saying how many are in the way, keeps that
+  decision with a person.
+- Sharing the booking lock is what makes the two kinds of claim mutually exclusive without
+  a cross-table database constraint, which PostgreSQL can't express. Tested with a block and
+  a booking for the same slot released at the same instant, over 12 rounds: exactly one
+  succeeded each time, with no errors or deadlocks.
+- Blocks deliberately have no exclusion constraint of their own. They're Admin-only and
+  always written under the lock, so the lock already rules out duplicates. Reservations
+  keep theirs because of the brief's explicit concurrency rule.

@@ -57,6 +57,17 @@ schema it manages; a direct FK is unnecessary since Identity guarantees the user
 exists at reservation-creation time, and the query direction we need (reservations for the
 current user) is fully satisfiable filtering by a scalar `UserId`.
 
+### ResourceBlock
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | |
+| ResourceId | Guid | FK → Resource, cascade delete |
+| StartDateTime | DateTime | UTC |
+| EndDateTime | DateTime | must be > StartDateTime |
+| Reason | string | required, max 200 - shown to anyone whose booking the block refuses |
+| CreatedByUserId | Guid | the admin who created it (scalar, like `Reservation.UserId`) |
+
 ## Relationships
 
 ```
@@ -66,11 +77,15 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
                           │
                           *
                     Reservation ── (UserId, scalar) ──→ ApplicationUser
+
+Resource 1 ── * ResourceBlock
 ```
 
 ## Indexes
 
 - `ResourceTypes(Name)` - unique.
+- `ResourceBlocks(ResourceId, StartDateTime, EndDateTime)` - the "is this resource blocked for
+  `[start, end)`?" check on every booking, and the calendar's range query.
 - `Reservations(ResourceId, Status, StartDateTime, EndDateTime)` - composite index backing
   the overlap-check query every `CreateReservationCommand` runs (same resource, active
   reservations, does the new range intersect an existing one).
@@ -78,6 +93,7 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
 ## Constraints
 
 - `CK_Reservations_EndAfterStart` - `CHECK ("EndDateTime" > "StartDateTime")` (rule 2).
+- `CK_ResourceBlocks_EndAfterStart` - the same check for blocks.
 - `EX_Reservations_NoOverlap` - `EXCLUDE USING gist ("ResourceId" WITH =,
   tstzrange("StartDateTime", "EndDateTime", '[)') WITH &&) WHERE ("Status" = 0)`: no two
   `Confirmed` reservations of one resource may overlap (rule 1). The range is half-open,
@@ -110,6 +126,10 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
    overlapping `Confirmed` row, whatever wrote it.
 6. A reservation cannot be created for a start time in the past (5 minutes of grace, so
    booking "from now" isn't rejected by clock drift). A reservation lasts at most 31 days.
+7. A resource can't be booked, or a reservation moved, into a window covered by a
+   `ResourceBlock`. A block can't be created over `Confirmed` reservations or over another
+   block of the same resource. Creating a block takes the same per-resource lock as booking,
+   so a block and a reservation can never both claim one slot (ADR-0014).
 
 ## Concurrency (formerly an open question)
 
