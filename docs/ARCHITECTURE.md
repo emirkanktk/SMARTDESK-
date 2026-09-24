@@ -152,8 +152,10 @@ cannot turn a saved reservation into an HTTP error. `NullReservationNotifier` is
 registered with `TryAdd` and only applies if the SignalR notifier is not registered.
 
 The Angular app opens the connection when a session exists and closes it on logout.
-`withAutomaticReconnect` retries with backoff. Screens subscribe to `ReservationCreated`,
-`ReservationUpdated` and `ReservationCancelled`; they do not open their own hubs.
+Negotiate does not send cookies (`withCredentials: false`); the hub uses the bearer token.
+A failed start and a dropped connection both retry forever, at 0s, 2s, 5s, 10s, then
+every 30s. Logout cancels a pending retry. Screens subscribe to `created$`, `updated$`,
+`cancelled$` and `reconnected$` on `ReservationHubService` rather than the raw connection.
 
 ## 7. Frontend architecture
 

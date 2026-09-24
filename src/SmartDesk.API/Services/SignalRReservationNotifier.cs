@@ -20,11 +20,16 @@ public sealed class SignalRReservationNotifier(
     public Task ReservationCancelledAsync(ReservationDto reservation, CancellationToken cancellationToken) =>
         BroadcastAsync(ReservationHub.Cancelled, reservation, cancellationToken);
 
-    private async Task BroadcastAsync(string eventName, ReservationDto reservation, CancellationToken cancellationToken)
+    // `cancellationToken` is the caller's request token and is intentionally not passed to
+    // SendAsync: the row is already committed, and aborting the HTTP request must not
+    // cancel the broadcast that tells everyone else.
+    private async Task BroadcastAsync(
+        string eventName, ReservationDto reservation, CancellationToken cancellationToken)
     {
+        _ = cancellationToken;
         try
         {
-            await hub.Clients.All.SendAsync(eventName, reservation, cancellationToken);
+            await hub.Clients.All.SendAsync(eventName, reservation, CancellationToken.None);
         }
         catch (Exception exception)
         {
