@@ -1,6 +1,7 @@
 # Builds and tests both halves of the app on every pull request (whatever its base, so
-# stacked PRs are checked too) and on every push to main. Needs no secrets and no database:
-# backend tests run against in-memory SQLite, frontend tests against jsdom.
+# stacked PRs are checked too) and on every push to main. Needs no secrets. Unit tests use
+# in-memory SQLite; integration tests start PostgreSQL with Testcontainers. Frontend tests
+# use jsdom.
 name: CI
 
 on:

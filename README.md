@@ -133,7 +133,7 @@ your build serves on a different port, add it to `Cors:AllowedOrigins` too.
 ## Running tests
 
 ```bash
-dotnet test               # backend
+dotnet test               # unit tests, plus integration tests (Docker must be running)
 cd frontend && ng test    # frontend
 ```
 
