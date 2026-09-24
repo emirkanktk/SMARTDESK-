@@ -1,10 +1,14 @@
 import {
+  addDays,
   addMinutes,
   floorToQuarterHour,
   formatDuration,
   fromDateTimeLocal,
   nextHalfHour,
+  parseDateParam,
   parseIso,
+  startOfWeek,
+  toDateParam,
   toDateTimeLocal,
 } from './date-time';
 
@@ -35,11 +39,37 @@ describe('date-time helpers', () => {
   });
 
   it('rounds down to the quarter hour', () => {
-    expect(toDateTimeLocal(floorToQuarterHour(new Date(2026, 9, 5, 10, 7)))).toBe('2026-10-05T10:00');
-    expect(toDateTimeLocal(floorToQuarterHour(new Date(2026, 9, 5, 10, 15)))).toBe('2026-10-05T10:15');
+    expect(toDateTimeLocal(floorToQuarterHour(new Date(2026, 9, 5, 10, 7)))).toBe(
+      '2026-10-05T10:00',
+    );
+    expect(toDateTimeLocal(floorToQuarterHour(new Date(2026, 9, 5, 10, 15)))).toBe(
+      '2026-10-05T10:15',
+    );
     expect(toDateTimeLocal(floorToQuarterHour(new Date(2026, 9, 5, 10, 59, 59)))).toBe(
       '2026-10-05T10:45',
     );
+  });
+
+  it('adds calendar days, keeping the wall-clock time', () => {
+    expect(toDateTimeLocal(addDays(new Date(2026, 9, 5, 9, 30), 7))).toBe('2026-10-12T09:30');
+    expect(toDateTimeLocal(addDays(new Date(2026, 9, 5, 9, 30), -5))).toBe('2026-09-30T09:30');
+    // Across the end of daylight saving: 25 Oct in Europe, 1 Nov in the US.
+    expect(toDateTimeLocal(addDays(new Date(2026, 9, 24, 9, 30), 7))).toBe('2026-10-31T09:30');
+    expect(toDateTimeLocal(addDays(new Date(2026, 9, 31, 9, 30), 2))).toBe('2026-11-02T09:30');
+  });
+
+  it('finds the Monday that starts the week', () => {
+    expect(toDateTimeLocal(startOfWeek(new Date(2026, 9, 5, 10, 7)))).toBe('2026-10-05T00:00'); // Mon
+    expect(toDateTimeLocal(startOfWeek(new Date(2026, 9, 7, 18, 0)))).toBe('2026-10-05T00:00'); // Wed
+    expect(toDateTimeLocal(startOfWeek(new Date(2026, 9, 11, 23, 59)))).toBe('2026-10-05T00:00'); // Sun
+  });
+
+  it('round-trips a date through a query parameter and rejects bad ones', () => {
+    expect(toDateParam(new Date(2026, 9, 5, 15, 0))).toBe('2026-10-05');
+    expect(parseDateParam('2026-10-05')?.getTime()).toBe(new Date(2026, 9, 5).getTime());
+    expect(parseDateParam('2026-02-31')).toBeNull();
+    expect(parseDateParam('5.10.2026')).toBeNull();
+    expect(parseDateParam(undefined)).toBeNull();
   });
 
   it('formats durations', () => {

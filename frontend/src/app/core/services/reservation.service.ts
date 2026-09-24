@@ -1,8 +1,9 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  CalendarQuery,
   CreateReservationRequest,
   Reservation,
   UpdateReservationRequest,
@@ -16,6 +17,21 @@ export class ReservationService {
   /** The caller's reservations - upcoming, past and cancelled - oldest start first. */
   getMine(): Observable<Reservation[]> {
     return this.http.get<Reservation[]>(`${this.baseUrl}/mine`);
+  }
+
+  /**
+   * The shared calendar: everyone's Confirmed reservations overlapping [from, to), earliest
+   * first, optionally for one resource or type.
+   */
+  getCalendar(query: CalendarQuery): Observable<Reservation[]> {
+    let params = new HttpParams().set('from', query.from).set('to', query.to);
+    if (query.resourceId) {
+      params = params.set('resourceId', query.resourceId);
+    }
+    if (query.resourceTypeId) {
+      params = params.set('resourceTypeId', query.resourceTypeId);
+    }
+    return this.http.get<Reservation[]>(this.baseUrl, { params });
   }
 
   /** One reservation in any status; any signed-in user may read it. */

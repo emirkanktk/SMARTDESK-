@@ -58,6 +58,41 @@ export function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * MINUTE_MS);
 }
 
+/**
+ * The same wall-clock time `days` calendar days later, in local time. Not `days` x 24 h: a
+ * daylight-saving change makes one day 23 or 25 hours long.
+ */
+export function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+/** Local midnight at the start of the week (Monday) that contains `date`. */
+export function startOfWeek(date: Date): Date {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const sinceMonday = (result.getDay() + 6) % 7; // getDay(): Sunday = 0
+  return addDays(result, -sinceMonday);
+}
+
+/** A local date as "2026-10-05", for query strings. */
+export function toDateParam(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Local midnight of a "2026-10-05" date; null when empty or malformed. */
+export function parseDateParam(value: string | null | undefined): Date | null {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+  const [year, month, day] = [Number(match[1]), Number(match[2]) - 1, Number(match[3])];
+  const date = new Date(year, month, day);
+  // Reject dates the Date constructor would roll over, like 2026-02-31.
+  return date.getMonth() === month && date.getDate() === day ? date : null;
+}
+
 /** "45 min", "1 h", "1 h 30 min", "2 days 3 h". */
 export function formatDuration(start: Date, end: Date): string {
   let minutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / MINUTE_MS));
