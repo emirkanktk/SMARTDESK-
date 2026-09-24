@@ -44,6 +44,7 @@ describe('Admin', () => {
     note: null,
   });
 
+  let getResources: ReturnType<typeof vi.fn>;
   let getCalendar: ReturnType<typeof vi.fn>;
   let cancel: ReturnType<typeof vi.fn>;
   let success: ReturnType<typeof vi.fn>;
@@ -62,6 +63,7 @@ describe('Admin', () => {
   beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
+    getResources = vi.fn(() => of([room, desk, camera, projector]));
     getCalendar = vi.fn(() => of([mine, running, ended]));
     cancel = vi.fn((id: string) => of({ ...running, id, status: 'Cancelled' }));
     success = vi.fn();
@@ -82,7 +84,7 @@ describe('Admin', () => {
           provide: ResourceService,
           useValue: {
             getResourceTypes: () => of([DESK_TYPE, MEETING_ROOM_TYPE]),
-            getResources: () => of([room, desk, camera, projector]),
+            getResources,
           },
         },
         { provide: ReservationService, useValue: { getCalendar, cancel } },
@@ -149,6 +151,21 @@ describe('Admin', () => {
       '1 Inactive',
       '1 Maintenance',
     ]);
+  });
+
+  it('says it is counting rather than showing zeros while resources load', async () => {
+    getResources.mockReturnValue(new Subject());
+    await render();
+
+    expect(element.querySelector('.tile')).toBeNull();
+    expect(element.textContent).toContain('Counting resources');
+  });
+
+  it('says so when resources cannot be counted', async () => {
+    getResources.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+    await render();
+
+    expect(element.textContent).toContain('The resources could not be counted.');
   });
 
   it('lists the reservations earliest first, with who booked them', async () => {

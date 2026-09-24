@@ -5,14 +5,20 @@
 
 <section aria-labelledby="resources-heading">
   <h2 id="resources-heading" class="section-title">Resources</h2>
-  <ul class="tiles">
-    @for (item of statusCounts(); track item.status) {
-      <li class="card tile">
-        <span class="value">{{ item.count }}</span>
-        <app-status-badge [status]="item.status" />
-      </li>
-    }
-  </ul>
+  @if (statusCounts(); as counts) {
+    <ul class="tiles">
+      @for (item of counts; track item.status) {
+        <li class="card tile">
+          <span class="value">{{ item.count }}</span>
+          <app-status-badge [status]="item.status" />
+        </li>
+      }
+    </ul>
+  } @else if (resourcesFailed()) {
+    <p class="text-muted counts-note" role="status">The resources could not be counted.</p>
+  } @else {
+    <p class="text-muted counts-note" role="status">Counting resources…</p>
+  }
 </section>
 
 <section aria-labelledby="reservations-heading">

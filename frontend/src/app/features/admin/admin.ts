@@ -82,7 +82,9 @@ export class Admin {
 
   protected readonly statuses = RESOURCE_STATUSES;
   protected readonly types = signal<ResourceType[]>([]);
-  private readonly resources = signal<Resource[]>([]);
+  /** Null until loaded, so the counts don't read "0" meanwhile. */
+  private readonly resources = signal<Resource[] | null>(null);
+  protected readonly resourcesFailed = signal(false);
   private readonly reservations = signal<Reservation[]>([]);
   protected readonly search = signal('');
   protected readonly loading = signal(true);
@@ -116,15 +118,18 @@ export class Admin {
     return null;
   });
 
-  protected readonly statusCounts = computed(() =>
-    this.statuses.map((status) => ({
-      status,
-      count: this.resources().filter((r) => r.status === status).length,
-    })),
-  );
+  protected readonly statusCounts = computed(() => {
+    const resources = this.resources();
+    return resources
+      ? this.statuses.map((status) => ({
+          status,
+          count: resources.filter((r) => r.status === status).length,
+        }))
+      : null;
+  });
 
   private readonly typeOfResource = computed(
-    () => new Map(this.resources().map((r) => [r.id, r.resourceTypeId])),
+    () => new Map((this.resources() ?? []).map((r) => [r.id, r.resourceTypeId])),
   );
 
   protected readonly rows = computed((): Row[] => {
@@ -167,7 +172,10 @@ export class Admin {
     this.resourceService
       .getResources()
       .pipe(takeUntilDestroyed())
-      .subscribe({ next: (resources) => this.resources.set(resources) });
+      .subscribe({
+        next: (resources) => this.resources.set(resources),
+        error: () => this.resourcesFailed.set(true),
+      });
 
     const query = computed(
       (): CalendarQuery | null =>

@@ -16,6 +16,10 @@
   }
 }
 
+.counts-note {
+  margin: 0 0 var(--space-5);
+}
+
 .tile {
   display: flex;
   align-items: center;
@@ -47,6 +51,11 @@
     .search {
       grid-column: 1 / -1;
     }
+  }
+
+  // Date inputs don't shrink below their own width, which two columns can't fit here.
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
   }
 }
 
