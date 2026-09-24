@@ -272,6 +272,29 @@ describe('ReservationForm', () => {
       });
     });
 
+    it('still saves a note when the reservation started while the form was open', async () => {
+      getReservation.mockReturnValue(
+        of(
+          fakeReservation({
+            startDateTime: utc('2026-10-05T10:15'),
+            endDateTime: utc('2026-10-05T11:15'),
+          }),
+        ),
+      );
+      await render({ id: 'rsv-1' }); // upcoming at 10:07
+      vi.setSystemTime(new Date('2026-10-05T10:30')); // started 15 minutes ago
+      await set('#note', 'Moved to the big screen');
+      await submit();
+
+      expect(update).toHaveBeenCalledWith(
+        'rsv-1',
+        expect.objectContaining({
+          startDateTime: utc('2026-10-05T10:15'),
+          note: 'Moved to the big screen',
+        }),
+      );
+    });
+
     it('rejects moving the end of a started reservation into the past', async () => {
       getReservation.mockReturnValue(of(inProgress()));
       await render({ id: 'rsv-1' });
@@ -308,6 +331,19 @@ describe('ReservationForm', () => {
       expect(element.textContent).toContain(reason);
       expect(element.querySelector('form')).toBeNull();
       expect(element.textContent).toContain('Meeting Room A');
+    });
+
+    it('copes with an owner the API can no longer name', async () => {
+      getReservation.mockReturnValue(
+        of(fakeReservation({ userId: 'someone-else', userDisplayName: null })),
+      );
+      await render({ id: 'rsv-1' });
+
+      expect(element.textContent).toContain(
+        'Only the person who booked it or an admin can change this reservation.',
+      );
+      expect(element.textContent).toContain('Unknown user');
+      expect(element.textContent).not.toContain('null');
     });
 
     it("lets an admin change someone else's reservation and says whose it is", async () => {

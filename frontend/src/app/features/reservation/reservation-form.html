@@ -29,7 +29,7 @@
           {{ r.endDateTime | date: 'EEE d MMM y, HH:mm' }}
         </dd>
         <dt>Booked by</dt>
-        <dd>{{ r.userDisplayName }}</dd>
+        <dd>{{ r.userDisplayName ?? 'Unknown user' }}</dd>
         <dt>Status</dt>
         <dd>{{ r.status }}</dd>
         @if (r.note) {
