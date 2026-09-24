@@ -2,22 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Observable, Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { Reservation } from '../models/reservation.model';
 import { AuthService } from './auth.service';
-
-// The reservation object from the hub, the same shape as the HTTP reservation body.
-export interface ReservationChanged {
-  id: string;
-  resourceId: string;
-  resourceName: string;
-  resourceTypeName: string;
-  resourceLocation: string;
-  userId: string;
-  startDateTime: string;
-  endDateTime: string;
-  status: string;
-  note: string | null;
-  userDisplayName: string | null;
-}
 
 // First waits, then every further retry stays at 30s. Never returns null, so a drop
 // does not end the connection for good.
@@ -34,14 +20,14 @@ export class ReservationHubService {
   private startTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
 
-  private readonly created = new Subject<ReservationChanged>();
-  private readonly updated = new Subject<ReservationChanged>();
-  private readonly cancelled = new Subject<ReservationChanged>();
+  private readonly created = new Subject<Reservation>();
+  private readonly updated = new Subject<Reservation>();
+  private readonly cancelled = new Subject<Reservation>();
   private readonly reconnected = new Subject<void>();
 
-  readonly created$: Observable<ReservationChanged> = this.created.asObservable();
-  readonly updated$: Observable<ReservationChanged> = this.updated.asObservable();
-  readonly cancelled$: Observable<ReservationChanged> = this.cancelled.asObservable();
+  readonly created$: Observable<Reservation> = this.created.asObservable();
+  readonly updated$: Observable<Reservation> = this.updated.asObservable();
+  readonly cancelled$: Observable<Reservation> = this.cancelled.asObservable();
   readonly reconnected$: Observable<void> = this.reconnected.asObservable();
 
   connect(): void {
@@ -60,9 +46,10 @@ export class ReservationHubService {
       })
       .build();
 
-    connection.on('ReservationCreated', (reservation: ReservationChanged) => this.created.next(reservation));
-    connection.on('ReservationUpdated', (reservation: ReservationChanged) => this.updated.next(reservation));
-    connection.on('ReservationCancelled', (reservation: ReservationChanged) => this.cancelled.next(reservation));
+    // Each event carries the reservation as it is after the change, same shape as HTTP.
+    connection.on('ReservationCreated', (reservation: Reservation) => this.created.next(reservation));
+    connection.on('ReservationUpdated', (reservation: Reservation) => this.updated.next(reservation));
+    connection.on('ReservationCancelled', (reservation: Reservation) => this.cancelled.next(reservation));
     connection.onreconnected(() => this.reconnected.next());
 
     this.connection = connection;
