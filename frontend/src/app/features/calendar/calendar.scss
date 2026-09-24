@@ -1,0 +1,181 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+
+.week-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.week-label {
+  margin: 0 0 0 var(--space-2);
+  font-size: 1.0625rem;
+}
+
+.type-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  label {
+    font-weight: 500;
+  }
+
+  .input {
+    width: auto;
+  }
+}
+
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.empty {
+  text-align: center;
+}
+
+.summary {
+  margin: 0 0 var(--space-2);
+  font-size: 0.875rem;
+}
+
+// The week scrolls sideways inside its box on narrow screens, with the resource column
+// pinned, so the page itself never scrolls horizontally.
+.grid-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.grid {
+  width: 100%;
+  min-width: 56rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+
+  th,
+  td {
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    border-left: 1px solid var(--color-border);
+    vertical-align: top;
+    text-align: left;
+  }
+
+  tbody tr:last-child > * {
+    border-bottom: 0;
+  }
+
+  thead th {
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .today {
+    background: var(--color-primary-soft);
+  }
+
+  thead .today {
+    color: var(--color-primary);
+  }
+
+  .past {
+    color: var(--color-text-muted);
+  }
+}
+
+.grid .resource-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 11rem;
+  border-left: 0;
+  background: var(--color-surface);
+
+  .name,
+  .meta {
+    display: block;
+  }
+
+  .meta {
+    font-size: 0.8125rem;
+  }
+}
+
+.dow,
+.dom {
+  display: block;
+}
+
+.dom {
+  font-weight: 400;
+}
+
+.unavailable .resource-col .name {
+  color: var(--color-text-muted);
+}
+
+.entry {
+  display: block;
+  margin-bottom: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-left: 3px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  text-decoration: none;
+
+  &:hover {
+    border-left-color: var(--color-primary);
+  }
+
+  &.mine {
+    border-left-color: var(--color-primary);
+    background: var(--color-primary-soft);
+  }
+}
+
+.entry-time {
+  display: block;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.entry-who {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book {
+  display: block;
+  padding: 0 var(--space-2);
+  border: 1px dashed transparent;
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  text-align: center;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+}

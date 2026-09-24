@@ -26,6 +26,7 @@ export class Shell {
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/resources', label: 'Resources' },
     { path: '/availability', label: 'Availability' },
+    { path: '/calendar', label: 'Calendar' },
     { path: '/reservations/new', label: 'New reservation' },
     { path: '/reservations/mine', label: 'My reservations' },
     { path: '/admin', label: 'Admin', adminOnly: true },

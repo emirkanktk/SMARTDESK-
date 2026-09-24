@@ -49,6 +49,11 @@ export const routes: Routes = [
           import('./features/availability/availability').then((m) => m.Availability),
       },
       {
+        path: 'calendar',
+        title: 'Calendar · SmartDesk',
+        loadComponent: () => import('./features/calendar/calendar').then((m) => m.Calendar),
+      },
+      {
         path: 'reservations/new',
         title: 'Book a resource · SmartDesk',
         loadComponent: () =>

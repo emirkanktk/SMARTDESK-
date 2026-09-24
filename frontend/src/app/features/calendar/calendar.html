@@ -1,0 +1,113 @@
+<div class="page-header">
+  <h1>Calendar</h1>
+  <a class="btn btn-primary" routerLink="/availability">Find a free resource</a>
+</div>
+
+<div class="card toolbar">
+  <div class="week-nav">
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      aria-label="Previous week"
+      (click)="goToWeek(-1)"
+    >
+      ‹
+    </button>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      [disabled]="isThisWeek()"
+      (click)="goToThisWeek()"
+    >
+      This week
+    </button>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      aria-label="Next week"
+      (click)="goToWeek(1)"
+    >
+      ›
+    </button>
+    <h2 class="week-label" aria-live="polite">{{ weekLabel() }}</h2>
+  </div>
+
+  <div class="type-filter">
+    <label for="type">Type</label>
+    <select id="type" class="input" (change)="selectType($event)">
+      <option value="" [selected]="!type()">All types</option>
+      @for (t of types(); track t.id) {
+        <option [value]="t.id" [selected]="t.id === type()">{{ t.name }}</option>
+      }
+    </select>
+  </div>
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status">Loading the calendar…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span>The calendar could not be loaded.</span>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
+  </div>
+} @else if (rows().length === 0) {
+  <p class="card text-muted empty">No resources of this type.</p>
+} @else {
+  <p class="text-muted summary">
+    {{ reservationCount() }} {{ reservationCount() === 1 ? 'reservation' : 'reservations' }}
+    this week. Select one to open it.
+  </p>
+  <div class="grid-wrap">
+    <table class="grid">
+      <thead>
+        <tr>
+          <th scope="col" class="resource-col">Resource</th>
+          @for (day of days(); track day.key) {
+            <th scope="col" [class.today]="day.isToday" [class.past]="day.isPast">
+              <span class="dow">{{ day.start | date: 'EEE' }}</span>
+              <span class="dom">{{ day.start | date: 'd MMM' }}</span>
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.resource.id) {
+          <tr [class.unavailable]="row.resource.status !== 'Active'">
+            <th scope="row" class="resource-col">
+              <span class="name">{{ row.resource.name }}</span>
+              <span class="text-muted meta">{{ row.resource.location }}</span>
+              @if (row.resource.status !== 'Active') {
+                <app-status-badge [status]="row.resource.status" />
+              }
+            </th>
+            @for (cell of row.cells; track cell.day.key) {
+              <td [class.today]="cell.day.isToday" [class.past]="cell.day.isPast">
+                @for (entry of cell.entries; track entry.reservation.id) {
+                  <a
+                    class="entry"
+                    [class.mine]="entry.mine"
+                    [routerLink]="['/reservations', entry.reservation.id, 'edit']"
+                    [title]="entry.title"
+                  >
+                    <span class="entry-time">{{ entry.time }}</span>
+                    <span class="entry-who">{{ entry.who }}</span>
+                  </a>
+                }
+                @if (cell.book; as book) {
+                  <a
+                    class="book"
+                    routerLink="/reservations/new"
+                    [queryParams]="book.params"
+                    [attr.aria-label]="book.label"
+                    [title]="book.label"
+                    >+</a
+                  >
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
