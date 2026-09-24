@@ -22,9 +22,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.
-- **Live updates** - reservation create/update/cancel events for open screens over SignalR.
-  The backend raises the events after every committed change; the hub broadcast that
-  delivers them to browsers is being wired in as part of the integration work.
+- **Live updates** - after a reservation is created, changed, or cancelled, every connected
+  screen receives `ReservationCreated`, `ReservationUpdated`, or `ReservationCancelled`
+  ([ADR-0014](docs/DECISIONS.md)).
 
 | Layer | Stack |
 |---|---|

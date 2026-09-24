@@ -176,9 +176,12 @@ the change. For `ReservationUpdated` the resource or the times may be different 
 before, so screens should replace the entry by `id` rather than patch it in place. Every
 event includes
 `userDisplayName`, so a screen can say who just booked or cancelled. Handlers raise them
-through `IReservationNotifier` only after the change is committed. Until the SignalR
-implementation of that interface is registered, a no-op one is in place: every endpoint
-works, but open screens don't update live yet.
+through `IReservationNotifier` only after the change is committed.
+`SignalRReservationNotifier` sends each event to every connected client, and does not
+use the HTTP request's cancellation token: a closed tab must not swallow a change that
+already committed. Enum values in the payload are names (`"Confirmed"`), same as the
+HTTP API. A client that missed events while disconnected catches up by refetching when
+the connection comes back; the broadcast is not a queue.
 
 ## Conventions
 
