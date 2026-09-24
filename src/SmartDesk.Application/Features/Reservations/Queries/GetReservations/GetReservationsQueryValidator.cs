@@ -10,13 +10,13 @@ public sealed class GetReservationsQueryValidator : AbstractValidator<GetReserva
     {
         RuleFor(x => x.From).NotEmpty();
 
-        // A month view is the widest calendar screen; same bound as the availability search.
+        // A month grid (six weeks) is the widest calendar screen.
         RuleFor(x => x.To)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must((query, to) => to.AsUtc() > query.From.AsUtc())
             .WithMessage("'To' must be after 'From'.")
-            .Must((query, to) => to.AsUtc() - query.From.AsUtc() <= ReservationRules.MaxDuration)
-            .WithMessage($"The range can be at most {ReservationRules.MaxDuration.TotalDays} days.");
+            .Must((query, to) => to.AsUtc() - query.From.AsUtc() <= ReservationRules.MaxCalendarRange)
+            .WithMessage($"The range can be at most {ReservationRules.MaxCalendarRange.TotalDays} days.");
     }
 }

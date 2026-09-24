@@ -65,7 +65,12 @@ public class GetReservationsQueryHandlerTests : IDisposable
             .Errors.Should().ContainSingle(e => e.PropertyName == nameof(GetReservationsQuery.To));
 
     [Fact]
-    public void Validator_RangeLongerThan31Days_Fails() =>
-        new GetReservationsQueryValidator().Validate(new GetReservationsQuery(Day, Day.AddDays(32)))
+    public void Validator_SixWeekMonthGrid_Passes() =>
+        new GetReservationsQueryValidator().Validate(new GetReservationsQuery(Day, Day.AddDays(42)))
+            .IsValid.Should().BeTrue();
+
+    [Fact]
+    public void Validator_RangeLongerThan42Days_Fails() =>
+        new GetReservationsQueryValidator().Validate(new GetReservationsQuery(Day, Day.AddDays(43)))
             .Errors.Should().ContainSingle(e => e.PropertyName == nameof(GetReservationsQuery.To));
 }
