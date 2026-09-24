@@ -74,12 +74,15 @@ dotnet user-secrets set "Jwt:Key" "<a long random string>" --project src/SmartDe
 dotnet ef database update --project src/SmartDesk.Infrastructure --startup-project src/SmartDesk.API
 
 # 4. Run the API
-dotnet run --project src/SmartDesk.API
+dotnet run --project src/SmartDesk.API --launch-profile https
 ```
 
-The API starts on the URL/port in `src/SmartDesk.API/Properties/launchSettings.json`
-(`https://localhost:7065` by default - matches `frontend/src/environments/environment.development.ts`,
-update both together if you change it). In development, Swagger UI is served at `/swagger`
+The `https` launch profile in `src/SmartDesk.API/Properties/launchSettings.json` serves
+`https://localhost:7065` (and `http://localhost:5291`). `7065` is what
+`frontend/src/environments/environment.development.ts` calls, so update both together if you
+change it. A bare `dotnet run` picks the first profile, `http`, which listens on
+`http://localhost:5291` only: enough for Swagger (as in `docs/DEMO.md`), but the dev frontend
+can't reach it. In development, Swagger UI is served at `/swagger`
 (raw OpenAPI document at `/openapi/v1.json`): call `POST /api/auth/login`, copy the
 `accessToken`, and paste it into **Authorize** to try the protected endpoints. Allowed
 frontend origins for CORS are `Cors:AllowedOrigins` in `appsettings.Development.json` (see
