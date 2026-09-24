@@ -233,6 +233,15 @@ describe('ReservationForm', () => {
 
   describe('changing a reservation', () => {
     it('loads an upcoming reservation and saves it with PUT', async () => {
+      // Times set in local time, so the new end below is after the start in every zone.
+      getReservation.mockReturnValue(
+        of(
+          fakeReservation({
+            startDateTime: utc('2026-10-07T14:00'),
+            endDateTime: utc('2026-10-07T15:30'),
+          }),
+        ),
+      );
       await render({ id: 'rsv-1' });
 
       expect(getReservation).toHaveBeenCalledWith('rsv-1');
@@ -245,7 +254,7 @@ describe('ReservationForm', () => {
 
       expect(update).toHaveBeenCalledWith('rsv-1', {
         resourceId: 'res-1',
-        startDateTime: '2026-10-07T11:00:00.000Z',
+        startDateTime: utc('2026-10-07T14:00'),
         endDateTime: utc('2026-10-07T17:00'),
         note: 'Retro',
       });
