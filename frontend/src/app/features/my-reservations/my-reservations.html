@@ -1,1 +1,102 @@
-<p>my-reservations works!</p>
+<div class="page-header">
+  <h1>My reservations</h1>
+  <a class="btn btn-primary" routerLink="/availability">Find a free resource</a>
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status">Loading your reservations…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span>Your reservations could not be loaded.</span>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">Try again</button>
+  </div>
+} @else {
+  <div class="tabs" role="tablist" aria-label="Reservations">
+    @for (tab of tabs; track tab.id) {
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [id]="'tab-' + tab.id"
+        [class.active]="activeTab() === tab.id"
+        [attr.aria-selected]="activeTab() === tab.id"
+        aria-controls="reservation-list"
+        (click)="selectTab(tab.id)"
+      >
+        {{ tab.label }} <span class="count">{{ counts()[tab.id] }}</span>
+      </button>
+    }
+  </div>
+
+  <section id="reservation-list" role="tabpanel" [attr.aria-labelledby]="'tab-' + activeTab()">
+    @if (visible().length === 0) {
+      <div class="card empty">
+        @switch (activeTab()) {
+          @case ('upcoming') {
+            <p>You have no upcoming reservations.</p>
+            <a routerLink="/availability">Find a free resource</a>
+          }
+          @case ('past') {
+            <p>No past reservations yet.</p>
+          }
+          @case ('cancelled') {
+            <p>No cancelled reservations.</p>
+          }
+        }
+      </div>
+    } @else {
+      <ul class="list">
+        @for (item of visible(); track item.reservation.id) {
+          <li class="card item" [class.cancelled]="item.reservation.status === 'Cancelled'">
+            <div class="when">
+              <span class="date">{{ item.start | date: 'EEE d MMM' }}</span>
+              <span class="time">
+                @if (item.sameDay) {
+                  {{ item.start | date: 'HH:mm' }}-{{ item.end | date: 'HH:mm' }}
+                } @else {
+                  {{ item.start | date: 'HH:mm' }} to {{ item.end | date: 'EEE d MMM, HH:mm' }}
+                }
+              </span>
+              <span class="text-muted duration">{{ item.duration }}</span>
+            </div>
+
+            <div class="what">
+              <div class="title">
+                <h2>{{ item.reservation.resourceName }}</h2>
+                @if (item.inProgress) {
+                  <span class="pill in-progress">In progress</span>
+                } @else if (item.reservation.status === 'Cancelled') {
+                  <span class="pill cancelled-pill">Cancelled</span>
+                }
+              </div>
+              <p class="text-muted meta">
+                {{ item.reservation.resourceTypeName }} · {{ item.reservation.resourceLocation }}
+              </p>
+              @if (item.reservation.note) {
+                <p class="note">{{ item.reservation.note }}</p>
+              }
+            </div>
+
+            @if (activeTab() === 'upcoming') {
+              <div class="actions">
+                <a
+                  class="btn btn-secondary btn-sm"
+                  [routerLink]="['/reservations', item.reservation.id, 'edit']"
+                  >Change</a
+                >
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm cancel"
+                  [disabled]="cancellingId() === item.reservation.id"
+                  (click)="cancel(item)"
+                >
+                  {{ cancellingId() === item.reservation.id ? 'Cancelling…' : 'Cancel' }}
+                </button>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+}
