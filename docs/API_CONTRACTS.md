@@ -81,6 +81,7 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 | POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note? }` → 201. The owner is always the caller. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
+| GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 31 days apart (400 otherwise). Everyone sees who booked what - it's a shared office calendar. |
 
 Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
 
@@ -91,9 +92,13 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
   "userId": "…",
   "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:30:00Z",
   "status": "Confirmed",          // "Confirmed" | "Cancelled"
-  "note": "Sprint planning"
+  "note": "Sprint planning",
+  "userDisplayName": "Ayşe Yılmaz"  // who booked it: "First Last", or the email if both are blank
 }
 ```
+
+A reservation appears in a calendar range exactly when it would block a booking of that range
+(same half-open overlap rule as availability and create).
 
 **Create - errors**
 
@@ -115,7 +120,27 @@ reservation doesn't exist; 409 if it has already ended.
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| GET | `/api/dashboard` | any authenticated user | `GetDashboardQuery` | today's reservations, resources currently in use, upcoming reservations |
+| GET | `/api/dashboard?timeZone=Europe/Istanbul` | any authenticated user | `GetDashboardQuery` | today's reservations, resources currently in use, the caller's upcoming reservations |
+
+`timeZone` is an IANA id - in the browser, `Intl.DateTimeFormat().resolvedOptions().timeZone`.
+It decides what "today" means: the server runs on UTC, so without it 01:30 in Istanbul would
+still count as yesterday. Omitted → UTC. Unknown id → 400.
+
+```json
+{
+  "generatedAt": "2026-09-23T15:13:00Z",
+  "timeZone": "Europe/Istanbul",
+  "todayStart": "2026-09-22T21:00:00Z",   // local midnight, as UTC
+  "todayEnd": "2026-09-23T21:00:00Z",     // next local midnight (23 or 25 h later on DST days)
+  "stats": { "activeResources": 7, "resourcesInUseNow": 1, "reservationsToday": 2, "myUpcomingReservations": 1 },
+  "today": [ /* every Confirmed reservation overlapping today, all resources, earliest first */ ],
+  "inUseNow": [ /* Confirmed reservations running right now, ending soonest first */ ],
+  "myUpcoming": [ /* the caller's next 5 Confirmed reservations that haven't started */ ]
+}
+```
+
+Every list holds the reservation shape shown under Reservations. `stats.myUpcomingReservations`
+is the full count, while `myUpcoming` is capped at 5.
 
 ## Real-time (SignalR)
 
@@ -123,7 +148,8 @@ reservation doesn't exist; 409 if it has already ended.
 |---|---|---|
 | `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationCancelled` - both carry enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch |
 
-Both events carry the reservation object shown under Reservations above. Handlers raise them
+Both events carry the reservation object shown under Reservations above, including
+`userDisplayName`, so a screen can say who just booked or cancelled. Handlers raise them
 through `IReservationNotifier` only after the change is committed. Until the SignalR
 implementation of that interface is registered, a no-op one is in place: every endpoint
 works, but open screens don't update live yet.

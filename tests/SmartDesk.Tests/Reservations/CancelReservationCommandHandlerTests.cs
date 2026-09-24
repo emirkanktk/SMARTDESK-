@@ -26,7 +26,8 @@ public class CancelReservationCommandHandlerTests : IDisposable
     private async Task<ReservationDto> CancelAsync(Guid reservationId, ICurrentUserService caller)
     {
         await using var context = _database.CreateContext();
-        var handler = new CancelReservationCommandHandler(context, caller, _notifier.Object, new FakeTimeProvider(Now));
+        var handler = new CancelReservationCommandHandler(
+            context, caller, new FakeIdentityService(), _notifier.Object, new FakeTimeProvider(Now));
         return await handler.Handle(new CancelReservationCommand(reservationId), CancellationToken.None);
     }
 

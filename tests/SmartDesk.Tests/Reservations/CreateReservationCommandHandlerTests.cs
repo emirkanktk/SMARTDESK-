@@ -14,6 +14,7 @@ public class CreateReservationCommandHandlerTests : IDisposable
 {
     private static readonly DateTime Day = new(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc);
     private static readonly Guid UserId = Guid.NewGuid();
+    private static readonly Dictionary<Guid, string> Names = new() { [UserId] = "Ayşe Yılmaz" };
 
     private readonly SqliteTestDatabase _database = new();
     private readonly Mock<IReservationNotifier> _notifier = new();
@@ -25,7 +26,8 @@ public class CreateReservationCommandHandlerTests : IDisposable
     private async Task<ReservationDto> CreateAsync(CreateReservationCommand command, Guid? userId = null)
     {
         await using var context = _database.CreateContext();
-        var handler = new CreateReservationCommandHandler(context, new FakeCurrentUser(userId ?? UserId), _notifier.Object);
+        var handler = new CreateReservationCommandHandler(
+            context, new FakeCurrentUser(userId ?? UserId), new FakeIdentityService(Names), _notifier.Object);
         return await handler.Handle(command, CancellationToken.None);
     }
 
@@ -41,8 +43,11 @@ public class CreateReservationCommandHandlerTests : IDisposable
         dto.UserId.Should().Be(UserId);
         dto.Status.Should().Be(ReservationStatus.Confirmed);
         dto.Note.Should().Be("Sprint planning");
+        dto.UserDisplayName.Should().Be("Ayşe Yılmaz");
+        // The live event carries the owner's name too, so other screens can show who booked.
         _notifier.Verify(n => n.ReservationCreatedAsync(
-            It.Is<ReservationDto>(r => r.Id == dto.Id), It.IsAny<CancellationToken>()), Times.Once);
+            It.Is<ReservationDto>(r => r.Id == dto.Id && r.UserDisplayName == "Ayşe Yılmaz"),
+            It.IsAny<CancellationToken>()), Times.Once);
 
         await using var verify = _database.CreateContext();
         (await verify.Reservations.SingleAsync()).UserId.Should().Be(UserId);

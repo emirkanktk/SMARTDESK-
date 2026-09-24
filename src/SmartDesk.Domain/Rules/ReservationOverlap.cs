@@ -17,4 +17,9 @@ public static class ReservationOverlap
 
     public static bool Overlaps(DateTime startA, DateTime endA, DateTime startB, DateTime endB) =>
         startA < endB && startB < endA;
+
+    // "In use right now": a Confirmed reservation whose [start, end) contains the instant -
+    // it has started (start included) and not yet ended (end excluded).
+    public static Expression<Func<Reservation, bool>> ConfirmedActiveAt(DateTime instant) =>
+        r => r.Status == ReservationStatus.Confirmed && r.StartDateTime <= instant && instant < r.EndDateTime;
 }

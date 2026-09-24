@@ -13,6 +13,7 @@ namespace SmartDesk.Application.Features.Reservations.Commands.CreateReservation
 public sealed class CreateReservationCommandHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
+    IIdentityService identityService,
     IReservationNotifier notifier) : IRequestHandler<CreateReservationCommand, ReservationDto>
 {
     public async Task<ReservationDto> Handle(CreateReservationCommand request, CancellationToken cancellationToken)
@@ -73,6 +74,7 @@ public sealed class CreateReservationCommandHandler(
             .Where(r => r.Id == reservationId)
             .Select(ReservationDto.Projection)
             .SingleAsync(cancellationToken);
+        dto = await identityService.WithUserNameAsync(dto, cancellationToken);
 
         await notifier.ReservationCreatedAsync(dto, cancellationToken);
 

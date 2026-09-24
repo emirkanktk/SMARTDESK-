@@ -6,18 +6,22 @@ using SmartDesk.Application.Features.Reservations.Common;
 
 namespace SmartDesk.Application.Features.Reservations.Queries.GetMyReservations;
 
-public sealed class GetMyReservationsQueryHandler(IApplicationDbContext db, ICurrentUserService currentUser)
-    : IRequestHandler<GetMyReservationsQuery, IReadOnlyList<ReservationDto>>
+public sealed class GetMyReservationsQueryHandler(
+    IApplicationDbContext db,
+    ICurrentUserService currentUser,
+    IIdentityService identityService) : IRequestHandler<GetMyReservationsQuery, IReadOnlyList<ReservationDto>>
 {
     public async Task<IReadOnlyList<ReservationDto>> Handle(GetMyReservationsQuery request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId ?? throw new UnauthorizedException();
 
-        return await db.Reservations
+        var reservations = await db.Reservations
             .AsNoTracking()
             .Where(r => r.UserId == userId)
             .OrderBy(r => r.StartDateTime)
             .Select(ReservationDto.Projection)
             .ToListAsync(cancellationToken);
+
+        return await identityService.WithUserNamesAsync(reservations, cancellationToken);
     }
 }

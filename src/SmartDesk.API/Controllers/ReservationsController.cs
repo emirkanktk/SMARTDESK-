@@ -5,6 +5,7 @@ using SmartDesk.Application.Features.Reservations.Commands.CancelReservation;
 using SmartDesk.Application.Features.Reservations.Commands.CreateReservation;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Reservations.Queries.GetMyReservations;
+using SmartDesk.Application.Features.Reservations.Queries.GetReservations;
 
 namespace SmartDesk.API.Controllers;
 
@@ -32,6 +33,14 @@ public sealed class ReservationsController(ISender sender) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<ReservationDto> Cancel(Guid id, CancellationToken cancellationToken) =>
         sender.Send(new CancelReservationCommand(id), cancellationToken);
+
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyList<ReservationDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public Task<IReadOnlyList<ReservationDto>> GetInRange(
+        [FromQuery] GetReservationsQuery query,
+        CancellationToken cancellationToken) =>
+        sender.Send(query, cancellationToken);
 
     [HttpGet("mine")]
     [ProducesResponseType<IReadOnlyList<ReservationDto>>(StatusCodes.Status200OK)]

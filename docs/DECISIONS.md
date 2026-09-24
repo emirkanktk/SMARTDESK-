@@ -170,3 +170,18 @@ overlapping rows directly, bypassing the handler.
 
 SQLite, used for unit tests, has neither the lock nor the constraint. Those tests cover the
 handler logic; the concurrency guarantees were verified against PostgreSQL.
+
+## ADR-0012: "Today" is the caller's local day, passed as an IANA time zone
+
+**Decision:** `GET /api/dashboard` takes an optional `timeZone` (IANA id, e.g.
+`Europe/Istanbul`, validated against the system's time zone database). The server converts
+the local midnights on either side of "now" into UTC and queries that range. It returns the
+bounds it used (`todayStart`, `todayEnd`) along with the data. Everything else stays in UTC,
+as the conventions in `docs/API_CONTRACTS.md` already require.
+
+**Why:** timestamps are stored and exchanged in UTC, but "today" is a local concept. With a
+UTC day, a user in Istanbul (UTC+3) would see yesterday's bookings as "today" until 03:00.
+Sending a zone id rather than an offset keeps daylight-saving days right, because a local
+day can be 23 or 25 hours long, and the server has the zone rules to handle that. Returning
+the bounds means the screen and the server never silently disagree about which day is
+shown.
