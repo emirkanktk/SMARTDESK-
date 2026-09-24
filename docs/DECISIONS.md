@@ -216,7 +216,7 @@ Verified on PostgreSQL with two tests:
 - Cancel and update of one reservation fired together, 10 rounds: every round ended in one
   of the two valid serial orders, with 0 errors and 0 deadlocks.
 
-## ADR-0014: Resource blocks - time-boxed unavailability that never overrides a booking
+## ADR-0015: Resource blocks - time-boxed unavailability that never overrides a booking
 
 **Decision:**
 - An Admin can block a resource for one `[start, end)` window with a required reason, stored

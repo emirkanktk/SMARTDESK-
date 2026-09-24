@@ -35,7 +35,7 @@ public static class BookingGuard
             throw new ConflictException($"{resource.Name} can't be reserved right now (status: {resource.Status}).");
         }
 
-        // Business rule 7: blocked windows (ADR-0014).
+        // Business rule 7: blocked windows (ADR-0015).
         var blockReason = await db.ResourceBlocks
             .Where(b => b.ResourceId == resourceId)
             .Where(ResourceBlockOverlap.Overlapping(start, end))

@@ -129,7 +129,7 @@ Resource 1 ── * ResourceBlock
 7. A resource can't be booked, or a reservation moved, into a window covered by a
    `ResourceBlock`. A block can't be created over `Confirmed` reservations or over another
    block of the same resource. Creating a block takes the same per-resource lock as booking,
-   so a block and a reservation can never both claim one slot (ADR-0014).
+   so a block and a reservation can never both claim one slot (ADR-0015).
 
 ## Concurrency (formerly an open question)
 
