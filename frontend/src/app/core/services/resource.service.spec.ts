@@ -37,6 +37,24 @@ describe('ResourceService', () => {
     req.flush([]);
   });
 
+  it('searches availability with the time range and only the filters that are set', () => {
+    service
+      .getAvailable({
+        startDateTime: '2026-10-05T07:00:00.000Z',
+        endDateTime: '2026-10-05T08:00:00.000Z',
+        resourceTypeId: null,
+        minCapacity: 4,
+      })
+      .subscribe();
+
+    const req = http.expectOne((r) => r.url === `${base}/available`);
+    expect(req.request.params.get('startDateTime')).toBe('2026-10-05T07:00:00.000Z');
+    expect(req.request.params.get('endDateTime')).toBe('2026-10-05T08:00:00.000Z');
+    expect(req.request.params.get('minCapacity')).toBe('4');
+    expect(req.request.params.has('resourceTypeId')).toBe(false);
+    req.flush([]);
+  });
+
   it('creates with POST and updates with PUT on the resource url', () => {
     const { id, resourceTypeName: _, status, ...body } = fakeResource();
 
