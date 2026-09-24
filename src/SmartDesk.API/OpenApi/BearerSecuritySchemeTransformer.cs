@@ -38,6 +38,11 @@ internal sealed class BearerSecuritySchemeTransformer : IOpenApiDocumentTransfor
             {
                 [new OpenApiSecuritySchemeReference(SchemeId, context.Document)] = [],
             });
+
+            // Every protected operation can answer 401, so document it once here rather than
+            // on every action.
+            operation.Responses ??= [];
+            operation.Responses.TryAdd("401", new OpenApiResponse { Description = "Missing, invalid or expired access token." });
         }
 
         return Task.CompletedTask;

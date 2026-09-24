@@ -25,18 +25,54 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 
 ## Resource types
 
-| Method | Path | Auth | Notes |
-|---|---|---|---|
-| GET | `/api/resource-types` | any authenticated user | flat list, for populating forms/filters |
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/resource-types` | any authenticated user | `GetResourceTypesQuery` | → `[{ id, name }]`, sorted by name, for populating forms/filters |
+
+Types are reference data seeded by migration: Meeting Room, Desk, Company Car, Projector,
+Camera (fixed ids, same in every environment). There's no endpoint to add types yet.
 
 ## Resources
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| GET | `/api/resources` | any authenticated user | — | full list with filtering (type, status) for the Resources screen |
-| GET | `/api/resources/available` | any authenticated user | `GetAvailableResourcesQuery` | query params: `startDateTime`, `endDateTime`, optional `resourceTypeId`, `minCapacity` |
-| POST | `/api/resources` | Admin | `CreateResourceCommand` | body: name, resourceTypeId, capacity, location, description, features |
-| PUT | `/api/resources/{id}` | Admin | `UpdateResourceCommand` | full replace of the mutable fields above, plus `status` |
+| GET | `/api/resources` | any authenticated user | `GetResourcesQuery` | optional query params `resourceTypeId`, `status`. Returns every status unless filtered (the Resources screen shows inactive ones greyed out). |
+| GET | `/api/resources/{id}` | any authenticated user | `GetResourceByIdQuery` | 404 if it doesn't exist. For the admin edit form. |
+| GET | `/api/resources/available` | any authenticated user | `GetAvailableResourcesQuery` | query params: `startDateTime`, `endDateTime`, optional `resourceTypeId`, `minCapacity`. Rules below. |
+| POST | `/api/resources` | Admin | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[] }` → 201 with `Location` header. Always created `Active`. |
+| PUT | `/api/resources/{id}` | Admin | `UpdateResourceCommand` | body: the POST fields plus `status`. Full replace: omitting `features` removes them all. |
+
+Every resource endpoint returns the same shape:
+
+```json
+{
+  "id": "…", "name": "Meeting Room A",
+  "resourceTypeId": "…", "resourceTypeName": "Meeting Room",
+  "capacity": 8, "location": "2nd Floor",
+  "status": "Active",            // "Active" | "Inactive" | "Maintenance"
+  "description": null,
+  "features": ["TV", "Video Conference"]
+}
+```
+
+**Validation (400):** `name` and `location` required, max 200 chars; `description` max 1000;
+`capacity` 1-1000; `resourceTypeId` must exist; at most 20 `features`, each 1-100 chars, no
+duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
+
+**Availability rules** (`/api/resources/available`):
+- Only `Active` resources are returned; `Inactive` / `Maintenance` never are.
+- A resource is excluded if it has a `Confirmed` reservation overlapping
+  `[startDateTime, endDateTime)`. Ranges are half-open, so back-to-back bookings are fine:
+  a reservation ending at 11:00 does not block a search starting at 11:00. Cancelled
+  reservations never block.
+- `endDateTime` must be after `startDateTime`; the window can be at most 31 days.
+  `minCapacity`, if given, must be positive. Past windows aren't rejected here (it's a
+  read-only search); creating a reservation in the past is rejected by
+  `CreateReservationCommand`.
+- The result is a snapshot. A slot shown as free can be taken a second later, so
+  `POST /api/reservations` re-checks and can still answer 409.
+- Send times as UTC (`2026-10-05T11:00:00Z`). An explicit offset (`+03:00`) is converted
+  correctly, and a time without an offset is treated as UTC.
 
 ## Reservations
 
@@ -61,7 +97,9 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 ## Conventions
 
 - Timestamps are UTC ISO-8601 over the wire; the frontend converts to local time for
-  display.
+  display. A timestamp sent without an offset is treated as UTC.
+- Enums are serialized as their names (`"Active"`, `"Maintenance"`), not numbers, both in
+  responses and in request bodies/query strings.
 - List endpoints that can grow (reservations, resources) should be paginated once real
   data volume shows up - not needed for the MVP's expected data size.
 - DTOs are never the EF entities directly (see `docs/DECISIONS.md`, ADR-0002).

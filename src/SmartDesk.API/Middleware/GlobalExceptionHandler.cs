@@ -32,6 +32,12 @@ public class GlobalExceptionHandler(
                 Title = "Unauthorized",
                 Detail = exception.Message,
             },
+            NotFoundException => new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Not Found",
+                Detail = exception.Message,
+            },
             _ => null,
         };
 

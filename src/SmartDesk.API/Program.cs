@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -15,7 +16,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+// Enums go over the wire as names ("Active", "Maintenance"), not as numbers the frontend
+// would have to keep in sync by hand. Set on both option types: MVC serializes controller
+// responses with the first, but the OpenAPI generator builds its schemas from the second,
+// so setting only one makes the documented type (integer) disagree with the real one.
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi(options =>
 {
@@ -88,8 +95,8 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
-// Roles in every environment; demo users only in Development (ADR-0007).
-await app.Services.SeedIdentityDataAsync(includeDemoUsers: app.Environment.IsDevelopment());
+// Roles in every environment; demo users and resources only in Development (ADR-0007).
+await app.Services.SeedDatabaseAsync(includeDemoData: app.Environment.IsDevelopment());
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

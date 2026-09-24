@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence;
+using SmartDesk.Infrastructure.Persistence.Seed;
 
 namespace SmartDesk.Infrastructure;
 
@@ -16,6 +17,7 @@ public static class DependencyInjection
     {
         services.AddDbContext<SmartDeskDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<SmartDeskDbContext>());
 
         // AddIdentityCore rather than AddIdentity: this is a bearer-token API, and AddIdentity
         // also registers cookie authentication, which turns a 403 into a 302 redirect to a
@@ -45,13 +47,21 @@ public static class DependencyInjection
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IdentityDataSeeder>();
+        services.AddScoped<DemoResourceSeeder>();
 
         return services;
     }
 
-    public static async Task SeedIdentityDataAsync(this IServiceProvider services, bool includeDemoUsers)
+    // Roles in every environment; demo users and demo resources only when includeDemoData
+    // (Development - ADR-0007). Resource types come from the migration, not from here.
+    public static async Task SeedDatabaseAsync(this IServiceProvider services, bool includeDemoData)
     {
         await using var scope = services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<IdentityDataSeeder>().SeedAsync(includeDemoUsers);
+
+        var identitySeeded = await scope.ServiceProvider.GetRequiredService<IdentityDataSeeder>().SeedAsync(includeDemoData);
+        if (identitySeeded && includeDemoData)
+        {
+            await scope.ServiceProvider.GetRequiredService<DemoResourceSeeder>().SeedAsync();
+        }
     }
 }

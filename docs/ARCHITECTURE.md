@@ -47,9 +47,10 @@ reflects reservation changes to every open screen in real time.
 ```
 
 Dependencies point inward only. `Domain` never references EF Core, ASP.NET Core, or any
-other project - it is plain C#. `Application` depends only on `Domain` plus MediatR/
-FluentValidation abstractions. `Infrastructure` implements what `Application` needs
-(persistence, identity) and is the only place EF Core/Npgsql-specific code lives. `API` is
+other project - it is plain C#. `Application` depends on `Domain` plus MediatR,
+FluentValidation and EF Core's provider-agnostic abstractions (`DbSet`, LINQ - see ADR-0009).
+`Infrastructure` implements what `Application` needs (persistence, identity) and is the only
+place Npgsql/PostgreSQL-specific code lives. `API` is
 the composition root: it wires everything together in `Program.cs` and exposes it over HTTP.
 
 ### 3.1 Why the `ApplicationUser` identity type lives in Infrastructure, not Domain
@@ -82,7 +83,8 @@ provides the implementation. That keeps handlers unit-testable with plain mocks.
 
 Exceptions carry no HTTP knowledge. `GlobalExceptionHandler` is the single place that maps
 them to `ProblemDetails` responses: FluentValidation's `ValidationException` → 400,
-`UnauthorizedException` → 401, anything unexpected → 500 (logged).
+`UnauthorizedException` → 401, `NotFoundException` → 404, anything unexpected → 500
+(logged).
 
 ### 3.3 Backend project structure
 
@@ -92,15 +94,18 @@ src/
     Entities/          Resource, ResourceType, ResourceFeature, Reservation
     Enums/              ResourceStatus, ReservationStatus
     Constants/          Roles (Admin, Employee)
+    Rules/              ReservationOverlap - the one definition of "time range taken"
   SmartDesk.Application/
-    Common/             Behaviors/ (ValidationBehavior), Exceptions/, Interfaces/, Models/
+    Common/             Behaviors/ (ValidationBehavior), Exceptions/, Extensions/,
+                          Interfaces/ (incl. IApplicationDbContext), Models/
     Features/<Area>/    Commands/<Name>/ and Queries/<Name>/ - request, handler,
                           validator and response DTO side by side
     DependencyInjection.cs  AddApplication(): MediatR + pipeline + validators
   SmartDesk.Infrastructure/
     Identity/           ApplicationUser, IdentityService, JwtTokenGenerator,
                           JwtOptions, IdentityDataSeeder
-    Persistence/         SmartDeskDbContext, Migrations/
+    Persistence/         SmartDeskDbContext, Migrations/, Seed/ (resource types,
+                          Development demo resources)
     DependencyInjection.cs  AddInfrastructure(): DbContext, Identity, JWT options
   SmartDesk.API/
     Program.cs           composition root: JWT bearer, authorization, CORS,
@@ -110,7 +115,9 @@ src/
     OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
 tests/
-  SmartDesk.Tests/        unit tests for Application handlers and Domain rules
+  SmartDesk.Tests/        unit tests for Application handlers and Domain rules;
+                          handlers that query run against SmartDeskDbContext on
+                          in-memory SQLite (TestSupport/SqliteTestDatabase)
 ```
 
 ## 4. Data model

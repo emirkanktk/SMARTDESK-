@@ -101,3 +101,32 @@ a forbidden request answer with a 302 redirect to a non-existent login page inst
 403; this API only uses bearer tokens, so the cookie handlers are left out entirely.
 `SignInManager` is still used for password checks because it applies Identity's lockout
 (5 failed attempts → 5 minutes), which a bare `UserManager.CheckPasswordAsync` does not.
+
+## ADR-0009: Handlers query through `IApplicationDbContext`; Application references EF Core, not Npgsql
+
+**Decision:** Application defines `IApplicationDbContext` (the four `DbSet`s plus
+`SaveChangesAsync`), which `SmartDeskDbContext` implements. Handlers write their LINQ
+against it directly. As a result `SmartDesk.Application` references
+`Microsoft.EntityFrameworkCore` (the provider-agnostic core). It does not reference
+Npgsql; anything PostgreSQL-specific stays in Infrastructure.
+
+**Why:** the alternative, one repository interface per entity implemented in
+Infrastructure, would move the queries that *are* the business rules (availability, the
+overlap check) out of the handlers and into Infrastructure, which is the opposite of what
+ADR-0001 is for. The repositories would also mostly just wrap `DbSet` one method at a
+time. With the interface, a handler is still testable in isolation: tests run it against
+the real `SmartDeskDbContext` on in-memory SQLite, a real relational provider with no
+PostgreSQL needed. The cost is a framework package in Application, accepted knowingly and
+limited to EF Core's abstractions.
+
+## ADR-0010: Resource types are migration seed data; demo resources follow ADR-0007
+
+**Decision:** The five resource types are seeded with `HasData` in the model, so they ship
+inside a migration with fixed ids and exist identically in every environment. Eight sample
+resources are seeded on startup in Development only, including one under maintenance, and
+only while the `Resources` table is empty.
+
+**Why:** types are reference data the app can't run without (every resource needs one),
+and fixed ids let seeds, tests, and the frontend refer to them reliably. Sample resources are
+demo data, so they follow ADR-0007's Development-only rule. The empty-table check means
+the seed never re-creates or overwrites resources someone edited by hand.

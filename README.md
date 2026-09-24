@@ -55,6 +55,10 @@ ADR-0007). All three share the password `SmartDesk123!`.
 
 Five wrong passwords in a row lock an account for five minutes.
 
+The Development seed also creates eight sample resources (meeting rooms, desks, a company
+car, a projector, and a camera under maintenance) when the database has none. The five
+resource types come from a migration and exist in every environment (ADR-0010).
+
 ## Frontend setup
 
 ```bash

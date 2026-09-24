@@ -17,7 +17,7 @@
 | Field | Type | Notes |
 |---|---|---|
 | Id | Guid | |
-| Name | string | e.g. "Meeting Room", "Desk", "Company Car" |
+| Name | string | unique. Seeded by migration: Meeting Room, Desk, Company Car, Projector, Camera |
 
 ### Resource
 
@@ -70,6 +70,7 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
 
 ## Indexes
 
+- `ResourceTypes(Name)` - unique.
 - `Reservations(ResourceId, Status, StartDateTime, EndDateTime)` - composite index backing
   the overlap-check query every `CreateReservationCommand` will run (same resource, active
   reservations, does the new range intersect an existing one).
@@ -79,9 +80,13 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
 1. **No overlapping reservations for the same resource.** Two `Confirmed` reservations on
    the same `ResourceId` must not have intersecting `[StartDateTime, EndDateTime)` ranges.
    Example: existing `10:00–11:30`, new request `11:00–12:00` → rejected (ranges intersect).
+   Ranges are half-open, so `10:00–11:00` and `11:00–12:00` do not overlap. The single
+   definition lives in `SmartDesk.Domain.Rules.ReservationOverlap`, used by both the
+   availability search and reservation creation.
 2. `EndDateTime` must be strictly greater than `StartDateTime`.
 3. A `Resource` with `Status` other than `Active` (`Inactive` or `Maintenance`) cannot be
-   reserved.
+   reserved. Changing a resource to `Inactive`/`Maintenance` stops new bookings but leaves
+   its existing reservations in place; an admin cancels those individually if needed.
 4. A reservation's owner can cancel their own reservation; `Admin` can manage any
    reservation.
 5. Concurrent requests for the same resource/time range must not both succeed - the

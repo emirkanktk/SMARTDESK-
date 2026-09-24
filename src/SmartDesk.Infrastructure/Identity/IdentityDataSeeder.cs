@@ -24,15 +24,17 @@ public sealed class IdentityDataSeeder(
         new("employee2@smartdesk.local", "Mehmet", "Demir", Roles.Employee),
     ];
 
-    public async Task SeedAsync(bool includeDemoUsers, CancellationToken cancellationToken = default)
+    // Returns false when it skipped because the schema isn't up to date, so the caller can
+    // skip any seeding that depends on it too.
+    public async Task<bool> SeedAsync(bool includeDemoUsers, CancellationToken cancellationToken = default)
     {
         var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
         if (pending.Count != 0)
         {
             logger.LogWarning(
-                "Skipping identity seed: {Count} pending migration(s). Run 'dotnet ef database update' first.",
+                "Skipping database seed: {Count} pending migration(s). Run 'dotnet ef database update' first.",
                 pending.Count);
-            return;
+            return false;
         }
 
         foreach (var role in new[] { Roles.Admin, Roles.Employee })
@@ -46,7 +48,7 @@ public sealed class IdentityDataSeeder(
 
         if (!includeDemoUsers)
         {
-            return;
+            return true;
         }
 
         foreach (var demo in DemoUsers)
@@ -71,6 +73,8 @@ public sealed class IdentityDataSeeder(
                 EnsureSucceeded(await userManager.AddToRoleAsync(user, demo.Role), $"add '{demo.Email}' to '{demo.Role}'");
             }
         }
+
+        return true;
     }
 
     private static void EnsureSucceeded(IdentityResult result, string operation)

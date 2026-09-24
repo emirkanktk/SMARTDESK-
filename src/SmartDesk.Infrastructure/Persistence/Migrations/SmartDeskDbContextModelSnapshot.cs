@@ -254,7 +254,37 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.ToTable("ResourceTypes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a01"),
+                            Name = "Meeting Room"
+                        },
+                        new
+                        {
+                            Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a02"),
+                            Name = "Desk"
+                        },
+                        new
+                        {
+                            Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a03"),
+                            Name = "Company Car"
+                        },
+                        new
+                        {
+                            Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a04"),
+                            Name = "Projector"
+                        },
+                        new
+                        {
+                            Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a05"),
+                            Name = "Camera"
+                        });
                 });
 
             modelBuilder.Entity("SmartDesk.Infrastructure.Identity.ApplicationUser", b =>
