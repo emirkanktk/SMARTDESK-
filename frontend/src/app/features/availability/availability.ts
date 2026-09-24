@@ -21,6 +21,7 @@ import {
   parseIso,
   toDateTimeLocal,
 } from '../../shared/utils/date-time';
+import { keepDurationWhenStartMoves } from '../../shared/utils/keep-duration';
 import { applyServerErrors } from '../../shared/utils/server-errors';
 import { dateRangeValidator } from '../../shared/validators/date-range.validator';
 import { integerValidator } from '../../shared/validators/integer.validator';
@@ -145,7 +146,8 @@ export class Availability implements OnInit {
       this.fill(defaultStart, addMinutes(defaultStart, DEFAULT_DURATION_MIN), '', null);
     }
 
-    this.keepDurationWhenStartMoves();
+    const { startDateTime, endDateTime } = this.form.controls;
+    keepDurationWhenStartMoves(startDateTime, endDateTime, this.destroyRef);
   }
 
   protected search(): void {
@@ -226,24 +228,6 @@ export class Availability implements OnInit {
       resourceTypeId: value.resourceTypeId || null,
       minCapacity: value.minCapacity ? Number(value.minCapacity) : null,
     };
-  }
-
-  // Moving the start moves the end with it, keeping the chosen duration - the way calendar
-  // apps behave, and it saves re-picking the end every time.
-  private keepDurationWhenStartMoves(): void {
-    const { startDateTime, endDateTime } = this.form.controls;
-    let previousStart = fromDateTimeLocal(startDateTime.value);
-
-    startDateTime.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
-      const start = fromDateTimeLocal(value);
-      const end = fromDateTimeLocal(endDateTime.value);
-      if (start && previousStart && end && end > previousStart) {
-        endDateTime.setValue(
-          toDateTimeLocal(new Date(end.getTime() + start.getTime() - previousStart.getTime())),
-        );
-      }
-      previousStart = start;
-    });
   }
 
   private handleSearchError(error: unknown): void {
