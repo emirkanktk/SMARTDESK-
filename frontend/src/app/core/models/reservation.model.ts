@@ -23,6 +23,15 @@ export interface Reservation {
   userDisplayName: string | null;
 }
 
+/** Query for the calendar, `GET /api/reservations`. Times are UTC ISO strings. */
+export interface CalendarQuery {
+  /** Confirmed reservations overlapping [from, to), at most 31 days apart. */
+  from: string;
+  to: string;
+  resourceId?: string | null;
+  resourceTypeId?: string | null;
+}
+
 /** Body of `POST /api/reservations`. The owner is always the caller. */
 export interface CreateReservationRequest {
   resourceId: string;

@@ -43,6 +43,25 @@ describe('ReservationService', () => {
     req.flush(fakeReservation({ status: 'Cancelled' }));
   });
 
+  it('asks the calendar for a range, with only the filters that are set', () => {
+    service
+      .getCalendar({
+        from: '2026-10-04T21:00:00.000Z',
+        to: '2026-10-11T21:00:00.000Z',
+        resourceTypeId: 'type-room',
+        resourceId: null,
+      })
+      .subscribe();
+
+    const req = http.expectOne((r) => r.url === base);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('from')).toBe('2026-10-04T21:00:00.000Z');
+    expect(req.request.params.get('to')).toBe('2026-10-11T21:00:00.000Z');
+    expect(req.request.params.get('resourceTypeId')).toBe('type-room');
+    expect(req.request.params.has('resourceId')).toBe(false);
+    req.flush([]);
+  });
+
   it('gets one reservation by id', () => {
     service.getReservation('rsv-1').subscribe();
 
