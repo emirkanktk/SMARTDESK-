@@ -25,6 +25,7 @@ describe('Resources', () => {
 
   let getResources: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
+  let getResource: ReturnType<typeof vi.fn>;
   let fixture: ComponentFixture<Resources>;
   let element: HTMLElement;
 
@@ -32,6 +33,7 @@ describe('Resources', () => {
     isAdmin.set(false);
     getResources = vi.fn(() => of([room, desk]));
     update = vi.fn();
+    getResource = vi.fn((id: string) => of([room, desk].find((r) => r.id === id)));
 
     await TestBed.configureTestingModule({
       imports: [Resources],
@@ -43,6 +45,7 @@ describe('Resources', () => {
           useValue: {
             getResourceTypes: () => of([DESK_TYPE, MEETING_ROOM_TYPE]),
             getResources,
+            getResource,
             update,
           },
         },
@@ -130,10 +133,13 @@ describe('Resources', () => {
     expect(element.querySelector('.actions')).toBeNull();
   });
 
-  it('lets an admin deactivate a resource, sending the full resource', async () => {
+  it('deactivates from the latest copy, so edits made since the list loaded are kept', async () => {
     isAdmin.set(true);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    update.mockReturnValue(of({ ...room, status: 'Inactive' }));
+    // Another admin raised the capacity after this list was loaded.
+    const latest = { ...room, capacity: 12, features: ['TV', 'Video Conference', 'Whiteboard'] };
+    getResource.mockReturnValue(of(latest));
+    update.mockReturnValue(of({ ...latest, status: 'Inactive' }));
     await render();
 
     const button = Array.from(element.querySelectorAll<HTMLButtonElement>('.actions button')).find(
@@ -142,7 +148,8 @@ describe('Resources', () => {
     button.click();
     await fixture.whenStable();
 
-    const { id, resourceTypeName: _, ...fields } = room;
+    const { id, resourceTypeName: _, ...fields } = latest;
+    expect(getResource).toHaveBeenCalledWith(id);
     expect(update).toHaveBeenCalledWith(id, { ...fields, status: 'Inactive' });
     expect(element.querySelector('tbody tr')?.textContent).toContain('Inactive');
   });

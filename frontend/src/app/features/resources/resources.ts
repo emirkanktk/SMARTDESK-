@@ -104,17 +104,24 @@ export class Resources {
     }
 
     this.busyId.set(resource.id);
+    // PUT is a full replace, so re-read the resource first: sending the copy loaded with the
+    // list would overwrite whatever another admin changed since then.
     this.resourceService
-      .update(resource.id, {
-        name: resource.name,
-        resourceTypeId: resource.resourceTypeId,
-        capacity: resource.capacity,
-        location: resource.location,
-        description: resource.description,
-        features: resource.features,
-        status: next,
-      })
-      .pipe(finalize(() => this.busyId.set(null)))
+      .getResource(resource.id)
+      .pipe(
+        switchMap((latest) =>
+          this.resourceService.update(latest.id, {
+            name: latest.name,
+            resourceTypeId: latest.resourceTypeId,
+            capacity: latest.capacity,
+            location: latest.location,
+            description: latest.description,
+            features: latest.features,
+            status: next,
+          }),
+        ),
+        finalize(() => this.busyId.set(null)),
+      )
       .subscribe({
         next: (updated) => {
           const statusFilter = this.filters.controls.status.value;
