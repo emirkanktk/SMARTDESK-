@@ -10,10 +10,18 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 
 ## Auth
 
-| Method | Path | Auth | Notes |
-|---|---|---|---|
-| POST | `/api/auth/login` | none | body: `{ email, password }` → `{ accessToken, expiresAt }` |
-| GET | `/api/auth/me` | any authenticated user | current user's id, name, email, roles |
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt }`. 400 if a field is missing/malformed, 401 on any other failure. |
+| GET | `/api/auth/me` | any authenticated user | `GetCurrentUserQuery` | → `{ id, firstName, lastName, email, roles: string[] }` |
+
+- Login failures all return the same 401 `"Invalid email or password."` - unknown email,
+  wrong password and locked-out account are deliberately indistinguishable. Five failed
+  attempts lock the account for five minutes (ASP.NET Core Identity defaults).
+- The access token is valid for `Jwt:AccessTokenLifetimeMinutes` (60 by default); there is no
+  refresh token yet - on a 401 the frontend sends the user back to login.
+- Token claims: `sub` (user id), `email`, `given_name`, `family_name`, one `role` claim per
+  role (`Admin` / `Employee`).
 
 ## Resource types
 
@@ -57,3 +65,9 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 - List endpoints that can grow (reservations, resources) should be paginated once real
   data volume shows up - not needed for the MVP's expected data size.
 - DTOs are never the EF entities directly (see `docs/DECISIONS.md`, ADR-0002).
+- Every endpoint requires an authenticated user unless it's explicitly marked anonymous
+  (ADR-0008) - "none" in an Auth column above means `[AllowAnonymous]`.
+- Error status codes: 400 validation (`errors` holds a field → messages map), 401 missing/
+  invalid token or failed login, 403 authenticated but not allowed (e.g. non-Admin), 409
+  business-rule conflict (e.g. overlapping reservation), 500 unexpected. Validation messages
+  are always English, whatever the server's locale.

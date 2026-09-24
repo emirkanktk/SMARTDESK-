@@ -25,7 +25,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 # 1. Start PostgreSQL
 docker compose up -d
 
-# 2. Set the JWT signing key (local dev only - never commit this)
+# 2. Set the JWT signing key (local dev only - never commit this; at least 32 characters)
 dotnet user-secrets set "Jwt:Key" "<a long random string>" --project src/SmartDesk.API
 
 # 3. Apply migrations
@@ -37,9 +37,23 @@ dotnet run --project src/SmartDesk.API
 
 The API starts on the URL/port in `src/SmartDesk.API/Properties/launchSettings.json`
 (`https://localhost:7065` by default - matches `frontend/src/environments/environment.development.ts`,
-update both together if you change it). In development, OpenAPI docs are served at
-`/openapi/v1.json`. Allowed frontend origins for CORS are `Cors:AllowedOrigins` in
+update both together if you change it). In development, Swagger UI is served at `/swagger`
+(raw OpenAPI document at `/openapi/v1.json`): call `POST /api/auth/login`, copy the
+`accessToken`, and paste it into **Authorize** to try the protected endpoints. Allowed frontend origins for CORS are `Cors:AllowedOrigins` in
 `appsettings.Development.json` (see `docs/DECISIONS.md`, ADR-0006).
+
+### Demo users (Development only)
+
+Seeded automatically on startup in the Development environment (see `docs/DECISIONS.md`,
+ADR-0007). All three share the password `SmartDesk123!`.
+
+| Email | Role |
+|---|---|
+| `admin@smartdesk.local` | Admin |
+| `employee1@smartdesk.local` | Employee |
+| `employee2@smartdesk.local` | Employee |
+
+Five wrong passwords in a row lock an account for five minutes.
 
 ## Frontend setup
 

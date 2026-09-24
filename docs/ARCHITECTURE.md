@@ -19,7 +19,7 @@ reflects reservation changes to every open screen in real time.
 | Database | PostgreSQL (Npgsql) |
 | Auth | ASP.NET Core Identity + JWT bearer tokens |
 | Real-time | SignalR |
-| API docs | Built-in ASP.NET Core OpenAPI (`/openapi`) |
+| API docs | Built-in ASP.NET Core OpenAPI (`/openapi/v1.json`) + Swagger UI (`/swagger`), Development only |
 | Local infra | Docker Compose (PostgreSQL) |
 
 ## 3. Backend: Onion Architecture
@@ -72,7 +72,17 @@ Controller  →  IMediator.Send(command/query)  →  Handler  →  DbContext  �
 Handlers are where business rules live (e.g. `CreateReservationCommandHandler` runs the
 overlap check against the database - never trust a check the frontend already did, the
 frontend's own check is only a fast-feedback convenience). FluentValidation validators for
-each Command/Query will run as a MediatR pipeline behavior, ahead of the handler.
+each Command/Query run in `ValidationBehavior`, a MediatR pipeline behavior, ahead of the
+handler; a failure never reaches the handler and comes back as a 400.
+
+Application code that needs something from outside (Identity, token signing, the current
+HTTP caller) asks for it through an interface in `Application/Common/Interfaces`
+(`IIdentityService`, `IJwtTokenGenerator`, `ICurrentUserService`); Infrastructure or API
+provides the implementation. That keeps handlers unit-testable with plain mocks.
+
+Exceptions carry no HTTP knowledge. `GlobalExceptionHandler` is the single place that maps
+them to `ProblemDetails` responses: FluentValidation's `ValidationException` → 400,
+`UnauthorizedException` → 401, anything unexpected → 500 (logged).
 
 ### 3.3 Backend project structure
 
@@ -83,13 +93,21 @@ src/
     Enums/              ResourceStatus, ReservationStatus
     Constants/          Roles (Admin, Employee)
   SmartDesk.Application/
-    (Commands, Queries, Handlers, DTOs, Validators land here per feature)
+    Common/             Behaviors/ (ValidationBehavior), Exceptions/, Interfaces/, Models/
+    Features/<Area>/    Commands/<Name>/ and Queries/<Name>/ - request, handler,
+                          validator and response DTO side by side
+    DependencyInjection.cs  AddApplication(): MediatR + pipeline + validators
   SmartDesk.Infrastructure/
-    Identity/           ApplicationUser
+    Identity/           ApplicationUser, IdentityService, JwtTokenGenerator,
+                          JwtOptions, IdentityDataSeeder
     Persistence/         SmartDeskDbContext, Migrations/
+    DependencyInjection.cs  AddInfrastructure(): DbContext, Identity, JWT options
   SmartDesk.API/
-    Program.cs           composition root: DbContext, Identity, JWT, MediatR,
-                          FluentValidation, exception handling, SignalR
+    Program.cs           composition root: JWT bearer, authorization, CORS,
+                          OpenAPI/Swagger UI, exception handling, SignalR, startup seed
+    Controllers/          thin - build a command/query, send it through MediatR
+    Services/             CurrentUserService (reads the caller from the JWT)
+    OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
 tests/
   SmartDesk.Tests/        unit tests for Application handlers and Domain rules
@@ -105,8 +123,11 @@ rules that constrain them (overlap checks, past-date rejection, inactive-resourc
 ASP.NET Core Identity owns user storage and password hashing; roles are plain Identity
 roles (`Admin`, `Employee` - see `SmartDesk.Domain.Constants.Roles`), not a raw string
 column, so role checks use the framework's own `[Authorize(Roles = ...)]` and
-`RoleManager`. Login issues a JWT; the API validates it per request via the JWT bearer
-handler configured in `Program.cs`. The signing key is never committed - see
+`RoleManager`. Login (`POST /api/auth/login` → `LoginCommand`) checks the password through
+`SignInManager` (so Identity's lockout applies) and issues a signed HS256 JWT; the API
+validates it per request via the JWT bearer handler configured in `Program.cs`. Every
+endpoint requires an authenticated user unless it opts out with `[AllowAnonymous]`
+(ADR-0008). The signing key is never committed - see
 `docs/DECISIONS.md` (ADR-0005) and the README's setup steps for `dotnet user-secrets`.
 
 ## 6. Real-time updates (SignalR)

@@ -1,0 +1,46 @@
+using FluentAssertions;
+using Moq;
+using SmartDesk.Application.Common.Exceptions;
+using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Models;
+using SmartDesk.Application.Features.Auth.Commands.Login;
+using SmartDesk.Domain.Constants;
+
+namespace SmartDesk.Tests.Auth;
+
+public class LoginCommandHandlerTests
+{
+    private readonly Mock<IIdentityService> _identityService = new();
+    private readonly Mock<IJwtTokenGenerator> _tokenGenerator = new();
+
+    private LoginCommandHandler CreateHandler() => new(_identityService.Object, _tokenGenerator.Object);
+
+    [Fact]
+    public async Task Handle_ValidCredentials_ReturnsGeneratedToken()
+    {
+        var user = new UserProfile(Guid.NewGuid(), "Ayşe", "Yılmaz", "ayse@smartdesk.local", [Roles.Employee]);
+        var expiresAt = new DateTime(2026, 9, 23, 12, 0, 0, DateTimeKind.Utc);
+        _identityService
+            .Setup(s => s.CheckCredentialsAsync("ayse@smartdesk.local", "Secret123!", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _tokenGenerator.Setup(g => g.Generate(user)).Returns(new AccessToken("jwt-value", expiresAt));
+
+        var response = await CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "Secret123!"), CancellationToken.None);
+
+        response.AccessToken.Should().Be("jwt-value");
+        response.ExpiresAt.Should().Be(expiresAt);
+    }
+
+    [Fact]
+    public async Task Handle_InvalidCredentials_ThrowsUnauthorizedAndIssuesNoToken()
+    {
+        _identityService
+            .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserProfile?)null);
+
+        var act = () => CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "wrong"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedException>().WithMessage("Invalid email or password.");
+        _tokenGenerator.Verify(g => g.Generate(It.IsAny<UserProfile>()), Times.Never);
+    }
+}
