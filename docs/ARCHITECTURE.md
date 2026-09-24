@@ -112,7 +112,8 @@ src/
                           OpenAPI/Swagger UI, exception handling, SignalR, startup seed
     Controllers/          thin - build a command/query, send it through MediatR
     Services/             CurrentUserService (reads the caller from the JWT),
-                          NullReservationNotifier (until the SignalR one lands)
+                          SignalRReservationNotifier (NullReservationNotifier remains
+                          only as an unused fallback)
     OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
 tests/
@@ -141,15 +142,18 @@ endpoint requires an authenticated user unless it opts out with `[AllowAnonymous
 ## 6. Real-time updates (SignalR)
 
 A single hub (`SmartDesk.API/Hubs/ReservationHub.cs`) broadcasts reservation
-create/cancel events to connected clients so an open calendar/dashboard screen updates
-without a page reload. The hub itself carries no business logic.
+create, update and cancel events to every connected client, so an open calendar or
+dashboard can patch itself without a reload. The hub has no methods and no business logic.
 
-Handlers don't know about SignalR. After a committed create/update/cancel they call
-`IReservationNotifier` (Application), passing the `ReservationDto` that becomes the event
-payload. Until the SignalR implementation (`IHubContext<ReservationHub>`, Burak's scope) is
-registered in `Program.cs`, `NullReservationNotifier` stands in, so reservations work fully
-without live updates. Reconnect/backoff handling and the Angular-side connection service
-are also Burak's scope (integration).
+Handlers don't know about SignalR. After a committed create, update or cancel they call
+`IReservationNotifier`. `SignalRReservationNotifier` sends the `ReservationDto` to
+`Clients.All` (ADR-0014). A failed broadcast is logged and swallowed, so a down socket
+cannot turn a saved reservation into an HTTP error. `NullReservationNotifier` is still
+registered with `TryAdd` and only applies if the SignalR notifier is not registered.
+
+The Angular app opens the connection when a session exists and closes it on logout.
+`withAutomaticReconnect` retries with backoff. Screens subscribe to `ReservationCreated`,
+`ReservationUpdated` and `ReservationCancelled`; they do not open their own hubs.
 
 ## 7. Frontend architecture
 

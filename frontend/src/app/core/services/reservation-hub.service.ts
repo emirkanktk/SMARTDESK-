@@ -17,7 +17,7 @@ export class ReservationHubService {
       .withUrl(`${environment.apiUrl.replace(/\/api$/, '')}/hubs/reservations`, {
         accessTokenFactory: () => this.authService.getToken() ?? '',
       })
-      .withAutomaticReconnect()
+      .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .build();
 
     this.connection.start().catch((error) => console.error('SignalR connection failed', error));
