@@ -1,12 +1,14 @@
 # Builds and tests both halves of the app on every pull request (whatever its base, so
-# stacked PRs are checked too) and on every push to main. Needs no secrets and no database:
-# backend tests run against in-memory SQLite, frontend tests against jsdom.
+# stacked PRs are checked too), on every push to main, and on demand. Needs no secrets and
+# no database: backend tests run against in-memory SQLite, frontend tests against jsdom.
 name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
+  # A manual run, for when GitHub drops a push event and main is left without a result.
+  workflow_dispatch:
 
 # A newer push to the same PR or branch makes an in-flight run pointless.
 concurrency:
