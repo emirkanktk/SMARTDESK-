@@ -137,7 +137,11 @@ for an API running in Docker - no need to edit `environment.development.ts`.
 ```bash
 dotnet test               # backend
 cd frontend && ng test    # frontend
+cd frontend && npm run test:time-zones   # frontend, once per time zone (DST, UTC+05:45, ...)
 ```
+
+Run the time-zone variant after touching date or time code: it sets `TZ` for each run
+itself, which a `TZ=...` prefix in Git Bash on Windows silently doesn't.
 
 The same checks run on GitHub Actions for every pull request and every push to `main`
 (`.github/workflows/ci.yml`): backend build + tests + a check that model changes come with a
