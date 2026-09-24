@@ -79,6 +79,8 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
 | POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note? }` → 201. The owner is always the caller. |
+| GET | `/api/reservations/{id}` | any authenticated user | `GetReservationByIdQuery` | one reservation, any status; 404 if it doesn't exist. For the edit form and for opening a calendar entry. |
+| PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note? }` - full replace → 200. Rules below. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
 | GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 31 days apart (400 otherwise). Everyone sees who booked what - it's a shared office calendar. |
@@ -116,6 +118,22 @@ requests: of several simultaneous bookings for one slot, exactly one gets 201 an
 **Cancel - errors:** 403 if the caller is neither the owner nor an Admin; 404 if the
 reservation doesn't exist; 409 if it has already ended.
 
+**Update - rules and errors.** The owner never changes, even when an Admin edits.
+
+| State of the reservation | What can change |
+|---|---|
+| upcoming (not started) | anything - resource, start, end, note. The new start follows the create rule (not in the past, 5-minute grace → 400 otherwise) |
+| in progress (started, not ended) | only `endDateTime` (must stay in the future) and `note`; changing the start or the resource → 409 |
+| ended, or cancelled | nothing → 409 |
+
+When the resource or the times change, the new slot goes through the same checks as a new
+booking: the resource must exist (404) and be `Active` (409), and it must not overlap another
+`Confirmed` reservation (409). The reservation's own current slot doesn't count, so shifting
+10:00-11:00 to 10:30-11:30 works. A change to the note alone skips those checks, so a note
+can still be edited after the resource went into maintenance. Other errors: 400 for the
+same shape rules as create, 403 for someone who is neither the owner nor an Admin, 404 for an
+unknown reservation. A PUT that changes nothing returns 200 and sends no event.
+
 ## Dashboard
 
 | Method | Path | Auth | Command/Query | Notes |
@@ -146,9 +164,12 @@ is the full count, while `myUpcoming` is capped at 5.
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationCancelled` - both carry enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch |
 
-Both events carry the reservation object shown under Reservations above, including
+All three events carry the reservation object shown under Reservations above, as it is after
+the change. For `ReservationUpdated` the resource or the times may be different from
+before, so screens should replace the entry by `id` rather than patch it in place. Every
+event includes
 `userDisplayName`, so a screen can say who just booked or cancelled. Handlers raise them
 through `IReservationNotifier` only after the change is committed. Until the SignalR
 implementation of that interface is registered, a no-op one is in place: every endpoint

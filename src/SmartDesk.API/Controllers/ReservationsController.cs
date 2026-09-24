@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartDesk.Application.Features.Reservations.Commands.CancelReservation;
 using SmartDesk.Application.Features.Reservations.Commands.CreateReservation;
+using SmartDesk.Application.Features.Reservations.Commands.UpdateReservation;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Reservations.Queries.GetMyReservations;
+using SmartDesk.Application.Features.Reservations.Queries.GetReservationById;
 using SmartDesk.Application.Features.Reservations.Queries.GetReservations;
 
 namespace SmartDesk.API.Controllers;
@@ -25,6 +27,21 @@ public sealed class ReservationsController(ISender sender) : ControllerBase
 
         return StatusCode(StatusCodes.Status201Created, reservation);
     }
+
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType<ReservationDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<ReservationDto> GetById(Guid id, CancellationToken cancellationToken) =>
+        sender.Send(new GetReservationByIdQuery(id), cancellationToken);
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType<ReservationDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<ReservationDto> Update(Guid id, UpdateReservationCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command with { Id = id }, cancellationToken);
 
     [HttpPost("{id:guid}/cancel")]
     [ProducesResponseType<ReservationDto>(StatusCodes.Status200OK)]

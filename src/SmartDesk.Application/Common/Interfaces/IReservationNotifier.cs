@@ -13,5 +13,9 @@ public interface IReservationNotifier
 {
     Task ReservationCreatedAsync(ReservationDto reservation, CancellationToken cancellationToken);
 
+    // Carries the reservation as it is now; its resource or times may differ from before, so
+    // screens should replace the entry by id rather than patch it in place.
+    Task ReservationUpdatedAsync(ReservationDto reservation, CancellationToken cancellationToken);
+
     Task ReservationCancelledAsync(ReservationDto reservation, CancellationToken cancellationToken);
 }
