@@ -34,8 +34,13 @@ public sealed class GetAvailableResourcesQueryHandler(IApplicationDbContext db)
             .Where(ReservationOverlap.ConfirmedOverlapping(start, end))
             .Select(r => r.ResourceId);
 
+        // Business rule 7: a resource blocked for any part of the window isn't available.
+        var blockedResourceIds = db.ResourceBlocks
+            .Where(ResourceBlockOverlap.Overlapping(start, end))
+            .Select(b => b.ResourceId);
+
         return await query
-            .Where(r => !busyResourceIds.Contains(r.Id))
+            .Where(r => !busyResourceIds.Contains(r.Id) && !blockedResourceIds.Contains(r.Id))
             .OrderBy(r => r.ResourceType.Name)
             .ThenBy(r => r.Name)
             .Select(ResourceDto.Projection)
