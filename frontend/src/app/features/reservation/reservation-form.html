@@ -148,7 +148,17 @@
     </div>
 
     <div class="form-actions">
-      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      @if (reservation()) {
+        <button
+          type="button"
+          class="btn btn-secondary cancel-reservation"
+          [disabled]="cancelling() || saving()"
+          (click)="cancelReservation()"
+        >
+          {{ cancelling() ? 'Cancelling…' : 'Cancel reservation' }}
+        </button>
+      }
+      <button type="submit" class="btn btn-primary" [disabled]="saving() || cancelling()">
         {{ saving() ? 'Saving…' : id() ? 'Save changes' : 'Book' }}
       </button>
     </div>
