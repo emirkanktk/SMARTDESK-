@@ -18,6 +18,11 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 - Login failures all return the same 401 `"Invalid email or password."` - unknown email,
   wrong password and locked-out account are deliberately indistinguishable. Five failed
   attempts lock the account for five minutes (ASP.NET Core Identity defaults).
+- On top of that, one client (IP) can make at most `RateLimiting:LoginPermitsPerMinute`
+  login attempts per minute - 10 by default, 60 in Development. Beyond that the API answers
+  **429** with a `Retry-After` header (seconds) and a ProblemDetails body: `"Too many
+  sign-in attempts. Please wait a minute and try again."`. The lockout protects one
+  account; this limit protects against one client trying many accounts.
 - The access token is valid for `Jwt:AccessTokenLifetimeMinutes` (60 by default); there is no
   refresh token yet - on a 401 the frontend sends the user back to login.
 - Token claims: `sub` (user id), `email`, `given_name`, `family_name`, one `role` claim per
@@ -188,5 +193,11 @@ works, but open screens don't update live yet.
   (ADR-0008) - "none" in an Auth column above means `[AllowAnonymous]`.
 - Error status codes: 400 validation (`errors` holds a field → messages map), 401 missing/
   invalid token or failed login, 403 authenticated but not allowed (e.g. non-Admin), 409
-  business-rule conflict (e.g. overlapping reservation), 500 unexpected. Validation messages
-  are always English, whatever the server's locale.
+  business-rule conflict (e.g. overlapping reservation), 429 too many login attempts, 500
+  unexpected. Validation messages are always English, whatever the server's locale.
+
+## Health
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/health` | none | `200 Healthy` when the API can reach PostgreSQL, `503 Unhealthy` otherwise. Plain text, for container health checks and uptime monitors. |

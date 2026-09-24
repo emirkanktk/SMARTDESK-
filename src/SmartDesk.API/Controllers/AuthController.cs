@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using SmartDesk.API.RateLimiting;
 using SmartDesk.Application.Features.Auth.Commands.Login;
 using SmartDesk.Application.Features.Auth.Queries.GetCurrentUser;
 
@@ -13,9 +15,11 @@ public sealed class AuthController(ISender sender) : ControllerBase
 {
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingSetup.LoginPolicy)]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
     public Task<LoginResponse> Login(LoginCommand command, CancellationToken cancellationToken) =>
         sender.Send(command, cancellationToken);
 
