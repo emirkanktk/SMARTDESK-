@@ -129,6 +129,8 @@ ng serve
 
 Serves on `http://localhost:4200` by default - already in the API's CORS allow-list. If
 your build serves on a different port, add it to `Cors:AllowedOrigins` too.
+`ng serve --configuration docker` talks to an API on `http://localhost:8080/api` instead,
+for an API running in Docker - no need to edit `environment.development.ts`.
 
 ## Running tests
 
