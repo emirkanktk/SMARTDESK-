@@ -179,22 +179,26 @@ frontend/src/app/
     notification-host/  toast messages
   shared/
     components/      small reusable UI pieces (e.g. StatusBadge)
-    utils/           form helpers (applyServerErrors: API 400 messages -> form controls),
-                     datetime-local <-> Date conversion
-    validators/      dateRangeValidator (end after start, max length, not in the past),
-                     integerValidator
+    utils/           form helpers (applyServerErrors: API 400 messages -> form controls,
+                     keepDurationWhenStartMoves), datetime-local <-> Date conversion
+    validators/      dateRangeValidator (end after start, max length, start not in the
+                     past with an optional grace, end in the future), integerValidator
   features/<screen>/ one lazy-loaded standalone component per screen; sub-screens in
                      sub-folders (e.g. resources/resource-form)
 ```
 
-Typed API clients (`AuthService`, `ResourceService`, ...) live in `core/services` and return
-the DTO shapes from `docs/API_CONTRACTS.md` as-is (`core/models`). Screens hold their own
-state in signals and never call `HttpClient` directly.
+Typed API clients (`AuthService`, `ResourceService`, `ReservationService`, ...) live in
+`core/services` and return the DTO shapes from `docs/API_CONTRACTS.md` as-is
+(`core/models`). Screens hold their own state in signals and never call `HttpClient`
+directly.
 
 Times are picked in the browser's local time (`<input type="datetime-local">`) and sent to
 the API as UTC ISO strings (`Date.toISOString()`); API timestamps are shown back in local
 time. Client-side range rules mirror the API's (e.g. availability's 31-day window is 31 x 24 h
-of elapsed time, not calendar days) and only give fast feedback - the API decides.
+of elapsed time, not calendar days) and only give fast feedback - the API decides. The
+reservation form also follows the update rules: once a reservation has started only its end
+and note can change, and an unchanged time is sent back as the API returned it, since the
+picker drops seconds and any difference would count as a change.
 
 - **Session.** `AuthService` keeps the access token in memory, mirrored to `localStorage`
   so a reload stays signed in. The current user (id, name, email, roles) is read from the
