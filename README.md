@@ -137,6 +137,11 @@ dotnet test               # backend
 cd frontend && ng test    # frontend
 ```
 
+The same checks run on GitHub Actions for every pull request and every push to `main`
+(`.github/workflows/ci.yml`): backend build + tests + a check that model changes come with a
+migration, and frontend build + tests. A PR's status checks show the result, so a reviewer
+can see "still builds and passes tests" before merging.
+
 ## Project structure
 
 ```
