@@ -47,9 +47,15 @@ export class ReservationHubService {
       .build();
 
     // Each event carries the reservation as it is after the change, same shape as HTTP.
-    connection.on('ReservationCreated', (reservation: Reservation) => this.created.next(reservation));
-    connection.on('ReservationUpdated', (reservation: Reservation) => this.updated.next(reservation));
-    connection.on('ReservationCancelled', (reservation: Reservation) => this.cancelled.next(reservation));
+    connection.on('ReservationCreated', (reservation: Reservation) =>
+      this.created.next(reservation),
+    );
+    connection.on('ReservationUpdated', (reservation: Reservation) =>
+      this.updated.next(reservation),
+    );
+    connection.on('ReservationCancelled', (reservation: Reservation) =>
+      this.cancelled.next(reservation),
+    );
     connection.onreconnected(() => this.reconnected.next());
 
     this.connection = connection;
@@ -76,7 +82,10 @@ export class ReservationHubService {
       if (this.stopped || this.connection !== connection) {
         return;
       }
-      this.startTimer = setTimeout(() => this.startWithRetry(connection, attempt + 1), nextDelay(attempt));
+      this.startTimer = setTimeout(
+        () => this.startWithRetry(connection, attempt + 1),
+        nextDelay(attempt),
+      );
     });
   }
 }
