@@ -102,6 +102,13 @@ builder.Services.AddSmartDeskRateLimiting(builder.Configuration);
 var app = builder.Build();
 
 // Roles in every environment; demo users and resources only in Development (ADR-0007).
+// Off by default: migrations are applied on purpose with `dotnet ef database update`. The
+// docker-compose API service turns it on, since its database starts empty.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    await app.Services.MigrateDatabaseAsync();
+}
+
 await app.Services.SeedDatabaseAsync(includeDemoData: app.Environment.IsDevelopment());
 
 // Configure the HTTP request pipeline.
