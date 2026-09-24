@@ -194,7 +194,11 @@ describe('ReservationForm', () => {
       create.mockReturnValue(
         throwError(
           () =>
-            new ApiError(409, 'Conflict', 'Meeting Room A is already reserved for part of that time.'),
+            new ApiError(
+              409,
+              'Conflict',
+              'Meeting Room A is already reserved for part of that time.',
+            ),
         ),
       );
       await render({
@@ -205,7 +209,9 @@ describe('ReservationForm', () => {
       await submit();
 
       const alert = field<HTMLElement>('.conflict');
-      expect(alert.textContent).toContain('Meeting Room A is already reserved for part of that time.');
+      expect(alert.textContent).toContain(
+        'Meeting Room A is already reserved for part of that time.',
+      );
       const link = new URL(alert.querySelector('a')!.href);
       expect(link.pathname).toBe('/availability');
       expect(link.searchParams.get('start')).toBe(utc('2026-10-07T14:00'));
