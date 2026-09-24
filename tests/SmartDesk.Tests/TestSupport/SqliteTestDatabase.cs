@@ -51,19 +51,25 @@ public sealed class SqliteTestDatabase : IDisposable
         return resource;
     }
 
-    public async Task AddReservationAsync(
-        Guid resourceId, DateTime start, DateTime end, ReservationStatus status = ReservationStatus.Confirmed)
+    public async Task<Reservation> AddReservationAsync(
+        Guid resourceId,
+        DateTime start,
+        DateTime end,
+        ReservationStatus status = ReservationStatus.Confirmed,
+        Guid? userId = null)
     {
         await using var context = CreateContext();
-        context.Reservations.Add(new Reservation
+        var reservation = new Reservation
         {
             ResourceId = resourceId,
-            UserId = Guid.NewGuid(),
+            UserId = userId ?? Guid.NewGuid(),
             StartDateTime = start,
             EndDateTime = end,
             Status = status,
-        });
+        };
+        context.Reservations.Add(reservation);
         await context.SaveChangesAsync();
+        return reservation;
     }
 
     public void Dispose() => _connection.Dispose();

@@ -78,9 +78,38 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: resourceId, startDateTime, endDateTime, note. 409 on overlap. |
-| POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | idempotent - cancelling an already-cancelled reservation is a no-op, not an error |
-| GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | current user's reservations, active + past |
+| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note? }` → 201. The owner is always the caller. |
+| POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
+| GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
+
+Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
+
+```json
+{
+  "id": "…", "resourceId": "…",
+  "resourceName": "Meeting Room A", "resourceTypeName": "Meeting Room", "resourceLocation": "2nd Floor",
+  "userId": "…",
+  "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:30:00Z",
+  "status": "Confirmed",          // "Confirmed" | "Cancelled"
+  "note": "Sprint planning"
+}
+```
+
+**Create - errors**
+
+| Status | When |
+|---|---|
+| 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past; longer than 31 days; `note` over 500 chars |
+| 404 | the resource doesn't exist |
+| 409 | the resource isn't `Active` (`"Camera C-1 can't be reserved right now (status: Maintenance)."`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`"Meeting Room A is already reserved for part of that time."`) |
+
+The 409 detail is written to be shown to the user as-is. Overlap uses the same half-open rule as
+the availability search, so back-to-back bookings are allowed. It holds under concurrent
+requests: of several simultaneous bookings for one slot, exactly one gets 201 and the rest 409
+(ADR-0011).
+
+**Cancel - errors:** 403 if the caller is neither the owner nor an Admin; 404 if the
+reservation doesn't exist; 409 if it has already ended.
 
 ## Dashboard
 
@@ -93,6 +122,11 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 | Hub | Path | Events |
 |---|---|---|
 | `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationCancelled` - both carry enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch |
+
+Both events carry the reservation object shown under Reservations above. Handlers raise them
+through `IReservationNotifier` only after the change is committed. Until the SignalR
+implementation of that interface is registered, a no-op one is in place: every endpoint
+works, but open screens don't update live yet.
 
 ## Conventions
 

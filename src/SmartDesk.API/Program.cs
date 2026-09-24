@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using SmartDesk.API.Hubs;
 using SmartDesk.API.Middleware;
@@ -35,6 +36,8 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+// No-op until the SignalR notifier is registered above this line (see NullReservationNotifier).
+builder.Services.TryAddScoped<IReservationNotifier, NullReservationNotifier>();
 
 // Validated at startup by AddInfrastructure (JwtOptions.ValidateOnStart), so a missing or
 // too-short key fails fast with a clear message rather than on the first request.

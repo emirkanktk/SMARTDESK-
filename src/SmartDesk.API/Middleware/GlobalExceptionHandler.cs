@@ -32,10 +32,22 @@ public class GlobalExceptionHandler(
                 Title = "Unauthorized",
                 Detail = exception.Message,
             },
+            ForbiddenAccessException => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "Forbidden",
+                Detail = exception.Message,
+            },
             NotFoundException => new ProblemDetails
             {
                 Status = StatusCodes.Status404NotFound,
                 Title = "Not Found",
+                Detail = exception.Message,
+            },
+            ConflictException => new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Conflict",
                 Detail = exception.Message,
             },
             _ => null,

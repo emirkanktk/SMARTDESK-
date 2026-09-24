@@ -1,0 +1,15 @@
+namespace SmartDesk.Application.Features.Reservations.Common;
+
+public static class ReservationRules
+{
+    // "No reservations in the past" (business rule 6) with a little slack, so a user who
+    // picks the current quarter-hour at 14:03 to book the room they're standing in isn't
+    // rejected by a clock that has already moved on.
+    public static readonly TimeSpan PastStartGrace = TimeSpan.FromMinutes(5);
+
+    // Same bound as the availability search window: a longer booking would block a resource
+    // for over a month, which is far more likely a mistake than intent.
+    public static readonly TimeSpan MaxDuration = TimeSpan.FromDays(31);
+
+    public const int MaxNoteLength = 500;
+}

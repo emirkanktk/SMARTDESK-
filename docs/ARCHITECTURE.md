@@ -83,8 +83,8 @@ provides the implementation. That keeps handlers unit-testable with plain mocks.
 
 Exceptions carry no HTTP knowledge. `GlobalExceptionHandler` is the single place that maps
 them to `ProblemDetails` responses: FluentValidation's `ValidationException` → 400,
-`UnauthorizedException` → 401, `NotFoundException` → 404, anything unexpected → 500
-(logged).
+`UnauthorizedException` → 401, `ForbiddenAccessException` → 403, `NotFoundException` →
+404, `ConflictException` → 409, anything unexpected → 500 (logged).
 
 ### 3.3 Backend project structure
 
@@ -111,7 +111,8 @@ src/
     Program.cs           composition root: JWT bearer, authorization, CORS,
                           OpenAPI/Swagger UI, exception handling, SignalR, startup seed
     Controllers/          thin - build a command/query, send it through MediatR
-    Services/             CurrentUserService (reads the caller from the JWT)
+    Services/             CurrentUserService (reads the caller from the JWT),
+                          NullReservationNotifier (until the SignalR one lands)
     OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
 tests/
@@ -141,10 +142,14 @@ endpoint requires an authenticated user unless it opts out with `[AllowAnonymous
 
 A single hub (`SmartDesk.API/Hubs/ReservationHub.cs`) broadcasts reservation
 create/cancel events to connected clients so an open calendar/dashboard screen updates
-without a page reload. The hub itself carries no business logic - handlers publish to it
-after a successful write. Wiring (SignalR service registration, hub mapping) is part of
-the shared skeleton; the actual broadcast calls from handlers, reconnect/backoff handling,
-and the Angular-side connection service are Burak's scope (integration).
+without a page reload. The hub itself carries no business logic.
+
+Handlers don't know about SignalR. After a committed create/cancel they call
+`IReservationNotifier` (Application), passing the `ReservationDto` that becomes the event
+payload. Until the SignalR implementation (`IHubContext<ReservationHub>`, Burak's scope) is
+registered in `Program.cs`, `NullReservationNotifier` stands in, so reservations work fully
+without live updates. Reconnect/backoff handling and the Angular-side connection service
+are also Burak's scope (integration).
 
 ## 7. Frontend architecture
 
