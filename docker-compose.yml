@@ -10,6 +10,32 @@ services:
       - "5432:5432"
     volumes:
       - smartdesk-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartdesk -d smartdesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Opt-in. `docker compose up -d` still starts PostgreSQL only.
+  api:
+    build: .
+    profiles: ["api"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=smartdesk;Username=smartdesk;Password=smartdesk_dev_only
+      Jwt__Key: ${JWT_KEY:-}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
 volumes:
   smartdesk-postgres-data:

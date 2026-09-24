@@ -102,6 +102,23 @@ most 60 logins a minute in Development (10 elsewhere; `RateLimiting:LoginPermits
 `GET /health` answers `Healthy` once the API can reach PostgreSQL - a quick check that the
 backend is up and configured.
 
+### Optional: run the API in Docker
+
+`docker compose up -d` still starts PostgreSQL only. To run the API next to it, set a
+signing key of at least 32 characters and start the `api` profile. Do not also `dotnet run`
+against the same database if you only wanted one of them; they can share PostgreSQL, but
+the container listens on port 8080, not the launchSettings ports.
+
+```bash
+export JWT_KEY="<a long random string>"
+docker compose --profile api up -d --build
+curl http://localhost:8080/health
+```
+
+The container uses `ASPNETCORE_ENVIRONMENT=Development`, so the demo users and sample
+resources are seeded. This is a local stand-in, not a production image. Point the Angular
+dev server at `http://localhost:8080/api` if you use this profile instead of `dotnet run`.
+
 The Development seed also creates eight sample resources (meeting rooms, desks, a company
 car, a projector, and a camera under maintenance) when the database has none. The five
 resource types come from a migration and exist in every environment (ADR-0010).
@@ -166,7 +183,7 @@ frontend/
   src/app/core/               interceptors, guards, shared services
 docs/
   ARCHITECTURE.md, DATA_MODEL.md, API_CONTRACTS.md, DECISIONS.md, TEAM_SYNC.md
-docker-compose.yml            local PostgreSQL
+docker-compose.yml            local PostgreSQL; optional API via the `api` profile
 ```
 
 See `docs/TEAM_SYNC.md` for who owns which part of this structure.
