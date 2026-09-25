@@ -223,6 +223,39 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("Resources");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceBlock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("EndDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResourceId", "StartDateTime", "EndDateTime");
+
+                    b.ToTable("ResourceBlocks", t =>
+                        {
+                            t.HasCheckConstraint("CK_ResourceBlocks_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\"");
+                        });
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceFeature", b =>
                 {
                     b.Property<Guid>("Id")
@@ -436,6 +469,17 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Navigation("ResourceType");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceBlock", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
+                        .WithMany("Blocks")
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Resource");
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceFeature", b =>
                 {
                     b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
@@ -449,6 +493,8 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.Resource", b =>
                 {
+                    b.Navigation("Blocks");
+
                     b.Navigation("Features");
 
                     b.Navigation("Reservations");

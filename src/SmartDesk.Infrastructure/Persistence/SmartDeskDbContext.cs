@@ -18,6 +18,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<Resource> Resources => Set<Resource>();
     public DbSet<ResourceFeature> ResourceFeatures => Set<ResourceFeature>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
+    public DbSet<ResourceBlock> ResourceBlocks => Set<ResourceBlock>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -72,6 +73,23 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             // Business rule 1's hard guarantee is a PostgreSQL exclusion constraint
             // (ReservationConstraints.NoOverlap). EF can't model it, so it's created in raw SQL
             // by the AddReservationOverlapConstraint migration - see ADR-0011.
+        });
+
+        builder.Entity<ResourceBlock>(entity =>
+        {
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(200);
+
+            entity.HasOne(e => e.Resource)
+                .WithMany(r => r.Blocks)
+                .HasForeignKey(e => e.ResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Serves both "is this resource blocked for [start, end)?" on every booking and the
+            // calendar's range query.
+            entity.HasIndex(e => new { e.ResourceId, e.StartDateTime, e.EndDateTime });
+
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_ResourceBlocks_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\""));
         });
     }
 

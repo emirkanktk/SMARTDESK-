@@ -72,5 +72,21 @@ public sealed class SqliteTestDatabase : IDisposable
         return reservation;
     }
 
+    public async Task<ResourceBlock> AddBlockAsync(Guid resourceId, DateTime start, DateTime end, string reason = "Maintenance")
+    {
+        await using var context = CreateContext();
+        var block = new ResourceBlock
+        {
+            ResourceId = resourceId,
+            StartDateTime = start,
+            EndDateTime = end,
+            Reason = reason,
+            CreatedByUserId = Guid.NewGuid(),
+        };
+        context.ResourceBlocks.Add(block);
+        await context.SaveChangesAsync();
+        return block;
+    }
+
     public void Dispose() => _connection.Dispose();
 }

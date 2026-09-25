@@ -13,6 +13,7 @@ public interface IApplicationDbContext
     DbSet<Resource> Resources { get; }
     DbSet<ResourceFeature> ResourceFeatures { get; }
     DbSet<Reservation> Reservations { get; }
+    DbSet<ResourceBlock> ResourceBlocks { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

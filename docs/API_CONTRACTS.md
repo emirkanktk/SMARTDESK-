@@ -66,6 +66,7 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 
 **Availability rules** (`/api/resources/available`):
 - Only `Active` resources are returned; `Inactive` / `Maintenance` never are.
+- A resource with a block (see Resource blocks) overlapping the window isn't returned either.
 - A resource is excluded if it has a `Confirmed` reservation overlapping
   `[startDateTime, endDateTime)`. Ranges are half-open, so back-to-back bookings are fine:
   a reservation ending at 11:00 does not block a search starting at 11:00. Cancelled
@@ -113,7 +114,7 @@ A reservation appears in a calendar range exactly when it would block a booking 
 |---|---|
 | 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past; longer than 31 days; `note` over 500 chars |
 | 404 | the resource doesn't exist |
-| 409 | the resource isn't `Active` (`"Camera C-1 can't be reserved right now (status: Maintenance)."`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`"Meeting Room A is already reserved for part of that time."`) |
+| 409 | the resource isn't `Active` (`"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`"Meeting Room A is already reserved for part of that time."`) |
 
 The 409 detail is written to be shown to the user as-is. Overlap uses the same half-open rule as
 the availability search, so back-to-back bookings are allowed. It holds under concurrent
@@ -138,6 +139,40 @@ booking: the resource must exist (404) and be `Active` (409), and it must not ov
 can still be edited after the resource went into maintenance. Other errors: 400 for the
 same shape rules as create, 403 for someone who is neither the owner nor an Admin, 404 for an
 unknown reservation. A PUT that changes nothing returns 200 and sends no event.
+
+## Resource blocks
+
+A block takes a resource out of booking for one window - planned maintenance, an event, a
+car at the service - without changing its status. Blocks use the same half-open
+`[start, end)` rule as reservations.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/resource-blocks?from=&to=&resourceId=` | any authenticated user | `GetResourceBlocksQuery` | blocks overlapping `[from, to)`, earliest first; same 42-day limit as the calendar. Drawn next to the calendar's reservations. |
+| POST | `/api/resource-blocks` | Admin | `CreateResourceBlockCommand` | body: `{ resourceId, startDateTime, endDateTime, reason }` → 201 |
+| DELETE | `/api/resource-blocks/{id}` | Admin | `DeleteResourceBlockCommand` | → 204; 404 if it doesn't exist |
+
+```json
+{
+  "id": "…", "resourceId": "…", "resourceName": "Meeting Room A",
+  "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T14:00:00Z",
+  "reason": "Projector replacement",
+  "createdByUserId": "…"
+}
+```
+
+**Create - errors**
+
+| Status | When |
+|---|---|
+| 400 | start more than 5 minutes in the past; end not after start; longer than 366 days; `reason` empty or over 200 chars |
+| 404 | the resource doesn't exist |
+| 409 | another block on the resource overlaps (`"Meeting Room A is already blocked for part of that time."`), or `Confirmed` reservations overlap (`"2 confirmed reservation(s) on Meeting Room A overlap this window. Cancel or move them first."`) |
+
+Existing reservations are never cancelled by a block. The admin cancels or moves them first,
+with the reservation endpoints, and then blocks. While a block exists, booking or moving a
+reservation into its window returns 409 with the block's `reason`, and availability search
+leaves the resource out.
 
 ## Dashboard
 
