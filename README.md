@@ -185,7 +185,8 @@ for an API running in Docker - no need to edit `environment.development.ts`.
 ## Running tests
 
 ```bash
-dotnet test               # backend
+dotnet test               # unit tests, plus integration tests (Docker must be running)
+dotnet test --filter Category!=Integration   # unit tests only, no Docker
 cd frontend && ng test    # frontend
 cd frontend && npm run test:time-zones   # frontend, once per time zone (DST, UTC+05:45, ...)
 ```

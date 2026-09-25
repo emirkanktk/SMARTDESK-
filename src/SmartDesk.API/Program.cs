@@ -143,3 +143,5 @@ app.MapHub<ReservationHub>("/hubs/reservations");
 app.MapHealthChecks("/health").AllowAnonymous();
 
 app.Run();
+
+public partial class Program;
