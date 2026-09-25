@@ -1,9 +1,8 @@
-using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.IdentityModel.Tokens;
+using SmartDesk.API.Authentication;
 using SmartDesk.API.Hubs;
 using SmartDesk.API.Middleware;
 using SmartDesk.API.OpenApi;
@@ -48,16 +47,7 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtOptions.Issuer,
-            ValidAudience = jwtOptions.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key))
-        };
+        options.TokenValidationParameters = JwtBearerSetup.ValidationParameters(jwtOptions);
 
         // SignalR's browser client can't set an Authorization header on the websocket
         // handshake, so it sends the token as a query string param instead - read it from
