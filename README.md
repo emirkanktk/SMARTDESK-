@@ -24,6 +24,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.
+- **Reminders** - the owner can ask to be reminded 5, 15, 30 or 60 minutes before a reservation
+  starts. The reminder arrives in the app, and as a desktop notification when allowed
+  ([ADR-0018](docs/DECISIONS.md)).
 - **Usage report** - for Admins: how much each resource, type and person booked over up to
   92 days, and how full the office day was (Monday to Friday, 09:00-18:00, in the admin's
   time zone - [ADR-0017](docs/DECISIONS.md)).

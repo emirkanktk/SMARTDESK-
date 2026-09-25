@@ -85,9 +85,9 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note? }` → 201. The owner is always the caller. |
+| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` → 201. The owner is always the caller. `reminderMinutes`: 5, 15, 30 or 60, or null / omitted for no reminder (see Real-time). |
 | GET | `/api/reservations/{id}` | any authenticated user | `GetReservationByIdQuery` | one reservation, any status; 404 if it doesn't exist. For the edit form and for opening a calendar entry. |
-| PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note? }` - full replace → 200. Rules below. |
+| PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` - full replace → 200, so leaving `reminderMinutes` out turns the reminder off. Rules below. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
 | GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid (400 otherwise). Everyone sees who booked what - it's a shared office calendar. |
@@ -103,6 +103,7 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
   "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:30:00Z",
   "status": "Confirmed",          // "Confirmed" | "Cancelled"
   "note": "Sprint planning",
+  "reminderMinutes": 15,           // null when no reminder is set
   "userDisplayName": "Ayşe Yılmaz"  // who booked it: "First Last", or the email if both are blank
 }
 ```
@@ -114,7 +115,7 @@ A reservation appears in a calendar range exactly when it would block a booking 
 
 | Status | When |
 |---|---|
-| 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past; longer than 31 days; `note` over 500 chars |
+| 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past; longer than 31 days; `note` over 500 chars; `reminderMinutes` not one of 5, 15, 30, 60 |
 | 404 | the resource doesn't exist |
 | 409 | the resource isn't `Active` (`"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`"Meeting Room A is already reserved for part of that time."`) |
 
@@ -245,7 +246,7 @@ What the numbers mean (ADR-0017):
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only |
 
 All three events carry the reservation object shown under Reservations above, as it is after
 the change. For `ReservationUpdated` the resource or the times may be different from
@@ -258,6 +259,14 @@ use the HTTP request's cancellation token: a closed tab must not swallow a chang
 already committed. Enum values in the payload are names (`"Confirmed"`), same as the
 HTTP API. A client that missed events while disconnected catches up by refetching when
 the connection comes back; the broadcast is not a queue.
+
+**Reminders (ADR-0018).** `ReservationStartingSoon` carries the same reservation object and goes
+only to the owner's open connections. A background job checks every 30 seconds
+(`Reminders:IntervalSeconds`) and sends it once, as soon as `startDateTime - reminderMinutes`
+has passed, so it can be up to one interval late, never early. It isn't sent for a cancelled
+reservation, or once the reservation has started. Moving the start or changing `reminderMinutes`
+re-arms it for the new moment, while changing only the end or the note doesn't. A reminder that
+finds the owner offline isn't queued or repeated.
 
 ## Conventions
 

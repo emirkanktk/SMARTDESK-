@@ -22,5 +22,9 @@ public sealed class UpdateReservationCommandValidator : AbstractValidator<Update
             .WithMessage($"A reservation can last at most {ReservationRules.MaxDuration.TotalDays} days.");
 
         RuleFor(x => x.Note).MaximumLength(ReservationRules.MaxNoteLength);
+
+        RuleFor(x => x.ReminderMinutes)
+            .Must(ReservationRules.IsValidReminder)
+            .WithMessage(ReservationRules.ReminderMessage);
     }
 }

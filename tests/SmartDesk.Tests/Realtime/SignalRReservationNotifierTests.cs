@@ -12,14 +12,16 @@ namespace SmartDesk.Tests.Realtime;
 public class SignalRReservationNotifierTests
 {
     private readonly Mock<IClientProxy> _clients = new();
+    private readonly Mock<IClientProxy> _ownerClients = new();
+    private readonly Mock<IHubClients> _hubClients = new();
     private readonly SignalRReservationNotifier _notifier;
 
     public SignalRReservationNotifierTests()
     {
-        var hubClients = new Mock<IHubClients>();
-        hubClients.Setup(c => c.All).Returns(_clients.Object);
+        _hubClients.Setup(c => c.All).Returns(_clients.Object);
+        _hubClients.Setup(c => c.User(It.IsAny<string>())).Returns(_ownerClients.Object);
         var hub = new Mock<IHubContext<ReservationHub>>();
-        hub.Setup(h => h.Clients).Returns(hubClients.Object);
+        hub.Setup(h => h.Clients).Returns(_hubClients.Object);
         _notifier = new SignalRReservationNotifier(hub.Object, NullLogger<SignalRReservationNotifier>.Instance);
     }
 
@@ -39,6 +41,23 @@ public class SignalRReservationNotifierTests
                 It.Is<object[]>(args => args.Length == 1 && ReferenceEquals(args[0], reservation)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task A_reminder_goes_to_the_owner_only()
+    {
+        var reservation = Sample();
+
+        await _notifier.ReservationStartingSoonAsync(reservation, CancellationToken.None);
+
+        _hubClients.Verify(c => c.User(reservation.UserId.ToString()), Times.Once);
+        _ownerClients.Verify(
+            c => c.SendCoreAsync(
+                ReservationHub.StartingSoon,
+                It.Is<object[]>(args => args.Length == 1 && ReferenceEquals(args[0], reservation)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _clients.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -72,5 +91,6 @@ public class SignalRReservationNotifierTests
         new DateTime(2026, 10, 5, 10, 0, 0, DateTimeKind.Utc),
         new DateTime(2026, 10, 5, 11, 0, 0, DateTimeKind.Utc),
         ReservationStatus.Confirmed,
-        null);
+        null,
+        15);
 }

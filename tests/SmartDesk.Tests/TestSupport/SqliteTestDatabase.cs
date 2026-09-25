@@ -56,7 +56,9 @@ public sealed class SqliteTestDatabase : IDisposable
         DateTime start,
         DateTime end,
         ReservationStatus status = ReservationStatus.Confirmed,
-        Guid? userId = null)
+        Guid? userId = null,
+        int? reminderMinutes = null,
+        DateTime? reminderSentAt = null)
     {
         await using var context = CreateContext();
         var reservation = new Reservation
@@ -66,6 +68,8 @@ public sealed class SqliteTestDatabase : IDisposable
             StartDateTime = start,
             EndDateTime = end,
             Status = status,
+            ReminderMinutes = reminderMinutes,
+            ReminderSentAt = reminderSentAt,
         };
         context.Reservations.Add(reservation);
         await context.SaveChangesAsync();

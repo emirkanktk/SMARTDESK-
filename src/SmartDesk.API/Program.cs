@@ -45,6 +45,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 // Registered before the TryAdd below, so this wins and the null notifier stays a fallback.
 builder.Services.AddScoped<IReservationNotifier, SignalRReservationNotifier>();
 builder.Services.TryAddScoped<IReservationNotifier, NullReservationNotifier>();
+builder.Services.AddHostedService<ReservationReminderWorker>();
 
 // Validated at startup by AddInfrastructure (JwtOptions.ValidateOnStart), so a missing or
 // too-short key fails fast with a clear message rather than on the first request.

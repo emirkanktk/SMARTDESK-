@@ -16,4 +16,13 @@ public static class ReservationRules
     public static readonly TimeSpan MaxCalendarRange = TimeSpan.FromDays(42);
 
     public const int MaxNoteLength = 500;
+
+    // The reminder choices offered to the owner, in minutes before the start (ADR-0018).
+    public static readonly IReadOnlyList<int> ReminderOptions = [5, 15, 30, 60];
+
+    public static int MaxReminderMinutes => ReminderOptions[^1];
+
+    public static bool IsValidReminder(int? minutes) => minutes is null || ReminderOptions.Contains(minutes.Value);
+
+    public const string ReminderMessage = "Reminder must be 5, 15, 30 or 60 minutes before the start, or none.";
 }

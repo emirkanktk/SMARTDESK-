@@ -19,7 +19,8 @@ public sealed record ReservationDto(
     DateTime StartDateTime,
     DateTime EndDateTime,
     ReservationStatus Status,
-    string? Note)
+    string? Note,
+    int? ReminderMinutes)
 {
     // Who booked it ("Ayşe Yılmaz"), for calendars, the dashboard and live events. Not part
     // of Projection - users live in Identity, outside IApplicationDbContext - so handlers
@@ -37,5 +38,6 @@ public sealed record ReservationDto(
         r.StartDateTime,
         r.EndDateTime,
         r.Status,
-        r.Note);
+        r.Note,
+        r.ReminderMinutes);
 }

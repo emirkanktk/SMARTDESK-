@@ -11,4 +11,7 @@ public class ReservationHub : Hub
     public const string Created = "ReservationCreated";
     public const string Updated = "ReservationUpdated";
     public const string Cancelled = "ReservationCancelled";
+
+    // Sent only to the reservation's owner, not to everyone (ADR-0018).
+    public const string StartingSoon = "ReservationStartingSoon";
 }
