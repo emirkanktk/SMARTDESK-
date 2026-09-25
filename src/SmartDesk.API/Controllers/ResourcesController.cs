@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SmartDesk.Application.Features.Resources.Commands.ChangeResourceStatus;
 using SmartDesk.Application.Features.Resources.Commands.CreateResource;
 using SmartDesk.Application.Features.Resources.Commands.UpdateResource;
 using SmartDesk.Application.Features.Resources.Common;
@@ -58,5 +59,14 @@ public sealed class ResourcesController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<ResourceDto> Update(Guid id, UpdateResourceCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command with { Id = id }, cancellationToken);
+
+    [HttpPatch("{id:guid}/status")]
+    [Authorize(Roles = Roles.Admin)]
+    [ProducesResponseType<ResourceDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<ResourceDto> ChangeStatus(Guid id, ChangeResourceStatusCommand command, CancellationToken cancellationToken) =>
         sender.Send(command with { Id = id }, cancellationToken);
 }

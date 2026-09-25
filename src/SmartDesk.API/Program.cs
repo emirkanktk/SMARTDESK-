@@ -23,7 +23,13 @@ var builder = WebApplication.CreateBuilder(args);
 // responses with the first, but the OpenAPI generator builds its schemas from the second,
 // so setting only one makes the documented type (integer) disagree with the real one.
 builder.Services.AddControllers()
-    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        // An unparseable body (e.g. "status": "Broken") still gets a 400 with the field path,
+        // but not the serializer's own message, which names internal command types.
+        options.AllowInputFormatterExceptionMessages = false;
+    });
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi(options =>
