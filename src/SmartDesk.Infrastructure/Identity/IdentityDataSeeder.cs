@@ -77,7 +77,7 @@ public sealed class IdentityDataSeeder(
         return true;
     }
 
-    private static void EnsureSucceeded(IdentityResult result, string operation)
+    internal static void EnsureSucceeded(IdentityResult result, string operation)
     {
         if (!result.Succeeded)
         {

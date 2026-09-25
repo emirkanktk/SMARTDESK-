@@ -104,6 +104,19 @@ ADR-0007). All three share the password `SmartDesk123!`.
 | `employee1@smartdesk.local` | Employee |
 | `employee2@smartdesk.local` | Employee |
 
+**Outside Development** there are no demo users. Give the first admin through configuration,
+as environment variables or a secret, never in appsettings (ADR-0016):
+
+```bash
+export BootstrapAdmin__Email="it-admin@company.example"
+export BootstrapAdmin__Password="<a strong password>"
+```
+
+On startup the API creates that account if it doesn't exist and makes sure it is an Admin.
+An existing account keeps its password, so the variables can stay or be removed once the admin
+has signed in. Setting only one of the two stops startup with an error. With neither set and
+no admin in the database, the API logs a warning.
+
 Five wrong passwords in a row lock an account for five minutes, and one client can try at
 most 60 logins a minute in Development (10 elsewhere; `RateLimiting:LoginPermitsPerMinute`).
 
