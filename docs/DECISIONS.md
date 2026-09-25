@@ -308,3 +308,32 @@ new tables.
   Past status changes aren't recorded, so availability counts every listed resource for the
   whole range, and blocked windows aren't subtracted. The numbers are "roughly how full", not
   billing.
+
+## ADR-0018: Reservation reminders go to the owner over SignalR, once, from a background job
+
+**Decision:**
+- **Choice:** the owner chooses a reminder per reservation, 5, 15, 30 or 60 minutes before the
+  start, or none. It's stored on the reservation as `ReminderMinutes`, with `ReminderSentAt`.
+- **Sending:** a hosted service (`ReservationReminderWorker`) runs `SendDueRemindersCommand`
+  every 30 seconds. It finds reminders whose moment has passed for Confirmed reservations that
+  haven't started, marks each one sent under the reservation's lock (the same lock update and
+  cancel take, ADR-0013), and then sends `ReservationStartingSoon` to the owner only, with
+  `Clients.User`.
+- **Re-arming:** moving the start, or choosing another reminder, clears `ReminderSentAt`.
+- **Delivery:** in-app, plus a desktop notification when the browser allows one. No email.
+
+**Why:**
+- The brief lists "Rezervasyon başlamadan önce bildirim" as a bonus. The hub and the per-user
+  identity SignalR already has, from the token's subject, make "tell this user" one call, with
+  no mail server, templates or addresses to manage.
+- Per reservation, not a global setting: a 15-minute nudge suits a room down the hall, while a
+  company car across town wants an hour.
+- Marking before sending, under the lock, means exactly-once is decided in the database. A
+  reservation moved or cancelled while its reminder was being prepared is re-read, and skipped
+  if it's no longer due. A failed push is then lost rather than repeated every 30 seconds, which
+  is the better failure for a nudge.
+- "Due" is decided in memory among the reservations starting within the longest option (an
+  hour), because "start minus this row's minutes" isn't translated the same way by every
+  database provider. A partial index keeps that scan to the rows still waiting.
+- Not queued for offline users: a reminder that arrives after the meeting started is noise.
+  The dashboard already lists your upcoming reservations for when you come back.

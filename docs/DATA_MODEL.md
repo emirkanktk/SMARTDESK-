@@ -50,6 +50,8 @@
 | EndDateTime | DateTime | must be > StartDateTime |
 | Status | ReservationStatus | Confirmed / Cancelled |
 | Note | string? | |
+| ReminderMinutes | int? | remind the owner this many minutes before the start: 5, 15, 30 or 60; null = no reminder (ADR-0018) |
+| ReminderSentAt | DateTime? | when that reminder went out; cleared when the start or `ReminderMinutes` changes. A partial index on `StartDateTime` covers the rows still waiting for one |
 
 `Reservation.UserId` is stored as a plain `Guid`, not an EF navigation to `ApplicationUser`,
 because `SmartDeskDbContext` treats Identity's own tables as belonging to the Identity
