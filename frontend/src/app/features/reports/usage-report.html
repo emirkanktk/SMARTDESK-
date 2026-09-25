@@ -103,11 +103,11 @@
             <thead>
               <tr>
                 <th scope="col">Resource</th>
-                <th scope="col" class="num">Reservations</th>
-                <th scope="col" class="num">Cancelled</th>
+                <th scope="col">Utilization</th>
                 <th scope="col" class="num">Booked</th>
                 <th scope="col" class="num">Office hours</th>
-                <th scope="col">Utilization</th>
+                <th scope="col" class="num">Reservations</th>
+                <th scope="col" class="num">Cancelled</th>
               </tr>
             </thead>
             <tbody>
@@ -120,10 +120,6 @@
                       <app-status-badge [status]="row.status" />
                     }
                   </td>
-                  <td class="num">{{ row.reservations }}</td>
-                  <td class="num">{{ row.cancelled }}</td>
-                  <td class="num">{{ hours(row.bookedHours) }}</td>
-                  <td class="num">{{ hours(row.workingHoursBooked) }}</td>
                   <td>
                     <div class="utilization">
                       <span class="bar" aria-hidden="true">
@@ -132,6 +128,10 @@
                       <span class="percent">{{ percent(row.utilization) }}</span>
                     </div>
                   </td>
+                  <td class="num">{{ hours(row.bookedHours) }}</td>
+                  <td class="num">{{ hours(row.workingHoursBooked) }}</td>
+                  <td class="num">{{ row.reservations }}</td>
+                  <td class="num">{{ row.cancelled }}</td>
                 </tr>
               }
             </tbody>
@@ -146,19 +146,16 @@
             <thead>
               <tr>
                 <th scope="col">Type</th>
+                <th scope="col">Utilization</th>
+                <th scope="col" class="num">Booked</th>
                 <th scope="col" class="num">Resources</th>
                 <th scope="col" class="num">Reservations</th>
-                <th scope="col" class="num">Booked</th>
-                <th scope="col">Utilization</th>
               </tr>
             </thead>
             <tbody>
               @for (t of r.byType; track t.resourceTypeId) {
                 <tr>
-                  <td>{{ t.resourceTypeName }}</td>
-                  <td class="num">{{ t.resources }}</td>
-                  <td class="num">{{ t.reservations }}</td>
-                  <td class="num">{{ hours(t.bookedHours) }}</td>
+                  <td class="name">{{ t.resourceTypeName }}</td>
                   <td>
                     <div class="utilization">
                       <span class="bar" aria-hidden="true">
@@ -167,6 +164,9 @@
                       <span class="percent">{{ percent(t.utilization) }}</span>
                     </div>
                   </td>
+                  <td class="num">{{ hours(t.bookedHours) }}</td>
+                  <td class="num">{{ t.resources }}</td>
+                  <td class="num">{{ t.reservations }}</td>
                 </tr>
               }
             </tbody>

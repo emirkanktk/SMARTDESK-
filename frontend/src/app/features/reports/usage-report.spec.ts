@@ -188,9 +188,9 @@ describe('UsageReport', () => {
     await render();
 
     expect(rows('resources')).toEqual([
-      'Meeting Room A Meeting Room 10 1 70 h 66 h 33.3%',
-      'Camera C-1 Camera Maintenance 4 1 50.3 h 32 h 16.2%',
-      'Desk 12 Desk 0 0 0 h 0 h 0%',
+      'Meeting Room A Meeting Room 33.3% 70 h 66 h 10 1',
+      'Camera C-1 Camera Maintenance 16.2% 50.3 h 32 h 4 1',
+      'Desk 12 Desk 0% 0 h 0 h 0 0',
     ]);
     const bars = Array.from(element.querySelectorAll<HTMLElement>('table.resources .fill'));
     expect(bars.map((b) => b.style.width)).toEqual(['33.33%', '16.16%', '0%']);
@@ -199,7 +199,7 @@ describe('UsageReport', () => {
   it('lists types and the people who booked most, naming unknown ones', async () => {
     await render();
 
-    expect(rows('types')).toEqual(['Meeting Room 1 10 70 h 33.3%']);
+    expect(rows('types')).toEqual(['Meeting Room 33.3% 70 h 1 10']);
     const people = Array.from(element.querySelectorAll('.people li')).map(text);
     expect(people).toEqual([
       'Ayşe Yılmaz 60.5 h · 9 reservations',

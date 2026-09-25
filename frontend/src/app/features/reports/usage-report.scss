@@ -84,15 +84,23 @@
   margin: var(--space-4) 0 0;
 }
 
+// Utilization comes right after the name, so on a phone the key figure is visible before the
+// table's own sideways scroll; names stay on one line instead of breaking at "3-01".
 .table {
   .name {
     display: block;
     font-weight: 600;
+    white-space: nowrap;
+  }
+
+  td.name {
+    display: table-cell;
   }
 
   .type {
     margin-right: var(--space-2);
     font-size: 0.8125rem;
+    white-space: nowrap;
   }
 
   .num {
@@ -104,7 +112,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-width: 9rem;
+  min-width: 8rem;
 
   .bar {
     flex: 1;
