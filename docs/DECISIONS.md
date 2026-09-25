@@ -257,3 +257,24 @@ independent of who happens to be connected.
 - Blocks deliberately have no exclusion constraint of their own. They're Admin-only and
   always written under the lock, so the lock already rules out duplicates. Reservations
   keep theirs because of the brief's explicit concurrency rule.
+
+## ADR-0016: The first admin of a deployed environment comes from configuration
+
+**Decision:** Outside Development, where ADR-0007 seeds no users, `BootstrapAdmin:Email`
+and `BootstrapAdmin:Password` (environment variables or a secret store) name the first admin.
+On every startup `BootstrapAdminSeeder` creates that account if it doesn't exist and adds it
+to the `Admin` role if it isn't there. It never changes an existing account's password.
+Setting only one of the two fails startup (`ValidateOnStart`). With neither set and no admin
+in the database, it logs a warning. It runs after the demo users, so it works the same in
+Development.
+
+**Why:**
+- Without it, a deployed database has roles but no users, and there's no endpoint to create
+  one. The only way in would be hand-written SQL against Identity's tables.
+- Configuration rather than a sign-up endpoint: nothing about it is reachable over HTTP, and
+  the password lives where the other secrets live (ADR-0005).
+- Never resetting an existing password means leaving the variables in place is harmless. An
+  admin who changed their password isn't overwritten on the next restart, and removing the
+  variables later changes nothing.
+- An existing account with that email is promoted rather than refused. That's the useful
+  reading of "make this person the admin" when they already have an account.
