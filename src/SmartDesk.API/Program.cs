@@ -106,6 +106,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 
+// Tells browsers to reach this host over HTTPS only from then on. Sent on HTTPS responses
+// outside Development; the middleware leaves localhost out in any case.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
 app.UseHttpsRedirection();
 
 app.UseCors(FrontendCorsPolicy);
