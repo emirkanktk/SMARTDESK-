@@ -1,0 +1,151 @@
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.section-title {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: 1.0625rem;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+
+  .field {
+    margin-bottom: 0;
+  }
+
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    gap: var(--space-2);
+  }
+
+  @media (max-width: 800px) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  // Date inputs don't shrink below their own width, which two columns can't fit here.
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+
+  @media (max-width: 800px) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+
+  .value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .label {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+}
+
+.note {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.empty {
+  margin: var(--space-4) 0 0;
+}
+
+.table {
+  .name {
+    display: block;
+    font-weight: 600;
+  }
+
+  .type {
+    margin-right: var(--space-2);
+    font-size: 0.8125rem;
+  }
+
+  .num {
+    white-space: nowrap;
+  }
+}
+
+.utilization {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 9rem;
+
+  .bar {
+    flex: 1;
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-bg);
+  }
+
+  .fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+  }
+
+  .percent {
+    min-width: 3.5rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.people {
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  .name {
+    font-weight: 600;
+  }
+}
