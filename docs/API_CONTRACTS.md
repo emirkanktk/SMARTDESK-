@@ -134,8 +134,10 @@ reservation doesn't exist; 409 if it has already ended.
 When the resource or the times change, the new slot goes through the same checks as a new
 booking: the resource must exist (404) and be `Active` (409), and it must not overlap another
 `Confirmed` reservation (409). The reservation's own current slot doesn't count, so shifting
-10:00-11:00 to 10:30-11:30 works. A change to the note alone skips those checks, so a note
-can still be edited after the resource went into maintenance. Other errors: 400 for the
+10:00-11:00 to 10:30-11:30 works. A change to the note alone skips those checks, and so does
+shortening on the same resource (a new start and end within the current ones), which claims
+nothing new. So after the resource went into maintenance, a note can still be edited and a
+booking can still be shortened or ended early. Other errors: 400 for the
 same shape rules as create, 403 for someone who is neither the owner nor an Admin, 404 for an
 unknown reservation. A PUT that changes nothing returns 200 and sends no event.
 
