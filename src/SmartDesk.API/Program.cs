@@ -1,9 +1,8 @@
-using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.IdentityModel.Tokens;
+using SmartDesk.API.Authentication;
 using SmartDesk.API.Hubs;
 using SmartDesk.API.Middleware;
 using SmartDesk.API.OpenApi;
@@ -54,16 +53,7 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtOptions.Issuer,
-            ValidAudience = jwtOptions.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key))
-        };
+        options.TokenValidationParameters = JwtBearerSetup.ValidationParameters(jwtOptions);
 
         // SignalR's browser client can't set an Authorization header on the websocket
         // handshake, so it sends the token as a query string param instead - read it from
@@ -128,6 +118,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+
+// Tells browsers to reach this host over HTTPS only from then on. Sent on HTTPS responses
+// outside Development; the middleware leaves localhost out in any case.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
 
