@@ -50,10 +50,16 @@ public static class DependencyInjection
             .Validate(o => o.AccessTokenLifetimeMinutes > 0, "Jwt:AccessTokenLifetimeMinutes must be positive.")
             .ValidateOnStart();
 
+        services.AddOptions<BootstrapAdminOptions>()
+            .Bind(configuration.GetSection(BootstrapAdminOptions.SectionName))
+            .Validate(o => o.IsComplete, "BootstrapAdmin:Email and BootstrapAdmin:Password must be set together.")
+            .ValidateOnStart();
+
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IdentityDataSeeder>();
+        services.AddScoped<BootstrapAdminSeeder>();
         services.AddScoped<DemoResourceSeeder>();
 
         return services;
@@ -79,12 +85,19 @@ public static class DependencyInjection
     }
 
     // Roles in every environment; demo users and demo resources only when includeDemoData
-    // (Development - ADR-0007). Resource types come from the migration, not from here.
+    // (Development - ADR-0007); the configured bootstrap admin in any environment (ADR-0016).
+    // Resource types come from the migration, not from here.
     public static async Task SeedDatabaseAsync(this IServiceProvider services, bool includeDemoData)
     {
         await using var scope = services.CreateAsyncScope();
 
         var identitySeeded = await scope.ServiceProvider.GetRequiredService<IdentityDataSeeder>().SeedAsync(includeDemoData);
+        if (identitySeeded)
+        {
+            // After the demo users, so its "no admin yet" warning never fires in Development.
+            await scope.ServiceProvider.GetRequiredService<BootstrapAdminSeeder>().SeedAsync();
+        }
+
         if (identitySeeded && includeDemoData)
         {
             await scope.ServiceProvider.GetRequiredService<DemoResourceSeeder>().SeedAsync();
