@@ -238,4 +238,4 @@ the connection comes back; the broadcast is not a queue.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/health` | none | `200 Healthy` when the API can reach PostgreSQL, `503 Unhealthy` otherwise. Plain text, for container health checks and uptime monitors. |
+| GET | `/health` | none | `200 Healthy` when the API can reach PostgreSQL and the database has no pending migrations, `503 Unhealthy` otherwise. Plain text, for container health checks and uptime monitors. |

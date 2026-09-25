@@ -101,8 +101,13 @@ ADR-0007). All three share the password `SmartDesk123!`.
 Five wrong passwords in a row lock an account for five minutes, and one client can try at
 most 60 logins a minute in Development (10 elsewhere; `RateLimiting:LoginPermitsPerMinute`).
 
-`GET /health` answers `Healthy` once the API can reach PostgreSQL - a quick check that the
-backend is up and configured.
+`GET /health` answers `Healthy` once the API can reach PostgreSQL and every migration has
+been applied - a quick check that the backend is up and usable.
+
+Migrations are applied on purpose (step 3 above). Setting `Database:MigrateOnStartup` to
+`true` (environment variable `Database__MigrateOnStartup=true`) makes the API apply pending
+migrations itself before seeding - meant for a throwaway database such as a container's,
+not for a shared one.
 
 The Development seed also creates eight sample resources (meeting rooms, desks, a company
 car, a projector, and a camera under maintenance) when the database has none. The five
