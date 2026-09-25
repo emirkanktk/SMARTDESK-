@@ -15,6 +15,7 @@ export function fakeReservation(overrides: Partial<Reservation> = {}): Reservati
     endDateTime: '2026-10-07T12:30:00.000Z',
     status: 'Confirmed',
     note: 'Sprint planning',
+    reminderMinutes: null,
     userDisplayName: 'Ayşe Yılmaz',
     ...overrides,
   };

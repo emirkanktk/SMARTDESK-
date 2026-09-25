@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { fakeJwt } from '../testing/fake-jwt';
 import { App } from './app';
 import { AuthService } from './core/services/auth.service';
+import { ReminderAlertsService } from './core/services/reminder-alerts.service';
 import { ReservationHubService } from './core/services/reservation-hub.service';
 
 const TOKEN_STORAGE_KEY = 'smartdesk_access_token';
@@ -13,22 +14,31 @@ describe('App', () => {
     connect: vi.fn(),
     disconnect: vi.fn(),
   };
+  const reminderAlerts = { start: vi.fn() };
 
   beforeEach(async () => {
     localStorage.clear();
     hub.connect.mockClear();
     hub.disconnect.mockClear();
+    reminderAlerts.start.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: ReservationHubService, useValue: hub },
+        { provide: ReminderAlertsService, useValue: reminderAlerts },
       ],
     }).compileComponents();
   });
 
   afterEach(() => localStorage.clear());
+
+  it('starts showing reservation reminders', () => {
+    TestBed.createComponent(App).detectChanges();
+
+    expect(reminderAlerts.start).toHaveBeenCalledTimes(1);
+  });
 
   it('disconnects the hub when nobody is signed in', () => {
     const fixture = TestBed.createComponent(App);

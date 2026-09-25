@@ -23,11 +23,14 @@ export class ReservationHubService {
   private readonly created = new Subject<Reservation>();
   private readonly updated = new Subject<Reservation>();
   private readonly cancelled = new Subject<Reservation>();
+  private readonly startingSoon = new Subject<Reservation>();
   private readonly reconnected = new Subject<void>();
 
   readonly created$: Observable<Reservation> = this.created.asObservable();
   readonly updated$: Observable<Reservation> = this.updated.asObservable();
   readonly cancelled$: Observable<Reservation> = this.cancelled.asObservable();
+  /** The signed-in user's own reminders; the API sends them to the owner only. */
+  readonly startingSoon$: Observable<Reservation> = this.startingSoon.asObservable();
   readonly reconnected$: Observable<void> = this.reconnected.asObservable();
 
   connect(): void {
@@ -55,6 +58,9 @@ export class ReservationHubService {
     );
     connection.on('ReservationCancelled', (reservation: Reservation) =>
       this.cancelled.next(reservation),
+    );
+    connection.on('ReservationStartingSoon', (reservation: Reservation) =>
+      this.startingSoon.next(reservation),
     );
     connection.onreconnected(() => this.reconnected.next());
 

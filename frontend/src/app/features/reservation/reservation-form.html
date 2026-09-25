@@ -147,6 +147,26 @@
       }
     </div>
 
+    @if (mode() !== 'inProgress') {
+      <div class="field">
+        <label for="reminder">Reminder</label>
+        <select id="reminder" class="input" formControlName="reminderMinutes">
+          <option [ngValue]="null">No reminder</option>
+          @for (minutes of reminderOptions; track minutes) {
+            <option [ngValue]="minutes">{{ minutes }} minutes before</option>
+          }
+        </select>
+        <span class="text-muted hint">
+          @if (desktopBlocked) {
+            Desktop notifications are blocked in this browser, so the reminder shows in SmartDesk
+            only.
+          } @else {
+            Shown in SmartDesk, and as a desktop notification if you allow it.
+          }
+        </span>
+      </div>
+    }
+
     <div class="form-actions">
       @if (reservation()) {
         <button

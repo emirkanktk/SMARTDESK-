@@ -14,6 +14,7 @@ describe('ReservationService', () => {
     startDateTime: '2026-10-07T11:00:00.000Z',
     endDateTime: '2026-10-07T12:30:00.000Z',
     note: null,
+    reminderMinutes: 15,
   };
 
   beforeEach(() => {
