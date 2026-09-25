@@ -1,1 +1,111 @@
-<p>resources works!</p>
+<div class="page-header">
+  <h1>Resources</h1>
+  @if (isAdmin()) {
+    <a class="btn btn-primary" routerLink="/resources/new">New resource</a>
+  }
+</div>
+
+<form class="filters card" [formGroup]="filters" (submit)="$event.preventDefault()">
+  <div class="field">
+    <label for="search">Search</label>
+    <input
+      id="search"
+      class="input"
+      type="search"
+      formControlName="search"
+      placeholder="Name, location or feature"
+    />
+  </div>
+  <div class="field">
+    <label for="type">Type</label>
+    <select id="type" class="input" formControlName="resourceTypeId">
+      <option value="">All types</option>
+      @for (type of types(); track type.id) {
+        <option [value]="type.id">{{ type.name }}</option>
+      }
+    </select>
+  </div>
+  <div class="field">
+    <label for="status">Status</label>
+    <select id="status" class="input" formControlName="status">
+      <option value="">All statuses</option>
+      @for (status of statuses; track status) {
+        <option [value]="status">{{ status }}</option>
+      }
+    </select>
+  </div>
+  <button type="button" class="btn btn-secondary" (click)="clearFilters()">Clear</button>
+</form>
+
+@if (loading()) {
+  <p class="text-muted" role="status">Loading resources…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error" role="alert">Resources could not be loaded. Please try again.</div>
+} @else if (visibleResources().length === 0) {
+  <p class="text-muted empty">
+    {{ resources().length === 0 ? 'No resources yet.' : 'No resources match these filters.' }}
+  </p>
+} @else {
+  <div class="table-wrap card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Type</th>
+          <th scope="col" class="num">Capacity</th>
+          <th scope="col">Location</th>
+          <th scope="col">Features</th>
+          <th scope="col">Status</th>
+          @if (isAdmin()) {
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (resource of visibleResources(); track resource.id) {
+          <tr [class.unavailable]="resource.status !== 'Active'">
+            <td>
+              <div class="name">{{ resource.name }}</div>
+              @if (resource.description) {
+                <div class="text-muted description">{{ resource.description }}</div>
+              }
+            </td>
+            <td>{{ resource.resourceTypeName }}</td>
+            <td class="num">{{ resource.capacity }}</td>
+            <td>{{ resource.location }}</td>
+            <td>
+              <div class="chips">
+                @for (feature of resource.features; track feature) {
+                  <span class="chip">{{ feature }}</span>
+                } @empty {
+                  <span class="text-muted">—</span>
+                }
+              </div>
+            </td>
+            <td><app-status-badge [status]="resource.status" /></td>
+            @if (isAdmin()) {
+              <td class="actions">
+                <a
+                  class="btn btn-secondary btn-sm"
+                  [routerLink]="['/resources', resource.id, 'edit']"
+                  >Edit</a
+                >
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  [disabled]="busyId() === resource.id"
+                  (click)="toggleActive(resource)"
+                >
+                  {{ resource.status === 'Active' ? 'Deactivate' : 'Activate' }}
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="text-muted count">
+    Showing {{ visibleResources().length }} of {{ resources().length }}
+  </p>
+}

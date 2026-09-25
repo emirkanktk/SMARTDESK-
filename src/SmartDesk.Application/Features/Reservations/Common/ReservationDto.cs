@@ -5,11 +5,14 @@ using SmartDesk.Domain.Enums;
 namespace SmartDesk.Application.Features.Reservations.Common;
 
 // Also the payload of the ReservationCreated / ReservationCancelled SignalR events, so it
-// carries enough (resource name, type, times, status) for a screen to patch itself.
+// carries enough (resource name, type, times, status) for a screen to patch itself. The type
+// comes as an id too, so a screen filtered by type can place a live event without looking up
+// the resource first.
 public sealed record ReservationDto(
     Guid Id,
     Guid ResourceId,
     string ResourceName,
+    Guid ResourceTypeId,
     string ResourceTypeName,
     string ResourceLocation,
     Guid UserId,
@@ -27,6 +30,7 @@ public sealed record ReservationDto(
         r.Id,
         r.ResourceId,
         r.Resource.Name,
+        r.Resource.ResourceTypeId,
         r.Resource.ResourceType.Name,
         r.Resource.Location,
         r.UserId,

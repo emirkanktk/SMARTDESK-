@@ -29,16 +29,42 @@ export const routes: Routes = [
         loadComponent: () => import('./features/resources/resources').then((m) => m.Resources),
       },
       {
+        path: 'resources/new',
+        title: 'New resource · SmartDesk',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/resources/resource-form/resource-form').then((m) => m.ResourceForm),
+      },
+      {
+        path: 'resources/:id/edit',
+        title: 'Edit resource · SmartDesk',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/resources/resource-form/resource-form').then((m) => m.ResourceForm),
+      },
+      {
         path: 'availability',
         title: 'Availability · SmartDesk',
         loadComponent: () =>
           import('./features/availability/availability').then((m) => m.Availability),
       },
       {
+        path: 'calendar',
+        title: 'Calendar · SmartDesk',
+        loadComponent: () => import('./features/calendar/calendar').then((m) => m.Calendar),
+      },
+      {
         path: 'reservations/new',
-        title: 'New reservation · SmartDesk',
+        title: 'Book a resource · SmartDesk',
         loadComponent: () =>
-          import('./features/reservation/reservation').then((m) => m.Reservation),
+          import('./features/reservation/reservation-form').then((m) => m.ReservationForm),
+      },
+      {
+        // Owner or Admin; the form turns read-only for anyone else, and the API decides.
+        path: 'reservations/:id/edit',
+        title: 'Change reservation · SmartDesk',
+        loadComponent: () =>
+          import('./features/reservation/reservation-form').then((m) => m.ReservationForm),
       },
       {
         path: 'reservations/mine',

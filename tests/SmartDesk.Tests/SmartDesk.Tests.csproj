@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\SmartDesk.API\SmartDesk.API.csproj" />
     <ProjectReference Include="..\..\src\SmartDesk.Application\SmartDesk.Application.csproj" />
     <ProjectReference Include="..\..\src\SmartDesk.Domain\SmartDesk.Domain.csproj" />
     <ProjectReference Include="..\..\src\SmartDesk.Infrastructure\SmartDesk.Infrastructure.csproj" />

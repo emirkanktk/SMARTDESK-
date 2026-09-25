@@ -11,5 +11,9 @@ public static class ReservationRules
     // for over a month, which is far more likely a mistake than intent.
     public static readonly TimeSpan MaxDuration = TimeSpan.FromDays(31);
 
+    // Widest range the calendar query serves: a month grid shows six full weeks (the tail
+    // of the previous month and the start of the next), i.e. 42 days - more than a month.
+    public static readonly TimeSpan MaxCalendarRange = TimeSpan.FromDays(42);
+
     public const int MaxNoteLength = 500;
 }

@@ -16,15 +16,17 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   capacity, location, features and a status (`Active` / `Inactive` / `Maintenance`).
   Admins create and edit them; everyone can browse and filter.
 - **Availability search** - which resources are free for a time range, by type and capacity.
+- **Blocked windows** - Admins can take a resource out of booking for a specific window
+  (maintenance, an event) with a reason that booking attempts then show.
 - **Reservations** - book, change, and cancel. The backend refuses overlapping bookings,
   bookings in the past, and bookings of resources that aren't active, and it holds under
   concurrent requests. The owner or an Admin can change or cancel.
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.
-- **Live updates** - reservation create/update/cancel events for open screens over SignalR.
-  The backend raises the events after every committed change; the hub broadcast that
-  delivers them to browsers is being wired in as part of the integration work.
+- **Live updates** - after a reservation is created, changed, or cancelled, every connected
+  screen receives `ReservationCreated`, `ReservationUpdated`, or `ReservationCancelled`
+  ([ADR-0014](docs/DECISIONS.md)).
 
 | Layer | Stack |
 |---|---|
@@ -74,12 +76,15 @@ dotnet user-secrets set "Jwt:Key" "<a long random string>" --project src/SmartDe
 dotnet ef database update --project src/SmartDesk.Infrastructure --startup-project src/SmartDesk.API
 
 # 4. Run the API
-dotnet run --project src/SmartDesk.API
+dotnet run --project src/SmartDesk.API --launch-profile https
 ```
 
-The API starts on the URL/port in `src/SmartDesk.API/Properties/launchSettings.json`
-(`https://localhost:7065` by default - matches `frontend/src/environments/environment.development.ts`,
-update both together if you change it). In development, Swagger UI is served at `/swagger`
+The `https` launch profile in `src/SmartDesk.API/Properties/launchSettings.json` serves
+`https://localhost:7065` (and `http://localhost:5291`). `7065` is what
+`frontend/src/environments/environment.development.ts` calls, so update both together if you
+change it. A bare `dotnet run` picks the first profile, `http`, which listens on
+`http://localhost:5291` only: enough for Swagger (as in `docs/DEMO.md`), but the dev frontend
+can't reach it. In development, Swagger UI is served at `/swagger`
 (raw OpenAPI document at `/openapi/v1.json`): call `POST /api/auth/login`, copy the
 `accessToken`, and paste it into **Authorize** to try the protected endpoints. Allowed
 frontend origins for CORS are `Cors:AllowedOrigins` in `appsettings.Development.json` (see
@@ -99,8 +104,13 @@ ADR-0007). All three share the password `SmartDesk123!`.
 Five wrong passwords in a row lock an account for five minutes, and one client can try at
 most 60 logins a minute in Development (10 elsewhere; `RateLimiting:LoginPermitsPerMinute`).
 
-`GET /health` answers `Healthy` once the API can reach PostgreSQL - a quick check that the
-backend is up and configured.
+`GET /health` answers `Healthy` once the API can reach PostgreSQL and every migration has
+been applied - a quick check that the backend is up and usable.
+
+Migrations are applied on purpose (step 3 above). Setting `Database:MigrateOnStartup` to
+`true` (environment variable `Database__MigrateOnStartup=true`) makes the API apply pending
+migrations itself before seeding - meant for a throwaway database such as a container's,
+not for a shared one.
 
 The Development seed also creates eight sample resources (meeting rooms, desks, a company
 car, a projector, and a camera under maintenance) when the database has none. The five
@@ -114,6 +124,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 |---|---|
 | Auth | `POST /api/auth/login`, `GET /api/auth/me` |
 | Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin) |
+| Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
 | Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` |
@@ -129,13 +140,20 @@ ng serve
 
 Serves on `http://localhost:4200` by default - already in the API's CORS allow-list. If
 your build serves on a different port, add it to `Cors:AllowedOrigins` too.
+`ng serve --configuration docker` talks to an API on `http://localhost:8080/api` instead,
+for an API running in Docker - no need to edit `environment.development.ts`.
 
 ## Running tests
 
 ```bash
 dotnet test               # unit tests, plus integration tests (Docker must be running)
+dotnet test --filter Category!=Integration   # unit tests only, no Docker
 cd frontend && ng test    # frontend
+cd frontend && npm run test:time-zones   # frontend, once per time zone (DST, UTC+05:45, ...)
 ```
+
+Run the time-zone variant after touching date or time code: it sets `TZ` for each run
+itself, which a `TZ=...` prefix in Git Bash on Windows silently doesn't.
 
 The same checks run on GitHub Actions for every pull request and every push to `main`
 (`.github/workflows/ci.yml`): backend build + tests + a check that model changes come with a

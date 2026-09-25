@@ -1,13 +1,15 @@
 # Builds and tests both halves of the app on every pull request (whatever its base, so
-# stacked PRs are checked too) and on every push to main. Needs no secrets. Unit tests use
-# in-memory SQLite; integration tests start PostgreSQL with Testcontainers. Frontend tests
-# use jsdom.
+# stacked PRs are checked too), on every push to main, and on demand. Needs no secrets.
+# Unit tests use in-memory SQLite; integration tests start PostgreSQL with Testcontainers.
+# Frontend tests use jsdom.
 name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
+  # A manual run, for when GitHub drops a push event and main is left without a result.
+  workflow_dispatch:
 
 # A newer push to the same PR or branch makes an in-flight run pointless.
 concurrency:
@@ -75,3 +77,9 @@ jobs:
       - run: npx ng build
 
       - run: npx ng test --watch=false
+
+      # The runner is on UTC, where local and UTC dates are the same and zone bugs stay
+      # hidden. Run the specs again in zones with DST changes and odd offsets (see
+      # frontend/scripts/test-time-zones.mjs for the list).
+      - name: Unit tests in other time zones
+        run: npm run test:time-zones

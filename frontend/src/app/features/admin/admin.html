@@ -1,1 +1,148 @@
-<p>admin works!</p>
+<div class="page-header">
+  <h1>Admin</h1>
+  <a class="btn btn-secondary" routerLink="/resources">Manage resources</a>
+</div>
+
+<section aria-labelledby="resources-heading">
+  <h2 id="resources-heading" class="section-title">Resources</h2>
+  @if (statusCounts(); as counts) {
+    <ul class="tiles">
+      @for (item of counts; track item.status) {
+        <li class="card tile">
+          <span class="value">{{ item.count }}</span>
+          <app-status-badge [status]="item.status" />
+        </li>
+      }
+    </ul>
+  } @else if (resourcesFailed()) {
+    <p class="text-muted counts-note" role="status">The resources could not be counted.</p>
+  } @else {
+    <p class="text-muted counts-note" role="status">Counting resources…</p>
+  }
+</section>
+
+<section aria-labelledby="reservations-heading">
+  <h2 id="reservations-heading" class="section-title">Reservations</h2>
+
+  <div class="card filters">
+    <div class="field">
+      <label for="from">From</label>
+      <input
+        id="from"
+        class="input"
+        type="date"
+        [value]="dateValue(range().start)"
+        (change)="setDay('from', $event)"
+      />
+    </div>
+    <div class="field">
+      <label for="to">To</label>
+      <input
+        id="to"
+        class="input"
+        type="date"
+        [value]="dateValue(range().last)"
+        (change)="setDay('to', $event)"
+      />
+    </div>
+    <div class="field">
+      <label for="type">Type</label>
+      <select id="type" class="input" (change)="selectType($event)">
+        <option value="" [selected]="!type()">All types</option>
+        @for (t of types(); track t.id) {
+          <option [value]="t.id" [selected]="t.id === type()">{{ t.name }}</option>
+        }
+      </select>
+    </div>
+    <div class="field search">
+      <label for="search">Search</label>
+      <input
+        id="search"
+        class="input"
+        type="search"
+        placeholder="Person, resource or note"
+        [value]="search()"
+        (input)="setSearch($event)"
+      />
+    </div>
+  </div>
+
+  @if (rangeError(); as error) {
+    <div class="alert-error" role="alert">{{ error }}</div>
+  } @else if (loading()) {
+    <p class="text-muted" role="status">Loading reservations…</p>
+  } @else if (loadFailed()) {
+    <div class="alert-error load-error" role="alert">
+      <span>Reservations could not be loaded.</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
+    </div>
+  } @else {
+    <p class="text-muted summary">
+      @if (search().trim()) {
+        {{ rows().length }} of {{ total() }}
+      } @else {
+        {{ total() }}
+      }
+      confirmed {{ total() === 1 ? 'reservation' : 'reservations' }} from
+      {{ range().start | date: 'EEE d MMM' }} to {{ range().last | date: 'EEE d MMM' }}.
+    </p>
+
+    @if (rows().length === 0) {
+      <p class="card text-muted empty">
+        {{ search().trim() ? 'Nothing matches the search.' : 'No reservations in this range.' }}
+      </p>
+    } @else {
+      <div class="table-wrap card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">When</th>
+              <th scope="col">Resource</th>
+              <th scope="col">Booked by</th>
+              <th scope="col">Note</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.reservation.id) {
+              <tr [class.ended]="row.ended">
+                <td class="when">
+                  {{ row.when }}
+                  <span class="text-muted duration">{{ row.duration }}</span>
+                  @if (row.inProgress) {
+                    <span class="pill in-progress">In progress</span>
+                  }
+                </td>
+                <td>
+                  <span class="name">{{ row.reservation.resourceName }}</span>
+                  <span class="text-muted meta">
+                    {{ row.reservation.resourceTypeName }} · {{ row.reservation.resourceLocation }}
+                  </span>
+                </td>
+                <td>{{ row.bookedBy }}</td>
+                <td class="note">{{ row.reservation.note }}</td>
+                <td class="actions">
+                  @if (!row.ended) {
+                    <a
+                      class="btn btn-secondary btn-sm"
+                      [routerLink]="['/reservations', row.reservation.id, 'edit']"
+                      >Change</a
+                    >
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm cancel"
+                      [disabled]="cancellingId() === row.reservation.id"
+                      (click)="cancel(row)"
+                    >
+                      {{ cancellingId() === row.reservation.id ? 'Cancelling…' : 'Cancel' }}
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</section>

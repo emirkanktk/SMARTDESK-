@@ -46,6 +46,7 @@ Camera (fixed ids, same in every environment). There's no endpoint to add types 
 | GET | `/api/resources/available` | any authenticated user | `GetAvailableResourcesQuery` | query params: `startDateTime`, `endDateTime`, optional `resourceTypeId`, `minCapacity`. Rules below. |
 | POST | `/api/resources` | Admin | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[] }` → 201 with `Location` header. Always created `Active`. |
 | PUT | `/api/resources/{id}` | Admin | `UpdateResourceCommand` | body: the POST fields plus `status`. Full replace: omitting `features` removes them all. |
+| PATCH | `/api/resources/{id}/status` | Admin | `ChangeResourceStatusCommand` | body: `{ "status": "Inactive" }` → 200 with the resource. Changes only the status, so an Activate/Deactivate button can't overwrite another admin's edit the way a full PUT can. Same status again is a no-op. Existing reservations are kept. |
 
 Every resource endpoint returns the same shape:
 
@@ -66,6 +67,7 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 
 **Availability rules** (`/api/resources/available`):
 - Only `Active` resources are returned; `Inactive` / `Maintenance` never are.
+- A resource with a block (see Resource blocks) overlapping the window isn't returned either.
 - A resource is excluded if it has a `Confirmed` reservation overlapping
   `[startDateTime, endDateTime)`. Ranges are half-open, so back-to-back bookings are fine:
   a reservation ending at 11:00 does not block a search starting at 11:00. Cancelled
@@ -88,14 +90,15 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 | PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note? }` - full replace → 200. Rules below. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
-| GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 31 days apart (400 otherwise). Everyone sees who booked what - it's a shared office calendar. |
+| GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid (400 otherwise). Everyone sees who booked what - it's a shared office calendar. |
 
 Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
 
 ```json
 {
   "id": "…", "resourceId": "…",
-  "resourceName": "Meeting Room A", "resourceTypeName": "Meeting Room", "resourceLocation": "2nd Floor",
+  "resourceName": "Meeting Room A", "resourceTypeId": "…", "resourceTypeName": "Meeting Room",
+  "resourceLocation": "2nd Floor",
   "userId": "…",
   "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:30:00Z",
   "status": "Confirmed",          // "Confirmed" | "Cancelled"
@@ -113,7 +116,7 @@ A reservation appears in a calendar range exactly when it would block a booking 
 |---|---|
 | 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past; longer than 31 days; `note` over 500 chars |
 | 404 | the resource doesn't exist |
-| 409 | the resource isn't `Active` (`"Camera C-1 can't be reserved right now (status: Maintenance)."`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`"Meeting Room A is already reserved for part of that time."`) |
+| 409 | the resource isn't `Active` (`"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`"Meeting Room A is already reserved for part of that time."`) |
 
 The 409 detail is written to be shown to the user as-is. Overlap uses the same half-open rule as
 the availability search, so back-to-back bookings are allowed. It holds under concurrent
@@ -134,10 +137,46 @@ reservation doesn't exist; 409 if it has already ended.
 When the resource or the times change, the new slot goes through the same checks as a new
 booking: the resource must exist (404) and be `Active` (409), and it must not overlap another
 `Confirmed` reservation (409). The reservation's own current slot doesn't count, so shifting
-10:00-11:00 to 10:30-11:30 works. A change to the note alone skips those checks, so a note
-can still be edited after the resource went into maintenance. Other errors: 400 for the
+10:00-11:00 to 10:30-11:30 works. A change to the note alone skips those checks, and so does
+shortening on the same resource (a new start and end within the current ones), which claims
+nothing new. So after the resource went into maintenance, a note can still be edited and a
+booking can still be shortened or ended early. Other errors: 400 for the
 same shape rules as create, 403 for someone who is neither the owner nor an Admin, 404 for an
 unknown reservation. A PUT that changes nothing returns 200 and sends no event.
+
+## Resource blocks
+
+A block takes a resource out of booking for one window - planned maintenance, an event, a
+car at the service - without changing its status. Blocks use the same half-open
+`[start, end)` rule as reservations.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/resource-blocks?from=&to=&resourceId=` | any authenticated user | `GetResourceBlocksQuery` | blocks overlapping `[from, to)`, earliest first; same 42-day limit as the calendar. Drawn next to the calendar's reservations. |
+| POST | `/api/resource-blocks` | Admin | `CreateResourceBlockCommand` | body: `{ resourceId, startDateTime, endDateTime, reason }` → 201 |
+| DELETE | `/api/resource-blocks/{id}` | Admin | `DeleteResourceBlockCommand` | → 204; 404 if it doesn't exist |
+
+```json
+{
+  "id": "…", "resourceId": "…", "resourceName": "Meeting Room A",
+  "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T14:00:00Z",
+  "reason": "Projector replacement",
+  "createdByUserId": "…"
+}
+```
+
+**Create - errors**
+
+| Status | When |
+|---|---|
+| 400 | start more than 5 minutes in the past; end not after start; longer than 366 days; `reason` empty or over 200 chars |
+| 404 | the resource doesn't exist |
+| 409 | another block on the resource overlaps (`"Meeting Room A is already blocked for part of that time."`), or `Confirmed` reservations overlap (`"2 confirmed reservation(s) on Meeting Room A overlap this window. Cancel or move them first."`) |
+
+Existing reservations are never cancelled by a block. The admin cancels or moves them first,
+with the reservation endpoints, and then blocks. While a block exists, booking or moving a
+reservation into its window returns 409 with the block's `reason`, and availability search
+leaves the resource out.
 
 ## Dashboard
 
@@ -176,9 +215,12 @@ the change. For `ReservationUpdated` the resource or the times may be different 
 before, so screens should replace the entry by `id` rather than patch it in place. Every
 event includes
 `userDisplayName`, so a screen can say who just booked or cancelled. Handlers raise them
-through `IReservationNotifier` only after the change is committed. Until the SignalR
-implementation of that interface is registered, a no-op one is in place: every endpoint
-works, but open screens don't update live yet.
+through `IReservationNotifier` only after the change is committed.
+`SignalRReservationNotifier` sends each event to every connected client, and does not
+use the HTTP request's cancellation token: a closed tab must not swallow a change that
+already committed. Enum values in the payload are names (`"Confirmed"`), same as the
+HTTP API. A client that missed events while disconnected catches up by refetching when
+the connection comes back; the broadcast is not a queue.
 
 ## Conventions
 
@@ -186,6 +228,9 @@ works, but open screens don't update live yet.
   display. A timestamp sent without an offset is treated as UTC.
 - Enums are serialized as their names (`"Active"`, `"Maintenance"`), not numbers, both in
   responses and in request bodies/query strings.
+- A body that can't be parsed (a malformed date, an unknown enum name) gets a 400 whose
+  `errors` key is the JSON path (`"$.status"`) with the generic message `"The input was not
+  valid."` - the serializer's own message isn't passed through.
 - List endpoints that can grow (reservations, resources) should be paginated once real
   data volume shows up - not needed for the MVP's expected data size.
 - DTOs are never the EF entities directly (see `docs/DECISIONS.md`, ADR-0002).
@@ -200,4 +245,4 @@ works, but open screens don't update live yet.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/health` | none | `200 Healthy` when the API can reach PostgreSQL, `503 Unhealthy` otherwise. Plain text, for container health checks and uptime monitors. |
+| GET | `/health` | none | `200 Healthy` when the API can reach PostgreSQL and the database has no pending migrations, `503 Unhealthy` otherwise. Plain text, for container health checks and uptime monitors. |

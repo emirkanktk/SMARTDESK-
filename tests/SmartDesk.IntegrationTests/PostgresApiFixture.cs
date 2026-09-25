@@ -10,7 +10,7 @@ namespace SmartDesk.IntegrationTests;
 // because startup seeding refuses to run while migrations are pending.
 public sealed class PostgresApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder().Build();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
     public async Task InitializeAsync()
     {
@@ -38,6 +38,7 @@ public sealed class PostgresApiFixture : WebApplicationFactory<Program>, IAsyncL
 }
 
 [CollectionDefinition(Name)]
+[Trait("Category", "Integration")]
 public sealed class PostgresApiCollection : ICollectionFixture<PostgresApiFixture>
 {
     public const string Name = "postgres-api";

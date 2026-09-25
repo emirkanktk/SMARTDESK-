@@ -112,7 +112,8 @@ src/
                           OpenAPI/Swagger UI, exception handling, SignalR, startup seed
     Controllers/          thin - build a command/query, send it through MediatR
     Services/             CurrentUserService (reads the caller from the JWT),
-                          NullReservationNotifier (until the SignalR one lands)
+                          SignalRReservationNotifier (NullReservationNotifier remains
+                          only as an unused fallback)
     OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
 tests/
@@ -141,15 +142,20 @@ endpoint requires an authenticated user unless it opts out with `[AllowAnonymous
 ## 6. Real-time updates (SignalR)
 
 A single hub (`SmartDesk.API/Hubs/ReservationHub.cs`) broadcasts reservation
-create/cancel events to connected clients so an open calendar/dashboard screen updates
-without a page reload. The hub itself carries no business logic.
+create, update and cancel events to every connected client, so an open calendar or
+dashboard can patch itself without a reload. The hub has no methods and no business logic.
 
-Handlers don't know about SignalR. After a committed create/update/cancel they call
-`IReservationNotifier` (Application), passing the `ReservationDto` that becomes the event
-payload. Until the SignalR implementation (`IHubContext<ReservationHub>`, Burak's scope) is
-registered in `Program.cs`, `NullReservationNotifier` stands in, so reservations work fully
-without live updates. Reconnect/backoff handling and the Angular-side connection service
-are also Burak's scope (integration).
+Handlers don't know about SignalR. After a committed create, update or cancel they call
+`IReservationNotifier`. `SignalRReservationNotifier` sends the `ReservationDto` to
+`Clients.All` (ADR-0014). A failed broadcast is logged and swallowed, so a down socket
+cannot turn a saved reservation into an HTTP error. `NullReservationNotifier` is still
+registered with `TryAdd` and only applies if the SignalR notifier is not registered.
+
+The Angular app opens the connection when a session exists and closes it on logout.
+Negotiate does not send cookies (`withCredentials: false`); the hub uses the bearer token.
+A failed start and a dropped connection both retry forever, at 0s, 2s, 5s, 10s, then
+every 30s. Logout cancels a pending retry. Screens subscribe to `created$`, `updated$`,
+`cancelled$` and `reconnected$` on `ReservationHubService` rather than the raw connection.
 
 ## 7. Frontend architecture
 
@@ -177,8 +183,28 @@ frontend/src/app/
   layout/
     shell/           top bar + navigation around every signed-in screen
     notification-host/  toast messages
-  features/<screen>/ one lazy-loaded standalone component per screen
+  shared/
+    components/      small reusable UI pieces (e.g. StatusBadge)
+    utils/           form helpers (applyServerErrors: API 400 messages -> form controls,
+                     keepDurationWhenStartMoves), datetime-local <-> Date conversion
+    validators/      dateRangeValidator (end after start, max length, start not in the
+                     past with an optional grace, end in the future), integerValidator
+  features/<screen>/ one lazy-loaded standalone component per screen; sub-screens in
+                     sub-folders (e.g. resources/resource-form)
 ```
+
+Typed API clients (`AuthService`, `ResourceService`, `ReservationService`, ...) live in
+`core/services` and return the DTO shapes from `docs/API_CONTRACTS.md` as-is
+(`core/models`). Screens hold their own state in signals and never call `HttpClient`
+directly.
+
+Times are picked in the browser's local time (`<input type="datetime-local">`) and sent to
+the API as UTC ISO strings (`Date.toISOString()`); API timestamps are shown back in local
+time. Client-side range rules mirror the API's (e.g. availability's 31-day window is 31 x 24 h
+of elapsed time, not calendar days) and only give fast feedback - the API decides. The
+reservation form also follows the update rules: once a reservation has started only its end
+and note can change, and an unchanged time is sent back as the API returned it, since the
+picker drops seconds and any difference would count as a change.
 
 - **Session.** `AuthService` keeps the access token in memory, mirrored to `localStorage`
   so a reload stays signed in. The current user (id, name, email, roles) is read from the

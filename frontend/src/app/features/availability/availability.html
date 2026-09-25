@@ -1,1 +1,130 @@
-<p>availability works!</p>
+<div class="page-header">
+  <h1>Find a free resource</h1>
+</div>
+
+<form class="card search" [formGroup]="form" (ngSubmit)="search()" novalidate>
+  <div class="field">
+    <label for="start">From</label>
+    <input
+      id="start"
+      class="input"
+      type="datetime-local"
+      step="900"
+      formControlName="startDateTime"
+      [min]="minStart"
+      [class.invalid]="startError()"
+    />
+    @if (startError(); as error) {
+      <span class="field-error">{{ error }}</span>
+    }
+  </div>
+
+  <div class="field">
+    <label for="end">To</label>
+    <input
+      id="end"
+      class="input"
+      type="datetime-local"
+      step="900"
+      formControlName="endDateTime"
+      [min]="form.controls.startDateTime.value"
+      [class.invalid]="endError()"
+    />
+    @if (endError(); as error) {
+      <span class="field-error">{{ error }}</span>
+    } @else if (duration(); as duration) {
+      <span class="text-muted hint">{{ duration }}</span>
+    }
+  </div>
+
+  <div class="field">
+    <label for="type">Type</label>
+    <select id="type" class="input" formControlName="resourceTypeId">
+      <option value="">Any type</option>
+      @for (type of types(); track type.id) {
+        <option [value]="type.id">{{ type.name }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="capacity">People <span class="text-muted">(optional)</span></label>
+    <input
+      id="capacity"
+      class="input"
+      type="number"
+      min="1"
+      step="1"
+      formControlName="minCapacity"
+      placeholder="Any"
+      [class.invalid]="capacityError()"
+    />
+    @if (capacityError(); as error) {
+      <span class="field-error">{{ error }}</span>
+    }
+  </div>
+
+  <button type="submit" class="btn btn-primary search-button" [disabled]="searching()">
+    {{ searching() ? 'Searching…' : 'Search' }}
+  </button>
+</form>
+
+@if (searchError(); as message) {
+  <div class="alert-error" role="alert">{{ message }}</div>
+}
+
+@if (result(); as result) {
+  <section class="results" aria-live="polite" [class.stale]="searching()">
+    <p class="summary">
+      @if (result.resources.length === 0) {
+        Nothing is free
+      } @else {
+        <strong>{{ result.resources.length }}</strong>
+        {{ result.resources.length === 1 ? 'resource is' : 'resources are' }} free
+      }
+      from <strong>{{ searchedStart() | date: 'EEE d MMM, HH:mm' }}</strong> to
+      <strong>{{ searchedEnd() | date: 'EEE d MMM, HH:mm' }}</strong
+      >&nbsp;<span class="text-muted">({{ searchedDuration() }})</span>
+    </p>
+
+    @if (result.resources.length === 0) {
+      <p class="text-muted empty">Try a different time, a shorter range or another type.</p>
+    } @else {
+      <ul class="grid">
+        @for (resource of result.resources; track resource.id) {
+          <li class="card resource">
+            <div class="resource-head">
+              <h2>{{ resource.name }}</h2>
+              <span class="badge">{{ resource.resourceTypeName }}</span>
+            </div>
+            <p class="text-muted meta">
+              {{ resource.location }} · {{ resource.capacity }}
+              {{ resource.capacity === 1 ? 'person' : 'people' }}
+            </p>
+            @if (resource.description) {
+              <p class="description">{{ resource.description }}</p>
+            }
+            @if (resource.features.length > 0) {
+              <div class="chips">
+                @for (feature of resource.features; track feature) {
+                  <span class="chip">{{ feature }}</span>
+                }
+              </div>
+            }
+            <a
+              class="btn btn-primary book"
+              routerLink="/reservations/new"
+              [queryParams]="bookingParams(resource)"
+              >Book</a
+            >
+          </li>
+        }
+      </ul>
+      <p class="text-muted note">
+        Availability is checked again when you book, in case someone takes the slot first.
+      </p>
+    }
+  </section>
+} @else if (searching()) {
+  <p class="text-muted" role="status">Searching…</p>
+}

@@ -1,0 +1,157 @@
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+// Scrolls sideways when the tabs don't fit (about 320px). The baseline is an inset shadow
+// rather than a border, so the active underline can cover it without overflowing downwards,
+// which would add a vertical scrollbar.
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  box-shadow: inset 0 -1px 0 var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tab {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color-text);
+  }
+
+  &.active {
+    border-bottom-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  @media (max-width: 400px) {
+    padding: var(--space-2);
+  }
+}
+
+.count {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  background: var(--color-bg);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.empty {
+  text-align: center;
+
+  p {
+    margin: 0 0 var(--space-2);
+  }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: start;
+  padding: var(--space-4);
+
+  &.cancelled .what h2 {
+    text-decoration: line-through;
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+}
+
+.when {
+  display: flex;
+  flex-direction: column;
+
+  .date {
+    font-weight: 600;
+  }
+}
+
+.duration,
+.meta {
+  font-size: 0.875rem;
+}
+
+.what {
+  p {
+    margin: 0;
+  }
+
+  // Keep the user's line breaks.
+  .note {
+    margin-top: var(--space-1);
+    white-space: pre-line;
+  }
+}
+
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+
+  h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+  }
+}
+
+.pill {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.in-progress {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.cancelled-pill {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.cancel:hover:not(:disabled) {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
