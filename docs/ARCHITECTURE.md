@@ -133,8 +133,12 @@ ASP.NET Core Identity owns user storage and password hashing; roles are plain Id
 roles (`Admin`, `Employee` - see `SmartDesk.Domain.Constants.Roles`), not a raw string
 column, so role checks use the framework's own `[Authorize(Roles = ...)]` and
 `RoleManager`. Login (`POST /api/auth/login` → `LoginCommand`) checks the password through
-`SignInManager` (so Identity's lockout applies) and issues a signed HS256 JWT; the API
-validates it per request via the JWT bearer handler configured in `Program.cs`. Every
+`SignInManager` (so Identity's lockout applies) and issues a signed HS256 JWT. A failed
+sign-in does the same password-hashing work whether or not the email exists or the account
+is locked, so response times don't reveal which emails have accounts. The API validates the
+token per request with the JWT bearer handler, using the rules in
+`SmartDesk.API/Authentication/JwtBearerSetup.cs`: issuer, audience and key, HS256 only,
+and at most 30 seconds of clock skew on the expiry. Every
 endpoint requires an authenticated user unless it opts out with `[AllowAnonymous]`
 (ADR-0008). The signing key is never committed - see
 `docs/DECISIONS.md` (ADR-0005) and the README's setup steps for `dotnet user-secrets`.
