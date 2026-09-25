@@ -57,6 +57,19 @@ public class GetReservationsQueryHandlerTests : IDisposable
             .Select(r => r.ResourceName).Should().Equal("Meeting Room A", "Meeting Room B");
     }
 
+    [Fact]
+    public async Task Handle_CarriesTheResourceTypeIdAndName()
+    {
+        // A screen filtered by type places live events by this id, without the resource list.
+        var desk = await _database.AddResourceAsync("Desk 3-01", ResourceTypeSeedData.DeskId, 1);
+        await _database.AddReservationAsync(desk.Id, At(10), At(11));
+
+        var reservation = (await QueryAsync(new GetReservationsQuery(At(9), At(12)))).Should().ContainSingle().Subject;
+
+        reservation.ResourceTypeId.Should().Be(ResourceTypeSeedData.DeskId);
+        reservation.ResourceTypeName.Should().Be("Desk");
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

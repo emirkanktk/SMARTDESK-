@@ -65,6 +65,7 @@ public class SignalRReservationNotifierTests
         Guid.CreateVersion7(),
         Guid.CreateVersion7(),
         "Meeting Room A",
+        Guid.CreateVersion7(),
         "Meeting Room",
         "2nd Floor",
         Guid.CreateVersion7(),
