@@ -24,6 +24,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.
+- **Usage report** - for Admins: how much each resource, type and person booked over up to
+  92 days, and how full the office day was (Monday to Friday, 09:00-18:00, in the admin's
+  time zone - [ADR-0017](docs/DECISIONS.md)).
 - **Live updates** - after a reservation is created, changed, or cancelled, every connected
   screen receives `ReservationCreated`, `ReservationUpdated`, or `ReservationCancelled`
   ([ADR-0014](docs/DECISIONS.md)).
@@ -159,6 +162,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
+| Reports | `GET /api/reports/usage?from=&to=&timeZone=` (Admin) |
 | Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` |
 | Ops | `GET /health` |
 

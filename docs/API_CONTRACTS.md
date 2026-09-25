@@ -204,6 +204,43 @@ still count as yesterday. Omitted → UTC. Unknown id → 400.
 Every list holds the reservation shape shown under Reservations. `stats.myUpcomingReservations`
 is the full count, while `myUpcoming` is capped at 5.
 
+## Reports
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/reports/usage?from=2026-09-01&to=2026-09-30&timeZone=Europe/Istanbul&resourceTypeId=` | Admin | `GetUsageReportQuery` | how resources were used over whole local days, `from` and `to` both included (at most 92 days). `timeZone` works as on the dashboard (omitted → UTC, unknown → 400). `to` before `from` → 400. |
+
+```json
+{
+  "from": "2026-09-01", "to": "2026-09-30", "timeZone": "Europe/Istanbul",
+  "fromUtc": "2026-08-31T21:00:00Z", "toUtc": "2026-09-30T21:00:00Z",
+  "workingHours": "Mon-Fri 09:00-18:00",
+  "workingHoursPerResource": 198,        // office hours in the range, per resource
+  "totals": { "resources": 7, "reservations": 42, "cancelled": 5, "bookedHours": 120.5,
+              "workingHoursBooked": 98, "workingHoursAvailable": 1386, "utilization": 0.0707 },
+  "resources": [                           // busiest first (utilization, then booked hours)
+    { "resourceId": "…", "resourceName": "Meeting Room A", "resourceTypeId": "…",
+      "resourceTypeName": "Meeting Room", "status": "Active", "reservations": 12, "cancelled": 1,
+      "bookedHours": 30.5, "workingHoursBooked": 28, "utilization": 0.1414 }
+  ],
+  "byType": [ { "resourceTypeId": "…", "resourceTypeName": "Meeting Room", "resources": 3, "reservations": 20,
+                "cancelled": 2, "bookedHours": 55, "workingHoursBooked": 50, "workingHoursAvailable": 594, "utilization": 0.0842 } ],
+  "topUsers": [ { "userId": "…", "displayName": "Ayşe Yılmaz", "reservations": 9, "bookedHours": 21.5 } ]  // at most 5
+}
+```
+
+What the numbers mean (ADR-0017):
+- **`reservations` / `cancelled`**: `Confirmed` / `Cancelled` reservations whose time overlaps the
+  range. One that spans the edge counts once.
+- **`bookedHours`**: the part of each `Confirmed` reservation inside the range, whenever it falls,
+  nights and weekends included.
+- **`workingHoursBooked`**: the same, counting only Monday to Friday, 09:00-18:00 local time.
+- **`utilization`**: `workingHoursBooked` divided by the office hours available, from 0 to 1. Per
+  resource, that's `workingHoursPerResource`. For a type or the totals, it's that times the number
+  of resources. A range with no weekday gives 0.
+- **Which resources appear**: every `Active` resource, plus any other that had reservations in the
+  range. Blocked windows are not subtracted from the available hours.
+
 ## Real-time (SignalR)
 
 | Hub | Path | Events |

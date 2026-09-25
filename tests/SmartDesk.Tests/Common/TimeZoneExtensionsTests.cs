@@ -26,4 +26,19 @@ public class TimeZoneExtensionsTests
         start.Should().Be(new DateTime(2026, 3, 8, 5, 0, 0, DateTimeKind.Utc));  // 00:00 EST
         (end - start).Should().Be(TimeSpan.FromHours(23));
     }
+
+    [Fact]
+    public void LocalToUtc_ATimeTheClocksSkip_MovesToTheFirstValidMinute()
+    {
+        // 02:30 doesn't exist in New York on 8 March 2026 (02:00 jumps to 03:00 EDT).
+        Zone("America/New_York").LocalToUtc(new DateTime(2026, 3, 8, 2, 30, 0))
+            .Should().Be(new DateTime(2026, 3, 8, 7, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public void LocalToUtc_AnOrdinaryTime_IsConverted()
+    {
+        Zone("Europe/Istanbul").LocalToUtc(new DateTime(2026, 10, 5, 9, 0, 0))
+            .Should().Be(new DateTime(2026, 10, 5, 6, 0, 0, DateTimeKind.Utc));
+    }
 }

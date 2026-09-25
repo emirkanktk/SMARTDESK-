@@ -278,3 +278,33 @@ Development.
   variables later changes nothing.
 - An existing account with that email is promoted rather than refused. That's the useful
   reading of "make this person the admin" when they already have an account.
+
+## ADR-0017: The usage report measures the office day, in the admin's time zone
+
+**Decision:** `GET /api/reports/usage` (Admin) reports on whole local days, `from` to `to`
+(at most 92), in the caller's IANA time zone, the same way as the dashboard (ADR-0012). For
+each resource, and summed per type and in total, it gives two figures:
+- `bookedHours`: all the confirmed booked time inside the range
+- `utilization`: the share of the office day that was booked, where the office day is Monday
+  to Friday, 09:00-18:00 local (`ReportRules`)
+
+It also lists the reservation and cancellation counts and the five people with the most
+booked hours. It's computed in memory from the reservations overlapping the range, with no
+new tables.
+
+**Why:**
+- A meeting room is idle every night and weekend by design. Measured against 24/7, a room
+  booked all day every weekday would read 27% and every room would look empty. Against the
+  office day, the same room reads 100%, which is how people talk about it. Booked time outside
+  those hours (a car over the weekend) still shows in `bookedHours`.
+- Local days and local office hours, not UTC: in Istanbul "09:00" is 06:00 UTC, and a day
+  isn't always 24 hours. Each day's window is converted separately, as the dashboard does with
+  midnights.
+- 92 days bounds the work per request (one query, a few thousand rows at most), and a quarter
+  covers the reviews an admin runs. Computing in C# keeps the clipping to office hours per day
+  readable and unit-testable, which in SQL it wouldn't be.
+- Rows are Active resources plus anything with reservations in the range. A retired room still
+  shows what it was used for, while resources retired long ago don't pad the totals with zeros.
+  Past status changes aren't recorded, so availability counts every listed resource for the
+  whole range, and blocked windows aren't subtracted. The numbers are "roughly how full", not
+  billing.
