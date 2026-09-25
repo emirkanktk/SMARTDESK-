@@ -111,6 +111,43 @@ public class UpdateReservationCommandHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_InProgressOnAResourceNowUnderMaintenance_CanEndEarly()
+    {
+        var room = await _database.AddResourceAsync("Meeting Room A", status: ResourceStatus.Maintenance);
+        var reservation = await ReservationAsync(8.5, 11, room.Id); // started at 08:30, now is 09:00
+
+        var dto = await UpdateAsync(reservation, Move(reservation, 8.5, 9.5));
+
+        dto.EndDateTime.Should().Be(At(9.5));
+        _notifier.Verify(n => n.ReservationUpdatedAsync(It.Is<ReservationDto>(r => r.Id == reservation.Id), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_UpcomingShortenedWithinItsSlotOnAnInactiveResource_IsAllowed()
+    {
+        var room = await _database.AddResourceAsync("Meeting Room A", status: ResourceStatus.Inactive);
+        var reservation = await ReservationAsync(10, 12, room.Id);
+
+        var dto = await UpdateAsync(reservation, Move(reservation, 10.5, 11.5));
+
+        dto.StartDateTime.Should().Be(At(10.5));
+        dto.EndDateTime.Should().Be(At(11.5));
+    }
+
+    [Fact]
+    public async Task Handle_ExtendedOnAResourceNowUnderMaintenance_ThrowsConflictAndKeepsTheOldSlot()
+    {
+        // Growing past its old slot is a new claim, so an inactive resource still refuses it.
+        var room = await _database.AddResourceAsync("Meeting Room A", status: ResourceStatus.Maintenance);
+        var reservation = await ReservationAsync(10, 11, room.Id);
+
+        var act = () => UpdateAsync(reservation, Move(reservation, 10, 12));
+
+        await act.Should().ThrowAsync<ConflictException>().WithMessage("*status: Maintenance*");
+        (await ReloadAsync(reservation.Id)).EndDateTime.Should().Be(At(11));
+    }
+
+    [Fact]
     public async Task Handle_InProgress_EndCanBeExtended()
     {
         var reservation = await ReservationAsync(8.5, 9.5); // started at 08:30, now is 09:00

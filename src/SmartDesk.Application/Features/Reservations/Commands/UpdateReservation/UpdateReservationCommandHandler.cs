@@ -56,6 +56,13 @@ public sealed class UpdateReservationCommandHandler(
             var resourceChanged = request.ResourceId != reservation.ResourceId;
             var timeChanged = start != reservation.StartDateTime || end != reservation.EndDateTime;
 
+            // Shortening it on the same resource claims nothing new: the reservation already
+            // holds its whole old slot, so no other booking can be in the part it keeps. It's
+            // also how someone ends early on a resource that has since gone into maintenance,
+            // which the booking checks below would refuse.
+            var staysWithinItsSlot = !resourceChanged
+                && start >= reservation.StartDateTime && end <= reservation.EndDateTime;
+
             if (reservation.StartDateTime <= now)
             {
                 // In progress: the start is history and the resource is in use.
@@ -77,7 +84,7 @@ public sealed class UpdateReservationCommandHandler(
                     [new ValidationFailure(nameof(UpdateReservationCommand.StartDateTime), "A reservation can't start in the past.")]);
             }
 
-            if (resourceChanged || timeChanged)
+            if (!staysWithinItsSlot)
             {
                 // Moving the booking in time or to another resource is a new claim on that
                 // resource, so it goes through the same checks as a new booking.
@@ -89,6 +96,11 @@ public sealed class UpdateReservationCommandHandler(
                     db, request.ResourceId, start, end, reservation.Id, cancellationToken);
 
                 reservation.ResourceId = request.ResourceId;
+                reservation.StartDateTime = start;
+                reservation.EndDateTime = end;
+            }
+            else
+            {
                 reservation.StartDateTime = start;
                 reservation.EndDateTime = end;
             }
