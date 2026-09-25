@@ -38,7 +38,6 @@ public sealed class PostgresApiFixture : WebApplicationFactory<Program>, IAsyncL
 }
 
 [CollectionDefinition(Name)]
-[Trait("Category", "Integration")]
 public sealed class PostgresApiCollection : ICollectionFixture<PostgresApiFixture>
 {
     public const string Name = "postgres-api";

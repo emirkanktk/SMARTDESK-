@@ -7,6 +7,7 @@ using SmartDesk.Infrastructure.Identity;
 namespace SmartDesk.IntegrationTests;
 
 [Collection(PostgresApiCollection.Name)]
+[Trait("Category", "Integration")]
 public sealed class ReservationOverlapTests(PostgresApiFixture fixture)
 {
     [Fact]
