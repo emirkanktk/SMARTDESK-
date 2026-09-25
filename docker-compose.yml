@@ -27,6 +27,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=smartdesk;Username=smartdesk;Password=smartdesk_dev_only
+      Database__MigrateOnStartup: "true"
       Jwt__Key: ${JWT_KEY:-}
     ports:
       - "8080:8080"
