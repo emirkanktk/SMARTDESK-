@@ -165,6 +165,12 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<int?>("ReminderMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("ResourceId")
                         .HasColumnType("uuid");
 
@@ -178,6 +184,10 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("StartDateTime")
+                        .HasDatabaseName("IX_Reservations_PendingReminders")
+                        .HasFilter("\"ReminderMinutes\" IS NOT NULL AND \"ReminderSentAt\" IS NULL");
 
                     b.HasIndex("ResourceId", "Status", "StartDateTime", "EndDateTime");
 

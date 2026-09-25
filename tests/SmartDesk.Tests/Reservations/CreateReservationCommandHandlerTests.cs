@@ -32,6 +32,16 @@ public class CreateReservationCommandHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_WithAReminder_StoresIt()
+    {
+        var room = await _database.AddResourceAsync("Meeting Room A");
+
+        var dto = await CreateAsync(new CreateReservationCommand(room.Id, At(10), At(11), null, ReminderMinutes: 30));
+
+        dto.ReminderMinutes.Should().Be(30);
+    }
+
+    [Fact]
     public async Task Handle_FreeSlot_SavesConfirmedReservationForCallerAndNotifies()
     {
         var room = await _database.AddResourceAsync("Meeting Room A");

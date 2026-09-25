@@ -215,6 +215,58 @@ public class UpdateReservationCommandHandlerTests : IDisposable
         dto.UserId.Should().Be(OwnerId, "an admin editing a reservation doesn't take it over");
     }
 
+    private async Task<Reservation> RemindedAsync(double startHour, double endHour, int minutes = 15)
+    {
+        var room = await _database.AddResourceAsync($"Room {Guid.NewGuid():N}");
+        return await _database.AddReservationAsync(
+            room.Id, At(startHour), At(endHour), userId: OwnerId, reminderMinutes: minutes, reminderSentAt: NowUtc);
+    }
+
+    [Fact]
+    public async Task Handle_ANewStart_ClearsASentReminder_SoTheNewTimeIsRemindedToo()
+    {
+        var reservation = await RemindedAsync(10, 11);
+
+        await UpdateAsync(reservation, Move(reservation, 13, 14) with { ReminderMinutes = 15 });
+
+        var stored = await ReloadAsync(reservation.Id);
+        stored.ReminderMinutes.Should().Be(15);
+        stored.ReminderSentAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_OnlyANewEnd_KeepsASentReminder()
+    {
+        var reservation = await RemindedAsync(10, 11);
+
+        await UpdateAsync(reservation, Move(reservation, 10, 12) with { ReminderMinutes = 15 });
+
+        (await ReloadAsync(reservation.Id)).ReminderSentAt.Should().Be(NowUtc);
+    }
+
+    [Fact]
+    public async Task Handle_ANewReminderTime_ClearsTheSentMark_AndBroadcasts()
+    {
+        var reservation = await RemindedAsync(10, 11);
+
+        var dto = await UpdateAsync(reservation, Move(reservation, 10, 11) with { ReminderMinutes = 30 });
+
+        dto.ReminderMinutes.Should().Be(30);
+        (await ReloadAsync(reservation.Id)).ReminderSentAt.Should().BeNull();
+        _notifier.Verify(n => n.ReservationUpdatedAsync(It.IsAny<ReservationDto>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_LeavingTheReminderOut_TurnsItOff()
+    {
+        var reservation = await RemindedAsync(10, 11);
+
+        var dto = await UpdateAsync(reservation, Move(reservation, 10, 11));
+
+        dto.ReminderMinutes.Should().BeNull();
+        (await ReloadAsync(reservation.Id)).ReminderMinutes.Should().BeNull();
+    }
+
     [Fact]
     public async Task Handle_NothingChanged_DoesNotBroadcast()
     {

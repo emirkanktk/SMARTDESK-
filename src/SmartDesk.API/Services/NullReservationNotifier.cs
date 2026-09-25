@@ -16,4 +16,7 @@ public sealed class NullReservationNotifier : IReservationNotifier
 
     public Task ReservationCancelledAsync(ReservationDto reservation, CancellationToken cancellationToken) =>
         Task.CompletedTask;
+
+    public Task ReservationStartingSoonAsync(ReservationDto reservation, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 }

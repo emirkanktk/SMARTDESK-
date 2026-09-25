@@ -55,6 +55,8 @@ public sealed class UpdateReservationCommandHandler(
 
             var resourceChanged = request.ResourceId != reservation.ResourceId;
             var timeChanged = start != reservation.StartDateTime || end != reservation.EndDateTime;
+            var startChanged = start != reservation.StartDateTime;
+            var reminderChanged = request.ReminderMinutes != reservation.ReminderMinutes;
 
             // Shortening it on the same resource claims nothing new: the reservation already
             // holds its whole old slot, so no other booking can be in the part it keeps. It's
@@ -105,8 +107,17 @@ public sealed class UpdateReservationCommandHandler(
                 reservation.EndDateTime = end;
             }
 
-            changed = resourceChanged || timeChanged || note != reservation.Note;
+            changed = resourceChanged || timeChanged || reminderChanged || note != reservation.Note;
             reservation.Note = note;
+
+            // A new start or a new reminder time means the reminder is due at a new moment, so
+            // it goes out again even if the old one was already sent (ADR-0018).
+            if (startChanged || reminderChanged)
+            {
+                reservation.ReminderSentAt = null;
+            }
+
+            reservation.ReminderMinutes = request.ReminderMinutes;
 
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);

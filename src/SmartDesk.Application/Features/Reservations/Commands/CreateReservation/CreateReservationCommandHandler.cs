@@ -42,6 +42,7 @@ public sealed class CreateReservationCommandHandler(
                 EndDateTime = end,
                 Status = ReservationStatus.Confirmed,
                 Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+                ReminderMinutes = request.ReminderMinutes,
             });
 
             await db.SaveChangesAsync(cancellationToken);

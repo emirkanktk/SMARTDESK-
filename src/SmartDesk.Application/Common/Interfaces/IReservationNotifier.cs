@@ -18,4 +18,7 @@ public interface IReservationNotifier
     Task ReservationUpdatedAsync(ReservationDto reservation, CancellationToken cancellationToken);
 
     Task ReservationCancelledAsync(ReservationDto reservation, CancellationToken cancellationToken);
+
+    // The owner's reminder (ADR-0018): sent to that user's open sessions only, not broadcast.
+    Task ReservationStartingSoonAsync(ReservationDto reservation, CancellationToken cancellationToken);
 }

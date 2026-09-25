@@ -66,6 +66,12 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             // CreateReservationCommand will run on every write.
             entity.HasIndex(e => new { e.ResourceId, e.Status, e.StartDateTime, e.EndDateTime });
 
+            // The reminder job (ADR-0018) looks every 30 seconds for reminders still to send
+            // among reservations starting soon; this keeps that to a scan of just those rows.
+            entity.HasIndex(e => e.StartDateTime)
+                .HasDatabaseName("IX_Reservations_PendingReminders")
+                .HasFilter("\"ReminderMinutes\" IS NOT NULL AND \"ReminderSentAt\" IS NULL");
+
             // Business rule 2, enforced by the database as well as the validator.
             entity.ToTable(t => t.HasCheckConstraint(
                 ReservationConstraints.EndAfterStart, "\"EndDateTime\" > \"StartDateTime\""));
