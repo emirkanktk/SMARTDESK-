@@ -115,9 +115,11 @@ docker compose --profile api up -d --build
 curl http://localhost:8080/health
 ```
 
-The container uses `ASPNETCORE_ENVIRONMENT=Development`, so the demo users and sample
-resources are seeded. This is a local stand-in, not a production image. Point the Angular
-dev server at `http://localhost:8080/api` if you use this profile instead of `dotnet run`.
+The container uses `ASPNETCORE_ENVIRONMENT=Development` and
+`Database__MigrateOnStartup`, so a fresh database is migrated and the demo users and
+sample resources are seeded. This is a local stand-in, not a production image. Point the
+Angular dev server at `http://localhost:8080/api` if you use this profile instead of
+`dotnet run`.
 
 The Development seed also creates eight sample resources (meeting rooms, desks, a company
 car, a projector, and a camera under maintenance) when the database has none. The five
