@@ -78,6 +78,12 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin').then((m) => m.Admin),
       },
+      {
+        path: 'admin/reports',
+        title: 'Usage report · SmartDesk',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/reports/usage-report').then((m) => m.UsageReport),
+      },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },
