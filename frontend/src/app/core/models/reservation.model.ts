@@ -16,6 +16,8 @@ export interface Reservation {
   endDateTime: string;
   status: ReservationStatus;
   note: string | null;
+  /** Remind the owner this many minutes before the start; null means no reminder. */
+  reminderMinutes: number | null;
   /**
    * Who booked it: "First Last", or the email if both are blank. Null when the API can't
    * resolve the user any more, e.g. a deleted account.
@@ -38,10 +40,18 @@ export interface CreateReservationRequest {
   startDateTime: string;
   endDateTime: string;
   note: string | null;
+  /** One of REMINDER_OPTIONS, or null for none. Leaving it out of a PUT turns it off. */
+  reminderMinutes: number | null;
 }
 
 /** Body of `PUT /api/reservations/{id}` - a full replace; the owner never changes. */
 export type UpdateReservationRequest = CreateReservationRequest;
+
+/** Reminder choices the API accepts, in minutes before the start (ADR-0018). */
+export const REMINDER_OPTIONS = [5, 15, 30, 60] as const;
+
+/** What a new booking starts with; the owner can change it or turn it off. */
+export const DEFAULT_REMINDER_MINUTES = 15;
 
 // Rules enforced by the API; the form mirrors them for fast feedback.
 export const RESERVATION_LIMITS = {

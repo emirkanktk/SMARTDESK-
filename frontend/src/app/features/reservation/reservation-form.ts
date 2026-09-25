@@ -15,6 +15,8 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize, map } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import {
+  DEFAULT_REMINDER_MINUTES,
+  REMINDER_OPTIONS,
   RESERVATION_LIMITS,
   Reservation,
   UpdateReservationRequest,
@@ -22,6 +24,7 @@ import {
 import { Resource } from '../../core/models/resource.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
 import {
@@ -69,6 +72,7 @@ export class ReservationForm implements OnInit {
   private readonly resourceService = inject(ResourceService);
   private readonly authService = inject(AuthService);
   private readonly notifications = inject(NotificationService);
+  private readonly reminderAlerts = inject(ReminderAlertsService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly locale = inject(LOCALE_ID);
@@ -81,6 +85,9 @@ export class ReservationForm implements OnInit {
   readonly end = input<string>();
 
   protected readonly limits = L;
+  protected readonly reminderOptions = REMINDER_OPTIONS;
+  /** Desktop notifications turned off in the browser: the reminder then only shows in the app. */
+  protected readonly desktopBlocked = this.reminderAlerts.permission() === 'denied';
 
   protected readonly form = inject(NonNullableFormBuilder).group(
     {
@@ -88,6 +95,7 @@ export class ReservationForm implements OnInit {
       startDateTime: ['', Validators.required],
       endDateTime: ['', Validators.required],
       note: ['', Validators.maxLength(L.noteMaxLength)],
+      reminderMinutes: [DEFAULT_REMINDER_MINUTES as number | null],
     },
     { validators: dateRangeValidator(rangeRules('create')) },
   );
@@ -204,6 +212,10 @@ export class ReservationForm implements OnInit {
 
     const body = this.toRequest();
     const reservation = this.reservation();
+    if (body.reminderMinutes !== null) {
+      // Asked here because saving is a user action; asked at page load it would be blocked.
+      this.reminderAlerts.requestPermissionIfUnasked();
+    }
     const request = reservation
       ? this.reservationService.update(reservation.id, body)
       : this.reservationService.create(body);
@@ -276,6 +288,7 @@ export class ReservationForm implements OnInit {
       startDateTime: toDateTimeLocal(start),
       endDateTime: toDateTimeLocal(end),
       note: '',
+      reminderMinutes: DEFAULT_REMINDER_MINUTES,
     });
     if (linkStart && linkEnd && this.form.invalid) {
       this.form.markAllAsTouched(); // e.g. an old link whose start is now in the past
@@ -365,10 +378,13 @@ export class ReservationForm implements OnInit {
       startDateTime: originalStart,
       endDateTime: toDateTimeLocal(end),
       note: reservation.note ?? '',
+      reminderMinutes: reservation.reminderMinutes,
     });
     if (mode === 'inProgress') {
       this.form.controls.resourceId.disable();
       this.form.controls.startDateTime.disable();
+      // Too late for a reminder; the stored choice is sent back as it is.
+      this.form.controls.reminderMinutes.disable();
     }
     this.keepDuration();
   }
@@ -386,6 +402,7 @@ export class ReservationForm implements OnInit {
       startDateTime: toIso(value.startDateTime, original?.startDateTime),
       endDateTime: toIso(value.endDateTime, original?.endDateTime),
       note: value.note.trim() || null,
+      reminderMinutes: value.reminderMinutes,
     };
   }
 

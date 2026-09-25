@@ -21,8 +21,9 @@ export class NotificationService {
     this.show('success', message);
   }
 
-  info(message: string): void {
-    this.show('info', message);
+  /** `durationMs` keeps it up longer than usual, e.g. for a reminder. */
+  info(message: string, durationMs = AUTO_DISMISS_MS): void {
+    this.show('info', message, durationMs);
   }
 
   error(message: string): void {
@@ -33,7 +34,7 @@ export class NotificationService {
     this.notificationsSignal.update((list) => list.filter((n) => n.id !== id));
   }
 
-  private show(kind: NotificationKind, message: string): void {
+  private show(kind: NotificationKind, message: string, durationMs = AUTO_DISMISS_MS): void {
     // The same message twice in a row (e.g. several requests failing together) shows once.
     if (this.notificationsSignal().some((n) => n.kind === kind && n.message === message)) {
       return;
@@ -41,6 +42,6 @@ export class NotificationService {
 
     const id = this.nextId++;
     this.notificationsSignal.update((list) => [...list, { id, kind, message }]);
-    setTimeout(() => this.dismiss(id), AUTO_DISMISS_MS);
+    setTimeout(() => this.dismiss(id), durationMs);
   }
 }
