@@ -1,16 +1,20 @@
 import {
   addDays,
   addMinutes,
+  addMonths,
   floorToQuarterHour,
   formatDuration,
   fromDateTimeLocal,
   nextHalfHour,
   parseDateParam,
   parseIso,
+  parseMonthParam,
   startOfDay,
+  startOfMonth,
   startOfWeek,
   toDateParam,
   toDateTimeLocal,
+  toMonthParam,
 } from './date-time';
 
 describe('date-time helpers', () => {
@@ -67,6 +71,22 @@ describe('date-time helpers', () => {
     expect(toDateTimeLocal(startOfWeek(new Date(2026, 9, 5, 10, 7)))).toBe('2026-10-05T00:00'); // Mon
     expect(toDateTimeLocal(startOfWeek(new Date(2026, 9, 7, 18, 0)))).toBe('2026-10-05T00:00'); // Wed
     expect(toDateTimeLocal(startOfWeek(new Date(2026, 9, 11, 23, 59)))).toBe('2026-10-05T00:00'); // Sun
+  });
+
+  it('finds the first of the month, and whole months later or earlier', () => {
+    expect(toDateTimeLocal(startOfMonth(new Date(2026, 9, 31, 23, 59)))).toBe('2026-10-01T00:00');
+    expect(toDateTimeLocal(addMonths(new Date(2026, 0, 31), 1))).toBe('2026-02-01T00:00');
+    expect(toDateTimeLocal(addMonths(new Date(2026, 11, 15), 1))).toBe('2027-01-01T00:00');
+    expect(toDateTimeLocal(addMonths(new Date(2026, 0, 15), -1))).toBe('2025-12-01T00:00');
+  });
+
+  it('round-trips a month through a query parameter and rejects bad ones', () => {
+    expect(toMonthParam(new Date(2026, 9, 31))).toBe('2026-10');
+    expect(parseMonthParam('2026-10')?.getTime()).toBe(new Date(2026, 9, 1).getTime());
+    expect(parseMonthParam('2026-13')).toBeNull();
+    expect(parseMonthParam('2026-00')).toBeNull();
+    expect(parseMonthParam('2026-10-05')).toBeNull();
+    expect(parseMonthParam(undefined)).toBeNull();
   });
 
   it('round-trips a date through a query parameter and rejects bad ones', () => {
