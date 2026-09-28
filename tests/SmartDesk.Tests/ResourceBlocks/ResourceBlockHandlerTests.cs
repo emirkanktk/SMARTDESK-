@@ -99,12 +99,12 @@ public class ResourceBlockHandlerTests : IDisposable
 
         await using (var context = _database.CreateContext())
         {
-            await new DeleteResourceBlockCommandHandler(context).Handle(new DeleteResourceBlockCommand(block.Id), CancellationToken.None);
+            await new DeleteResourceBlockCommandHandler(context, TestAccess.Admin).Handle(new DeleteResourceBlockCommand(block.Id), CancellationToken.None);
         }
 
         await using var verify = _database.CreateContext();
         (await verify.ResourceBlocks.AnyAsync()).Should().BeFalse();
-        var act = () => new DeleteResourceBlockCommandHandler(verify).Handle(new DeleteResourceBlockCommand(block.Id), CancellationToken.None);
+        var act = () => new DeleteResourceBlockCommandHandler(verify, TestAccess.Admin).Handle(new DeleteResourceBlockCommand(block.Id), CancellationToken.None);
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
@@ -118,7 +118,7 @@ public class ResourceBlockHandlerTests : IDisposable
         await _database.AddBlockAsync(roomA.Id, At(18), At(20), "Out of range");
 
         await using var context = _database.CreateContext();
-        var handler = new GetResourceBlocksQueryHandler(context);
+        var handler = new GetResourceBlocksQueryHandler(context, TestAccess.Admin);
 
         (await handler.Handle(new GetResourceBlocksQuery(At(9), At(18)), CancellationToken.None))
             .Select(b => b.Reason).Should().Equal("Cleaning", "Event");

@@ -3,11 +3,15 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Domain.Rules;
 
 namespace SmartDesk.Application.Features.Reservations.Queries.GetReservations;
 
-public sealed class GetReservationsQueryHandler(IApplicationDbContext db, IIdentityService identityService)
+public sealed class GetReservationsQueryHandler(
+    IApplicationDbContext db,
+    ICurrentUserService currentUser,
+    IIdentityService identityService)
     : IRequestHandler<GetReservationsQuery, IReadOnlyList<ReservationDto>>
 {
     public async Task<IReadOnlyList<ReservationDto>> Handle(GetReservationsQuery request, CancellationToken cancellationToken)
@@ -17,7 +21,11 @@ public sealed class GetReservationsQueryHandler(IApplicationDbContext db, IIdent
 
         // Same overlap rule as availability and booking: a reservation shows up in a range iff
         // it would block a booking of that range.
-        var query = db.Reservations.AsNoTracking().Where(ReservationOverlap.ConfirmedOverlapping(from, to));
+        // Only on resources the caller may use: another team's schedule is theirs (ADR-0022).
+        var query = db.Reservations
+            .AsNoTracking()
+            .OnUsableResources(currentUser)
+            .Where(ReservationOverlap.ConfirmedOverlapping(from, to));
 
         if (request.ResourceId is { } resourceId)
         {

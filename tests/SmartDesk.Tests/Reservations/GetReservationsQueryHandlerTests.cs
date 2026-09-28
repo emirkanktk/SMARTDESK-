@@ -20,7 +20,7 @@ public class GetReservationsQueryHandlerTests : IDisposable
         GetReservationsQuery query, IReadOnlyDictionary<Guid, string>? names = null)
     {
         await using var context = _database.CreateContext();
-        return await new GetReservationsQueryHandler(context, new FakeIdentityService(names))
+        return await new GetReservationsQueryHandler(context, TestAccess.Admin, new FakeIdentityService(names))
             .Handle(query, CancellationToken.None);
     }
 

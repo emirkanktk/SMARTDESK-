@@ -6,6 +6,8 @@ using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure.Persistence.Seed;
 using SmartDesk.Tests.TestSupport;
 
+using SmartDesk.Application.Features.Resources.Commands.SetResourceTeams;
+
 namespace SmartDesk.Tests.Resources;
 
 public class ResourceValidatorTests : IDisposable
@@ -102,5 +104,19 @@ public class ResourceValidatorTests : IDisposable
             .Validate(new GetAvailableResourcesQuery(Start, Start.AddHours(1), MinCapacity: 0));
 
         result.Errors.Should().ContainSingle(e => e.PropertyName == nameof(GetAvailableResourcesQuery.MinCapacity));
+    }
+
+    [Fact]
+    public async Task Teams_AreAtMostTwenty_AndNeverEmptyIds()
+    {
+        var tooMany = Enumerable.Range(0, 21).Select(_ => Guid.NewGuid()).ToList();
+        await using var context = _database.CreateContext();
+
+        new SetResourceTeamsCommandValidator().Validate(new SetResourceTeamsCommand(tooMany)).IsValid.Should().BeFalse();
+        new SetResourceTeamsCommandValidator().Validate(new SetResourceTeamsCommand([Guid.Empty])).IsValid.Should().BeFalse();
+        new SetResourceTeamsCommandValidator().Validate(new SetResourceTeamsCommand([])).IsValid.Should().BeTrue("no teams means shared");
+        (await new CreateResourceCommandValidator(context).ValidateAsync(
+                new CreateResourceCommand("Van", ResourceTypeSeedData.CompanyCarId, 3, "Parking", null, null, tooMany)))
+            .Errors.Should().Contain(e => e.PropertyName == "TeamIds");
     }
 }

@@ -40,8 +40,9 @@ public class HubConnectionRegistryTests
         registry.Add(ayse, tab);
 
         registry.Remove(ayse, "c1");
-        registry.End(ayse);
 
+        registry.UsersConnected.Should().Be(0, "a user without connections isn't kept around");
+        registry.End(ayse);
         tab.Aborted.Should().BeFalse();
         registry.CountFor(ayse).Should().Be(0);
     }

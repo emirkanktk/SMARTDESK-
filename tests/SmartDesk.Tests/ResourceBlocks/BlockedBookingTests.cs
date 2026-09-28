@@ -79,7 +79,7 @@ public class BlockedBookingTests : IDisposable
         await _database.AddBlockAsync(roomA.Id, At(11), At(12));
 
         await using var context = _database.CreateContext();
-        var available = await new GetAvailableResourcesQueryHandler(context)
+        var available = await new GetAvailableResourcesQueryHandler(context, TestAccess.Admin, TestAccess.Reader())
             .Handle(new GetAvailableResourcesQuery(At(10), At(13)), CancellationToken.None);
 
         available.Select(r => r.Name).Should().Equal("Meeting Room B");

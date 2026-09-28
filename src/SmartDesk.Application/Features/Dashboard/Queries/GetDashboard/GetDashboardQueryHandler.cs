@@ -4,6 +4,7 @@ using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Domain.Rules;
 
@@ -28,14 +29,18 @@ public sealed class GetDashboardQueryHandler(
 
         var reservations = db.Reservations.AsNoTracking();
 
-        var today = await reservations
+        // The office-wide lists and counts cover only resources the caller may use (ADR-0022);
+        // their own upcoming reservations are theirs whatever the resource.
+        var visible = reservations.OnUsableResources(currentUser);
+
+        var today = await visible
             .Where(ReservationOverlap.ConfirmedOverlapping(todayStart, todayEnd))
             .OrderBy(r => r.StartDateTime)
             .ThenBy(r => r.Resource.Name)
             .Select(ReservationDto.Projection)
             .ToListAsync(cancellationToken);
 
-        var inUseNow = await reservations
+        var inUseNow = await visible
             .Where(ReservationOverlap.ConfirmedActiveAt(now))
             .OrderBy(r => r.EndDateTime)
             .ThenBy(r => r.Resource.Name)
@@ -51,7 +56,9 @@ public sealed class GetDashboardQueryHandler(
             .Select(ReservationDto.Projection)
             .ToListAsync(cancellationToken);
 
-        var activeResources = await db.Resources.CountAsync(r => r.Status == ResourceStatus.Active, cancellationToken);
+        var activeResources = await db.Resources
+            .UsableBy(currentUser)
+            .CountAsync(r => r.Status == ResourceStatus.Active, cancellationToken);
 
         // One name lookup for all three lists.
         var names = await identityService.GetDisplayNamesAsync(

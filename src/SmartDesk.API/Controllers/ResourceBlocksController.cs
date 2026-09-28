@@ -23,7 +23,7 @@ public sealed class ResourceBlocksController(ISender sender) : ControllerBase
         sender.Send(query, cancellationToken);
 
     [HttpPost]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.AdminOrManager)]
     [ProducesResponseType<ResourceBlockDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -37,7 +37,7 @@ public sealed class ResourceBlocksController(ISender sender) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.AdminOrManager)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartDesk.Application.Features.Resources.Commands.ChangeResourceStatus;
 using SmartDesk.Application.Features.Resources.Commands.CreateResource;
+using SmartDesk.Application.Features.Resources.Commands.SetResourceTeams;
 using SmartDesk.Application.Features.Resources.Commands.UpdateResource;
 using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Application.Features.Resources.Queries.GetAvailableResources;
@@ -40,8 +41,9 @@ public sealed class ResourcesController(ISender sender) : ControllerBase
     public Task<ResourceDto> GetById(Guid id, CancellationToken cancellationToken) =>
         sender.Send(new GetResourceByIdQuery(id), cancellationToken);
 
+    // Admins add any resource; a Manager adds one to their own team (ADR-0022).
     [HttpPost]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.AdminOrManager)]
     [ProducesResponseType<ResourceDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -52,8 +54,9 @@ public sealed class ResourcesController(ISender sender) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = resource.Id }, resource);
     }
 
+    // A Manager may edit only a resource that belongs to their team alone.
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.AdminOrManager)]
     [ProducesResponseType<ResourceDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -62,11 +65,21 @@ public sealed class ResourcesController(ISender sender) : ControllerBase
         sender.Send(command with { Id = id }, cancellationToken);
 
     [HttpPatch("{id:guid}/status")]
-    [Authorize(Roles = Roles.Admin)]
+    [Authorize(Roles = Roles.AdminOrManager)]
     [ProducesResponseType<ResourceDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<ResourceDto> ChangeStatus(Guid id, ChangeResourceStatusCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command with { Id = id }, cancellationToken);
+
+    // Which teams may use it; an empty list makes it shared by everyone (ADR-0022).
+    [HttpPatch("{id:guid}/teams")]
+    [Authorize(Roles = Roles.Admin)]
+    [ProducesResponseType<ResourceDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<ResourceDto> SetTeams(Guid id, SetResourceTeamsCommand command, CancellationToken cancellationToken) =>
         sender.Send(command with { Id = id }, cancellationToken);
 }

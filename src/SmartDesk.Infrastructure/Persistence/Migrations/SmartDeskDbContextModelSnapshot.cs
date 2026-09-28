@@ -287,6 +287,21 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("ResourceFeatures");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceTeam", b =>
+                {
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ResourceId", "TeamId");
+
+                    b.HasIndex("TeamId");
+
+                    b.ToTable("ResourceTeams");
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceType", b =>
                 {
                     b.Property<Guid>("Id")
@@ -517,6 +532,17 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Navigation("Resource");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceTeam", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
+                        .WithMany("Teams")
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Resource");
+                });
+
             modelBuilder.Entity("SmartDesk.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.HasOne("SmartDesk.Infrastructure.Identity.ApplicationUser", null)
@@ -532,6 +558,8 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Navigation("Features");
 
                     b.Navigation("Reservations");
+
+                    b.Navigation("Teams");
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceType", b =>

@@ -8,7 +8,7 @@ using SmartDesk.Domain.Rules;
 
 namespace SmartDesk.Application.Features.Resources.Queries.GetAvailableResources;
 
-public sealed class GetAvailableResourcesQueryHandler(IApplicationDbContext db)
+public sealed class GetAvailableResourcesQueryHandler(IApplicationDbContext db, ICurrentUserService currentUser, ResourceReader reader)
     : IRequestHandler<GetAvailableResourcesQuery, IReadOnlyList<ResourceDto>>
 {
     public async Task<IReadOnlyList<ResourceDto>> Handle(GetAvailableResourcesQuery request, CancellationToken cancellationToken)
@@ -17,7 +17,8 @@ public sealed class GetAvailableResourcesQueryHandler(IApplicationDbContext db)
         var end = request.EndDateTime.AsUtc();
 
         // Business rule 3: only Active resources can be booked, so only they are "available".
-        var query = db.Resources.AsNoTracking().Where(r => r.Status == ResourceStatus.Active);
+        // And only what the caller may book (ADR-0022).
+        var query = db.Resources.AsNoTracking().UsableBy(currentUser).Where(r => r.Status == ResourceStatus.Active);
 
         if (request.ResourceTypeId is { } typeId)
         {
@@ -39,11 +40,11 @@ public sealed class GetAvailableResourcesQueryHandler(IApplicationDbContext db)
             .Where(ResourceBlockOverlap.Overlapping(start, end))
             .Select(b => b.ResourceId);
 
-        return await query
-            .Where(r => !busyResourceIds.Contains(r.Id) && !blockedResourceIds.Contains(r.Id))
-            .OrderBy(r => r.ResourceType.Name)
-            .ThenBy(r => r.Name)
-            .Select(ResourceDto.Projection)
-            .ToListAsync(cancellationToken);
+        return await reader.ListAsync(
+            query
+                .Where(r => !busyResourceIds.Contains(r.Id) && !blockedResourceIds.Contains(r.Id))
+                .OrderBy(r => r.ResourceType.Name)
+                .ThenBy(r => r.Name),
+            cancellationToken);
     }
 }

@@ -7,15 +7,18 @@ using SmartDesk.Domain.Entities;
 
 namespace SmartDesk.Application.Features.Resources.Commands.UpdateResource;
 
-public sealed class UpdateResourceCommandHandler(IApplicationDbContext db)
+public sealed class UpdateResourceCommandHandler(IApplicationDbContext db, ICurrentUserService currentUser, ResourceReader reader)
     : IRequestHandler<UpdateResourceCommand, ResourceDto>
 {
     public async Task<ResourceDto> Handle(UpdateResourceCommand request, CancellationToken cancellationToken)
     {
         var resource = await db.Resources
+            .UsableBy(currentUser)
             .Include(r => r.Features)
+            .Include(r => r.Teams)
             .SingleOrDefaultAsync(r => r.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(Resource), request.Id);
+        ResourceManagement.RequireManageable(resource, currentUser);
 
         resource.Name = request.Name.Trim();
         resource.ResourceTypeId = request.ResourceTypeId;
@@ -28,11 +31,7 @@ public sealed class UpdateResourceCommandHandler(IApplicationDbContext db)
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return await db.Resources
-            .AsNoTracking()
-            .Where(r => r.Id == resource.Id)
-            .Select(ResourceDto.Projection)
-            .SingleAsync(cancellationToken);
+        return (await reader.FindAsync(db.Resources.AsNoTracking().Where(r => r.Id == resource.Id), cancellationToken))!;
     }
 
     // Diff rather than delete-all-and-reinsert: unchanged features keep their rows, only the

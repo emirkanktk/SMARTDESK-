@@ -5,48 +5,82 @@ using Moq;
 using SmartDesk.API.Hubs;
 using SmartDesk.API.Services;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
+using SmartDesk.Tests.TestSupport;
 
 namespace SmartDesk.Tests.Realtime;
 
-public class SignalRReservationNotifierTests
+public sealed class SignalRReservationNotifierTests : IDisposable
 {
-    private readonly Mock<IClientProxy> _clients = new();
+    private readonly SqliteTestDatabase _database = new();
+    private readonly Mock<IClientProxy> _everyone = new();
+    private readonly Mock<IClientProxy> _groups = new();
     private readonly Mock<IClientProxy> _ownerClients = new();
     private readonly Mock<IHubClients> _hubClients = new();
     private readonly SignalRReservationNotifier _notifier;
+    private IReadOnlyList<string>? _groupNames;
 
     public SignalRReservationNotifierTests()
     {
-        _hubClients.Setup(c => c.All).Returns(_clients.Object);
+        _hubClients.Setup(c => c.All).Returns(_everyone.Object);
         _hubClients.Setup(c => c.User(It.IsAny<string>())).Returns(_ownerClients.Object);
+        _hubClients.Setup(c => c.Groups(It.IsAny<IReadOnlyList<string>>()))
+            .Callback<IReadOnlyList<string>>(names => _groupNames = names)
+            .Returns(_groups.Object);
         var hub = new Mock<IHubContext<ReservationHub>>();
         hub.Setup(h => h.Clients).Returns(_hubClients.Object);
-        _notifier = new SignalRReservationNotifier(hub.Object, NullLogger<SignalRReservationNotifier>.Instance);
+        _notifier = new SignalRReservationNotifier(hub.Object, _database.CreateContext(), NullLogger<SignalRReservationNotifier>.Instance);
     }
+
+    public void Dispose() => _database.Dispose();
 
     [Theory]
     [InlineData(ReservationHub.Created)]
     [InlineData(ReservationHub.Updated)]
     [InlineData(ReservationHub.Cancelled)]
-    public async Task Broadcasts_the_reservation_under_the_contract_event_name(string eventName)
+    public async Task A_shared_resources_event_goes_to_everyone_under_the_contract_name(string eventName)
     {
-        var reservation = Sample();
+        var resource = await _database.AddResourceAsync();
+        var reservation = Sample(resource.Id);
 
         await Send(eventName, reservation);
 
-        _clients.Verify(
+        _everyone.Verify(
             c => c.SendCoreAsync(
                 eventName,
                 It.Is<object[]>(args => args.Length == 1 && ReferenceEquals(args[0], reservation)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+        _groups.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task A_team_resources_event_goes_only_to_its_teams_and_the_admins()
+    {
+        var zeynep = Guid.NewGuid();
+        var okan = Guid.NewGuid();
+        var resource = await _database.AddResourceAsync("Meeting Room B");
+        await using (var context = _database.CreateContext())
+        {
+            context.ResourceTeams.AddRange(
+                new ResourceTeam { ResourceId = resource.Id, TeamId = zeynep },
+                new ResourceTeam { ResourceId = resource.Id, TeamId = okan });
+            await context.SaveChangesAsync();
+        }
+
+        await _notifier.ReservationCreatedAsync(Sample(resource.Id), CancellationToken.None);
+
+        _groupNames.Should().BeEquivalentTo(ReservationHub.AdminsGroup, ReservationHub.TeamGroup(zeynep), ReservationHub.TeamGroup(okan));
+        _groups.Verify(c => c.SendCoreAsync(ReservationHub.Created, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Once);
+        _everyone.VerifyNoOtherCalls();
     }
 
     [Fact]
     public async Task A_reminder_goes_to_the_owner_only()
     {
-        var reservation = Sample();
+        var resource = await _database.AddResourceAsync();
+        var reservation = Sample(resource.Id);
 
         await _notifier.ReservationStartingSoonAsync(reservation, CancellationToken.None);
 
@@ -57,17 +91,18 @@ public class SignalRReservationNotifierTests
                 It.Is<object[]>(args => args.Length == 1 && ReferenceEquals(args[0], reservation)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
-        _clients.VerifyNoOtherCalls();
+        _everyone.VerifyNoOtherCalls();
     }
 
     [Fact]
     public async Task A_failed_broadcast_does_not_escape()
     {
-        _clients
+        var resource = await _database.AddResourceAsync();
+        _everyone
             .Setup(c => c.SendCoreAsync(It.IsAny<string>(), It.IsAny<object[]>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new IOException("socket closed"));
 
-        var act = () => _notifier.ReservationCreatedAsync(Sample(), CancellationToken.None);
+        var act = () => _notifier.ReservationCreatedAsync(Sample(resource.Id), CancellationToken.None);
 
         await act.Should().NotThrowAsync();
     }
@@ -80,9 +115,9 @@ public class SignalRReservationNotifierTests
         _ => throw new ArgumentOutOfRangeException(nameof(eventName)),
     };
 
-    private static ReservationDto Sample() => new(
+    private static ReservationDto Sample(Guid resourceId) => new(
         Guid.CreateVersion7(),
-        Guid.CreateVersion7(),
+        resourceId,
         "Meeting Room A",
         Guid.CreateVersion7(),
         "Meeting Room",
