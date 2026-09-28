@@ -14,4 +14,13 @@ public interface IIdentityService
     // Unknown ids are simply missing from the result.
     Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken);
+
+    // A reset token for the account with this email, or null when there is none. Callers must
+    // treat both outcomes the same way towards the client (ADR-0019).
+    Task<PasswordResetToken?> CreatePasswordResetTokenAsync(string email, CancellationToken cancellationToken);
+
+    // Sets a new password if the token is valid for this email. A successful reset also ends a
+    // lockout, so someone locked out by failed attempts can get back in.
+    Task<ResetPasswordResult> ResetPasswordAsync(
+        string email, string token, string newPassword, CancellationToken cancellationToken);
 }

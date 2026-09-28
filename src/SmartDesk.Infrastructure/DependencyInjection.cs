@@ -5,7 +5,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using MimeKit;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.Auth.Common;
+using SmartDesk.Infrastructure.Email;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence;
 using SmartDesk.Infrastructure.Persistence.Seed;
@@ -54,6 +58,30 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(BootstrapAdminOptions.SectionName))
             .Validate(o => o.IsComplete, "BootstrapAdmin:Email and BootstrapAdmin:Password must be set together.")
             .ValidateOnStart();
+
+        services.AddOptions<AppOptions>()
+            .Bind(configuration.GetSection(AppOptions.SectionName))
+            .Validate(o => o.HasValidFrontendUrl,
+                "App:FrontendUrl must be the absolute http(s) address the frontend is served on, e.g. http://localhost:4200.")
+            .ValidateOnStart();
+        services.AddSingleton<IFrontendLinks, FrontendLinks>();
+
+        // Email (ADR-0019): handlers queue, a background worker sends - over SMTP when
+        // Email:Smtp:Host is set, to the log otherwise.
+        services.AddOptions<EmailOptions>()
+            .Bind(configuration.GetSection(EmailOptions.SectionName))
+            .Validate(o => MailboxAddress.TryParse(o.From, out _), "Email:From must be an email address, e.g. SmartDesk <no-reply@example.com>.")
+            .ValidateOnStart();
+        services.AddSingleton<EmailQueue>();
+        services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<EmailQueue>());
+        services.AddSingleton<IEmailTransport>(sp =>
+            string.IsNullOrWhiteSpace(sp.GetRequiredService<IOptions<EmailOptions>>().Value.Smtp.Host)
+                ? ActivatorUtilities.CreateInstance<LoggingEmailTransport>(sp)
+                : ActivatorUtilities.CreateInstance<SmtpEmailTransport>(sp));
+        services.AddHostedService<EmailDispatchWorker>();
+
+        // Reset links expire, and work once: a reset changes the security stamp they're tied to.
+        services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = AccountEmails.ResetLinkLifetime);
 
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();

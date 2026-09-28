@@ -16,19 +16,30 @@ services:
       timeout: 5s
       retries: 10
 
-  # Opt-in. `docker compose up -d` still starts PostgreSQL only.
+  # Catches every email the API sends in Development; read them at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31
+    container_name: smartdesk-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  # Opt-in. `docker compose up -d` starts PostgreSQL and Mailpit only.
   api:
     build: .
     profiles: ["api"]
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=smartdesk;Username=smartdesk;Password=smartdesk_dev_only
       Database__MigrateOnStartup: "true"
       Jwt__Key: ${JWT_KEY:-}
+      Email__Smtp__Host: mailpit
     ports:
       - "8080:8080"
     healthcheck:
