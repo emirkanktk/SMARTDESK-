@@ -84,14 +84,23 @@ export class ReservationHubService {
       return;
     }
 
-    connection.start().catch(() => {
-      if (this.stopped || this.connection !== connection) {
-        return;
-      }
-      this.startTimer = setTimeout(
-        () => this.startWithRetry(connection, attempt + 1),
-        nextDelay(attempt),
-      );
-    });
+    connection.start().then(
+      () => {
+        // Screens loaded over HTTP while the first attempts failed, and missed whatever
+        // changed meanwhile: the same catch-up as after a dropped connection comes back.
+        if (attempt > 0 && !this.stopped && this.connection === connection) {
+          this.reconnected.next();
+        }
+      },
+      () => {
+        if (this.stopped || this.connection !== connection) {
+          return;
+        }
+        this.startTimer = setTimeout(
+          () => this.startWithRetry(connection, attempt + 1),
+          nextDelay(attempt),
+        );
+      },
+    );
   }
 }

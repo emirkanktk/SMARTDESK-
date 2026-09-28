@@ -56,6 +56,52 @@ describe('ReservationHubService', () => {
     expect(seen).toEqual(['created a', 'updated b', 'cancelled c', 'starting soon d']);
   });
 
+  describe('catching up', () => {
+    let catchUps: number;
+
+    /** Starts over, with the server refusing the first `failures` attempts to connect. */
+    function reconnectWithFailures(failures: number): void {
+      hub.disconnect();
+      connection.start.mockReset();
+      for (let i = 0; i < failures; i++) {
+        connection.start.mockImplementationOnce(() => Promise.reject(new Error('offline')));
+      }
+      connection.start.mockImplementation(() => Promise.resolve());
+      catchUps = 0;
+      hub.reconnected$.subscribe(() => catchUps++);
+      hub.connect();
+    }
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it('asks screens to catch up when the connection only started on a retry', async () => {
+      reconnectWithFailures(2);
+      await vi.advanceTimersByTimeAsync(2_000); // retries after 0 and 2 s
+
+      expect(connection.start).toHaveBeenCalledTimes(3);
+      expect(catchUps).toBe(1);
+    });
+
+    it('does not when the first attempt works', async () => {
+      reconnectWithFailures(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(connection.start).toHaveBeenCalledTimes(1);
+      expect(catchUps).toBe(0);
+    });
+
+    it('does not after a sign-out while it was still retrying', async () => {
+      reconnectWithFailures(1);
+      await Promise.resolve(); // the first attempt fails
+      hub.disconnect();
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(connection.start).toHaveBeenCalledTimes(1);
+      expect(catchUps).toBe(0);
+    });
+  });
+
   it('returns nothing to the server from a handler', () => {
     // SignalR treats a returned value as an answer the server didn't ask for and logs an error.
     expect(handlers.size).toBe(4);
