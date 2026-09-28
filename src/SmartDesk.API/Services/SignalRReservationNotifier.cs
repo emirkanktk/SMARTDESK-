@@ -7,10 +7,12 @@ using SmartDesk.Application.Features.Reservations.Common;
 namespace SmartDesk.API.Services;
 
 // Sends a committed reservation change to everyone who may see that resource, and reminders
-// to their owner. A shared resource's events go to every client; a team resource's only to its
-// teams and the Admins (ADR-0022), so its schedule doesn't reach other teams. A failed push is
-// logged and swallowed: the row is already saved, so the HTTP call (or the reminder job) must
-// still succeed.
+// to their owner. A shared resource's events go to every client. A team resource's go only to
+// its teams, the Admins, and the reservation's owner (ADR-0022): the owner keeps seeing their
+// own reservation even after leaving the team, so they must hear when it's moved or cancelled.
+// The owner may get a team-resource event twice; clients upsert or remove by id. A failed push
+// is logged and swallowed: the row is already saved, so the HTTP call (or the reminder job)
+// must still succeed.
 public sealed class SignalRReservationNotifier(
     IHubContext<ReservationHub> hub,
     IApplicationDbContext db,
@@ -28,35 +30,50 @@ public sealed class SignalRReservationNotifier(
     // Only the owner's connections: SignalR's default user id is the token's subject, the same
     // user id the reservation stores.
     public Task ReservationStartingSoonAsync(ReservationDto reservation, CancellationToken cancellationToken) =>
-        SendAsync(() => Task.FromResult(hub.Clients.User(reservation.UserId.ToString())), ReservationHub.StartingSoon, reservation);
+        SendAsync(OwnerOf(reservation), ReservationHub.StartingSoon, reservation);
 
-    private Task BroadcastAsync(string eventName, ReservationDto reservation, CancellationToken cancellationToken)
+    // `cancellationToken` is the caller's request token and is intentionally not used: the row
+    // is already committed, and aborting the HTTP request must not cancel the push that tells
+    // everyone else.
+    private async Task BroadcastAsync(string eventName, ReservationDto reservation, CancellationToken cancellationToken)
     {
-        // `cancellationToken` is the caller's request token and is intentionally not used:
-        // the row is already committed, and aborting the HTTP request must not cancel the push
-        // that tells everyone else.
         _ = cancellationToken;
-        return SendAsync(() => AudienceAsync(reservation.ResourceId), eventName, reservation);
+        List<Guid> teams;
+        try
+        {
+            teams = await db.ResourceTeams
+                .AsNoTracking()
+                .Where(t => t.ResourceId == reservation.ResourceId)
+                .Select(t => t.TeamId)
+                .ToListAsync(CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to look up who may see reservation {ReservationId}", reservation.Id);
+            return;
+        }
+
+        if (teams.Count == 0)
+        {
+            await SendAsync(hub.Clients.All, eventName, reservation);
+            return;
+        }
+
+        // A proxy can't mix groups and a user, hence two sends.
+        await SendAsync(
+            hub.Clients.Groups([ReservationHub.AdminsGroup, .. teams.Select(ReservationHub.TeamGroup)]),
+            eventName,
+            reservation);
+        await SendAsync(OwnerOf(reservation), eventName, reservation);
     }
 
-    private async Task<IClientProxy> AudienceAsync(Guid resourceId)
-    {
-        var teams = await db.ResourceTeams
-            .AsNoTracking()
-            .Where(t => t.ResourceId == resourceId)
-            .Select(t => t.TeamId)
-            .ToListAsync(CancellationToken.None);
+    private IClientProxy OwnerOf(ReservationDto reservation) => hub.Clients.User(reservation.UserId.ToString());
 
-        return teams.Count == 0
-            ? hub.Clients.All
-            : hub.Clients.Groups([ReservationHub.AdminsGroup, .. teams.Select(ReservationHub.TeamGroup)]);
-    }
-
-    private async Task SendAsync(Func<Task<IClientProxy>> clients, string eventName, ReservationDto reservation)
+    private async Task SendAsync(IClientProxy clients, string eventName, ReservationDto reservation)
     {
         try
         {
-            await (await clients()).SendAsync(eventName, reservation, CancellationToken.None);
+            await clients.SendAsync(eventName, reservation, CancellationToken.None);
         }
         catch (Exception exception)
         {
