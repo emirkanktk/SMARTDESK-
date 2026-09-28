@@ -7,7 +7,7 @@ SignalR.
 
 Docs: [Architecture](docs/ARCHITECTURE.md) · [Data model](docs/DATA_MODEL.md) ·
 [API contracts](docs/API_CONTRACTS.md) · [Decisions](docs/DECISIONS.md) ·
-[Team sync](docs/TEAM_SYNC.md) · [Demo runbook](docs/DEMO.md)
+[Team sync](docs/TEAM_SYNC.md) · [Demo runbook](docs/DEMO.md) · [UI demo](docs/DEMO_UI.md)
 
 ## What it does
 
