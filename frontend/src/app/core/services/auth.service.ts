@@ -1,5 +1,5 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Role, Roles } from '../constants/roles';
@@ -42,6 +42,18 @@ export class AuthService {
     const user = this.currentUserSignal();
     return user ? `${user.firstName} ${user.lastName}`.trim() || user.email : '';
   });
+
+  constructor() {
+    // Every tab of the app shares one stored session. When another tab stores a new one - it
+    // signed in again or changed the password - this tab switches to it too.
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === TOKEN_STORAGE_KEY) {
+        this.adoptStoredSession();
+      }
+    };
+    globalThis.addEventListener?.('storage', onStorage);
+    inject(DestroyRef).onDestroy(() => globalThis.removeEventListener?.('storage', onStorage));
+  }
 
   /** The access token, or null when there is none or it has expired. */
   getToken(): string | null {
@@ -131,11 +143,30 @@ export class AuthService {
   }
 
   logout(): void {
+    // Only clear what this tab stored. Another tab may have stored a newer session's token by
+    // now - after changing the password there, say, which ends this tab's old session.
+    if (readStoredToken() === this.token) {
+      removeStoredToken();
+      removeStored(PASSWORD_CHANGE_STORAGE_KEY);
+    }
     this.token = null;
-    removeStoredToken();
-    removeStored(PASSWORD_CHANGE_STORAGE_KEY);
     this.passwordChangeRequiredSignal.set(false);
     this.currentUserSignal.set(null);
+  }
+
+  /**
+   * Takes over a session another tab stored, when it's newer than this tab's and still valid:
+   * after a password change there, this tab's own token no longer works.
+   */
+  private adoptStoredSession(): void {
+    const stored = readStoredToken();
+    const user = stored ? userFromToken(stored) : null;
+    if (!stored || !user || stored === this.token) {
+      return;
+    }
+    this.token = stored;
+    this.currentUserSignal.set(user);
+    this.passwordChangeRequiredSignal.set(readStored(PASSWORD_CHANGE_STORAGE_KEY) === 'true');
   }
 
   private startSession(response: LoginResponse): void {

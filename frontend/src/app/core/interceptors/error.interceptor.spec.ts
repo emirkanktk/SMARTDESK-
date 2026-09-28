@@ -21,10 +21,12 @@ describe('errorInterceptor', () => {
   let router: Router;
   let logout: ReturnType<typeof vi.fn>;
   let markPasswordChangeRequired: ReturnType<typeof vi.fn>;
+  let getToken: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     logout = vi.fn();
     markPasswordChangeRequired = vi.fn();
+    getToken = vi.fn(() => null);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -33,7 +35,7 @@ describe('errorInterceptor', () => {
         ]),
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: { logout, markPasswordChangeRequired } },
+        { provide: AuthService, useValue: { logout, markPasswordChangeRequired, getToken } },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -86,6 +88,32 @@ describe('errorInterceptor', () => {
       queryParams: { returnUrl: '/resources' },
     });
     expect(notifications.notifications()[0]?.message).toContain('session has expired');
+  });
+
+  it('retries once with the current token when the 401 came from one this tab has replaced', () => {
+    // Another tab signed in again, or changed the password, and this tab took over its token.
+    getToken.mockReturnValue('new-token');
+    let body: unknown;
+    http.get(url, { headers: { Authorization: 'Bearer old-token' } }).subscribe((b) => (body = b));
+
+    backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+    const retry = backend.expectOne(url);
+    expect(retry.request.headers.get('Authorization')).toBe('Bearer new-token');
+    retry.flush({ ok: true });
+
+    expect(body).toEqual({ ok: true });
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('ends the session when the current token itself is refused', () => {
+    getToken.mockReturnValue('same-token');
+    http
+      .get(url, { headers: { Authorization: 'Bearer same-token' } })
+      .subscribe({ error: () => undefined });
+
+    backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(logout).toHaveBeenCalled();
   });
 
   it('does not end the session on a 401 for an anonymous request (failed login)', () => {

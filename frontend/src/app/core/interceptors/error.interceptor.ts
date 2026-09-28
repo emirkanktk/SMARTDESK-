@@ -34,6 +34,12 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       // already dropped as expired before the request went out. Only anonymous calls
       // (login) get a 401 for another reason: a wrong password.
       if (apiError.status === 401 && isApiUrl(req.url) && !req.context.get(ANONYMOUS_REQUEST)) {
+        // Sent with a token this tab has since replaced - another tab signed in again or
+        // changed the password: the session goes on, so try once more with the current one.
+        const current = authService.getToken();
+        if (current && bearerToken(req.headers.get('Authorization')) !== current) {
+          return next(req.clone({ setHeaders: { Authorization: `Bearer ${current}` } }));
+        }
         endSession(authService, notifications, router);
       } else if (apiError.status === 403 && apiError.code === PASSWORD_CHANGE_REQUIRED) {
         // Someone set a temporary password on this account (ADR-0021): nothing else works
@@ -92,4 +98,8 @@ function messageFor(error: ApiError): string | null {
     default:
       return null;
   }
+}
+
+function bearerToken(header: string | null): string | null {
+  return header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
 }
