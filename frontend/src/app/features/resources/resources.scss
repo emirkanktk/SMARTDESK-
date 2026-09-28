@@ -23,9 +23,10 @@
   font-size: 0.875rem;
 }
 
-// Dim the data, not the admin buttons - those stay fully usable.
+// Mute the data, not the admin buttons - those stay fully usable. A muted colour rather than
+// opacity, which would take the text and the status badge below readable contrast.
 .unavailable td:not(.actions) {
-  opacity: 0.55;
+  color: var(--color-text-muted);
 }
 
 .actions {
