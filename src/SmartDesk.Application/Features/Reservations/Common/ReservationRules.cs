@@ -13,7 +13,10 @@ public static class ReservationRules
 
     // Widest range the calendar query serves: a month grid shows six full weeks (the tail
     // of the previous month and the start of the next), i.e. 42 days - more than a month.
-    public static readonly TimeSpan MaxCalendarRange = TimeSpan.FromDays(42);
+    // The API only sees UTC instants, and six local weeks that cross the autumn clock change
+    // are 42 days and an hour, so an hour of slack is allowed on top of the 42 days.
+    public const int MaxCalendarDays = 42;
+    public static readonly TimeSpan MaxCalendarRange = TimeSpan.FromDays(MaxCalendarDays) + TimeSpan.FromHours(1);
 
     public const int MaxNoteLength = 500;
 
