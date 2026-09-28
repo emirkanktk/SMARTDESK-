@@ -53,10 +53,11 @@ public sealed class SignalRReservationNotifierTests : IDisposable
                 It.IsAny<CancellationToken>()),
             Times.Once);
         _groups.VerifyNoOtherCalls();
+        _ownerClients.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public async Task A_team_resources_event_goes_only_to_its_teams_and_the_admins()
+    public async Task A_team_resources_event_goes_to_its_teams_the_admins_and_the_owner_only()
     {
         var zeynep = Guid.NewGuid();
         var okan = Guid.NewGuid();
@@ -69,10 +70,15 @@ public sealed class SignalRReservationNotifierTests : IDisposable
             await context.SaveChangesAsync();
         }
 
-        await _notifier.ReservationCreatedAsync(Sample(resource.Id), CancellationToken.None);
+        var reservation = Sample(resource.Id);
+
+        await _notifier.ReservationCreatedAsync(reservation, CancellationToken.None);
 
         _groupNames.Should().BeEquivalentTo(ReservationHub.AdminsGroup, ReservationHub.TeamGroup(zeynep), ReservationHub.TeamGroup(okan));
         _groups.Verify(c => c.SendCoreAsync(ReservationHub.Created, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Once);
+        // The owner keeps seeing their reservation after leaving the team, so they hear about it too.
+        _hubClients.Verify(c => c.User(reservation.UserId.ToString()), Times.Once);
+        _ownerClients.Verify(c => c.SendCoreAsync(ReservationHub.Created, It.IsAny<object[]>(), It.IsAny<CancellationToken>()), Times.Once);
         _everyone.VerifyNoOtherCalls();
     }
 

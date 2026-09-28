@@ -493,7 +493,8 @@ new tables.
   (always theirs alone). They edit, switch on and off, and block only resources that belong
   to their team alone. A shared resource, or one other teams use too, stays an Admin's (403).
 - **Real-time:** a shared resource's events still go to everyone. A team resource's go only
-  to the `team:{id}` groups of its teams and to `admins`. Each connection joins these groups
+  to the `team:{id}` groups of its teams, to `admins`, and to the reservation's owner, who
+  keeps seeing their own reservation even after leaving the team. Each connection joins these groups
   from the account as it is now. A team change aborts the user's connections (ADR-0021), so
   the reconnect joins the right group.
 - **Consistency:** a Manager whose team has resources can't be given another role until the
