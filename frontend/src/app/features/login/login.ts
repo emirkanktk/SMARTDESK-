@@ -10,6 +10,8 @@ const DEFAULT_REDIRECT = '/dashboard';
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
   selector: 'app-login',
+  // The page's main landmark: it renders outside the shell, which provides one elsewhere.
+  host: { role: 'main' },
   styleUrl: './login.scss',
   templateUrl: './login.html',
 })
@@ -19,6 +21,8 @@ export class Login {
 
   /** Where to go after signing in; bound from the `returnUrl` query parameter. */
   readonly returnUrl = input<string | undefined>();
+  /** "done" after a password reset, to confirm it worked. */
+  readonly reset = input<string | undefined>();
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', [Validators.required, Validators.email]],
@@ -64,6 +68,12 @@ function loginErrorMessage(error: unknown): string {
       return Object.values(error.fieldErrors).flat()[0] ?? 'Please check the email and password.';
     case 401:
       return 'Invalid email or password.';
+    case 403:
+      // The right password, but the account is waiting for approval or was switched off; the
+      // API says which, and what to do.
+      return error.detail ?? "This account can't sign in right now.";
+    case 429:
+      return 'Too many attempts. Please wait a minute and try again.';
     default:
       return 'Sign-in failed. Please try again.';
   }

@@ -7,6 +7,7 @@ import {
   CreateResourceRequest,
   Resource,
   ResourceFilter,
+  ResourceStatus,
   ResourceType,
   UpdateResourceRequest,
 } from '../models/resource.model';
@@ -58,5 +59,12 @@ export class ResourceService {
 
   update(id: string, request: UpdateResourceRequest): Observable<Resource> {
     return this.http.put<Resource>(`${this.baseUrl}/${encodeURIComponent(id)}`, request);
+  }
+
+  /** Changes only the status, so it can't overwrite another admin's edit. Admin only. */
+  changeStatus(id: string, status: ResourceStatus): Observable<Resource> {
+    return this.http.patch<Resource>(`${this.baseUrl}/${encodeURIComponent(id)}/status`, {
+      status,
+    });
   }
 }

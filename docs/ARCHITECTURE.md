@@ -164,8 +164,9 @@ every 30s. Logout cancels a pending retry. Screens subscribe to `created$`, `upd
 ## 7. Frontend architecture
 
 Angular 22, standalone components throughout (no NgModules), feature-based folders under
-`frontend/src/app/features/`, one folder per screen from the MVP list (login, dashboard,
-resources, availability, reservation, my-reservations, admin). Shared, cross-feature code
+`frontend/src/app/features/`, one folder per screen: the MVP list (login, dashboard,
+resources, availability, reservation, my-reservations, admin) plus home (the public front
+page), calendar, reports and resource-blocks. Shared, cross-feature code
 (HTTP interceptor, auth guard, typed API clients) lives under `frontend/src/app/core/`.
 Forms use Reactive Forms; local/UI state uses Signals rather than a global store, since the
 app's state needs (a list of resources, a set of reservations, the current user) are small
@@ -215,11 +216,13 @@ picker drops seconds and any difference would count as a change.
   token's claims, so guards and the top bar work without an extra request. An expired token
   counts as signed out, both when the app loads and on every guarded navigation. The claims
   only drive the UI: the API re-checks the token and roles on every request.
-- **Routing.** `/login` is guarded by `guestGuard`. Every other screen is a child of the
-  `Shell` route, which is guarded by `authGuard` (`canActivate` + `canActivateChild`). An
-  unauthenticated visit is redirected to `/login?returnUrl=...` and sent back after sign-in,
-  and only in-app paths are followed. `adminGuard` (`roleGuard(Roles.Admin)`) protects
-  `/admin`.
+- **Routing.** The public front page (`/`) and `/login` are guarded by `guestGuard`, which
+  sends a signed-in user to `/dashboard`; an unknown address goes to `/`. Every other screen
+  is a child of the `Shell` route, which is guarded by `authGuard` (`canActivate` +
+  `canActivateChild`). An unauthenticated visit is redirected to `/login?returnUrl=...` and
+  sent back after sign-in, and only in-app paths are followed. `adminGuard`
+  (`roleGuard(Roles.Admin)`) protects `/admin` and its sub-screens (`/admin/reports`,
+  `/admin/blocks`), and the resource forms.
 - **HTTP.** `jwtInterceptor` attaches `Authorization: Bearer` to requests for our own API
   only. `errorInterceptor` then turns every failure into an `ApiError` (status, title,
   detail, field errors from `ProblemDetails`).

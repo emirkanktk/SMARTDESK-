@@ -17,6 +17,6 @@ public sealed class GetReservationsQueryValidator : AbstractValidator<GetReserva
             .Must((query, to) => to.AsUtc() > query.From.AsUtc())
             .WithMessage("'To' must be after 'From'.")
             .Must((query, to) => to.AsUtc() - query.From.AsUtc() <= ReservationRules.MaxCalendarRange)
-            .WithMessage($"The range can be at most {ReservationRules.MaxCalendarRange.TotalDays} days.");
+            .WithMessage($"The range can be at most {ReservationRules.MaxCalendarDays} days.");
     }
 }

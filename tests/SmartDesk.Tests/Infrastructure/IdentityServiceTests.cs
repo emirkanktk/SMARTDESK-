@@ -106,6 +106,20 @@ public sealed class IdentityServiceTests : IDisposable
         (await SignInAsync(Email, Password)).Should().Be((false, 1));
     }
 
+    [Fact]
+    public async Task CheckCredentials_AccountWithNoPasswordYet_StillChecksAPassword()
+    {
+        // An invited account whose owner hasn't chosen a password (ADR-0020): Identity has no
+        // hash to check against, so it would answer faster than for a wrong password.
+        await using (var scope = _services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            (await users.CreateAsync(new ApplicationUser { UserName = Email, Email = Email })).Succeeded.Should().BeTrue();
+        }
+
+        (await SignInAsync(Email, "Any-password-1")).Should().Be((false, 1));
+    }
+
     private sealed class CountingPasswordHasher : PasswordHasher<ApplicationUser>
     {
         private int _verifications;
