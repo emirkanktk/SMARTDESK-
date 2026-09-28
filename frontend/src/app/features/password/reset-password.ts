@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -12,7 +13,8 @@ import {
 
 /**
  * Where the emailed reset link lands: `/reset-password?email=…&token=…`. Sets the new password,
- * then sends the user to sign in with it.
+ * then sends the user to sign in with it. The link may be opened on a device where someone is
+ * still signed in; that session ends, so the sign-in page can confirm the change.
  */
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
@@ -45,6 +47,13 @@ export class ResetPassword {
   protected readonly serverPasswordErrors = signal<readonly string[]>([]);
   protected readonly errorMessage = signal<string | null>(null);
 
+  constructor() {
+    // The API's reasons were about the password it saw; a different one gets checked afresh.
+    this.form.controls.newPassword.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.serverPasswordErrors.set([]));
+  }
+
   protected submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -62,7 +71,11 @@ export class ResetPassword {
       })
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
-        next: () => void this.router.navigate(['/login'], { queryParams: { reset: 'done' } }),
+        next: () => {
+          // Otherwise guestGuard would send a signed-in device past the confirmation.
+          this.authService.logout();
+          void this.router.navigate(['/login'], { queryParams: { reset: 'done' } });
+        },
         error: (error: unknown) => this.handleError(error),
       });
   }

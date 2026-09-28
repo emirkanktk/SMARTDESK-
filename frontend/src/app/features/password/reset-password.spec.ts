@@ -9,15 +9,17 @@ describe('ResetPassword', () => {
   const EMAIL = 'ayse@smartdesk.local';
   const TOKEN = 'Q2ZESjhEeGtr-_';
   let resetPassword: ReturnType<typeof vi.fn>;
+  let logout: ReturnType<typeof vi.fn>;
   let navigate: ReturnType<typeof vi.spyOn>;
   let fixture: ComponentFixture<ResetPassword>;
   let element: HTMLElement;
 
   beforeEach(async () => {
     resetPassword = vi.fn(() => of(undefined));
+    logout = vi.fn();
     await TestBed.configureTestingModule({
       imports: [ResetPassword],
-      providers: [provideRouter([]), { provide: AuthService, useValue: { resetPassword } }],
+      providers: [provideRouter([]), { provide: AuthService, useValue: { resetPassword, logout } }],
     }).compileComponents();
     navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
   });
@@ -60,6 +62,15 @@ describe('ResetPassword', () => {
       newPassword: 'Brand-New-Pass-7',
     });
     expect(navigate).toHaveBeenCalledWith(['/login'], { queryParams: { reset: 'done' } });
+  });
+
+  it('ends a session still open on this device, so sign-in can show the confirmation', async () => {
+    await render();
+
+    await submit('Brand-New-Pass-7');
+
+    expect(logout).toHaveBeenCalledTimes(1);
+    expect(logout.mock.invocationCallOrder[0]).toBeLessThan(navigate.mock.invocationCallOrder[0]);
   });
 
   it('says what a weak password lacks, and that the repeat must match, without asking the API', async () => {
@@ -110,6 +121,26 @@ describe('ResetPassword', () => {
     await submit('Brand-New-Pass-7');
 
     expect(text()).toContain('Passwords must have at least one non alphanumeric character.');
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('drops the API’s reasons once the password is changed', async () => {
+    resetPassword.mockReturnValue(
+      throwError(
+        () =>
+          new ApiError(400, 'One or more validation errors occurred.', null, {
+            NewPassword: ['Passwords must use at least 1 different characters.'],
+          }),
+      ),
+    );
+    await render();
+    await submit('Brand-New-Pass-7');
+    expect(text()).toContain('Passwords must use at least 1 different characters.');
+
+    await type('#new-password', 'Another-Pass-8');
+
+    expect(text()).not.toContain('Passwords must use at least 1 different characters.');
+    expect(element.querySelector('#new-password')!.classList).not.toContain('invalid');
   });
 
   it('asks for a new link when the one opened is incomplete', async () => {
