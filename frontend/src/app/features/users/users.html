@@ -1,0 +1,330 @@
+<div class="page-header">
+  <h1>Users</h1>
+  <button type="button" class="btn btn-primary" (click)="toggleForm()">
+    {{ showForm() ? 'Close' : 'Add account' }}
+  </button>
+</div>
+
+@if (showForm()) {
+  <form class="card add-form" [formGroup]="form" (ngSubmit)="create()" novalidate>
+    <h2 class="section-title">Add an account</h2>
+    <p class="text-muted hint">
+      Choose a temporary password and give it to them in person. They'll choose their own when they
+      first sign in; the password is never emailed.
+    </p>
+
+    @if (formError(); as message) {
+      <div class="alert-error" role="alert">{{ message }}</div>
+    }
+
+    <div class="grid">
+      <div class="field">
+        <label for="new-first-name">First name</label>
+        <input
+          id="new-first-name"
+          class="input"
+          formControlName="firstName"
+          [attr.maxlength]="maxNameLength"
+          [class.invalid]="!!fieldError('firstName')"
+          [attr.aria-invalid]="!!fieldError('firstName')"
+          aria-describedby="new-first-name-error"
+        />
+        @if (fieldError('firstName'); as message) {
+          <span id="new-first-name-error" class="field-error">{{ message }}</span>
+        }
+      </div>
+      <div class="field">
+        <label for="new-last-name">Last name</label>
+        <input
+          id="new-last-name"
+          class="input"
+          formControlName="lastName"
+          [attr.maxlength]="maxNameLength"
+          [class.invalid]="!!fieldError('lastName')"
+          [attr.aria-invalid]="!!fieldError('lastName')"
+          aria-describedby="new-last-name-error"
+        />
+        @if (fieldError('lastName'); as message) {
+          <span id="new-last-name-error" class="field-error">{{ message }}</span>
+        }
+      </div>
+      <div class="field">
+        <label for="new-email">Email</label>
+        <input
+          id="new-email"
+          type="email"
+          class="input"
+          formControlName="email"
+          [class.invalid]="!!fieldError('email')"
+          [attr.aria-invalid]="!!fieldError('email')"
+          aria-describedby="new-email-error"
+        />
+        @if (fieldError('email'); as message) {
+          <span id="new-email-error" class="field-error">{{ message }}</span>
+        }
+      </div>
+      <div class="field">
+        <label for="new-role">Role</label>
+        <select id="new-role" class="input" formControlName="role">
+          @for (role of roles; track role) {
+            <option [value]="role">{{ role }}</option>
+          }
+        </select>
+      </div>
+      @if (form.controls.role.value === 'Employee') {
+        <div class="field">
+          <label for="new-manager">Team</label>
+          <select id="new-manager" class="input" formControlName="managerId">
+            <option value="">No team</option>
+            @for (manager of managers(); track manager.id) {
+              <option [value]="manager.id">{{ manager.displayName }}</option>
+            }
+          </select>
+        </div>
+      }
+      <div class="field">
+        <label for="new-password">Temporary password</label>
+        <div class="password-row">
+          <input
+            id="new-password"
+            type="text"
+            class="input"
+            formControlName="password"
+            autocomplete="off"
+            spellcheck="false"
+            [class.invalid]="!!fieldError('password')"
+            [attr.aria-invalid]="!!fieldError('password')"
+            aria-describedby="new-password-error"
+          />
+          <button type="button" class="btn btn-secondary" (click)="generatePassword()">
+            Generate
+          </button>
+        </div>
+        @if (fieldError('password'); as message) {
+          <span id="new-password-error" class="field-error">{{ message }}</span>
+        }
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      {{ saving() ? 'Adding…' : 'Add account' }}
+    </button>
+  </form>
+}
+
+<div class="card filters">
+  <div class="tabs" role="group" aria-label="Status">
+    <button
+      type="button"
+      class="tab"
+      [class.active]="statusFilter() === ''"
+      [attr.aria-pressed]="statusFilter() === ''"
+      (click)="setStatusFilter('')"
+    >
+      All
+    </button>
+    <button
+      type="button"
+      class="tab"
+      [class.active]="statusFilter() === 'PendingApproval'"
+      [attr.aria-pressed]="statusFilter() === 'PendingApproval'"
+      (click)="setStatusFilter('PendingApproval')"
+    >
+      Waiting for approval
+      @if (pendingCount() > 0) {
+        <span class="count-badge">{{ pendingCount() }}</span>
+      }
+    </button>
+    <button
+      type="button"
+      class="tab"
+      [class.active]="statusFilter() === 'Active'"
+      [attr.aria-pressed]="statusFilter() === 'Active'"
+      (click)="setStatusFilter('Active')"
+    >
+      Active
+    </button>
+    <button
+      type="button"
+      class="tab"
+      [class.active]="statusFilter() === 'Disabled'"
+      [attr.aria-pressed]="statusFilter() === 'Disabled'"
+      (click)="setStatusFilter('Disabled')"
+    >
+      Disabled
+    </button>
+  </div>
+  <div class="field">
+    <label for="role-filter">Role</label>
+    <select id="role-filter" class="input" (change)="setRoleFilter($event)">
+      <option value="">All roles</option>
+      @for (role of roles; track role) {
+        <option [value]="role">{{ role }}</option>
+      }
+    </select>
+  </div>
+  <div class="field search">
+    <label for="search">Search</label>
+    <input
+      id="search"
+      class="input"
+      type="search"
+      placeholder="Name or email"
+      [value]="search()"
+      (input)="setSearch($event)"
+    />
+  </div>
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status">Loading accounts…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span>Accounts could not be loaded.</span>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </div>
+} @else if (rows().length === 0) {
+  <p class="card text-muted empty">No accounts match these filters.</p>
+} @else {
+  <div class="table-wrap card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Role</th>
+          <th scope="col">Team</th>
+          <th scope="col">Status</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (account of rows(); track account.id) {
+          <tr [class.muted]="account.status === 'Disabled'">
+            <td>
+              <span class="name">
+                {{ account.displayName }}
+                @if (isSelf(account)) {
+                  <span class="you">(you)</span>
+                }
+              </span>
+              <span class="text-muted meta">{{ account.email }}</span>
+              <span class="text-muted meta">Since {{ account.createdAt | date: 'd MMM y' }}</span>
+            </td>
+            <td>
+              @if (isSelf(account) || account.status === 'PendingApproval') {
+                {{ account.role }}
+              } @else {
+                <select
+                  class="input input-sm"
+                  [attr.aria-label]="'Role of ' + account.displayName"
+                  [disabled]="busyId() === account.id"
+                  (change)="changeRole(account, $event)"
+                >
+                  @for (role of roles; track role) {
+                    <option [value]="role" [selected]="role === account.role">{{ role }}</option>
+                  }
+                </select>
+              }
+            </td>
+            <td>
+              @if (account.role === 'Employee') {
+                <select
+                  class="input input-sm"
+                  [attr.aria-label]="'Team of ' + account.displayName"
+                  [disabled]="busyId() === account.id"
+                  (change)="assignManager(account, $event)"
+                >
+                  <option value="" [selected]="!account.managerId">No team</option>
+                  @for (manager of managers(); track manager.id) {
+                    <option [value]="manager.id" [selected]="manager.id === account.managerId">
+                      {{ manager.displayName }}
+                    </option>
+                  }
+                  @if (account.managerId && !isActiveManager(account.managerId)) {
+                    <option [value]="account.managerId" selected disabled>
+                      {{ account.managerName }} (not active)
+                    </option>
+                  }
+                </select>
+              } @else if (account.role === 'Manager' && account.status !== 'PendingApproval') {
+                <span class="text-muted">
+                  {{ account.teamSize }} {{ account.teamSize === 1 ? 'member' : 'members' }}
+                </span>
+              } @else {
+                <span class="text-muted">—</span>
+              }
+            </td>
+            <td>
+              <app-account-status-badge [status]="account.status" />
+              @if (account.mustChangePassword) {
+                <span class="text-muted meta">Temporary password</span>
+              }
+            </td>
+            <td class="actions">
+              @if (account.status === 'PendingApproval') {
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  [disabled]="busyId() === account.id"
+                  (click)="approve(account)"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm danger"
+                  [disabled]="busyId() === account.id"
+                  (click)="reject(account)"
+                >
+                  Reject
+                </button>
+              } @else if (!isSelf(account)) {
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  [disabled]="busyId() === account.id || passwordFor() === account.id"
+                  (click)="openPassword(account)"
+                >
+                  Set password
+                </button>
+                @if (account.status === 'Active') {
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm danger"
+                    [disabled]="busyId() === account.id"
+                    (click)="setEnabled(account, false)"
+                  >
+                    Disable
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    [disabled]="busyId() === account.id"
+                    (click)="setEnabled(account, true)"
+                  >
+                    Enable
+                  </button>
+                }
+              }
+            </td>
+          </tr>
+          @if (passwordFor() === account.id) {
+            <tr class="password-row-cell">
+              <td colspan="5">
+                <app-temporary-password-form
+                  [name]="account.displayName"
+                  [busy]="busyId() === account.id"
+                  [serverError]="passwordError()"
+                  (saved)="setTemporaryPassword(account, $event)"
+                  (cancelled)="closePassword()"
+                />
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="text-muted count">Showing {{ rows().length }} of {{ total() }}</p>
+}

@@ -4,7 +4,9 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Role, Roles } from '../constants/roles';
 import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
+import { RegisterRequest } from '../models/account.model';
 import {
+  ChangePasswordRequest,
   CurrentUser,
   LoginRequest,
   LoginResponse,
@@ -13,6 +15,8 @@ import {
 import { JwtClaims, decodeJwtClaims, isJwtExpired } from '../utils/jwt';
 
 const TOKEN_STORAGE_KEY = 'smartdesk_access_token';
+/** Set while the password is one someone else chose; the token itself doesn't say so. */
+const PASSWORD_CHANGE_STORAGE_KEY = 'smartdesk_password_change_required';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -24,8 +28,16 @@ export class AuthService {
   private readonly currentUserSignal = signal<CurrentUser | null>(this.restoreUser());
 
   readonly currentUser = this.currentUserSignal.asReadonly();
+  private readonly passwordChangeRequiredSignal = signal(
+    this.token !== null && readStored(PASSWORD_CHANGE_STORAGE_KEY) === 'true',
+  );
+  /** Until it's changed, the API answers nothing else (ADR-0021); guards send the user there. */
+  readonly passwordChangeRequired = this.passwordChangeRequiredSignal.asReadonly();
   readonly isAuthenticated = computed(() => this.currentUserSignal() !== null);
   readonly isAdmin = computed(() => this.currentUserSignal()?.roles.includes(Roles.Admin) ?? false);
+  readonly isManager = computed(
+    () => this.currentUserSignal()?.roles.includes(Roles.Manager) ?? false,
+  );
   readonly displayName = computed(() => {
     const user = this.currentUserSignal();
     return user ? `${user.firstName} ${user.lastName}`.trim() || user.email : '';
@@ -60,13 +72,36 @@ export class AuthService {
       .post<LoginResponse>(`${environment.apiUrl}/auth/login`, request, {
         context: this.anonymousContext(),
       })
-      .pipe(
-        tap((response) => {
-          this.token = response.accessToken;
-          writeStoredToken(response.accessToken);
-          this.currentUserSignal.set(userFromToken(response.accessToken));
-        }),
-      );
+      .pipe(tap((response) => this.startSession(response)));
+  }
+
+  /**
+   * Replaces the signed-in user's password. Every other session ends, so the answer carries a
+   * new token for this one, which replaces the old.
+   */
+  changePassword(request: ChangePasswordRequest): Observable<LoginResponse> {
+    return this.http
+      .post<LoginResponse>(`${environment.apiUrl}/auth/change-password`, request, {
+        context: new HttpContext().set(SKIP_ERROR_NOTIFICATION, true),
+      })
+      .pipe(tap((response) => this.startSession(response)));
+  }
+
+  /** The API refused a request because the password must be changed first. */
+  markPasswordChangeRequired(): void {
+    this.passwordChangeRequiredSignal.set(true);
+    writeStored(PASSWORD_CHANGE_STORAGE_KEY, 'true');
+  }
+
+  /**
+   * Signs up a Manager, who waits for an Admin, or - with a manager's email - an Employee asking
+   * to join that manager's team (ADR-0020, ADR-0021). The API answers the same way whether or
+   * not the email already has an account, or the manager's email matched anyone.
+   */
+  register(request: RegisterRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/auth/register`, request, {
+      context: this.anonymousContext(),
+    });
   }
 
   /**
@@ -98,7 +133,22 @@ export class AuthService {
   logout(): void {
     this.token = null;
     removeStoredToken();
+    removeStored(PASSWORD_CHANGE_STORAGE_KEY);
+    this.passwordChangeRequiredSignal.set(false);
     this.currentUserSignal.set(null);
+  }
+
+  private startSession(response: LoginResponse): void {
+    this.token = response.accessToken;
+    writeStoredToken(response.accessToken);
+    this.currentUserSignal.set(userFromToken(response.accessToken));
+    const mustChange = response.passwordChangeRequired === true;
+    this.passwordChangeRequiredSignal.set(mustChange);
+    if (mustChange) {
+      writeStored(PASSWORD_CHANGE_STORAGE_KEY, 'true');
+    } else {
+      removeStored(PASSWORD_CHANGE_STORAGE_KEY);
+    }
   }
   // Sent without a session, so a 401 means "wrong password" rather than "session ended"; and
   // these screens show their own error messages, so no toast on top.
@@ -152,6 +202,30 @@ function writeStoredToken(token: string): void {
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
   } catch {
     // The in-memory token keeps this tab signed in; only reload persistence is lost.
+  }
+}
+
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Kept in memory for this tab.
+  }
+}
+
+function removeStored(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Nothing stored, nothing to remove.
   }
 }
 

@@ -26,6 +26,8 @@ describe('app routes', () => {
             getToken: () => (signedIn ? 'token' : null),
             isAuthenticated: signal(false),
             isAdmin: signal(false),
+            isManager: signal(false),
+            passwordChangeRequired: signal(false),
             displayName: signal('Ayşe Yılmaz'),
             currentUser: signal({ id: 'user-1' }),
             logout: vi.fn(),
@@ -68,6 +70,31 @@ describe('app routes', () => {
     const { path } = await visit('/no-such-page');
 
     expect(path).toBe('/dashboard');
+  });
+
+  it('shows the sign-up page to a visitor', async () => {
+    const { path, page } = await visit('/register');
+
+    expect(path).toBe('/register');
+    expect(page.querySelector('h1')!.textContent).toContain('Create an account');
+  });
+
+  it('sends a signed-in user from the sign-up page to the dashboard', async () => {
+    signedIn = true;
+
+    expect((await visit('/register')).path).toBe('/dashboard');
+  });
+
+  it('keeps the Users screen to admins', async () => {
+    signedIn = true;
+
+    expect((await visit('/admin/users')).path).toBe('/dashboard');
+  });
+
+  it('keeps the My team screen to managers', async () => {
+    signedIn = true;
+
+    expect((await visit('/team')).path).toBe('/dashboard');
   });
 
   it('still asks a visitor to sign in before a screen, and remembers it', async () => {

@@ -12,14 +12,16 @@ import {
 import { Roles } from '../constants/roles';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
-import { adminGuard, authGuard, guestGuard } from './auth.guard';
+import { adminGuard, authGuard, guestGuard, managerGuard, sessionGuard } from './auth.guard';
 
 describe('route guards', () => {
   let signedIn: boolean;
+  let mustChangePassword: boolean;
   let roles: string[];
 
   beforeEach(() => {
     signedIn = false;
+    mustChangePassword = false;
     roles = [];
     TestBed.configureTestingModule({
       providers: [
@@ -28,6 +30,7 @@ describe('route guards', () => {
           provide: AuthService,
           useValue: {
             hasValidSession: () => signedIn,
+            passwordChangeRequired: () => mustChangePassword,
             hasRole: (role: string) => roles.includes(role),
           },
         },
@@ -56,6 +59,24 @@ describe('route guards', () => {
         '/login?returnUrl=%2Freservations%2Fmine',
       );
     });
+
+    it('sends a user with a temporary password to change it first', () => {
+      signedIn = true;
+      mustChangePassword = true;
+      expect(serialize(run(authGuard, '/calendar'))).toBe('/change-password');
+    });
+  });
+
+  describe('sessionGuard', () => {
+    it('lets any signed-in user change their password, a pending change included', () => {
+      signedIn = true;
+      mustChangePassword = true;
+      expect(run(sessionGuard)).toBe(true);
+    });
+
+    it('sends a signed-out visitor to sign in', () => {
+      expect(serialize(run(sessionGuard))).toBe('/login');
+    });
   });
 
   describe('guestGuard', () => {
@@ -81,6 +102,16 @@ describe('route guards', () => {
 
       expect(serialize(run(adminGuard))).toBe('/dashboard');
       expect(notifications.notifications()[0]?.kind).toBe('error');
+    });
+  });
+
+  describe('managerGuard', () => {
+    it('allows a manager, and no one else', () => {
+      roles = [Roles.Manager];
+      expect(run(managerGuard)).toBe(true);
+
+      roles = [Roles.Admin];
+      expect(serialize(run(managerGuard))).toBe('/dashboard');
     });
   });
 });

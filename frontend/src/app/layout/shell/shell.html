@@ -2,24 +2,24 @@
   <a class="brand" routerLink="/dashboard">SmartDesk</a>
 
   <nav class="nav" aria-label="Main">
-    @for (item of navItems; track item.path) {
-      @if (!item.adminOnly || isAdmin()) {
-        <a
-          class="nav-link"
-          [routerLink]="item.path"
-          routerLinkActive="active"
-          ariaCurrentWhenActive="page"
-          >{{ item.label }}</a
-        >
-      }
+    @for (item of visibleNavItems(); track item.path) {
+      <a
+        class="nav-link"
+        [routerLink]="item.path"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: item.path === '/admin' }"
+        ariaCurrentWhenActive="page"
+        >{{ item.label }}</a
+      >
     }
   </nav>
 
   <div class="user">
     <span class="user-name">{{ displayName() }}</span>
-    @if (isAdmin()) {
-      <span class="badge">Admin</span>
+    @if (roleBadge(); as role) {
+      <span class="badge">{{ role }}</span>
     }
+    <a class="btn btn-secondary btn-sm" routerLink="/change-password">Password</a>
     <button type="button" class="btn btn-secondary btn-sm" (click)="logout()">Sign out</button>
   </div>
 </header>

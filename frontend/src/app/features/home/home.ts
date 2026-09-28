@@ -26,6 +26,7 @@ export class Home {
   protected readonly demoAccounts = [
     { email: 'employee1@smartdesk.local', role: 'Employee' },
     { email: 'employee2@smartdesk.local', role: 'Employee' },
+    { email: 'manager@smartdesk.local', role: 'Manager' },
     { email: 'admin@smartdesk.local', role: 'Admin' },
   ];
   protected readonly demoPassword = 'SmartDesk123!';

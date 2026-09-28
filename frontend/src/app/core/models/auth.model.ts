@@ -13,6 +13,14 @@ export interface ResetPasswordRequest {
 export interface LoginResponse {
   accessToken: string;
   expiresAt: string;
+  /** The password was set by someone else and must be changed first (ADR-0021). */
+  passwordChangeRequired?: boolean;
+}
+
+/** Body of `POST /api/auth/change-password`; the answer is a new token. */
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface CurrentUser {

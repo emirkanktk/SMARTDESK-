@@ -207,6 +207,9 @@ a {
 // Tables
 
 .table-wrap {
+  // The containing block for absolutely positioned content such as a visually-hidden column
+  // heading. Without it that content escapes the sideways scroll and widens the whole page.
+  position: relative;
   padding: 0;
   overflow-x: auto;
 }

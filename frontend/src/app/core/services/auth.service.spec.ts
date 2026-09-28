@@ -8,6 +8,7 @@ import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from '../interceptors/http
 import { AuthService } from './auth.service';
 
 const TOKEN_STORAGE_KEY = 'smartdesk_access_token';
+const PASSWORD_CHANGE_STORAGE_KEY = 'smartdesk_password_change_required';
 
 describe('AuthService', () => {
   function createService(): { service: AuthService; http: HttpTestingController } {
@@ -88,14 +89,90 @@ describe('AuthService', () => {
     http.verify();
   });
 
+  it('signs up without a session and without a toast', () => {
+    const { service, http } = createService();
+    const body = {
+      firstName: 'Zeynep',
+      lastName: 'Kaya',
+      email: 'zeynep@company.example',
+      password: 'Team-Lead-Pass-4',
+    };
+
+    service.register(body).subscribe();
+
+    const req = http.expectOne(`${environment.apiUrl}/auth/register`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    expect(req.request.context.get(ANONYMOUS_REQUEST)).toBe(true);
+    expect(req.request.context.get(SKIP_ERROR_NOTIFICATION)).toBe(true);
+    req.flush(null, { status: 202, statusText: 'Accepted' });
+    http.verify();
+  });
+
+  it('remembers, across a reload, that a temporary password must be changed', () => {
+    const { service, http } = createService();
+
+    service.login({ email: 'elif@smartdesk.local', password: 'Temp-Pass-2026' }).subscribe();
+    http.expectOne(`${environment.apiUrl}/auth/login`).flush({
+      accessToken: fakeJwt(),
+      expiresAt: new Date().toISOString(),
+      passwordChangeRequired: true,
+    });
+
+    expect(service.passwordChangeRequired()).toBe(true);
+    TestBed.resetTestingModule();
+    expect(createService().service.passwordChangeRequired()).toBe(true);
+  });
+
+  it('changes the password, keeps the new token and forgets the pending change', () => {
+    localStorage.setItem(TOKEN_STORAGE_KEY, fakeJwt());
+    localStorage.setItem(PASSWORD_CHANGE_STORAGE_KEY, 'true');
+    const { service, http } = createService();
+    const newToken = fakeJwt({ given_name: 'Renewed' });
+
+    service
+      .changePassword({ currentPassword: 'Temp-Pass-2026', newPassword: 'Own-Pass-2026' })
+      .subscribe();
+    const req = http.expectOne(`${environment.apiUrl}/auth/change-password`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      currentPassword: 'Temp-Pass-2026',
+      newPassword: 'Own-Pass-2026',
+    });
+    expect(req.request.context.get(SKIP_ERROR_NOTIFICATION)).toBe(true);
+    expect(req.request.context.get(ANONYMOUS_REQUEST)).toBe(false);
+    req.flush({
+      accessToken: newToken,
+      expiresAt: new Date().toISOString(),
+      passwordChangeRequired: false,
+    });
+
+    expect(service.getToken()).toBe(newToken);
+    expect(service.passwordChangeRequired()).toBe(false);
+    expect(localStorage.getItem(PASSWORD_CHANGE_STORAGE_KEY)).toBeNull();
+  });
+
+  it('marks a pending password change when the API asks for one', () => {
+    localStorage.setItem(TOKEN_STORAGE_KEY, fakeJwt());
+    const { service } = createService();
+
+    service.markPasswordChangeRequired();
+
+    expect(service.passwordChangeRequired()).toBe(true);
+    expect(localStorage.getItem(PASSWORD_CHANGE_STORAGE_KEY)).toBe('true');
+  });
+
   it('clears everything on logout', () => {
     localStorage.setItem(TOKEN_STORAGE_KEY, fakeJwt());
+    localStorage.setItem(PASSWORD_CHANGE_STORAGE_KEY, 'true');
     const { service } = createService();
 
     service.logout();
 
     expect(service.isAuthenticated()).toBe(false);
     expect(service.getToken()).toBeNull();
+    expect(service.passwordChangeRequired()).toBe(false);
     expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(PASSWORD_CHANGE_STORAGE_KEY)).toBeNull();
   });
 });

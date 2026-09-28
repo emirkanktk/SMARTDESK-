@@ -62,6 +62,7 @@ describe('Home', () => {
       expect(texts('.demo li code')).toEqual([
         'employee1@smartdesk.local',
         'employee2@smartdesk.local',
+        'manager@smartdesk.local',
         'admin@smartdesk.local',
       ]);
       expect(demo.textContent).toContain('SmartDesk123!');
