@@ -19,8 +19,10 @@ export class App {
     // Reminders only arrive while connected, i.e. signed in.
     inject(ReminderAlertsService).start();
 
+    // Not while a temporary password must be replaced: the API refuses the hub then (ADR-0021),
+    // and the connection opens once the new password - and its new token - are in place.
     effect(() => {
-      if (this.authService.isAuthenticated()) {
+      if (this.authService.isAuthenticated() && !this.authService.passwordChangeRequired()) {
         this.reservationHub.connect();
       } else {
         this.reservationHub.disconnect();

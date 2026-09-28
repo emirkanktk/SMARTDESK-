@@ -60,4 +60,14 @@ describe('App', () => {
 
     expect(hub.disconnect).toHaveBeenCalled();
   });
+
+  it('waits for a temporary password to be replaced before connecting', () => {
+    localStorage.setItem(TOKEN_STORAGE_KEY, fakeJwt());
+    localStorage.setItem('smartdesk_password_change_required', 'true');
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    expect(hub.connect).not.toHaveBeenCalled();
+    expect(hub.disconnect).toHaveBeenCalled();
+  });
 });

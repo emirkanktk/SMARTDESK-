@@ -4,16 +4,28 @@ import { Role, Roles } from '../constants/roles';
 import { NotificationService } from '../services/notification.service';
 import { AuthService } from '../services/auth.service';
 
-/** Lets signed-in users through; sends everyone else to login, remembering where they were going. */
+/**
+ * Lets signed-in users through; sends everyone else to login, remembering where they were going.
+ * A user whose password was set by someone else goes to change it first - the API answers
+ * nothing else until then (ADR-0021).
+ */
 export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.hasValidSession()) {
-    return true;
+  if (!authService.hasValidSession()) {
+    return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
   }
 
-  return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
+  return authService.passwordChangeRequired() ? router.parseUrl('/change-password') : true;
+};
+
+/** For the change-password page itself: any signed-in user, whatever their password state. */
+export const sessionGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  return authService.hasValidSession() ? true : router.parseUrl('/login');
 };
 
 /** Keeps signed-in users off the login screen. */
@@ -43,3 +55,5 @@ export function roleGuard(...roles: Role[]): CanActivateFn {
 }
 
 export const adminGuard: CanActivateFn = roleGuard(Roles.Admin);
+
+export const managerGuard: CanActivateFn = roleGuard(Roles.Manager);

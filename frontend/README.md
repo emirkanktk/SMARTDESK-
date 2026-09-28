@@ -24,8 +24,7 @@ ng serve        # http://localhost:4200
 
 Sign in with a demo account: `employee1@smartdesk.local`, `employee2@smartdesk.local`,
 `manager@smartdesk.local` or `admin@smartdesk.local`, all with `SmartDesk123!`. They exist in
-Development only. The front page lists the employees and the admin there; the manager sees
-an employee's screens until the manager screens arrive.
+Development only, and the front page lists them there.
 
 | Configuration | API it calls | When |
 |---|---|---|
@@ -62,6 +61,8 @@ npx prettier --check --end-of-line auto src    # formatting
 |---|---|---|
 | `/` | visitors | Front page; signed-in users go to the dashboard |
 | `/login`, `/forgot-password`, `/reset-password` | anyone | Sign-in, and a password reset by emailed link |
+| `/register` | visitors | Sign-up: a team member gives their manager's email and waits for that manager; a manager waits for an admin |
+| `/change-password` | signed in | Change your password. Forced, before anything else, after signing in with a temporary password |
 | `/dashboard` | signed in | Today's reservations, what's in use now, your next bookings |
 | `/resources` | signed in | Every resource. Admins also create, edit, activate and deactivate them (`/resources/new`, `/resources/:id/edit`) |
 | `/availability` | signed in | What's free for a time range, by type and capacity |
@@ -71,6 +72,8 @@ npx prettier --check --end-of-line auto src    # formatting
 | `/admin` | Admin | Resource counts, and every reservation in a date range to change or cancel |
 | `/admin/reports` | Admin | Usage report |
 | `/admin/blocks` | Admin | Blocked windows: take a resource out of booking for a while |
+| `/admin/users` | Admin | Every account: approve or reject sign-ups, add accounts with a temporary password, change roles and teams, set temporary passwords, disable and enable |
+| `/team` | Manager | Your team: approve or reject requests to join, add members with a temporary password, set temporary passwords, disable, enable, remove |
 
 The guards only hide screens. The API checks the role on every request.
 

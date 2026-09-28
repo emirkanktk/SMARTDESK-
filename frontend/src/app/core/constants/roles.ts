@@ -7,3 +7,6 @@ export const Roles = {
 } as const;
 
 export type Role = (typeof Roles)[keyof typeof Roles];
+
+/** Every role, highest first - the order the API ranks them in. */
+export const ALL_ROLES: readonly Role[] = [Roles.Admin, Roles.Manager, Roles.Employee];

@@ -20,9 +20,11 @@ describe('errorInterceptor', () => {
   let notifications: NotificationService;
   let router: Router;
   let logout: ReturnType<typeof vi.fn>;
+  let markPasswordChangeRequired: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     logout = vi.fn();
+    markPasswordChangeRequired = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -31,7 +33,7 @@ describe('errorInterceptor', () => {
         ]),
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: { logout } },
+        { provide: AuthService, useValue: { logout, markPasswordChangeRequired } },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -127,6 +129,36 @@ describe('errorInterceptor', () => {
     flush401();
 
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('sends a user whose password must be changed to change it, without a toast', async () => {
+    const navigateByUrl = vi.spyOn(router, 'navigateByUrl');
+
+    const result = request();
+    backend.expectOne(url).flush(
+      {
+        title: 'Password change required',
+        detail: 'Choose a new password before you continue.',
+        code: 'password-change-required',
+      },
+      { status: 403, statusText: 'Forbidden' },
+    );
+
+    expect((result.error() as ApiError).code).toBe('password-change-required');
+    expect(markPasswordChangeRequired).toHaveBeenCalled();
+    expect(navigateByUrl).toHaveBeenCalledWith('/change-password');
+    expect(logout).not.toHaveBeenCalled();
+    expect(notifications.notifications()).toEqual([]);
+  });
+
+  it('still says "not allowed" for any other 403', () => {
+    request();
+    backend.expectOne(url).flush({ title: 'Forbidden' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(markPasswordChangeRequired).not.toHaveBeenCalled();
+    expect(notifications.notifications()[0]?.message).toBe(
+      'You do not have permission to do that.',
+    );
   });
 
   it('shows a toast for server errors', () => {

@@ -11,6 +11,8 @@ export class ApiError extends Error {
     readonly title: string,
     readonly detail: string | null = null,
     readonly fieldErrors: Readonly<Record<string, readonly string[]>> = {},
+    /** A machine-readable reason some ProblemDetails carry, e.g. "password-change-required". */
+    readonly code: string | null = null,
   ) {
     super(detail ?? title);
     this.name = 'ApiError';
@@ -26,12 +28,13 @@ export class ApiError extends Error {
       return new ApiError(error.status, error.statusText || 'Request failed.');
     }
 
-    const problem = body as { title?: unknown; detail?: unknown; errors?: unknown };
+    const problem = body as { title?: unknown; detail?: unknown; errors?: unknown; code?: unknown };
     return new ApiError(
       error.status,
       typeof problem.title === 'string' ? problem.title : error.statusText || 'Request failed.',
       typeof problem.detail === 'string' ? problem.detail : null,
       isFieldErrorMap(problem.errors) ? problem.errors : {},
+      typeof problem.code === 'string' ? problem.code : null,
     );
   }
 }

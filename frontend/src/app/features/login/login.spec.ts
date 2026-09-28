@@ -134,4 +134,8 @@ describe('Login', () => {
       'Too many attempts. Please wait a minute and try again.',
     );
   });
+
+  it('offers a way to sign up', () => {
+    expect(element.querySelector('a[href="/register"]')?.textContent).toContain('Sign up');
+  });
 });

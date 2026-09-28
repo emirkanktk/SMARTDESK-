@@ -120,6 +120,25 @@ browser, with two windows side by side so the audience sees changes arrive live.
   Ayşe's window, booking Desk 3-01 inside it says "Desk 3-01 is blocked for part of that time:
   Desk repair", Availability leaves the desk out, and the Calendar draws the block hatched.
 
+### 8. Accounts and teams
+
+- Sign out and open **Sign up** from the sign-in page. Keep **Joining my team**, fill in a new
+  person with `manager@smartdesk.local` as the manager's email → **Sign up** → "Check your
+  email". Signing in with it says the account is waiting for approval. In Mailpit, Zeynep has
+  "… wants to join your team".
+- Sign in as `manager@smartdesk.local`: the nav shows **My team**, with a Manager badge. The
+  request is at the top → **Approve**, and it moves into the member list.
+- **Add a team member** with **Generate** for the temporary password → the new member is listed
+  with "Temporary password". Their email says the account exists, but not the password.
+- Sign in as that member with the temporary password: the app opens **Choose your own
+  password**, and any other address sends them back there. Point out: the API itself refuses
+  everything else until then (ADR-0021). After the change they reach the dashboard, and other
+  devices are signed out.
+- As the manager, **Set password** on that member → their open session gets signed out at once.
+- As the admin, **Users**: sign-ups waiting for approval come first. The role select makes an
+  employee a manager; the team select moves employees between teams. A manager with members
+  can't be demoted until the team is moved.
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

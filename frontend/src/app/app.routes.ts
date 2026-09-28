@@ -1,5 +1,11 @@
 import { Routes } from '@angular/router';
-import { adminGuard, authGuard, guestGuard } from './core/guards/auth.guard';
+import {
+  adminGuard,
+  authGuard,
+  guestGuard,
+  managerGuard,
+  sessionGuard,
+} from './core/guards/auth.guard';
 import { Shell } from './layout/shell/shell';
 
 export const routes: Routes = [
@@ -18,6 +24,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/login/login').then((m) => m.Login),
   },
   {
+    path: 'register',
+    canActivate: [guestGuard],
+    title: 'Create an account · SmartDesk',
+    loadComponent: () => import('./features/register/register').then((m) => m.Register),
+  },
+  {
     // Both open to anyone: the reset link may be opened on a device that's still signed in.
     path: 'forgot-password',
     title: 'Forgot password · SmartDesk',
@@ -28,6 +40,14 @@ export const routes: Routes = [
     path: 'reset-password',
     title: 'Choose a new password · SmartDesk',
     loadComponent: () => import('./features/password/reset-password').then((m) => m.ResetPassword),
+  },
+  {
+    // Outside the shell: while a temporary password must be replaced, nothing else is reachable.
+    path: 'change-password',
+    canActivate: [sessionGuard],
+    title: 'Change your password · SmartDesk',
+    loadComponent: () =>
+      import('./features/password/change-password').then((m) => m.ChangePassword),
   },
   {
     // Every signed-in screen renders inside the shell. canActivateChild re-checks the
@@ -96,6 +116,18 @@ export const routes: Routes = [
         title: 'Admin · SmartDesk',
         canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin').then((m) => m.Admin),
+      },
+      {
+        path: 'admin/users',
+        title: 'Users · SmartDesk',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/users/users').then((m) => m.Users),
+      },
+      {
+        path: 'team',
+        title: 'My team · SmartDesk',
+        canActivate: [managerGuard],
+        loadComponent: () => import('./features/team/team').then((m) => m.Team),
       },
       {
         path: 'admin/reports',
