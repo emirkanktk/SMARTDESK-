@@ -12,7 +12,8 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt }`. 400 if a field is missing/malformed, 401 on any other failure. |
+| POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt }`. 400 if a field is missing/malformed, 401 on wrong credentials. With the right password, 403 for an account that isn't active yet or any more (see below). |
+| POST | `/api/auth/register` | none | `RegisterCommand` | body: `{ firstName, lastName, email, password }` → **202** for valid input, whether or not the email already has an account. Signs up a **Manager** who waits for an Admin's approval (ADR-0020). 400 for missing/malformed fields, or with `Password`: Identity's reasons for refusing it. |
 | GET | `/api/auth/me` | any authenticated user | `GetCurrentUserQuery` | → `{ id, firstName, lastName, email, roles: string[] }` |
 | POST | `/api/auth/forgot-password` | none | `ForgotPasswordCommand` | body: `{ email }` → **202** always, whether or not an account has this email. For one that does, a reset link is emailed. 400 for a malformed email. |
 | POST | `/api/auth/reset-password` | none | `ResetPasswordCommand` | body: `{ email, token, newPassword }` (email and token come from the emailed link) → 204. 400 with `Token`: "This reset link is invalid or has expired. Ask for a new one." (wrong, used, expired, or another email's token), or with `NewPassword`: Identity's reasons for refusing the password. |
@@ -28,13 +29,73 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 - The access token is valid for `Jwt:AccessTokenLifetimeMinutes` (60 by default); there is no
   refresh token yet - on a 401 the frontend sends the user back to login.
 - Token claims: `sub` (user id), `email`, `given_name`, `family_name`, one `role` claim per
-  role (`Admin` / `Employee`).
+  role (`Admin` / `Manager` / `Employee`).
+- **Account status (ADR-0020).** Signing in with the right password to an account that can't
+  be used answers 403 with a message to show as-is: `"Your account is waiting for an
+  administrator's approval. We'll email you when it's ready."` or `"Your account has been
+  disabled. Contact your administrator."`. A wrong password still gets the plain 401, so these
+  say nothing to someone guessing emails.
+- **A token only works while its account does.** On every request the token's user must
+  still be Active and hold exactly the roles the token lists. Once an account is disabled or
+  its role changes, its existing tokens get **401** on the next request (the answer is cached
+  for up to 30 seconds, and dropped at once when SmartDesk itself makes the change), and the
+  frontend sends the user back to sign in - after a role change, to pick up the new role.
+- **Sign-up (ADR-0020).** A new email becomes a Manager account with status
+  `PendingApproval`; the applicant gets a "we've received your sign-up" email and every
+  active Admin gets one linking to `{App:FrontendUrl}/admin/users`. An email that already has
+  an account changes nothing: its owner gets a "you already have an account" email instead,
+  and the answer is the same 202. Password rules are checked before the email is looked up,
+  so a weak password is refused the same way in both cases. Shares the sign-in rate limit.
 - **Password reset (ADR-0019).** The emailed link is
   `{App:FrontendUrl}/reset-password?email=…&token=…`, where the token is URL-safe. It works for
   2 hours, and only once: a reset changes the account's security stamp, which the token is tied
   to. A successful reset also ends a lockout. `forgot-password` answers in the same time
   whether or not the account exists, because the email is queued rather than sent inline.
   Both endpoints share the sign-in rate limit above.
+
+## Users (Admin)
+
+Every account, for Admins (ADR-0020). An account is returned as:
+
+```json
+{
+  "id": "…", "firstName": "Mehmet", "lastName": "Demir", "displayName": "Mehmet Demir",
+  "email": "employee2@smartdesk.local", "role": "Employee", "status": "Active",
+  "managerId": "…", "managerName": "Zeynep Kaya", "createdAt": "2026-09-28T07:20:00Z", "teamSize": 0
+}
+```
+
+`role` is one of `Admin`, `Manager`, `Employee`; `status` one of `Active`, `PendingApproval`,
+`Disabled`. `managerId`/`managerName` are set only for an Employee in a team; `teamSize` is
+the number of Employees whose manager this account is.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/users?status=&role=&search=` | Admin | `GetAccountsQuery` | → `[account]`. Sign-ups waiting for approval first, then by name. `search` matches name or email, case-insensitive. Unknown `role` → 400. |
+| POST | `/api/users` | Admin | `CreateAccountCommand` | body: `{ firstName, lastName, email, role, managerId? }` → 201 with the account. It's Active but has no password: its owner is emailed a link to choose one (valid 2 hours; after that, "Forgot password" works). `managerId` only for an Employee, and must be an active Manager (400 otherwise). Email already used → 409. |
+| POST | `/api/users/{id}/approve` | Admin | `ApproveAccountCommand` | → 200 with the account, now Active; the owner is emailed. 409 unless it's waiting for approval. |
+| POST | `/api/users/{id}/reject` | Admin | `RejectAccountCommand` | → 204. Deletes the waiting sign-up (so the email can sign up again) and emails the applicant. 409 unless it's waiting for approval - a used account is disabled instead. |
+| PATCH | `/api/users/{id}/role` | Admin | `ChangeAccountRoleCommand` | body: `{ "role": "Manager" }` → 200 with the account. Becoming a Manager or Admin takes an Employee out of their team. 409 for: your own account; a sign-up waiting for approval; a Manager who still has team members (`"Zeynep Kaya still has 2 team member(s). Move them to another manager or remove them from the team first."`); the last active Admin. Same role again is a no-op. |
+| PATCH | `/api/users/{id}/manager` | Admin | `AssignManagerCommand` | body: `{ "managerId": "…" }` or `{ "managerId": null }` → 200 with the account. Moves an Employee into that Manager's team, or out of any team. 409 if the account isn't an Employee; 400 (`managerId`) if the manager isn't an active Manager. |
+| POST | `/api/users/{id}/disable` | Admin | `SetAccountStatusCommand` | → 200 with the account, now Disabled: it can't sign in, and its tokens stop working. 409 for your own account, a sign-up waiting for approval (approve or reject it instead), or the last active Admin. Already disabled is a no-op. Reservations are kept. |
+| POST | `/api/users/{id}/enable` | Admin | `SetAccountStatusCommand` | → 200 with the account, Active again. |
+| POST | `/api/users/{id}/password-reset` | Admin | `SendPasswordResetCommand` | → 202. Emails the owner the same reset link as "Forgot password"; nobody else sees or sets the password, and the old one works until the link is used. 409 unless the account is Active. |
+
+All of them: unknown `id` → 404, non-Admin → 403.
+
+## Team (Manager)
+
+A Manager's own team (ADR-0020). An account outside the caller's team - another team's member,
+another Manager, an Admin - answers **404**, the same as an id that doesn't exist.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/team` | Manager | `GetMyTeamQuery` | → `[account]` (shape above), the caller's team members by name |
+| POST | `/api/team/members` | Manager | `AddTeamMemberCommand` | body: `{ firstName, lastName, email }` → 201 with the new account: an Active Employee in the caller's team, emailed a link to choose a password (as for `POST /api/users`). Email already used → 409. |
+| DELETE | `/api/team/members/{id}` | Manager | `RemoveTeamMemberCommand` | → 204. Takes them out of the team; the account stays, without a team, until an Admin moves or disables it. |
+| POST | `/api/team/members/{id}/disable` | Manager | `SetAccountStatusCommand` | → 200 with the account; as for `/api/users/{id}/disable` |
+| POST | `/api/team/members/{id}/enable` | Manager | `SetAccountStatusCommand` | → 200 with the account |
+| POST | `/api/team/members/{id}/password-reset` | Manager | `SendPasswordResetCommand` | → 202; as for `/api/users/{id}/password-reset` |
 
 ## Resource types
 

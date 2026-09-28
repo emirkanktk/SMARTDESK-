@@ -5,6 +5,7 @@ using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Auth.Commands.Login;
 using SmartDesk.Domain.Constants;
+using SmartDesk.Domain.Enums;
 
 namespace SmartDesk.Tests.Auth;
 
@@ -29,6 +30,22 @@ public class LoginCommandHandlerTests
 
         response.AccessToken.Should().Be("jwt-value");
         response.ExpiresAt.Should().Be(expiresAt);
+    }
+
+    [Theory]
+    [InlineData(AccountStatus.PendingApproval, LoginCommandHandler.PendingApprovalMessage)]
+    [InlineData(AccountStatus.Disabled, LoginCommandHandler.DisabledMessage)]
+    public async Task Handle_AccountThatIsntActive_ThrowsForbiddenAndIssuesNoToken(AccountStatus status, string message)
+    {
+        var user = new UserProfile(Guid.NewGuid(), "Zeynep", "Kaya", "zeynep@smartdesk.local", [Roles.Manager]) { Status = status };
+        _identityService
+            .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var act = () => CreateHandler().Handle(new LoginCommand("zeynep@smartdesk.local", "Secret123!"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenAccessException>().WithMessage(message);
+        _tokenGenerator.Verify(g => g.Generate(It.IsAny<UserProfile>()), Times.Never);
     }
 
     [Fact]

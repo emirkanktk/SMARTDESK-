@@ -10,7 +10,10 @@
 | FirstName | string | |
 | LastName | string | |
 | Email | string | Identity-managed, unique |
-| (roles) | — | assigned via `AspNetUserRoles`, values from `Roles.Admin` / `Roles.Employee` |
+| Status | AccountStatus | `Active` (0), `PendingApproval` (1), `Disabled` (2). Only `Active` accounts can sign in or use a token (ADR-0020). Existing accounts became `Active`. |
+| ManagerId | Guid? | FK → `ApplicationUser.Id` (restrict delete). Set only for an `Employee` in a Manager's team. |
+| CreatedAt | DateTime (UTC) | when the account was made; existing accounts got the migration's time |
+| (roles) | — | assigned via `AspNetUserRoles`, one of `Roles.Admin` / `Roles.Manager` / `Roles.Employee` |
 
 ### ResourceType
 
@@ -81,10 +84,13 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
                     Reservation ── (UserId, scalar) ──→ ApplicationUser
 
 Resource 1 ── * ResourceBlock
+
+ApplicationUser (Manager) 1 ── * ApplicationUser (Employee, via ManagerId)
 ```
 
 ## Indexes
 
+- `AspNetUsers(ManagerId)` - a Manager's team.
 - `ResourceTypes(Name)` - unique.
 - `ResourceBlocks(ResourceId, StartDateTime, EndDateTime)` - the "is this resource blocked for
   `[start, end)`?" check on every booking, and the calendar's range query.
@@ -132,6 +138,12 @@ Resource 1 ── * ResourceBlock
    `ResourceBlock`. A block can't be created over `Confirmed` reservations or over another
    block of the same resource. Creating a block takes the same per-resource lock as booking,
    so a block and a reservation can never both claim one slot (ADR-0015).
+8. **Accounts (ADR-0020).** Each account has one role. Only an `Employee` has a manager, and
+   that manager is an active `Manager`. A Manager manages only their own team; an Admin
+   manages everyone. Nobody changes their own role or disables themselves. There is always
+   at least one active Admin. A Manager who still has team members can't be given another
+   role. Only a sign-up waiting for approval is ever deleted (by rejecting it); any other
+   account is disabled instead, which keeps its reservations and history.
 
 ## Concurrency (formerly an open question)
 

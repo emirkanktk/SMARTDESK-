@@ -224,11 +224,4 @@ public sealed class PasswordResetTests : IDisposable
         new ResetPasswordCommandValidator().Validate(new ResetPasswordCommand(Email, "", ""))
             .Errors.Select(e => e.PropertyName).Should().BeEquivalentTo("Token", "NewPassword");
     }
-
-    private sealed class CapturingEmailSender : IEmailSender
-    {
-        public List<EmailMessage> Sent { get; } = [];
-
-        public void Queue(EmailMessage message) => Sent.Add(message);
-    }
 }

@@ -373,3 +373,55 @@ new tables.
 - **Trade-offs:** the queue is in memory, so messages still queued are lost if the API stops,
   and the user can simply ask again. Data-protection keys aren't persisted in the Docker stand-in,
   so a restart invalidates outstanding links there.
+
+## ADR-0020: Accounts have a status and a team; Managers sign up and run their own team
+
+**Decision:**
+- **Roles:** `Admin`, `Manager`, `Employee`, one per account. Resources and the calendar stay
+  shared by everyone; a Manager differs from an Employee only in managing a team.
+- **Status:** every account is `Active`, `PendingApproval` or `Disabled`. Only an Active
+  account can sign in (`403` with a readable message otherwise, and only after the right
+  password) or use a token.
+- **Sign-up:** `POST /api/auth/register` creates a Manager in `PendingApproval` and emails the
+  applicant and every active Admin. An Admin approves it (Active, applicant emailed) or rejects
+  it (deleted, applicant emailed). For an email that already has an account it changes nothing,
+  emails the owner, and gives the same 202.
+- **Teams:** an Employee may have a `ManagerId`, always an active Manager. A Manager adds team
+  members, takes them out of the team, disables or re-enables them and sends them reset links.
+  Anyone outside their team answers 404. An Admin does all of that for every account, and also
+  changes roles and moves Employees between teams.
+- **Accounts made by someone else** are Active with no password. Their owner gets an
+  invitation carrying a password-reset link (ADR-0019), so nobody else ever knows the password.
+- **Tokens follow the account:** `JwtBearerEvents.OnTokenValidated` asks `IUserAccessChecker`
+  whether the token's user is still Active and has exactly the token's roles. If not, the
+  request is unauthenticated. The answer is cached in memory for 30 seconds per user, and
+  `UserAccounts` drops the entry whenever it changes that user.
+- **Rules that keep it manageable:** nobody changes their own role or disables themselves.
+  There is always an active Admin. A Manager with team members keeps the role until the team
+  is moved. Only an unapproved sign-up is ever deleted. `BootstrapAdmin` (ADR-0016) also makes
+  its account Active again, as the way back in.
+
+**Why:**
+- The brief's users are an office, not the public: letting anyone create a working account
+  would hand out access to company resources. A pending state keeps sign-up self-service
+  while an Admin still decides who gets in. Managers adding their own people spreads that
+  work without making everyone an Admin.
+- Anti-enumeration carries over from sign-in and password reset (#38, ADR-0019). Registration
+  checks password rules before looking the email up, and does the same hashing work either
+  way, so neither the answer nor its timing shows whether an email is registered. Inside the
+  app, a Manager or Admin adding a colleague is told plainly that an email is taken: they are
+  signed in, and that answer is what they need.
+- A JWT is otherwise good until it expires (60 minutes). Without the check, a disabled user,
+  or an Admin demoted to Employee, would keep their old access for up to an hour. A cached
+  lookup costs one small query per user per 30 seconds. That is cheaper than short-lived
+  tokens plus refresh tokens, which the frontend doesn't have yet.
+- The last-Admin rule is counted before the change and again after it. Two Admins demoting
+  each other at the same moment would both pass the first count; the second count finds no
+  Admin left and undoes that change, so the system can't lock itself out.
+- Disabling rather than deleting keeps reservations and reports intact. A person who left
+  still shows up in last month's usage.
+- **Trade-offs:** the cache is per process. With several API instances, a change made on one
+  would reach the others within the 30 seconds rather than at once. Open SignalR connections
+  aren't cut when an account is disabled: they keep receiving calendar events until they
+  reconnect. A disabled user's future reservations stay booked until an Admin cancels them.
+  Invitation links last 2 hours like any reset link, and "Forgot password" issues a new one.
