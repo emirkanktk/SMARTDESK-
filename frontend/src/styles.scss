@@ -1,6 +1,8 @@
 // Global design tokens and the few building blocks (buttons, form fields, cards) every
 // screen shares. Component styles use these variables instead of hardcoded values.
 
+// Text colours keep at least 4.5:1 (WCAG AA) against white and against their own "soft"
+// background, which is where badges, pills and alerts put them.
 :root {
   --color-bg: #f5f7fa;
   --color-surface: #ffffff;
@@ -9,11 +11,11 @@
   --color-text-muted: #616e7c;
   --color-primary: #2563eb;
   --color-primary-hover: #1d4ed8;
-  --color-primary-soft: #e8efff;
-  --color-danger: #dc2626;
+  --color-primary-soft: #eef3ff;
+  --color-danger: #b91c1c;
   --color-danger-soft: #fdecec;
-  --color-success: #16a34a;
-  --color-success-soft: #e7f6ec;
+  --color-success: #15803d;
+  --color-success-soft: #f0faf3;
   --color-warning: #b45309;
   --color-warning-soft: #fdf3e1;
 

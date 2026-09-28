@@ -42,6 +42,10 @@ describe('Login', () => {
     input.dispatchEvent(new Event('input'));
   }
 
+  it('is the main landmark of the page', () => {
+    expect(element.getAttribute('role')).toBe('main');
+  });
+
   it('links back to the front page', () => {
     const back = element.querySelector<HTMLAnchorElement>('a.back')!;
 
