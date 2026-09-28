@@ -26,9 +26,17 @@ export interface Reservation {
   userDisplayName: string | null;
 }
 
+/**
+ * Widest range `GET /api/reservations` and `GET /api/resource-blocks` accept: six weeks, plus
+ * an hour, because six local weeks across the autumn clock change are 42 days and an hour of
+ * elapsed time. Measured as elapsed time, as the API does.
+ */
+export const CALENDAR_MAX_DAYS = 42;
+export const CALENDAR_MAX_RANGE_MS = (CALENDAR_MAX_DAYS * 24 + 1) * 60 * 60 * 1000;
+
 /** Query for the calendar, `GET /api/reservations`. Times are UTC ISO strings. */
 export interface CalendarQuery {
-  /** Confirmed reservations overlapping [from, to), at most 42 days apart. */
+  /** Confirmed reservations overlapping [from, to), at most `CALENDAR_MAX_DAYS` apart. */
   from: string;
   to: string;
   resourceId?: string | null;

@@ -205,6 +205,7 @@ describe('Admin', () => {
   it.each([
     ['ends before it starts', { from: '2026-10-05', to: '2026-10-04' }, 'The last day is before'],
     ['is too long', { from: '2026-10-01', to: '2026-11-15' }, 'Show at most 42 days'],
+    ['is a day too long', { from: '2026-10-01', to: '2026-11-12' }, 'Show at most 42 days'],
   ])('refuses a range that %s, without asking the API', async (_, range, message) => {
     await render(range);
 
@@ -212,13 +213,13 @@ describe('Admin', () => {
     expect(getCalendar).not.toHaveBeenCalled();
   });
 
-  it('shows six weeks, a month grid, in one request', async () => {
-    // December and January: no daylight-saving change in any zone the tests run in, which
-    // would make six calendar weeks an hour longer than the API's 42 x 24 h.
-    await render({ from: '2026-12-01', to: '2027-01-11' });
+  it('shows six weeks in one request, even across the autumn clock change', async () => {
+    // 25 Oct in Berlin and 1 Nov in New York make these six weeks 42 days and an hour long.
+    await render({ from: '2026-10-01', to: '2026-11-11' });
 
+    expect(element.textContent).not.toContain('Show at most');
     expect(getCalendar).toHaveBeenCalledWith(
-      expect.objectContaining({ from: utc('2026-12-01T00:00'), to: utc('2027-01-12T00:00') }),
+      expect.objectContaining({ from: utc('2026-10-01T00:00'), to: utc('2026-11-12T00:00') }),
     );
   });
 

@@ -21,6 +21,7 @@ import {
   ResourceBlock,
   ResourceBlockQuery,
 } from '../../core/models/resource-block.model';
+import { CALENDAR_MAX_DAYS, CALENDAR_MAX_RANGE_MS } from '../../core/models/reservation.model';
 import { Resource } from '../../core/models/resource.model';
 import { NotificationService } from '../../core/services/notification.service';
 import { ResourceBlockService } from '../../core/services/resource-block.service';
@@ -44,9 +45,6 @@ import { dateRangeValidator } from '../../shared/validators/date-range.validator
 const L = RESOURCE_BLOCK_LIMITS;
 const DEFAULT_DAYS = 28;
 const DEFAULT_DURATION_MIN = 60;
-/** The admin overview lists at most 31 days of reservations. */
-const ADMIN_MAX_DAYS = 31;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface Row {
   block: ResourceBlock;
@@ -130,8 +128,8 @@ export class ResourceBlocks {
   protected readonly rangeError = computed(() => {
     const { start, last, end } = this.range();
     if (last < start) return 'The last day is before the first day.';
-    if (end.getTime() - start.getTime() > L.maxQueryDays * DAY_MS) {
-      return `Show at most ${L.maxQueryDays} days at a time.`;
+    if (end.getTime() - start.getTime() > CALENDAR_MAX_RANGE_MS) {
+      return `Show at most ${CALENDAR_MAX_DAYS} days at a time.`;
     }
     return null;
   });
@@ -397,14 +395,13 @@ export class ResourceBlocks {
 
   /**
    * The admin overview for the days the window touches, filtered to the resource's type, so
-   * the clashing reservations can be cancelled or moved. A longer window opens on its first
-   * days only: the overview allows 31 x 24 h, which a daylight-saving change can make 31
-   * calendar days exceed.
+   * the clashing reservations can be cancelled or moved. A window longer than the overview's
+   * six weeks opens on its first six.
    */
   private reservationsParams(start: Date, end: Date, resourceId: string): Record<string, string> {
     const first = startOfDay(start);
     const lastDay = startOfDay(new Date(end.getTime() - 1));
-    const lastAllowed = addDays(first, ADMIN_MAX_DAYS - 2);
+    const lastAllowed = addDays(first, CALENDAR_MAX_DAYS - 1);
     const last = lastDay < lastAllowed ? lastDay : lastAllowed;
     const type = this.resourcesById().get(resourceId)?.resourceTypeId;
     return { from: toDateParam(first), to: toDateParam(last), ...(type ? { type } : {}) };

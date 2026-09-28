@@ -15,7 +15,12 @@ import {
   tap,
 } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
-import { CalendarQuery, Reservation } from '../../core/models/reservation.model';
+import {
+  CALENDAR_MAX_DAYS,
+  CALENDAR_MAX_RANGE_MS,
+  CalendarQuery,
+  Reservation,
+} from '../../core/models/reservation.model';
 import { RESOURCE_STATUSES, Resource, ResourceType } from '../../core/models/resource.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -33,9 +38,6 @@ import {
 import { EventBuffer } from '../../shared/utils/event-buffer';
 
 const DEFAULT_DAYS = 7;
-/** `GET /api/reservations` spans at most 42 days, measured as elapsed time. */
-const MAX_DAYS = 42;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface LiveEvent {
   cancelled: boolean;
@@ -112,8 +114,8 @@ export class Admin {
   protected readonly rangeError = computed(() => {
     const { start, last, end } = this.range();
     if (last < start) return 'The last day is before the first day.';
-    if (end.getTime() - start.getTime() > MAX_DAYS * DAY_MS) {
-      return `Show at most ${MAX_DAYS} days at a time.`;
+    if (end.getTime() - start.getTime() > CALENDAR_MAX_RANGE_MS) {
+      return `Show at most ${CALENDAR_MAX_DAYS} days at a time.`;
     }
     return null;
   });
