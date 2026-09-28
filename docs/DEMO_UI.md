@@ -1,6 +1,6 @@
 # SmartDesk UI Demo
 
-A 12-minute walkthrough of the Angular app, the companion to [DEMO.md](DEMO.md) (the backend
+A 15-minute walkthrough of the Angular app, the companion to [DEMO.md](DEMO.md) (the backend
 through Swagger UI). It follows the same scenario, the brief's conflict example, but in the
 browser, with two windows side by side so the audience sees changes arrive live.
 
@@ -31,7 +31,9 @@ browser, with two windows side by side so the audience sees changes arrive live.
 ### 1. Front page, sign in and the dashboard
 
 - Ayşe's window shows the public front page: what SmartDesk does, how booking works, and, in a
-  development build only, the demo accounts. **Sign in** leads to the sign-in form.
+  development build only, the demo accounts. **Sign in** leads to the sign-in form. (Its
+  **Forgot password?** emails a reset link; after `docker compose up -d` the mail lands in
+  Mailpit at `http://localhost:8025`.)
 - Sign Ayşe in with a wrong password first: "Invalid email or password." appears under the
   form - the same answer for an unknown email or a locked account.
 - Then sign in properly. The dashboard shows today's date and four counts (7 active resources on
@@ -49,6 +51,9 @@ browser, with two windows side by side so the audience sees changes arrive live.
   toast, then My reservations. On this first booking with a reminder, the browser asks whether
   SmartDesk may show notifications: allow it, for step 6.
 - In Mehmet's window, the booking appears in the Calendar without a reload (SignalR).
+- **Month** in Mehmet's Calendar: the booking sits on `DAY` as "Meeting Room A · Ayşe
+  Yılmaz". A day's number opens its week. The month view asks the API for the month's own days
+  only, so a clock change can't push it past the 42-day limit.
 
 ### 3. The brief's conflict example
 
@@ -104,8 +109,16 @@ browser, with two windows side by side so the audience sees changes arrive live.
   each resource and type, and who booked the most. Point out: the office day is Monday to
   Friday, 09:00-18:00 in the admin's time zone, so a room booked all day every weekday reads
   100%, not the 27% it would against the whole week (ADR-0017).
-- **Back to admin**, search "Ayşe", **Cancel** her Desk 3-01 booking - the confirmation and
-  the toast name whose it is, and her My reservations updates live.
+- **Blocked windows**, in the Admin page's header: Desk 3-01, keep the suggested times - they
+  overlap Ayşe's desk booking from step 6 - reason "Desk repair" → **Block**. It's refused: "1
+  confirmed reservation(s) on Desk 3-01 overlap this window. Cancel or move them first." Point
+  out: a block never cancels anyone's booking behind their back (ADR-0015).
+- **See the reservations then** opens the Admin overview for that day, filtered to desks.
+  **Cancel** Ayşe's Desk 3-01 booking - the confirmation and the toast name whose it is, and her
+  My reservations updates live.
+- Back in **Blocked windows**, the same block again → **Block** goes through and it's listed. In
+  Ayşe's window, booking Desk 3-01 inside it says "Desk 3-01 is blocked for part of that time:
+  Desk repair", Availability leaves the desk out, and the Calendar draws the block hatched.
 
 ## Talking points
 
@@ -120,8 +133,10 @@ browser, with two windows side by side so the audience sees changes arrive live.
   reconnect. Reminders come over the same connection, addressed to the owner only.
 - **Times:** picked in local time, sent as UTC, shown back in local time. An unchanged time is
   sent back exactly as the API gave it, since the pickers drop seconds.
-- **Tests:** about 240 unit tests, also run in six time zones (`npm run test:time-zones`) - that
+- **Tests:** about 290 unit tests, also run in six time zones (`npm run test:time-zones`) - that
   is how a UTC+05:45 half-hour bug was found.
+- **Accessibility:** every screen passes an axe-core WCAG 2.1 AA scan. Text colours keep 4.5:1
+  contrast on their backgrounds, and the signed-out pages have a main landmark.
 
 ## If something goes wrong
 
@@ -131,5 +146,6 @@ browser, with two windows side by side so the audience sees changes arrive live.
 | Changes don't appear in the other window | Check the console for SignalR errors and reload; after a reconnect, screens refetch on their own. |
 | No reminder toast | The reservation had already started when the reminder came due, or no window was signed in as the owner at that moment - reminders aren't queued for later. |
 | Toast but no desktop notification | The browser's notification permission is blocked for `localhost:4200`; allow it in the site settings. The form's hint says so too. |
+| A new block doesn't show in the Calendar | Blocks send no live events - reload, or move to another week and back. |
 | "Your session has expired" | Tokens last 60 minutes - sign in again. |
 | Old bookings from rehearsals | Clear them as in DEMO.md, step 3. |
