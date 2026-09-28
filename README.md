@@ -102,8 +102,9 @@ frontend origins for CORS are `Cors:AllowedOrigins` in `appsettings.Development.
 **Mailpit**, started by `docker compose up -d`: open `http://localhost:8025` to read it. Links
 in emails point at `App:FrontendUrl` (`http://localhost:4200` in Development; required
 elsewhere). For a real mail server, set `Email:Smtp:Host`, `Port` and `From`, plus
-`Username` / `Password` as environment variables or secrets. Without `Email:Smtp:Host`, each
-email, link included, is written to the API log instead.
+`Username` / `Password` as environment variables or secrets. Outside Development the API
+refuses to start without `Email:Smtp:Host`. In Development, leaving it out writes each email,
+link included, to the API log instead.
 
 ### Demo users (Development only)
 

@@ -349,8 +349,10 @@ new tables.
   same "invalid or expired link" answer.
 - **Sending:** handlers call `IEmailSender.Queue`, which puts the message on a bounded
   in-memory channel. `EmailDispatchWorker` sends it over SMTP (MailKit), retrying twice. With
-  no SMTP host configured, it writes the email to the log instead. Development uses Mailpit
-  from docker-compose. `App:FrontendUrl` is where links point, and it's required at startup.
+  no SMTP host configured, it writes the email to the log instead, but only in Development:
+  anywhere else `Email:Smtp:Host` is required and the API refuses to start without it.
+  Development uses Mailpit from docker-compose. `App:FrontendUrl` is where links point, and
+  it's required at startup.
 
 **Why:**
 - The brief-level expectation for a real product: users forget passwords, and an admin
@@ -363,6 +365,11 @@ new tables.
   a blip, and a dropped message is logged rather than failing the request.
 - Mailpit lets the whole flow be exercised locally, with the real SMTP code path, without
   sending anything to real inboxes.
+- The log fallback writes whole emails, and a reset link in a log is a working key to that
+  account for 2 hours - the bootstrap admin's included, since anyone can ask for a link. A
+  production started without mail settings would quietly hand every account to whoever reads
+  the logs. So, as with a half-configured bootstrap admin (ADR-0016), a missing SMTP host stops
+  startup outside Development instead.
 - **Trade-offs:** the queue is in memory, so messages still queued are lost if the API stops,
   and the user can simply ask again. Data-protection keys aren't persisted in the Docker stand-in,
   so a restart invalidates outstanding links there.

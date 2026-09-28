@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -114,6 +115,21 @@ public class EmailDeliveryTests
             .Should().Be(AccountEmails.ResetLinkLifetime);
     }
 
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public void Infrastructure_RefusesToStartWithoutAMailServer_OutsideDevelopment(string environment)
+    {
+        // Emails would only go to the log there, reset links included.
+        using var withoutSmtp = Build(smtpHost: null, environment: environment);
+        using var withSmtp = Build(smtpHost: "smtp.company.example", environment: environment);
+
+        var act = () => withoutSmtp.GetRequiredService<IOptions<EmailOptions>>().Value;
+
+        act.Should().Throw<OptionsValidationException>().WithMessage("*Email:Smtp:Host is required outside Development*");
+        withSmtp.GetRequiredService<IEmailTransport>().Should().BeOfType<SmtpEmailTransport>();
+    }
+
     [Fact]
     public void Infrastructure_RefusesToStartWithoutAFrontendUrl()
     {
@@ -124,7 +140,8 @@ public class EmailDeliveryTests
         act.Should().Throw<OptionsValidationException>().WithMessage("*App:FrontendUrl*");
     }
 
-    private static ServiceProvider Build(string? smtpHost, string? frontendUrl = "http://localhost:4200")
+    private static ServiceProvider Build(
+        string? smtpHost, string? frontendUrl = "http://localhost:4200", string environment = "Development")
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -137,8 +154,18 @@ public class EmailDeliveryTests
         }).Build();
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<IHostEnvironment>(new FakeHostEnvironment { EnvironmentName = environment });
         services.AddInfrastructure(configuration);
         return services.BuildServiceProvider();
+    }
+
+    private sealed class FakeHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = "Development";
+        public string ApplicationName { get; set; } = "SmartDesk.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } =
+            new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 
     private sealed class FakeTransport : IEmailTransport

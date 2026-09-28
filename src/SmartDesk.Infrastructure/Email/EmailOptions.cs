@@ -3,7 +3,8 @@ using MailKit.Security;
 namespace SmartDesk.Infrastructure.Email;
 
 // Where outgoing mail goes (ADR-0019). Without Smtp:Host, emails are only written to the log -
-// handy on a machine with no mail server, and never silently lost.
+// handy on a developer's machine with no mail server. Outside Development, Smtp:Host is
+// required: the log would otherwise hold working reset links.
 public sealed class EmailOptions
 {
     public const string SectionName = "Email";
