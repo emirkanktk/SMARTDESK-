@@ -1,0 +1,103 @@
+<header class="topbar">
+  <a class="brand" routerLink="/">SmartDesk</a>
+  <a class="btn btn-primary" routerLink="/login">Sign in</a>
+</header>
+
+<main>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-text">
+      <p class="eyebrow">Office resources &amp; reservations</p>
+      <h1 id="hero-title">Book meeting rooms, desks and equipment in seconds.</h1>
+      <p class="lead">
+        See what’s free, reserve it, and watch the office calendar update live. SmartDesk makes sure
+        no two people ever get the same slot.
+      </p>
+      <div class="actions">
+        <a class="btn btn-primary btn-lg" routerLink="/login">Sign in</a>
+        <a class="btn btn-secondary btn-lg" href="#how-it-works">How it works</a>
+      </div>
+    </div>
+
+    <!-- An illustration of the product, not live data. -->
+    <div class="preview card" aria-hidden="true">
+      <p class="preview-title">Today</p>
+      <ul>
+        <li>
+          <span class="time">09:30</span>
+          <span class="what"><strong>Meeting Room A</strong> Sprint planning</span>
+          <span class="state busy">Booked</span>
+        </li>
+        <li>
+          <span class="time">11:00</span>
+          <span class="what"><strong>Desk 3-01</strong> 3rd Floor</span>
+          <span class="state free">Free</span>
+        </li>
+        <li>
+          <span class="time">14:00</span>
+          <span class="what"><strong>Company Car</strong> Client visit</span>
+          <span class="state busy">Booked</span>
+        </li>
+        <li>
+          <span class="time">16:30</span>
+          <span class="what"><strong>Board Room</strong> 5th Floor</span>
+          <span class="state free">Free</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="features" aria-labelledby="features-title">
+    <h2 id="features-title">Everything the office shares, in one place</h2>
+    <ul class="feature-grid">
+      @for (feature of features; track feature.title) {
+        <li class="card feature">
+          <h3>{{ feature.title }}</h3>
+          <p>{{ feature.text }}</p>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <section id="how-it-works" class="steps" aria-labelledby="steps-title">
+    <h2 id="steps-title">How it works</h2>
+    <ol class="step-list">
+      @for (step of steps; track step.title; let i = $index) {
+        <li class="step">
+          <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
+          <div>
+            <h3>{{ step.title }}</h3>
+            <p>{{ step.text }}</p>
+          </div>
+        </li>
+      }
+    </ol>
+  </section>
+
+  @if (showDemoAccounts) {
+    <section class="card demo" aria-labelledby="demo-title">
+      <h2 id="demo-title">Demo accounts</h2>
+      <p class="text-muted">
+        Only in this development build. Every account uses the password
+        <code>{{ demoPassword }}</code
+        >.
+      </p>
+      <ul>
+        @for (account of demoAccounts; track account.email) {
+          <li>
+            <code>{{ account.email }}</code> <span class="text-muted">{{ account.role }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <section class="cta" aria-labelledby="cta-title">
+    <h2 id="cta-title">Ready to book?</h2>
+    <a class="btn btn-primary btn-lg" routerLink="/login">Sign in to SmartDesk</a>
+  </section>
+</main>
+
+<footer class="footer text-muted">
+  <span>© {{ year }} SmartDesk</span>
+  <span>Office resource &amp; reservation system</span>
+</footer>

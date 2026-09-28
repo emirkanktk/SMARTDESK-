@@ -11,7 +11,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 
 ## What it does
 
-- **Sign in** with email and password (JWT). Two roles: `Employee` and `Admin`.
+- **Front page and sign-in** - visitors land on a public page that explains SmartDesk and
+  leads to sign-in (email and password, JWT). Signed-in users go straight to their dashboard.
+  Two roles: `Employee` and `Admin`.
 - **Resources** - meeting rooms, desks, company cars, projectors, cameras - with type,
   capacity, location, features and a status (`Active` / `Inactive` / `Maintenance`).
   Admins create and edit them; everyone can browse and filter.
@@ -177,7 +179,8 @@ npm install
 ng serve
 ```
 
-Serves on `http://localhost:4200` by default - already in the API's CORS allow-list. If
+Serves on `http://localhost:4200` by default - already in the API's CORS allow-list. The
+front page lists the demo accounts in development builds only. If
 your build serves on a different port, add it to `Cors:AllowedOrigins` too.
 `ng serve --configuration docker` talks to an API on `http://localhost:8080/api` instead,
 for an API running in Docker - no need to edit `environment.development.ts`.

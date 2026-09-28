@@ -34,6 +34,6 @@ export class Shell {
 
   protected logout(): void {
     this.authService.logout();
-    void this.router.navigateByUrl('/login');
+    void this.router.navigateByUrl('/');
   }
 }
