@@ -66,6 +66,12 @@ function loginErrorMessage(error: unknown): string {
       return Object.values(error.fieldErrors).flat()[0] ?? 'Please check the email and password.';
     case 401:
       return 'Invalid email or password.';
+    case 403:
+      // The right password, but the account is waiting for approval or was switched off; the
+      // API says which, and what to do.
+      return error.detail ?? "This account can't sign in right now.";
+    case 429:
+      return 'Too many attempts. Please wait a minute and try again.';
     default:
       return 'Sign-in failed. Please try again.';
   }

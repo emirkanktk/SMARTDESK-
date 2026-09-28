@@ -59,7 +59,9 @@ describe('Login', () => {
     fixture.componentRef.setInput('reset', 'done');
     await fixture.whenStable();
 
-    expect(element.querySelector('.notice')!.textContent).toContain('Your password has been changed.');
+    expect(element.querySelector('.notice')!.textContent).toContain(
+      'Your password has been changed.',
+    );
   });
 
   it('shows field errors and does not call the API when the form is invalid', async () => {
@@ -105,5 +107,27 @@ describe('Login', () => {
       'Invalid email or password.',
     );
     expect(element.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+  });
+
+  it('says why an account that is waiting for approval or switched off cannot sign in', async () => {
+    const waiting =
+      "Your account is waiting for an administrator's approval. We'll email you when it's ready.";
+    await fillAndSubmit('zeynep@example.com', 'right-password');
+    response.error(new ApiError(403, 'Forbidden', waiting));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(element.querySelector('[role="alert"]')?.textContent).toContain(waiting);
+  });
+
+  it('asks to wait after too many attempts', async () => {
+    await fillAndSubmit('employee1@smartdesk.local', 'wrong');
+    response.error(new ApiError(429, 'Too Many Requests'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(element.querySelector('[role="alert"]')?.textContent).toContain(
+      'Too many attempts. Please wait a minute and try again.',
+    );
   });
 });
