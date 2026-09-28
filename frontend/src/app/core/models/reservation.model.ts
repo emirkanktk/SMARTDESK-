@@ -8,6 +8,7 @@ export interface Reservation {
   id: string;
   resourceId: string;
   resourceName: string;
+  resourceTypeId: string;
   resourceTypeName: string;
   resourceLocation: string;
   userId: string;
@@ -27,7 +28,7 @@ export interface Reservation {
 
 /** Query for the calendar, `GET /api/reservations`. Times are UTC ISO strings. */
 export interface CalendarQuery {
-  /** Confirmed reservations overlapping [from, to), at most 31 days apart. */
+  /** Confirmed reservations overlapping [from, to), at most 42 days apart. */
   from: string;
   to: string;
   resourceId?: string | null;

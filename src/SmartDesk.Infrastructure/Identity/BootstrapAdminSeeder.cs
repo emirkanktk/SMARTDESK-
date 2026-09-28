@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartDesk.Domain.Constants;
+using SmartDesk.Domain.Enums;
 
 namespace SmartDesk.Infrastructure.Identity;
 
@@ -49,6 +50,16 @@ public sealed class BootstrapAdminSeeder(
             IdentityDataSeeder.EnsureSucceeded(
                 await userManager.AddToRoleAsync(user, Roles.Admin), $"add '{admin.Email}' to '{Roles.Admin}'");
             logger.LogInformation("Added {Email} to the {Role} role", admin.Email, Roles.Admin);
+        }
+
+        // It's also the way back in if every admin got switched off (ADR-0020), so it's made
+        // Active again, and taken out of any team since admins don't belong to one.
+        if (user.Status != AccountStatus.Active || user.ManagerId is not null)
+        {
+            user.Status = AccountStatus.Active;
+            user.ManagerId = null;
+            IdentityDataSeeder.EnsureSucceeded(await userManager.UpdateAsync(user), $"reactivate '{admin.Email}'");
+            logger.LogInformation("Reactivated the bootstrap admin {Email}", admin.Email);
         }
     }
 }

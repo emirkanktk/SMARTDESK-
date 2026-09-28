@@ -24,6 +24,19 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     {
         base.OnModelCreating(builder);
 
+        builder.Entity<ApplicationUser>(entity =>
+        {
+            // Existing accounts get "now" as their creation time (and Status 0, Active).
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            // A team is the users pointing at the same Manager. Restrict: a Manager with members
+            // can't be deleted out from under them (only unapproved sign-ups are ever deleted).
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(e => e.ManagerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<ResourceType>(entity =>
         {
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);

@@ -40,6 +40,7 @@ describe('Admin', () => {
   const mine = booking('rsv-3', '2026-10-07T14:00', '2026-10-07T15:00', {
     resourceId: desk.id,
     resourceName: 'Desk 12',
+    resourceTypeId: DESK_TYPE.id,
     resourceTypeName: DESK_TYPE.name,
     note: null,
   });
@@ -203,12 +204,22 @@ describe('Admin', () => {
 
   it.each([
     ['ends before it starts', { from: '2026-10-05', to: '2026-10-04' }, 'The last day is before'],
-    ['is too long', { from: '2026-10-01', to: '2026-11-15' }, 'Show at most 31 days'],
+    ['is too long', { from: '2026-10-01', to: '2026-11-15' }, 'Show at most 42 days'],
   ])('refuses a range that %s, without asking the API', async (_, range, message) => {
     await render(range);
 
     expect(element.textContent).toContain(message);
     expect(getCalendar).not.toHaveBeenCalled();
+  });
+
+  it('shows six weeks, a month grid, in one request', async () => {
+    // December and January: no daylight-saving change in any zone the tests run in, which
+    // would make six calendar weeks an hour longer than the API's 42 x 24 h.
+    await render({ from: '2026-12-01', to: '2027-01-11' });
+
+    expect(getCalendar).toHaveBeenCalledWith(
+      expect.objectContaining({ from: utc('2026-12-01T00:00'), to: utc('2027-01-12T00:00') }),
+    );
   });
 
   it('keeps the range and type in the query string', async () => {
@@ -315,6 +326,25 @@ describe('Admin', () => {
       );
       await fixture.whenStable();
       expect(rows().length).toBe(1);
+    });
+
+    it('shows a booking of the chosen type even when the resources could not be loaded', async () => {
+      getResources.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+      getCalendar.mockReturnValue(of([mine]));
+      await render({ type: DESK_TYPE.id });
+
+      hub.created$.next(
+        booking('rsv-9', '2026-10-06T12:00', '2026-10-06T13:00', {
+          ...theirs,
+          resourceId: desk.id,
+          resourceName: 'Desk 12',
+          resourceTypeId: DESK_TYPE.id,
+          resourceTypeName: DESK_TYPE.name,
+        }),
+      );
+      await fixture.whenStable();
+
+      expect(rows().length).toBe(2);
     });
 
     it('keeps a change that arrives while the list is loading', async () => {

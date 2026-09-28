@@ -8,6 +8,7 @@ export function fakeReservation(overrides: Partial<Reservation> = {}): Reservati
     id: 'rsv-1',
     resourceId: 'res-1',
     resourceName: 'Meeting Room A',
+    resourceTypeId: MEETING_ROOM_TYPE.id,
     resourceTypeName: MEETING_ROOM_TYPE.name,
     resourceLocation: '2nd Floor',
     userId: OWNER_ID,

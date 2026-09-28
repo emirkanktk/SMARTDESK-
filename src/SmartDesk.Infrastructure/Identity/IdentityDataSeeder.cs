@@ -20,8 +20,9 @@ public sealed class IdentityDataSeeder(
     public static readonly IReadOnlyList<DemoUser> DemoUsers =
     [
         new("admin@smartdesk.local", "System", "Admin", Roles.Admin),
-        new("employee1@smartdesk.local", "Ayşe", "Yılmaz", Roles.Employee),
-        new("employee2@smartdesk.local", "Mehmet", "Demir", Roles.Employee),
+        new("manager@smartdesk.local", "Zeynep", "Kaya", Roles.Manager),
+        new("employee1@smartdesk.local", "Ayşe", "Yılmaz", Roles.Employee, ManagerEmail: "manager@smartdesk.local"),
+        new("employee2@smartdesk.local", "Mehmet", "Demir", Roles.Employee, ManagerEmail: "manager@smartdesk.local"),
     ];
 
     // Returns false when it skipped because the schema isn't up to date, so the caller can
@@ -37,7 +38,7 @@ public sealed class IdentityDataSeeder(
             return false;
         }
 
-        foreach (var role in new[] { Roles.Admin, Roles.Employee })
+        foreach (var role in Roles.All)
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
@@ -74,6 +75,19 @@ public sealed class IdentityDataSeeder(
             }
         }
 
+        // Second pass, once every demo user exists: put the employees in the manager's team
+        // (also for databases seeded before teams existed).
+        foreach (var demo in DemoUsers.Where(d => d.ManagerEmail is not null))
+        {
+            var member = await userManager.FindByEmailAsync(demo.Email);
+            var manager = await userManager.FindByEmailAsync(demo.ManagerEmail!);
+            if (member is not null && manager is not null && member.ManagerId is null)
+            {
+                member.ManagerId = manager.Id;
+                EnsureSucceeded(await userManager.UpdateAsync(member), $"put '{demo.Email}' in '{demo.ManagerEmail}''s team");
+            }
+        }
+
         return true;
     }
 
@@ -86,5 +100,5 @@ public sealed class IdentityDataSeeder(
         }
     }
 
-    public sealed record DemoUser(string Email, string FirstName, string LastName, string Role);
+    public sealed record DemoUser(string Email, string FirstName, string LastName, string Role, string? ManagerEmail = null);
 }

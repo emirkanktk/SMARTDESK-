@@ -1,0 +1,52 @@
+// The centred card used by the signed-out account screens (forgot and reset password), so
+// they look like the sign-in page they sit next to.
+@mixin auth-page {
+  :host {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    min-height: 100vh;
+    padding: var(--space-4);
+  }
+
+  .back {
+    width: 100%;
+    max-width: 400px;
+    color: var(--color-text-muted);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--color-primary);
+    }
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 400px;
+    box-shadow: var(--shadow);
+  }
+
+  h1 {
+    margin-bottom: var(--space-1);
+    font-size: 1.5rem;
+  }
+
+  .subtitle {
+    margin: 0 0 var(--space-5);
+  }
+
+  .notice {
+    margin: 0 0 var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius);
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+
+  .links {
+    margin: var(--space-4) 0 0;
+    text-align: center;
+  }
+}

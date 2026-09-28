@@ -85,5 +85,24 @@ public class GetReservationsQueryHandlerTests : IDisposable
     [Fact]
     public void Validator_RangeLongerThan42Days_Fails() =>
         new GetReservationsQueryValidator().Validate(new GetReservationsQuery(Day, Day.AddDays(43)))
-            .Errors.Should().ContainSingle(e => e.PropertyName == nameof(GetReservationsQuery.To));
+            .Errors.Should().ContainSingle(e => e.PropertyName == nameof(GetReservationsQuery.To)
+                && e.ErrorMessage == "The range can be at most 42 days.");
+
+    [Theory]
+    [InlineData("Europe/Berlin", "2026-09-28", "2026-11-09")] // clocks go back on 25 Oct
+    [InlineData("America/New_York", "2026-10-26", "2026-12-07")] // and on 1 Nov
+    [InlineData("Europe/Istanbul", "2026-09-28", "2026-11-09")] // no clock change
+    public void Validator_SixLocalWeeksAcrossAClockChange_Pass(string timeZone, string firstDay, string dayAfterLast)
+    {
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(timeZone);
+        DateTime Midnight(string day) => TimeZoneInfo.ConvertTimeToUtc(DateTime.Parse(day), zone);
+
+        new GetReservationsQueryValidator().Validate(new GetReservationsQuery(Midnight(firstDay), Midnight(dayAfterLast)))
+            .IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Validator_AllowsExactlyAnHourOfSlack() =>
+        new GetReservationsQueryValidator().Validate(new GetReservationsQuery(Day, Day.AddDays(42).AddHours(1).AddMinutes(1)))
+            .IsValid.Should().BeFalse();
 }

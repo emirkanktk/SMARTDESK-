@@ -19,6 +19,8 @@ export class Login {
 
   /** Where to go after signing in; bound from the `returnUrl` query parameter. */
   readonly returnUrl = input<string | undefined>();
+  /** "done" after a password reset, to confirm it worked. */
+  readonly reset = input<string | undefined>();
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', [Validators.required, Validators.email]],

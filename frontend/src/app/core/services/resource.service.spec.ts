@@ -68,4 +68,12 @@ describe('ResourceService', () => {
     expect(update.request.body.status).toBe('Active');
     update.flush(fakeResource());
   });
+
+  it('changes only the status with PATCH', () => {
+    service.changeStatus('res/1', 'Maintenance').subscribe();
+
+    const req = http.expectOne({ method: 'PATCH', url: `${base}/res%2F1/status` });
+    expect(req.request.body).toEqual({ status: 'Maintenance' });
+    req.flush(fakeResource({ status: 'Maintenance' }));
+  });
 });

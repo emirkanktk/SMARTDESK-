@@ -1,3 +1,5 @@
+using SmartDesk.Domain.Enums;
+
 namespace SmartDesk.Application.Common.Models;
 
 // Identity-agnostic view of a user, so Application code never touches ApplicationUser
@@ -7,4 +9,8 @@ public sealed record UserProfile(
     string FirstName,
     string LastName,
     string Email,
-    IReadOnlyList<string> Roles);
+    IReadOnlyList<string> Roles)
+{
+    public AccountStatus Status { get; init; } = AccountStatus.Active;
+    public Guid? ManagerId { get; init; }
+}
