@@ -455,8 +455,8 @@ describe('Calendar', () => {
             id: 'blk-1',
             resourceId: desk.id,
             resourceName: desk.name,
-            startDateTime: utc('2026-10-08T08:00'),
-            endDateTime: utc('2026-10-08T12:00'),
+            startDateTime: utc('2026-10-08T22:30'),
+            endDateTime: utc('2026-10-08T23:30'),
             reason: 'Painting',
             createdByUserId: 'admin-1',
           },
@@ -467,8 +467,8 @@ describe('Calendar', () => {
       expect(dayEntries('Tue 6 Oct')).toEqual(['10:00-11:30 Meeting Room A · You']);
       expect(dayEntries('Wed 7 Oct')).toEqual(['09:00-17:00 Desk 12 · Mehmet Demir']);
       expect(dayEntries('Thu 8 Oct')).toEqual([
-        '08:00-12:00 Desk 12 · Blocked',
         'from 22:00 Meeting Room A · Someone',
+        '22:30-23:30 Desk 12 · Blocked',
       ]);
       expect(dayEntries('Fri 9 Oct')).toEqual(['until 02:00 Meeting Room A · Someone']);
       expect(day('Tue 6 Oct').querySelector('a.entry')!.getAttribute('href')).toBe(
