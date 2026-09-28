@@ -32,6 +32,8 @@ interface Item {
   sameDay: boolean;
   duration: string;
   inProgress: boolean;
+  /** "Reminder 15 min before", while it can still come: Confirmed and not started. */
+  reminder: string | null;
 }
 
 /**
@@ -77,6 +79,7 @@ export class MyReservations implements OnInit {
     return this.reservations().map((reservation): Item => {
       const start = new Date(reservation.startDateTime);
       const end = new Date(reservation.endDateTime);
+      const minutes = reservation.reminderMinutes;
       return {
         reservation,
         start,
@@ -85,6 +88,10 @@ export class MyReservations implements OnInit {
         duration: formatDuration(start, end),
         inProgress:
           reservation.status === 'Confirmed' && start.getTime() <= now && end.getTime() > now,
+        reminder:
+          minutes !== null && reservation.status === 'Confirmed' && start.getTime() > now
+            ? `Reminder ${minutes} min before`
+            : null,
       };
     });
   });
