@@ -98,7 +98,8 @@ can't reach it. In development, Swagger UI is served at `/swagger`
 frontend origins for CORS are `Cors:AllowedOrigins` in `appsettings.Development.json` (see
 `docs/DECISIONS.md`, ADR-0006).
 
-**Email.** The API sends email for password resets (ADR-0019). In Development it goes to
+**Email.** The API sends email for password resets (ADR-0019) and for sign-ups, approvals and
+new accounts (ADR-0020). In Development it goes to
 **Mailpit**, started by `docker compose up -d`: open `http://localhost:8025` to read it. Links
 in emails point at `App:FrontendUrl` (`http://localhost:4200` in Development; required
 elsewhere). For a real mail server, set `Email:Smtp:Host`, `Port` and `From`, plus
@@ -109,13 +110,21 @@ link included, to the API log instead.
 ### Demo users (Development only)
 
 Seeded automatically on startup in the Development environment (see `docs/DECISIONS.md`,
-ADR-0007). All three share the password `SmartDesk123!`.
+ADR-0007). All four share the password `SmartDesk123!`.
 
 | Email | Role |
 |---|---|
-| `admin@smartdesk.local` | Admin |
-| `employee1@smartdesk.local` | Employee |
-| `employee2@smartdesk.local` | Employee |
+| `admin@smartdesk.local` | Admin - manages every account, resource and block |
+| `manager@smartdesk.local` | Manager - manages their own team (both employees below) |
+| `employee1@smartdesk.local` | Employee, in the manager's team |
+| `employee2@smartdesk.local` | Employee, in the manager's team |
+
+**Accounts (ADR-0020).** Anyone can sign up as a **Manager**, and an Admin approves or rejects
+the sign-up; both sides are emailed. A Manager adds the members of their team, who get an
+email to choose a password. Admins can also add accounts of any role, change roles, move
+employees between teams, disable or re-enable accounts and send password-reset links. A
+disabled account, or one whose role changed, is signed out on its next request. The endpoints
+are in [API contracts](docs/API_CONTRACTS.md) under Users and Team.
 
 **Outside Development** there are no demo users. Give the first admin through configuration,
 as environment variables or a secret, never in appsettings (ADR-0016):
