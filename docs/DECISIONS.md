@@ -337,3 +337,39 @@ new tables.
   database provider. A partial index keeps that scan to the rows still waiting.
 - Not queued for offline users: a reminder that arrives after the meeting started is noise.
   The dashboard already lists your upcoming reservations for when you come back.
+
+## ADR-0019: Password reset by emailed link; email is queued and sent in the background
+
+**Decision:**
+- **Flow:** `POST /api/auth/forgot-password` always answers 202. For an existing account it
+  queues an email with a link to the frontend's reset page, carrying Identity's password-reset
+  token (base64url). The link lasts 2 hours and is single-use, since a reset changes the
+  security stamp. `POST /api/auth/reset-password` checks the token and sets the new password
+  under Identity's policy. An unknown email, and a wrong, used or expired token, all get the
+  same "invalid or expired link" answer.
+- **Sending:** handlers call `IEmailSender.Queue`, which puts the message on a bounded
+  in-memory channel. `EmailDispatchWorker` sends it over SMTP (MailKit), retrying twice. With
+  no SMTP host configured, it writes the email to the log instead, but only in Development:
+  anywhere else `Email:Smtp:Host` is required and the API refuses to start without it.
+  Development uses Mailpit from docker-compose. `App:FrontendUrl` is where links point, and
+  it's required at startup.
+
+**Why:**
+- The brief-level expectation for a real product: users forget passwords, and an admin
+  resetting them by hand doesn't scale. Email is the channel that proves the person owns the
+  address.
+- Not revealing which emails have accounts means more than an identical response body. It
+  needs identical timing too: sending inline would make known emails answer slower. Queueing
+  makes both paths do the same work before responding (sign-in got the same treatment in #38).
+- A mail outage must not break sign-in flows or requests. The queue absorbs it, retries cover
+  a blip, and a dropped message is logged rather than failing the request.
+- Mailpit lets the whole flow be exercised locally, with the real SMTP code path, without
+  sending anything to real inboxes.
+- The log fallback writes whole emails, and a reset link in a log is a working key to that
+  account for 2 hours - the bootstrap admin's included, since anyone can ask for a link. A
+  production started without mail settings would quietly hand every account to whoever reads
+  the logs. So, as with a half-configured bootstrap admin (ADR-0016), a missing SMTP host stops
+  startup outside Development instead.
+- **Trade-offs:** the queue is in memory, so messages still queued are lost if the API stops,
+  and the user can simply ask again. Data-protection keys aren't persisted in the Docker stand-in,
+  so a restart invalidates outstanding links there.

@@ -4,6 +4,12 @@
   <h1><a routerLink="/">SmartDesk</a></h1>
   <p class="text-muted subtitle">Sign in to book meeting rooms, desks and equipment.</p>
 
+  @if (reset() === 'done' && !errorMessage()) {
+    <div class="notice" role="status">
+      Your password has been changed. Sign in with the new one.
+    </div>
+  }
+
   @if (errorMessage(); as message) {
     <div class="alert-error" role="alert">{{ message }}</div>
   }
@@ -47,6 +53,7 @@
       @if (showError('password')) {
         <span id="password-error" class="field-error">Password is required.</span>
       }
+      <a class="forgot" routerLink="/forgot-password">Forgot password?</a>
     </div>
 
     <button type="submit" class="btn btn-primary btn-block" [disabled]="submitting()">

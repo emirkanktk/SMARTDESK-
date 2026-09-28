@@ -1,4 +1,6 @@
+using System.Text;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
@@ -36,6 +38,53 @@ public sealed class IdentityService(
         }
 
         return result.Succeeded ? await ToProfileAsync(user) : null;
+    }
+
+    public async Task<PasswordResetToken?> CreatePasswordResetTokenAsync(string email, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            return null;
+        }
+
+        // Identity's tokens are base64 with '+', '/' and '='; base64url keeps them intact in a link.
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        return new PasswordResetToken(await ToProfileAsync(user), WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token)));
+    }
+
+    public async Task<ResetPasswordResult> ResetPasswordAsync(
+        string email, string token, string newPassword, CancellationToken cancellationToken)
+    {
+        string identityToken;
+        try
+        {
+            identityToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+        }
+        catch (FormatException)
+        {
+            return ResetPasswordResult.InvalidToken;
+        }
+
+        var user = await userManager.FindByEmailAsync(email);
+        if (user is null)
+        {
+            return ResetPasswordResult.InvalidToken;
+        }
+
+        // Checks the token before the password, and changes the security stamp on success, so
+        // the same link can't be used twice.
+        var result = await userManager.ResetPasswordAsync(user, identityToken, newPassword);
+        if (result.Succeeded)
+        {
+            await userManager.ResetAccessFailedCountAsync(user);
+            await userManager.SetLockoutEndDateAsync(user, null);
+            return ResetPasswordResult.Success;
+        }
+
+        return result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.InvalidToken))
+            ? ResetPasswordResult.InvalidToken
+            : ResetPasswordResult.RejectedPassword(result.Errors.Select(e => e.Description).ToList());
     }
 
     private void VerifyDecoyPassword(string password)

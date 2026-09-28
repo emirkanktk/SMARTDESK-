@@ -1,0 +1,11 @@
+namespace SmartDesk.Application.Common.Interfaces;
+
+// Absolute links into the Angular app, for emails. The base address is configuration
+// (App:FrontendUrl), since the API can't know where the frontend is served.
+public interface IFrontendLinks
+{
+    // `token` must already be URL-safe (IIdentityService hands it out that way).
+    string ResetPassword(string email, string token);
+
+    string SignIn();
+}

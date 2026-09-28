@@ -4,7 +4,12 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Role, Roles } from '../constants/roles';
 import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
-import { CurrentUser, LoginRequest, LoginResponse } from '../models/auth.model';
+import {
+  CurrentUser,
+  LoginRequest,
+  LoginResponse,
+  ResetPasswordRequest,
+} from '../models/auth.model';
 import { JwtClaims, decodeJwtClaims, isJwtExpired } from '../utils/jwt';
 
 const TOKEN_STORAGE_KEY = 'smartdesk_access_token';
@@ -51,13 +56,10 @@ export class AuthService {
   }
 
   login(request: LoginRequest): Observable<LoginResponse> {
-    // Sent without a session, so its 401 means "wrong password", not "session ended"; and
-    // the login form shows its own error message, so no toast on top of it.
-    const context = new HttpContext()
-      .set(ANONYMOUS_REQUEST, true)
-      .set(SKIP_ERROR_NOTIFICATION, true);
     return this.http
-      .post<LoginResponse>(`${environment.apiUrl}/auth/login`, request, { context })
+      .post<LoginResponse>(`${environment.apiUrl}/auth/login`, request, {
+        context: this.anonymousContext(),
+      })
       .pipe(
         tap((response) => {
           this.token = response.accessToken;
@@ -65,6 +67,25 @@ export class AuthService {
           this.currentUserSignal.set(userFromToken(response.accessToken));
         }),
       );
+  }
+
+  /**
+   * Asks for a reset link. The API answers the same way whether or not the email has an
+   * account, so the screen can only ever say "if it exists, a link is on its way".
+   */
+  forgotPassword(email: string): Observable<void> {
+    return this.http.post<void>(
+      `${environment.apiUrl}/auth/forgot-password`,
+      { email },
+      { context: this.anonymousContext() },
+    );
+  }
+
+  /** Sets a new password with the token from the emailed link. */
+  resetPassword(request: ResetPasswordRequest): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/auth/reset-password`, request, {
+      context: this.anonymousContext(),
+    });
   }
 
   /** Refreshes the profile from the API, which is the source of truth for name and roles. */
@@ -78,6 +99,11 @@ export class AuthService {
     this.token = null;
     removeStoredToken();
     this.currentUserSignal.set(null);
+  }
+  // Sent without a session, so a 401 means "wrong password" rather than "session ended"; and
+  // these screens show their own error messages, so no toast on top.
+  private anonymousContext(): HttpContext {
+    return new HttpContext().set(ANONYMOUS_REQUEST, true).set(SKIP_ERROR_NOTIFICATION, true);
   }
 
   private restoreUser(): CurrentUser | null {

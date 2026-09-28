@@ -49,6 +49,19 @@ describe('Login', () => {
     expect(back.getAttribute('href')).toBe('/');
   });
 
+  it('offers a way to reset a forgotten password', () => {
+    expect(element.querySelector('a.forgot')!.getAttribute('href')).toBe('/forgot-password');
+  });
+
+  it('confirms a password reset when coming back from one', async () => {
+    expect(element.querySelector('.notice')).toBeNull();
+
+    fixture.componentRef.setInput('reset', 'done');
+    await fixture.whenStable();
+
+    expect(element.querySelector('.notice')!.textContent).toContain('Your password has been changed.');
+  });
+
   it('shows field errors and does not call the API when the form is invalid', async () => {
     await fillAndSubmit('not-an-email', '');
 

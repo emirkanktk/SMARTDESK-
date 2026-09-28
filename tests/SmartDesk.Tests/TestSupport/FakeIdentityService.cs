@@ -18,4 +18,11 @@ public sealed class FakeIdentityService(IReadOnlyDictionary<Guid, string>? names
 
     public Task<UserProfile?> FindByIdAsync(Guid userId, CancellationToken cancellationToken) =>
         throw new NotSupportedException();
+
+    public Task<PasswordResetToken?> CreatePasswordResetTokenAsync(string email, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
+
+    public Task<ResetPasswordResult> ResetPasswordAsync(
+        string email, string token, string newPassword, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
 }
