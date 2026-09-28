@@ -184,6 +184,13 @@ describe('UsageReport', () => {
     expect(text(element.querySelector('.note')!)).toContain('198 h per resource');
   });
 
+  it('says "1 reservation", not "1 reservations"', async () => {
+    getUsage.mockReturnValue(of(report({ totals: { ...report().totals, reservations: 1 } })));
+    await render();
+
+    expect(text(element.querySelectorAll('.tile')[2])).toBe('1 reservation');
+  });
+
   it('lists resources busiest first, flags ones that are not active, and draws the bars', async () => {
     await render();
 

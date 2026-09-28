@@ -24,16 +24,16 @@ describe('Resources', () => {
   });
 
   let getResources: ReturnType<typeof vi.fn>;
-  let update: ReturnType<typeof vi.fn>;
-  let getResource: ReturnType<typeof vi.fn>;
+  let changeStatus: ReturnType<typeof vi.fn>;
   let fixture: ComponentFixture<Resources>;
   let element: HTMLElement;
 
   beforeEach(async () => {
     isAdmin.set(false);
     getResources = vi.fn(() => of([room, desk]));
-    update = vi.fn();
-    getResource = vi.fn((id: string) => of([room, desk].find((r) => r.id === id)));
+    changeStatus = vi.fn((id: string, status: string) =>
+      of({ ...[room, desk].find((r) => r.id === id)!, status }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [Resources],
@@ -45,8 +45,7 @@ describe('Resources', () => {
           useValue: {
             getResourceTypes: () => of([DESK_TYPE, MEETING_ROOM_TYPE]),
             getResources,
-            getResource,
-            update,
+            changeStatus,
           },
         },
       ],
@@ -133,25 +132,47 @@ describe('Resources', () => {
     expect(element.querySelector('.actions')).toBeNull();
   });
 
-  it('deactivates from the latest copy, so edits made since the list loaded are kept', async () => {
+  function actionButton(label: string): HTMLButtonElement {
+    return Array.from(element.querySelectorAll<HTMLButtonElement>('.actions button')).find((b) =>
+      b.textContent!.includes(label),
+    )!;
+  }
+
+  it('deactivates with a status-only change, so edits made since the list loaded are kept', async () => {
     isAdmin.set(true);
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    // Another admin raised the capacity after this list was loaded.
-    const latest = { ...room, capacity: 12, features: ['TV', 'Video Conference', 'Whiteboard'] };
-    getResource.mockReturnValue(of(latest));
-    update.mockReturnValue(of({ ...latest, status: 'Inactive' }));
     await render();
 
-    const button = Array.from(element.querySelectorAll<HTMLButtonElement>('.actions button')).find(
-      (b) => b.textContent!.includes('Deactivate'),
-    )!;
-    button.click();
+    actionButton('Deactivate').click();
     await fixture.whenStable();
 
-    const { id, resourceTypeName: _, ...fields } = latest;
-    expect(getResource).toHaveBeenCalledWith(id);
-    expect(update).toHaveBeenCalledWith(id, { ...fields, status: 'Inactive' });
+    expect(changeStatus).toHaveBeenCalledWith(room.id, 'Inactive');
     expect(element.querySelector('tbody tr')?.textContent).toContain('Inactive');
+  });
+
+  it('activates a resource that is not Active', async () => {
+    isAdmin.set(true);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await render();
+
+    actionButton('Activate').click();
+    await fixture.whenStable();
+
+    expect(changeStatus).toHaveBeenCalledWith(desk.id, 'Active');
+    expect(element.querySelectorAll('tbody tr')[1].textContent).toContain('Active');
+  });
+
+  it('drops a resource that no longer matches the status filter', async () => {
+    isAdmin.set(true);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    getResources.mockReturnValue(of([room]));
+    await render();
+    await select('#status', 'Active');
+
+    actionButton('Deactivate').click();
+    await fixture.whenStable();
+
+    expect(rowNames()).toEqual([]);
   });
 
   it('does nothing when the admin cancels the confirmation', async () => {
@@ -161,6 +182,6 @@ describe('Resources', () => {
 
     element.querySelector<HTMLButtonElement>('.actions button')!.click();
 
-    expect(update).not.toHaveBeenCalled();
+    expect(changeStatus).not.toHaveBeenCalled();
   });
 });

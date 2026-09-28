@@ -79,7 +79,9 @@
       </li>
       <li class="card tile">
         <span class="value">{{ r.totals.reservations }}</span>
-        <span class="label">reservations</span>
+        <span class="label">{{
+          r.totals.reservations === 1 ? 'reservation' : 'reservations'
+        }}</span>
       </li>
       <li class="card tile">
         <span class="value">{{ r.totals.cancelled }}</span>

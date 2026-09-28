@@ -33,8 +33,8 @@ import {
 import { EventBuffer } from '../../shared/utils/event-buffer';
 
 const DEFAULT_DAYS = 7;
-/** `GET /api/reservations` spans at most 31 days, measured as elapsed time. */
-const MAX_DAYS = 31;
+/** `GET /api/reservations` spans at most 42 days, measured as elapsed time. */
+const MAX_DAYS = 42;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface LiveEvent {
@@ -127,10 +127,6 @@ export class Admin {
         }))
       : null;
   });
-
-  private readonly typeOfResource = computed(
-    () => new Map((this.resources() ?? []).map((r) => [r.id, r.resourceTypeId])),
-  );
 
   protected readonly rows = computed((): Row[] => {
     const now = this.now();
@@ -311,7 +307,7 @@ export class Admin {
       reservation.status === 'Confirmed' &&
       new Date(reservation.startDateTime) < end &&
       new Date(reservation.endDateTime) > start &&
-      (!type || this.typeOfResource().get(reservation.resourceId) === type)
+      (!type || reservation.resourceTypeId === type)
     );
   }
 
