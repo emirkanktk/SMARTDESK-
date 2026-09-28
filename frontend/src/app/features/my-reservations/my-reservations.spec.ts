@@ -132,6 +132,25 @@ describe('MyReservations', () => {
     expect(card).toContain('Sprint planning');
   });
 
+  it('says which upcoming reservations have a reminder', async () => {
+    getMine.mockReturnValue(
+      of([
+        { ...soon, reminderMinutes: 15 },
+        { ...running, reminderMinutes: 5 }, // started: too late for a reminder
+        { ...later, reminderMinutes: null },
+        { ...called, reminderMinutes: 30 },
+      ]),
+    );
+    await render();
+
+    const reminders = Array.from(element.querySelectorAll('.item')).map(
+      (item) => item.querySelector('.reminder')?.textContent ?? null,
+    );
+    expect(reminders).toEqual([null, 'Reminder 15 min before', null]); // Board Room, Room A, Desk
+    await openTab('Cancelled');
+    expect(element.querySelector('.reminder')).toBeNull();
+  });
+
   it('shows both dates for a reservation that spans days', async () => {
     await render();
     const card = element.querySelectorAll('.item')[2].textContent!.replace(/\s+/g, ' ');

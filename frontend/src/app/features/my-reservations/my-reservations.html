@@ -71,6 +71,9 @@
               </div>
               <p class="text-muted meta">
                 {{ item.reservation.resourceTypeName }} · {{ item.reservation.resourceLocation }}
+                @if (item.reminder; as reminder) {
+                  · <span class="reminder">{{ reminder }}</span>
+                }
               </p>
               @if (item.reservation.note) {
                 <p class="note">{{ item.reservation.note }}</p>
