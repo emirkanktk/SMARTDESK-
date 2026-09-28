@@ -105,6 +105,41 @@ describe('errorInterceptor', () => {
     expect(logout).not.toHaveBeenCalled();
   });
 
+  it('handles a failed retry like any other failure: a conflict reaches the caller as an ApiError', () => {
+    getToken.mockReturnValue('new-token');
+    let error: unknown;
+    http
+      .get(url, { headers: { Authorization: 'Bearer old-token' } })
+      .subscribe({ error: (e: unknown) => (error = e) });
+
+    backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend
+      .expectOne(url)
+      .flush(
+        { title: 'Conflict', detail: 'Meeting Room A is already reserved for part of that time.' },
+        { status: 409, statusText: 'Conflict' },
+      );
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).detail).toBe(
+      'Meeting Room A is already reserved for part of that time.',
+    );
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('ends the session when the retry is refused too, without retrying again', () => {
+    // The stored token changes again while the retry is in flight: still only one retry.
+    getToken.mockReturnValueOnce('new-token').mockReturnValue('newer-token');
+    http
+      .get(url, { headers: { Authorization: 'Bearer old-token' } })
+      .subscribe({ error: () => undefined });
+
+    backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(logout).toHaveBeenCalledTimes(1);
+  });
+
   it('ends the session when the current token itself is refused', () => {
     getToken.mockReturnValue('same-token');
     http

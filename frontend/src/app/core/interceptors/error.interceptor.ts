@@ -1,7 +1,7 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
+import { OperatorFunction, catchError, throwError } from 'rxjs';
 import { ApiError } from '../models/api-error.model';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
@@ -22,7 +22,12 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notifications = inject(NotificationService);
   const router = inject(Router);
 
-  return next(req).pipe(
+  // `retried`: the request was already sent again with a newer token, which happens at most
+  // once. The retry goes through this same handling, so its failure is treated like any other.
+  const handle = (
+    request: HttpRequest<unknown>,
+    retried: boolean,
+  ): OperatorFunction<HttpEvent<unknown>, HttpEvent<unknown>> =>
     catchError((error: unknown) => {
       if (!(error instanceof HttpErrorResponse)) {
         return throwError(() => error);
@@ -33,12 +38,17 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       // A 401 from the API means the session is over - expired, revoked, or the token was
       // already dropped as expired before the request went out. Only anonymous calls
       // (login) get a 401 for another reason: a wrong password.
-      if (apiError.status === 401 && isApiUrl(req.url) && !req.context.get(ANONYMOUS_REQUEST)) {
+      if (
+        apiError.status === 401 &&
+        isApiUrl(request.url) &&
+        !request.context.get(ANONYMOUS_REQUEST)
+      ) {
         // Sent with a token this tab has since replaced - another tab signed in again or
         // changed the password: the session goes on, so try once more with the current one.
         const current = authService.getToken();
-        if (current && bearerToken(req.headers.get('Authorization')) !== current) {
-          return next(req.clone({ setHeaders: { Authorization: `Bearer ${current}` } }));
+        if (!retried && current && bearerToken(request.headers.get('Authorization')) !== current) {
+          const retry = request.clone({ setHeaders: { Authorization: `Bearer ${current}` } });
+          return next(retry).pipe(handle(retry, true));
         }
         endSession(authService, notifications, router);
       } else if (apiError.status === 403 && apiError.code === PASSWORD_CHANGE_REQUIRED) {
@@ -46,7 +56,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         // until it's replaced, so go there instead of showing "not allowed".
         authService.markPasswordChangeRequired();
         void router.navigateByUrl('/change-password');
-      } else if (!req.context.get(SKIP_ERROR_NOTIFICATION)) {
+      } else if (!request.context.get(SKIP_ERROR_NOTIFICATION)) {
         const message = messageFor(apiError);
         if (message) {
           notifications.error(message);
@@ -54,8 +64,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       return throwError(() => apiError);
-    }),
-  );
+    });
+
+  return next(req).pipe(handle(req, false));
 };
 
 /**
