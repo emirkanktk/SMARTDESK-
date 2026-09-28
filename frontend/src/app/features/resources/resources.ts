@@ -104,24 +104,10 @@ export class Resources {
     }
 
     this.busyId.set(resource.id);
-    // PUT is a full replace, so re-read the resource first: sending the copy loaded with the
-    // list would overwrite whatever another admin changed since then.
+    // PATCH changes only the status, so another admin's edit since the list loaded stays.
     this.resourceService
-      .getResource(resource.id)
-      .pipe(
-        switchMap((latest) =>
-          this.resourceService.update(latest.id, {
-            name: latest.name,
-            resourceTypeId: latest.resourceTypeId,
-            capacity: latest.capacity,
-            location: latest.location,
-            description: latest.description,
-            features: latest.features,
-            status: next,
-          }),
-        ),
-        finalize(() => this.busyId.set(null)),
-      )
+      .changeStatus(resource.id, next)
+      .pipe(finalize(() => this.busyId.set(null)))
       .subscribe({
         next: (updated) => {
           const statusFilter = this.filters.controls.status.value;
