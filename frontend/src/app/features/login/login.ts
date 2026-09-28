@@ -10,6 +10,8 @@ const DEFAULT_REDIRECT = '/dashboard';
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
   selector: 'app-login',
+  // The page's main landmark: it renders outside the shell, which provides one elsewhere.
+  host: { role: 'main' },
   styleUrl: './login.scss',
   templateUrl: './login.html',
 })

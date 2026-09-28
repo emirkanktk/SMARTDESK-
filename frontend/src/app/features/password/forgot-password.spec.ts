@@ -65,6 +65,10 @@ describe('ForgotPassword', () => {
     expect(element.querySelector('form')).not.toBeNull();
   });
 
+  it('is the main landmark of the page', () => {
+    expect(element.getAttribute('role')).toBe('main');
+  });
+
   it('links back to sign in', () => {
     expect(element.querySelector('a.back')!.getAttribute('href')).toBe('/login');
   });

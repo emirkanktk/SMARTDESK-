@@ -42,6 +42,10 @@ describe('Login', () => {
     input.dispatchEvent(new Event('input'));
   }
 
+  it('is the main landmark of the page', () => {
+    expect(element.getAttribute('role')).toBe('main');
+  });
+
   it('links back to the front page', () => {
     const back = element.querySelector<HTMLAnchorElement>('a.back')!;
 
@@ -59,7 +63,9 @@ describe('Login', () => {
     fixture.componentRef.setInput('reset', 'done');
     await fixture.whenStable();
 
-    expect(element.querySelector('.notice')!.textContent).toContain('Your password has been changed.');
+    expect(element.querySelector('.notice')!.textContent).toContain(
+      'Your password has been changed.',
+    );
   });
 
   it('shows field errors and does not call the API when the form is invalid', async () => {

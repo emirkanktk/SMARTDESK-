@@ -13,6 +13,8 @@ import { AuthService } from '../../core/services/auth.service';
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
   selector: 'app-forgot-password',
+  // The page's main landmark: it renders outside the shell, which provides one elsewhere.
+  host: { role: 'main' },
   styleUrl: './password-pages.scss',
   templateUrl: './forgot-password.html',
 })

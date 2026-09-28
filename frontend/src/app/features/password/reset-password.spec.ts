@@ -33,6 +33,12 @@ describe('ResetPassword', () => {
     await fixture.whenStable();
   }
 
+  it('is the main landmark of the page', async () => {
+    await render();
+
+    expect(element.getAttribute('role')).toBe('main');
+  });
+
   async function type(selector: string, value: string): Promise<void> {
     const input = element.querySelector<HTMLInputElement>(selector)!;
     input.value = value;
