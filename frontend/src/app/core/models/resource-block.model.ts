@@ -32,6 +32,4 @@ export const RESOURCE_BLOCK_LIMITS = {
   maxDays: 366,
   /** How many minutes in the past a block may still start, as for a reservation. */
   pastStartGraceMinutes: 5,
-  /** Widest range `GET /api/resource-blocks` accepts, the calendar's six weeks. */
-  maxQueryDays: 42,
 } as const;

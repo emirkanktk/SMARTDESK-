@@ -182,6 +182,15 @@ describe('ResourceBlocks', () => {
       expect(getBlocks).not.toHaveBeenCalled();
     });
 
+    it('accepts six weeks across the autumn clock change, like the API', async () => {
+      await render({ from: '2026-10-01', to: '2026-11-11' });
+
+      expect(element.textContent).not.toContain('Show at most');
+      expect(getBlocks).toHaveBeenCalledWith(
+        expect.objectContaining({ from: utc('2026-10-01T00:00'), to: utc('2026-11-12T00:00') }),
+      );
+    });
+
     it('offers to try again when the list cannot be loaded', async () => {
       getBlocks.mockReturnValueOnce(throwError(() => new ApiError(500, 'Server error')));
       await render();
@@ -369,7 +378,7 @@ describe('ResourceBlocks', () => {
       expect(href).toBe('/admin?from=2026-10-06&to=2026-10-06&type=type-room');
     });
 
-    it('opens a long window on its first 30 days in the admin overview', async () => {
+    it('opens a long window on its first six weeks in the admin overview', async () => {
       create.mockReturnValue(
         throwError(
           () =>
@@ -388,7 +397,7 @@ describe('ResourceBlocks', () => {
       await submit();
 
       expect(field('.conflict a').getAttribute('href')).toBe(
-        '/admin?from=2026-10-06&to=2026-11-04&type=type-desk',
+        '/admin?from=2026-10-06&to=2026-11-16&type=type-desk',
       );
     });
 
