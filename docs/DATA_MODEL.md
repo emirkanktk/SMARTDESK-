@@ -13,6 +13,7 @@
 | Status | AccountStatus | `Active` (0), `PendingApproval` (1), `Disabled` (2). Only `Active` accounts can sign in or use a token (ADR-0020). Existing accounts became `Active`. |
 | ManagerId | Guid? | FK → `ApplicationUser.Id` (restrict delete). Set only for an `Employee` in a Manager's team. |
 | CreatedAt | DateTime (UTC) | when the account was made; existing accounts got the migration's time |
+| MustChangePassword | bool | the password was chosen by an Admin or Manager; the owner must replace it before anything else (ADR-0021) |
 | (roles) | — | assigned via `AspNetUserRoles`, one of `Roles.Admin` / `Roles.Manager` / `Roles.Employee` |
 
 ### ResourceType

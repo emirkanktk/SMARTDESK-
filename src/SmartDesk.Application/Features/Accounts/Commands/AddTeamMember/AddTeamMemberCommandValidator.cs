@@ -10,5 +10,6 @@ public sealed class AddTeamMemberCommandValidator : AbstractValidator<AddTeamMem
         RuleFor(x => x.FirstName).PersonName();
         RuleFor(x => x.LastName).PersonName();
         RuleFor(x => x.Email).AccountEmail();
+        RuleFor(x => x.Password).TemporaryPassword();
     }
 }

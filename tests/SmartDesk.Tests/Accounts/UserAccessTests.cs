@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using SmartDesk.API.Authentication;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Security;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure.Identity;
@@ -75,33 +76,96 @@ public sealed class UserAccessTests : IDisposable
         UserAccessChecker.CacheFor.Should().BeLessThanOrEqualTo(TimeSpan.FromMinutes(1));
     }
 
-    [Fact]
-    public async Task ABearerTokenForAnAccountThatIsntCurrent_FailsAuthentication()
+    private const string Stamp = "stamp-1";
+
+    private static UserAccessSnapshot Access(
+        string role, AccountStatus status = AccountStatus.Active, string stamp = Stamp, Guid? managerId = null, bool mustChange = false) =>
+        new(status, new HashSet<string> { role }, stamp, managerId, mustChange);
+
+    private static Claim[] Token(Guid userId, string role, string? stamp = Stamp) =>
+        stamp is null
+            ? [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role)]
+            : [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role), new Claim(SmartDeskClaims.SessionStamp, stamp)];
+
+    public static TheoryData<string, UserAccessSnapshot?> StaleAccounts => new()
+    {
+        { "gone", null },
+        { "disabled", Access(Roles.Manager, AccountStatus.Disabled) },
+        { "waiting", Access(Roles.Manager, AccountStatus.PendingApproval) },
+        { "role changed", Access(Roles.Employee) },
+        { "password changed since", Access(Roles.Manager, stamp: "stamp-2") },
+    };
+
+    [Theory]
+    [MemberData(nameof(StaleAccounts))]
+    public async Task ABearerTokenForAnAccountThatChanged_FailsAuthentication(string why, UserAccessSnapshot? access)
     {
         var userId = Guid.NewGuid();
-        var checker = new Mock<IUserAccessChecker>();
-        checker.Setup(c => c.IsCurrentAsync(userId, It.Is<IReadOnlyCollection<string>>(r => r.SequenceEqual(new[] { Roles.Manager })), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
 
-        var context = TokenValidated(checker.Object, new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, Roles.Manager));
+        var context = TokenValidated(Checker(userId, access), Token(userId, Roles.Manager));
         await JwtBearerSetup.RequireCurrentAccessAsync(context);
 
-        context.Result.Should().NotBeNull();
+        context.Result.Should().NotBeNull(why);
         context.Result!.Failure!.Message.Should().Be(JwtBearerSetup.StaleAccessMessage);
     }
 
     [Fact]
-    public async Task ABearerTokenForACurrentAccount_IsLeftAlone()
+    public async Task ATokenIssuedWithoutASessionStamp_FailsAuthentication()
     {
         var userId = Guid.NewGuid();
-        var checker = new Mock<IUserAccessChecker>();
-        checker.Setup(c => c.IsCurrentAsync(userId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
 
-        var context = TokenValidated(checker.Object, new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, Roles.Employee));
+        var context = TokenValidated(Checker(userId, Access(Roles.Employee)), Token(userId, Roles.Employee, stamp: null));
+        await JwtBearerSetup.RequireCurrentAccessAsync(context);
+
+        context.Result!.Failure.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ACurrentToken_GetsTheTeamTheAccountIsInNow()
+    {
+        var managerId = Guid.NewGuid();
+        var employeeId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+
+        var manager = TokenValidated(Checker(managerId, Access(Roles.Manager)), Token(managerId, Roles.Manager));
+        var employee = TokenValidated(Checker(employeeId, Access(Roles.Employee, managerId: managerId)), Token(employeeId, Roles.Employee));
+        var admin = TokenValidated(Checker(adminId, Access(Roles.Admin)), Token(adminId, Roles.Admin));
+        foreach (var context in new[] { manager, employee, admin })
+        {
+            await JwtBearerSetup.RequireCurrentAccessAsync(context);
+            context.Result.Should().BeNull();
+        }
+
+        manager.Principal!.FindFirstValue(SmartDeskClaims.Team).Should().Be(managerId.ToString());
+        employee.Principal!.FindFirstValue(SmartDeskClaims.Team).Should().Be(managerId.ToString());
+        admin.Principal!.FindFirstValue(SmartDeskClaims.Team).Should().BeNull();
+        employee.Principal!.HasClaim(SmartDeskClaims.PasswordChangeRequired, "true").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ATeamClaimInTheTokenItself_IsIgnored()
+    {
+        var userId = Guid.NewGuid();
+        var claims = Token(userId, Roles.Employee).Append(new Claim(SmartDeskClaims.Team, Guid.NewGuid().ToString())).ToArray();
+
+        var context = TokenValidated(Checker(userId, Access(Roles.Employee)), claims);
+        await JwtBearerSetup.RequireCurrentAccessAsync(context);
+
+        // Only what the account says counts: an employee outside any team has none.
+        context.Result.Should().BeNull();
+        context.Principal!.FindFirstValue(SmartDeskClaims.Team).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AnAccountThatMustChangeItsPassword_IsMarked()
+    {
+        var userId = Guid.NewGuid();
+
+        var context = TokenValidated(Checker(userId, Access(Roles.Employee, mustChange: true)), Token(userId, Roles.Employee));
         await JwtBearerSetup.RequireCurrentAccessAsync(context);
 
         context.Result.Should().BeNull();
+        context.Principal!.HasClaim(SmartDeskClaims.PasswordChangeRequired, "true").Should().BeTrue();
     }
 
     [Fact]
@@ -113,6 +177,13 @@ public sealed class UserAccessTests : IDisposable
         await JwtBearerSetup.RequireCurrentAccessAsync(context);
 
         context.Result!.Failure.Should().NotBeNull();
+    }
+
+    private static IUserAccessChecker Checker(Guid userId, UserAccessSnapshot? access)
+    {
+        var checker = new Mock<IUserAccessChecker>(MockBehavior.Strict);
+        checker.Setup(c => c.GetAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(access);
+        return checker.Object;
     }
 
     private static TokenValidatedContext TokenValidated(IUserAccessChecker checker, params Claim[] claims)

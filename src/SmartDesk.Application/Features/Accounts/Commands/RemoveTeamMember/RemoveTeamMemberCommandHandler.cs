@@ -1,6 +1,7 @@
 using MediatR;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Domain.Enums;
 
 namespace SmartDesk.Application.Features.Accounts.Commands.RemoveTeamMember;
 
@@ -16,6 +17,12 @@ public sealed class RemoveTeamMemberCommandHandler(IUserAccounts accounts, ICurr
         if (member is null || member.ManagerId != managerId)
         {
             throw new NotFoundException("Account", request.Id);
+        }
+
+        // A request to join isn't a member yet: rejecting it tells the applicant, removing wouldn't.
+        if (member.Status == AccountStatus.PendingApproval)
+        {
+            throw new ConflictException("This request to join is waiting for your approval. Approve or reject it instead.");
         }
 
         await accounts.SetManagerAsync(member.Id, null, cancellationToken);

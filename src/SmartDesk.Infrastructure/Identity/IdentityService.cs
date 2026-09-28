@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
 
@@ -9,7 +10,8 @@ namespace SmartDesk.Infrastructure.Identity;
 
 public sealed class IdentityService(
     UserManager<ApplicationUser> userManager,
-    SignInManager<ApplicationUser> signInManager) : IIdentityService
+    SignInManager<ApplicationUser> signInManager,
+    UserAccessCache accessCache) : IIdentityService
 {
     // A hash of a random password, made once with the app's own hasher so checking against it
     // costs the same as checking a real user's password.
@@ -34,7 +36,8 @@ public sealed class IdentityService(
         if (result.IsLockedOut || result.IsNotAllowed || user.PasswordHash is null)
         {
             // Identity answers these without hashing the password - same timing reason. An
-            // account with no password yet is one whose invitation hasn't been used (ADR-0020).
+            // account without a password can only come from before ADR-0021, when invited
+            // accounts got theirs from an emailed link.
             VerifyDecoyPassword(password);
         }
 
@@ -80,12 +83,47 @@ public sealed class IdentityService(
         {
             await userManager.ResetAccessFailedCountAsync(user);
             await userManager.SetLockoutEndDateAsync(user, null);
+
+            // The owner chose this one themselves, so a temporary password is replaced too.
+            if (user.MustChangePassword)
+            {
+                user.MustChangePassword = false;
+                IdentityDataSeeder.EnsureSucceeded(await userManager.UpdateAsync(user), $"clear the password change for '{user.Email}'");
+            }
+
+            // The stamp moved: every earlier token is refused from the next request.
+            accessCache.Forget(user.Id);
             return ResetPasswordResult.Success;
         }
 
         return result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.InvalidToken))
             ? ResetPasswordResult.InvalidToken
             : ResetPasswordResult.RejectedPassword(result.Errors.Select(e => e.Description).ToList());
+    }
+
+    public async Task<ChangePasswordResult> ChangePasswordAsync(
+        Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString())
+            ?? throw new UnauthorizedException();
+
+        var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        if (!result.Succeeded)
+        {
+            return result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.PasswordMismatch))
+                ? ChangePasswordResult.WrongCurrent
+                : ChangePasswordResult.RejectedPassword(result.Errors.Select(e => e.Description).ToList());
+        }
+
+        if (user.MustChangePassword)
+        {
+            user.MustChangePassword = false;
+            IdentityDataSeeder.EnsureSucceeded(await userManager.UpdateAsync(user), $"clear the password change for '{user.Email}'");
+        }
+
+        // ChangePasswordAsync moved the security stamp, which ends every other session.
+        accessCache.Forget(user.Id);
+        return ChangePasswordResult.Success(await ToProfileAsync(user));
     }
 
     private void VerifyDecoyPassword(string password)
@@ -128,6 +166,8 @@ public sealed class IdentityService(
         {
             Status = user.Status,
             ManagerId = user.ManagerId,
+            SessionStamp = UserAccessChecker.SessionStampOf(user.SecurityStamp),
+            MustChangePassword = user.MustChangePassword,
         };
     }
 }

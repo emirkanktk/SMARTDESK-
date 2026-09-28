@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
@@ -13,10 +12,16 @@ namespace SmartDesk.Infrastructure.Identity;
 public sealed class UserAccounts(
     UserManager<ApplicationUser> userManager,
     SmartDeskDbContext db,
-    IMemoryCache cache) : IUserAccounts
+    UserAccessCache accessCache) : IUserAccounts
 {
     public async Task<UserAccount?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         (await ProjectAsync(db.Users.Where(u => u.Id == id), cancellationToken)).SingleOrDefault();
+
+    public async Task<UserAccount?> FindByEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        var normalized = userManager.NormalizeEmail(email);
+        return (await ProjectAsync(db.Users.Where(u => u.NormalizedEmail == normalized), cancellationToken)).SingleOrDefault();
+    }
 
     public async Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken) =>
         await userManager.FindByEmailAsync(email) is not null;
@@ -66,11 +71,10 @@ public sealed class UserAccounts(
             Status = account.Status,
             ManagerId = account.ManagerId,
             CreatedAt = DateTime.UtcNow,
+            MustChangePassword = account.MustChangePassword,
         };
 
-        var result = account.Password is null
-            ? await userManager.CreateAsync(user)
-            : await userManager.CreateAsync(user, account.Password);
+        var result = await userManager.CreateAsync(user, account.Password);
         if (!result.Succeeded)
         {
             // Checked by the handlers first; this is two requests racing for the same email.
@@ -115,6 +119,30 @@ public sealed class UserAccounts(
         var user = await RequireAsync(id);
         user.ManagerId = managerId;
         IdentityDataSeeder.EnsureSucceeded(await userManager.UpdateAsync(user), $"change the team of '{user.Email}'");
+
+        // Their team decides which resources they can use (ADR-0022).
+        Forget(id);
+    }
+
+    public async Task<IReadOnlyList<string>> SetTemporaryPasswordAsync(Guid id, string password, CancellationToken cancellationToken)
+    {
+        var user = await RequireAsync(id);
+
+        // Through a reset token rather than remove-then-add: Identity checks the password first,
+        // so a refused one leaves the old password in place, and the stamp moves on success.
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await userManager.ResetPasswordAsync(user, token, password);
+        if (!result.Succeeded)
+        {
+            return result.Errors.Select(e => e.Description).ToList();
+        }
+
+        user.MustChangePassword = true;
+        IdentityDataSeeder.EnsureSucceeded(await userManager.UpdateAsync(user), $"require a password change for '{user.Email}'");
+        await userManager.ResetAccessFailedCountAsync(user);
+        await userManager.SetLockoutEndDateAsync(user, null);
+        Forget(id);
+        return [];
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
@@ -142,8 +170,7 @@ public sealed class UserAccounts(
     private async Task<ApplicationUser> RequireAsync(Guid id) =>
         await userManager.FindByIdAsync(id.ToString()) ?? throw new NotFoundException("Account", id);
 
-    // The next request with this user's token is checked against the database again.
-    private void Forget(Guid id) => cache.Remove(UserAccessChecker.CacheKey(id));
+    private void Forget(Guid id) => accessCache.Forget(id);
 
     private IQueryable<Guid> InRole(string role) =>
         from userRole in db.UserRoles
@@ -155,7 +182,7 @@ public sealed class UserAccounts(
     {
         var rows = await users
             .AsNoTracking()
-            .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.Status, u.ManagerId, u.CreatedAt })
+            .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.Status, u.ManagerId, u.CreatedAt, u.MustChangePassword })
             .ToListAsync(cancellationToken);
         var ids = rows.Select(r => r.Id).ToList();
 
@@ -195,7 +222,8 @@ public sealed class UserAccounts(
                     ? $"{manager.FirstName} {manager.LastName}".Trim() is { Length: > 0 } name ? name : manager.Email
                     : null,
                 r.CreatedAt,
-                teamSizes.GetValueOrDefault(r.Id)))
+                teamSizes.GetValueOrDefault(r.Id),
+                r.MustChangePassword))
             .ToList();
     }
 }

@@ -23,6 +23,11 @@ public static class AccountRules
     public static IRuleBuilderOptions<T, string> AccountEmail<T>(this IRuleBuilderInitial<T, string> rule) =>
         rule.Cascade(CascadeMode.Stop).NotEmpty().EmailAddress().MaximumLength(MaxEmailLength);
 
+    // Identity's own rules (length, character classes) are applied when the password is set;
+    // this only keeps the request itself sane.
+    public static IRuleBuilderOptions<T, string> TemporaryPassword<T>(this IRuleBuilderInitial<T, string> rule) =>
+        rule.NotEmpty().MaximumLength(256);
+
     public static IRuleBuilderOptions<T, string> AccountRole<T>(this IRuleBuilder<T, string> rule) =>
         rule.Must(role => Roles.All.Contains(role)).WithMessage($"Role must be one of: {string.Join(", ", Roles.All)}.");
 

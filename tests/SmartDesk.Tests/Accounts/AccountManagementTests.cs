@@ -1,18 +1,21 @@
 using FluentAssertions;
 using FluentValidation;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Security;
 using SmartDesk.Application.Features.Accounts.Commands.AssignManager;
 using SmartDesk.Application.Features.Accounts.Commands.ChangeAccountRole;
 using SmartDesk.Application.Features.Accounts.Commands.CreateAccount;
-using SmartDesk.Application.Features.Accounts.Commands.SendPasswordReset;
+using SmartDesk.Application.Features.Accounts.Commands.ApproveAccount;
+using SmartDesk.Application.Features.Accounts.Commands.SetTemporaryPassword;
 using SmartDesk.Application.Features.Accounts.Commands.SetAccountStatus;
 using SmartDesk.Application.Features.Accounts.Common;
 using SmartDesk.Application.Features.Accounts.Queries.GetAccounts;
 using SmartDesk.Application.Features.Auth.Commands.Login;
-using SmartDesk.Application.Features.Auth.Commands.ResetPassword;
+using SmartDesk.Application.Features.Auth.Commands.ChangePassword;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure.Identity;
@@ -229,6 +232,7 @@ public sealed class AccountManagementTests : IDisposable
         var member = await _host.AddUserAsync("member@company.example", Roles.Employee);
 
         (await AsAdmin(new AssignManagerCommand(zeynep) { Id = member })).ManagerName.Should().Be("Zeynep Kaya");
+        _host.RealtimeSessions.Ended.Should().Contain(member, "their team decides what they can use");
 
         foreach (var notAManager in new[] { waitingManager, otherEmployee, Guid.NewGuid() })
         {
@@ -242,58 +246,144 @@ public sealed class AccountManagementTests : IDisposable
         await managerIntoTeam.Should().ThrowAsync<ConflictException>();
     }
 
+    private const string Temporary = "Temp-Pass-2026";
+
     [Fact]
-    public async Task ANewAccount_HasNoPasswordUntilItsOwnerChoosesOne_FromTheInvitation()
+    public async Task ANewAccount_SignsInWithTheTemporaryPassword_AndMustReplaceIt()
     {
         await AdminAsync();
 
-        var created = await AsAdmin(new CreateAccountCommand("Elif", "Şahin", " elif@company.example ", Roles.Employee));
+        var created = await AsAdmin(new CreateAccountCommand("Elif", "Şahin", " elif@company.example ", Roles.Employee, Temporary));
 
-        created.Should().BeEquivalentTo(new { Email = "elif@company.example", Role = Roles.Employee, Status = AccountStatus.Active });
-        var noPasswordYet = () => _host.SendAnonymousAsync(new LoginCommand("elif@company.example", AccountsTestHost.Password));
-        await noPasswordYet.Should().ThrowAsync<UnauthorizedException>();
+        created.Should().BeEquivalentTo(new { Email = "elif@company.example", Role = Roles.Employee, Status = AccountStatus.Active, MustChangePassword = true });
+        var email = _host.Emails.Sent.Should().ContainSingle().Subject;
+        email.Subject.Should().Be("You've been added to SmartDesk");
+        email.Text.Should().StartWith("Hello Elif,").And.Contain("Ada Admin created a SmartDesk account for you")
+            .And.NotContain(Temporary, "the password never travels by email");
 
-        var invitation = _host.Emails.Sent.Should().ContainSingle().Subject;
-        invitation.Subject.Should().Be("You've been added to SmartDesk");
-        invitation.Text.Should().StartWith("Hello Elif,").And.Contain("Ada Admin created a SmartDesk account for you");
-        CapturingEmailSender.LinkIn(invitation, "http://localhost:4200/forgot-password").Should().NotBeNull();
-        var link = new Uri(CapturingEmailSender.LinkIn(invitation, "http://localhost:4200/reset-password?"));
-        var query = System.Web.HttpUtility.ParseQueryString(link.Query);
+        var login = await _host.SendAnonymousAsync(new LoginCommand("elif@company.example", Temporary));
+        login.PasswordChangeRequired.Should().BeTrue();
+        var before = (await _host.GetAccessAsync(created.Id))!; // now remembered for 30 seconds
+        before.MustChangePassword.Should().BeTrue();
+        new JsonWebToken(login.AccessToken).GetClaim(SmartDeskClaims.SessionStamp).Value
+            .Should().Be(before.SessionStamp, "the token is tied to the password it was issued under");
 
-        await _host.SendAnonymousAsync(new ResetPasswordCommand(query["email"]!, query["token"]!, "Elifs-Own-Pass-1"));
+        var changed = await _host.SendAsync(created.Id, Roles.Employee, new ChangePasswordCommand(Temporary, "Elifs-Own-Pass-1"));
 
-        (await _host.SendAnonymousAsync(new LoginCommand("elif@company.example", "Elifs-Own-Pass-1"))).AccessToken.Should().NotBeNullOrEmpty();
+        changed.PasswordChangeRequired.Should().BeFalse();
+        changed.AccessToken.Should().NotBe(login.AccessToken);
+        var newStamp = new JsonWebToken(changed.AccessToken).GetClaim(SmartDeskClaims.SessionStamp).Value;
+        var after = (await _host.GetAccessAsync(created.Id))!;
+        after.MustChangePassword.Should().BeFalse("the remembered answer was dropped");
+        after.SessionStamp.Should().NotBe(before.SessionStamp);
+        newStamp.Should().Be(after.SessionStamp, "the new token carries the new stamp");
+        (await _host.SendAnonymousAsync(new LoginCommand("elif@company.example", "Elifs-Own-Pass-1"))).PasswordChangeRequired.Should().BeFalse();
+        var oldPassword = () => _host.SendAnonymousAsync(new LoginCommand("elif@company.example", Temporary));
+        await oldPassword.Should().ThrowAsync<UnauthorizedException>();
     }
 
     [Fact]
-    public async Task ANewAccount_NeedsAFreeEmail_AndATeamOnlyForAnEmployee()
+    public async Task ANewAccount_NeedsAFreeEmail_AGoodPassword_AndATeamOnlyForAnEmployee()
     {
         await AdminAsync();
         var manager = await _host.AddUserAsync("zeynep@company.example", Roles.Manager);
 
-        var taken = () => AsAdmin(new CreateAccountCommand("Ada", "Again", "ADMIN@company.example", Roles.Employee));
-        var adminInTeam = () => AsAdmin(new CreateAccountCommand("New", "Admin", "new@company.example", Roles.Admin, manager));
+        var taken = () => AsAdmin(new CreateAccountCommand("Ada", "Again", "ADMIN@company.example", Roles.Employee, Temporary));
+        var adminInTeam = () => AsAdmin(new CreateAccountCommand("New", "Admin", "new@company.example", Roles.Admin, Temporary, manager));
+        var weak = () => AsAdmin(new CreateAccountCommand("New", "Member", "new@company.example", Roles.Employee, "weakpass"));
+        var none = () => AsAdmin(new CreateAccountCommand("New", "Member", "new@company.example", Roles.Employee, ""));
 
         await taken.Should().ThrowAsync<ConflictException>().WithMessage(AccountRules.EmailTaken);
         (await adminInTeam.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e => e.PropertyName == "ManagerId");
+        (await weak.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().OnlyContain(e => e.PropertyName == "Password");
+        (await none.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e => e.PropertyName == "Password");
+        (await _host.FindByEmailAsync("new@company.example")).Should().BeNull();
         _host.Emails.Sent.Should().BeEmpty();
 
-        var member = await AsAdmin(new CreateAccountCommand("New", "Member", "new@company.example", Roles.Employee, manager));
+        var member = await AsAdmin(new CreateAccountCommand("New", "Member", "new@company.example", Roles.Employee, Temporary, manager));
         member.ManagerId.Should().Be(manager);
     }
 
     [Fact]
-    public async Task APasswordResetLink_GoesOnlyToActiveAccounts()
+    public async Task ATemporaryPassword_EndsTheirSessions_AndMustBeReplaced()
     {
         await AdminAsync();
         var member = await _host.AddUserAsync("member@company.example", Roles.Employee, firstName: "Mehmet");
-        var disabled = await _host.AddUserAsync("off@company.example", Roles.Employee, AccountStatus.Disabled);
+        var stampBefore = (await _host.GetAccessAsync(member))!.SessionStamp;
 
-        await _host.SendAsync(_admin, Roles.Admin, new SendPasswordResetCommand(member));
-        var act = () => _host.SendAsync(_admin, Roles.Admin, new SendPasswordResetCommand(disabled));
+        var updated = await AsAdmin(new SetTemporaryPasswordCommand(Temporary) { Id = member });
 
-        await act.Should().ThrowAsync<ConflictException>();
+        updated.MustChangePassword.Should().BeTrue();
+        var access = (await _host.GetAccessAsync(member))!;
+        access.SessionStamp.Should().NotBe(stampBefore, "every earlier token must stop working");
+        access.MustChangePassword.Should().BeTrue();
+        _host.RealtimeSessions.Ended.Should().Contain(member);
         var email = _host.Emails.Sent.Should().ContainSingle().Subject;
-        (email.To, email.Subject).Should().Be(("member@company.example", "Reset your SmartDesk password"));
+        (email.To, email.Subject).Should().Be(("member@company.example", "Your SmartDesk password was changed"));
+        email.Text.Should().Contain("Ada Admin set a temporary password").And.NotContain(Temporary);
+
+        var oldPassword = () => _host.SendAnonymousAsync(new LoginCommand("member@company.example", AccountsTestHost.Password));
+        await oldPassword.Should().ThrowAsync<UnauthorizedException>();
+        (await _host.SendAnonymousAsync(new LoginCommand("member@company.example", Temporary))).PasswordChangeRequired.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ARefusedTemporaryPassword_ChangesNothing()
+    {
+        await AdminAsync();
+        var member = await _host.AddUserAsync("member@company.example", Roles.Employee);
+        var stampBefore = (await _host.GetAccessAsync(member))!.SessionStamp;
+
+        var weak = () => AsAdmin(new SetTemporaryPasswordCommand("weakpass") { Id = member });
+
+        (await weak.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().OnlyContain(e => e.PropertyName == "Password");
+        (await _host.GetAccessAsync(member))!.Should().BeEquivalentTo(new { SessionStamp = stampBefore, MustChangePassword = false });
+        (await _host.SendAnonymousAsync(new LoginCommand("member@company.example", AccountsTestHost.Password))).AccessToken.Should().NotBeNullOrEmpty();
+        _host.Emails.Sent.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task NobodySetsTheirOwnTemporaryPassword_OrAWaitingSignUps()
+    {
+        await AdminAsync();
+        var pending = await _host.AddUserAsync("waiting@company.example", Roles.Manager, AccountStatus.PendingApproval);
+
+        var self = () => AsAdmin(new SetTemporaryPasswordCommand(Temporary) { Id = _admin });
+        var waiting = () => AsAdmin(new SetTemporaryPasswordCommand(Temporary) { Id = pending });
+
+        await self.Should().ThrowAsync<ConflictException>().WithMessage("Change your own password*");
+        await waiting.Should().ThrowAsync<ConflictException>().WithMessage("*Approve or reject it instead.");
+    }
+
+    [Fact]
+    public async Task ChangingYourPassword_NeedsTheCurrentOne_AndANewOne()
+    {
+        var member = await _host.AddUserAsync("member@company.example", Roles.Employee, mustChangePassword: true);
+
+        var wrong = () => _host.SendAsync(member, Roles.Employee, new ChangePasswordCommand("Wrong-Pass-1", "Brand-New-Pass-7"));
+        var same = () => _host.SendAsync(member, Roles.Employee, new ChangePasswordCommand(AccountsTestHost.Password, AccountsTestHost.Password));
+        var weak = () => _host.SendAsync(member, Roles.Employee, new ChangePasswordCommand(AccountsTestHost.Password, "weakpass"));
+
+        (await wrong.Should().ThrowAsync<ValidationException>()).Which.Errors.Should()
+            .ContainSingle(e => e.PropertyName == "CurrentPassword" && e.ErrorMessage == ChangePasswordCommandHandler.WrongCurrentPasswordMessage);
+        (await same.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e => e.PropertyName == "NewPassword");
+        (await weak.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().OnlyContain(e => e.PropertyName == "NewPassword");
+        (await _host.GetAccessAsync(member))!.MustChangePassword.Should().BeTrue("nothing was changed");
+    }
+
+    [Fact]
+    public async Task AWaitingEmployee_CanBePutIntoATeam_AsTheAdminApprovesThem()
+    {
+        await AdminAsync();
+        var manager = await _host.AddUserAsync("zeynep@company.example", Roles.Manager, firstName: "Zeynep", lastName: "Kaya");
+        var otherEmployee = await _host.AddUserAsync("other@company.example", Roles.Employee);
+        var waiting = await _host.AddUserAsync("ece@company.example", Roles.Employee, AccountStatus.PendingApproval);
+
+        var intoEmployee = () => AsAdmin(new ApproveAccountCommand(otherEmployee) { Id = waiting });
+        (await intoEmployee.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e => e.PropertyName == "ManagerId");
+
+        var approved = await AsAdmin(new ApproveAccountCommand(manager) { Id = waiting });
+
+        approved.Should().BeEquivalentTo(new { Status = AccountStatus.Active, ManagerId = (Guid?)manager, ManagerName = "Zeynep Kaya" });
     }
 }

@@ -8,6 +8,8 @@ using SmartDesk.Application.Common.Models;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Infrastructure.Identity;
 
+using SmartDesk.Application.Common.Security;
+
 namespace SmartDesk.Tests.Infrastructure;
 
 public class JwtTokenGeneratorTests
@@ -48,6 +50,17 @@ public class JwtTokenGeneratorTests
             .Should().BeEquivalentTo(Roles.Admin, Roles.Employee);
         jwt.Issuer.Should().Be("SmartDesk");
         jwt.Audiences.Should().ContainSingle("SmartDesk");
+    }
+
+    [Fact]
+    public void Generate_TiesTheTokenToTheSessionStamp_AndLeavesTeamAndPasswordStateToTheServer()
+    {
+        var user = User with { SessionStamp = "abc123", ManagerId = Guid.NewGuid(), MustChangePassword = true };
+
+        var jwt = new JsonWebToken(CreateGenerator().Generate(user).Token);
+
+        jwt.GetClaim(SmartDeskClaims.SessionStamp).Value.Should().Be("abc123");
+        jwt.Claims.Should().NotContain(c => c.Type == SmartDeskClaims.Team || c.Type == SmartDeskClaims.PasswordChangeRequired);
     }
 
     [Fact]

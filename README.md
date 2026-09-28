@@ -119,11 +119,13 @@ ADR-0007). All four share the password `SmartDesk123!`.
 | `employee1@smartdesk.local` | Employee, in the manager's team |
 | `employee2@smartdesk.local` | Employee, in the manager's team |
 
-**Accounts (ADR-0020).** Anyone can sign up as a **Manager**, and an Admin approves or rejects
-the sign-up; both sides are emailed. A Manager adds the members of their team, who get an
-email to choose a password. Admins can also add accounts of any role, change roles, move
-employees between teams, disable or re-enable accounts and send password-reset links. A
-disabled account, or one whose role changed, is signed out on its next request. The endpoints
+**Accounts (ADR-0020, ADR-0021).** Anyone can sign up as a **Manager**, whom an Admin
+approves, or as an **Employee** by giving their manager's email, and that manager approves
+them into the team. Both sides are emailed. A Manager can also add team members directly with
+a temporary password, which the member must change at their first sign-in. Admins can add
+accounts of any role the same way, change roles, move employees between teams, disable or
+re-enable accounts, and set temporary passwords. An account that is disabled, or whose role or
+password changes, is signed out everywhere on its next request. The endpoints
 are in [API contracts](docs/API_CONTRACTS.md) under Users and Team.
 
 **Outside Development** there are no demo users. Give the first admin through configuration,

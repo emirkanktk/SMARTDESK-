@@ -2,8 +2,10 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using SmartDesk.API.Authentication;
 using SmartDesk.API.RateLimiting;
 using SmartDesk.Application.Features.Accounts.Commands.Register;
+using SmartDesk.Application.Features.Auth.Commands.ChangePassword;
 using SmartDesk.Application.Features.Auth.Commands.ForgotPassword;
 using SmartDesk.Application.Features.Auth.Commands.Login;
 using SmartDesk.Application.Features.Auth.Commands.ResetPassword;
@@ -67,7 +69,20 @@ public sealed class AuthController(ISender sender) : ControllerBase
         return NoContent();
     }
 
+    // The user's own password change (ADR-0021): the only thing an account whose password was
+    // set by someone else can do, besides /me. Every other session ends; this one gets a new token.
+    [HttpPost("change-password")]
+    [AllowWhilePasswordChangeRequired]
+    [EnableRateLimiting(RateLimitingSetup.LoginPolicy)]
+    [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
+    public Task<LoginResponse> ChangePassword(ChangePasswordCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command, cancellationToken);
+
     [HttpGet("me")]
+    [AllowWhilePasswordChangeRequired]
     [ProducesResponseType<CurrentUserDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public Task<CurrentUserDto> Me(CancellationToken cancellationToken) =>

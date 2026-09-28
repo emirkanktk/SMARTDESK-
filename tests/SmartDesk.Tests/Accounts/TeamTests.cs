@@ -3,7 +3,10 @@ using FluentValidation;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Features.Accounts.Commands.AddTeamMember;
 using SmartDesk.Application.Features.Accounts.Commands.RemoveTeamMember;
-using SmartDesk.Application.Features.Accounts.Commands.SendPasswordReset;
+using SmartDesk.Application.Features.Accounts.Commands.ApproveAccount;
+using SmartDesk.Application.Features.Accounts.Commands.RejectAccount;
+using SmartDesk.Application.Features.Accounts.Commands.SetTemporaryPassword;
+using SmartDesk.Application.Features.Auth.Commands.Login;
 using SmartDesk.Application.Features.Accounts.Commands.SetAccountStatus;
 using SmartDesk.Application.Features.Accounts.Common;
 using SmartDesk.Application.Features.Accounts.Queries.GetMyTeam;
@@ -16,6 +19,8 @@ namespace SmartDesk.Tests.Accounts;
 // A Manager and their own team - and nobody else's.
 public sealed class TeamTests : IDisposable
 {
+    private const string Temporary = "Temp-Pass-2026";
+
     private readonly AccountsTestHost _host = new();
     private Guid _manager;
     private Guid _otherManager;
@@ -50,17 +55,18 @@ public sealed class TeamTests : IDisposable
     }
 
     [Fact]
-    public async Task AddingAMember_CreatesAnEmployeeInTheCallersTeam_AndInvitesThem()
+    public async Task AddingAMember_CreatesAnEmployeeInTheCallersTeam_WithATemporaryPassword()
     {
         await TwoTeamsAsync();
 
-        var added = await AsManager(new AddTeamMemberCommand("Elif", "Şahin", "elif@company.example"));
+        var added = await AsManager(new AddTeamMemberCommand("Elif", "Şahin", "elif@company.example", Temporary));
 
-        added.Should().BeEquivalentTo(new { Role = Roles.Employee, Status = AccountStatus.Active, ManagerId = (Guid?)_manager });
-        var invitation = _host.Emails.Sent.Should().ContainSingle().Subject;
-        invitation.To.Should().Be("elif@company.example");
-        invitation.Text.Should().Contain("Zeynep Kaya created a SmartDesk account for you");
+        added.Should().BeEquivalentTo(new { Role = Roles.Employee, Status = AccountStatus.Active, ManagerId = (Guid?)_manager, MustChangePassword = true });
+        var email = _host.Emails.Sent.Should().ContainSingle().Subject;
+        email.To.Should().Be("elif@company.example");
+        email.Text.Should().Contain("Zeynep Kaya created a SmartDesk account for you").And.NotContain(Temporary);
         (await AsManager(new GetMyTeamQuery())).Should().Contain(a => a.Id == added.Id);
+        (await _host.SendAnonymousAsync(new LoginCommand("elif@company.example", Temporary))).PasswordChangeRequired.Should().BeTrue();
     }
 
     [Fact]
@@ -68,11 +74,13 @@ public sealed class TeamTests : IDisposable
     {
         await TwoTeamsAsync();
 
-        var taken = () => AsManager(new AddTeamMemberCommand("Selin", "Again", "selin@company.example"));
-        var bad = () => AsManager(new AddTeamMemberCommand("", "Şahin", "elif@company.example"));
+        var taken = () => AsManager(new AddTeamMemberCommand("Selin", "Again", "selin@company.example", Temporary));
+        var bad = () => AsManager(new AddTeamMemberCommand("", "Şahin", "elif@company.example", Temporary));
+        var weak = () => AsManager(new AddTeamMemberCommand("Elif", "Şahin", "elif@company.example", "weakpass"));
 
         await taken.Should().ThrowAsync<ConflictException>().WithMessage(AccountRules.EmailTaken);
         await bad.Should().ThrowAsync<ValidationException>();
+        (await weak.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().OnlyContain(e => e.PropertyName == "Password");
         (await _host.FindAsync(_otherTeamsMember))!.ManagerId.Should().Be(_otherManager, "the existing account wasn't moved");
         _host.Emails.Sent.Should().BeEmpty();
     }
@@ -97,11 +105,13 @@ public sealed class TeamTests : IDisposable
         foreach (var outsider in new[] { _otherTeamsMember, _otherManager, admin, _manager, Guid.NewGuid() })
         {
             var disable = () => AsManager(new SetAccountStatusCommand(outsider, Enabled: false));
-            var reset = () => AsManager(new SendPasswordResetCommand(outsider));
+            var reset = () => AsManager(new SetTemporaryPasswordCommand(Temporary) { Id = outsider });
+            var approve = () => AsManager(new ApproveAccountCommand { Id = outsider });
             var remove = () => AsManager(new RemoveTeamMemberCommand(outsider));
 
             await disable.Should().ThrowAsync<NotFoundException>();
             await reset.Should().ThrowAsync<NotFoundException>();
+            await approve.Should().ThrowAsync<NotFoundException>();
             await remove.Should().ThrowAsync<NotFoundException>();
         }
 
@@ -122,14 +132,53 @@ public sealed class TeamTests : IDisposable
     }
 
     [Fact]
-    public async Task AManager_CanSendTheirMemberAPasswordResetLink()
+    public async Task AManager_CanGiveTheirMemberATemporaryPassword()
     {
         await TwoTeamsAsync();
 
-        await AsManager(new SendPasswordResetCommand(_member));
+        var updated = await AsManager(new SetTemporaryPasswordCommand(Temporary) { Id = _member });
 
+        updated.MustChangePassword.Should().BeTrue();
+        _host.RealtimeSessions.Ended.Should().Contain(_member);
         var email = _host.Emails.Sent.Should().ContainSingle().Subject;
-        (email.To, email.Subject).Should().Be(("mehmet@company.example", "Reset your SmartDesk password"));
-        email.Text.Should().StartWith("Hello Mehmet,");
+        (email.To, email.Subject).Should().Be(("mehmet@company.example", "Your SmartDesk password was changed"));
+        email.Text.Should().StartWith("Hello Mehmet,").And.Contain("Zeynep Kaya set a temporary password");
+    }
+
+    [Fact]
+    public async Task AManager_ApprovesOrRejectsRequestsToJoinTheirTeam_AndNobodyElses()
+    {
+        await TwoTeamsAsync();
+        // Named to sort after the member (Mehmet), so only "requests first" puts them on top.
+        var ece = await _host.AddUserAsync("ece@company.example", Roles.Employee, AccountStatus.PendingApproval, managerId: _manager, firstName: "Umut");
+        var can = await _host.AddUserAsync("can@company.example", Roles.Employee, AccountStatus.PendingApproval, managerId: _manager, firstName: "Tuna");
+        var otherTeams = await _host.AddUserAsync("ali@company.example", Roles.Employee, AccountStatus.PendingApproval, managerId: _otherManager);
+        var waitingManager = await _host.AddUserAsync("yusuf@company.example", Roles.Manager, AccountStatus.PendingApproval);
+
+        var team = await AsManager(new GetMyTeamQuery());
+        team.Select(a => a.FirstName).Should().Equal("Tuna", "Umut", "Mehmet");
+        team.Should().NotContain(a => a.Id == otherTeams || a.Id == waitingManager);
+
+        var intoAnotherTeam = () => AsManager(new ApproveAccountCommand(_otherManager) { Id = ece });
+        await intoAnotherTeam.Should().ThrowAsync<ForbiddenAccessException>();
+        var removeInsteadOfReject = () => AsManager(new RemoveTeamMemberCommand(can));
+        await removeInsteadOfReject.Should().ThrowAsync<ConflictException>().WithMessage("*Approve or reject it instead.");
+
+        (await AsManager(new ApproveAccountCommand { Id = ece })).Should().BeEquivalentTo(new { Status = AccountStatus.Active, ManagerId = (Guid?)_manager });
+        await AsManager(new RejectAccountCommand(can));
+
+        (await _host.FindAsync(can)).Should().BeNull();
+        _host.Emails.Sent.Select(e => (e.To, e.Subject)).Should().BeEquivalentTo(new[]
+        {
+            ("ece@company.example", "Your SmartDesk account is ready"),
+            ("can@company.example", "Your SmartDesk sign-up"),
+        });
+        foreach (var notMine in new[] { otherTeams, waitingManager })
+        {
+            var approve = () => AsManager(new ApproveAccountCommand { Id = notMine });
+            var reject = () => AsManager(new RejectAccountCommand(notMine));
+            await approve.Should().ThrowAsync<NotFoundException>();
+            await reject.Should().ThrowAsync<NotFoundException>();
+        }
     }
 }

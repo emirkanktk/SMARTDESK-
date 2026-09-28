@@ -6,10 +6,12 @@ namespace SmartDesk.Application.Common.Interfaces;
 // Reading and changing accounts, for registration and the user-management features (ADR-0020).
 // The rules - who may do what to whom - live in the handlers; this only stores and fetches.
 // Every change takes effect on the account's next request, since it invalidates what
-// IUserAccessChecker remembers about that user.
+// IUserAccessChecker remembers about that user and ends their real-time connections.
 public interface IUserAccounts
 {
     Task<UserAccount?> FindAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<UserAccount?> FindByEmailAsync(string email, CancellationToken cancellationToken);
 
     Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken);
 
@@ -26,6 +28,11 @@ public interface IUserAccounts
 
     Task SetManagerAsync(Guid id, Guid? managerId, CancellationToken cancellationToken);
 
+    // Replaces the password with one chosen by someone else, which the owner must change on
+    // their next sign-in (ADR-0021). Ends the account's sessions and any lockout. Returns
+    // Identity's reasons when it refuses the password; nothing changes then.
+    Task<IReadOnlyList<string>> SetTemporaryPasswordAsync(Guid id, string password, CancellationToken cancellationToken);
+
     Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 
     // Identity's reasons for refusing this password, or none. Registration asks before looking
@@ -37,9 +44,24 @@ public interface IUserAccounts
     void HashDecoyPassword(string password);
 }
 
-// Asked on every authenticated request: is this token's user still Active, with the roles the
-// token claims? Answers are cached briefly; IUserAccounts clears them when an account changes.
+// What a request needs to know about its user as they are now, not as their token says.
+// Cached briefly; IUserAccounts clears it whenever it changes the account.
+public sealed record UserAccessSnapshot(
+    AccountStatus Status,
+    IReadOnlySet<string> Roles,
+    string SessionStamp,
+    Guid? ManagerId,
+    bool MustChangePassword);
+
 public interface IUserAccessChecker
 {
-    Task<bool> IsCurrentAsync(Guid userId, IReadOnlyCollection<string> tokenRoles, CancellationToken cancellationToken);
+    // Null when the user no longer exists.
+    Task<UserAccessSnapshot?> GetAsync(Guid userId, CancellationToken cancellationToken);
+}
+
+// The user's open real-time (SignalR) connections. Ending them makes the client reconnect,
+// which re-checks the account, so a disabled user stops receiving events at once.
+public interface IRealtimeSessions
+{
+    void End(Guid userId);
 }

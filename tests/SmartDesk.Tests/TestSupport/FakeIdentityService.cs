@@ -25,4 +25,8 @@ public sealed class FakeIdentityService(IReadOnlyDictionary<Guid, string>? names
     public Task<ResetPasswordResult> ResetPasswordAsync(
         string email, string token, string newPassword, CancellationToken cancellationToken) =>
         throw new NotSupportedException();
+
+    public Task<ChangePasswordResult> ChangePasswordAsync(
+        Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
 }

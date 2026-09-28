@@ -20,14 +20,37 @@ public static class AccountEmails
         new Link("Choose a new password", link),
         new Text("If it wasn't you, ignore this email - your password stays as it is."));
 
-    // A new account made by an Admin or a Manager. It has no password until its owner sets one.
-    public static EmailMessage Invitation(
-        string to, string firstName, string invitedBy, string setPasswordLink, string forgotPasswordLink) => Compose(
+    // A new account made by an Admin or a Manager (ADR-0021). The temporary password is never
+    // emailed: the person who chose it hands it over, and the owner replaces it at first sign-in.
+    public static EmailMessage AccountCreated(string to, string firstName, string createdBy, string signInLink) => Compose(
         to, firstName, "You've been added to SmartDesk",
-        new Text($"{invitedBy} created a SmartDesk account for you, to book meeting rooms, desks and equipment. Choose your password within {ResetLinkLifetimeText}:"),
-        new Link("Choose your password", setPasswordLink),
-        new Text("If the link has expired, ask for a new one on the sign-in page:"),
-        new Link("Forgot password", forgotPasswordLink));
+        new Text($"{createdBy} created a SmartDesk account for you, to book meeting rooms, desks and equipment. {createdBy} will give you a temporary password; when you first sign in, you'll choose your own."),
+        new Link("Sign in", signInLink));
+
+    // Sent whenever someone else sets a temporary password, so the owner knows it happened.
+    public static EmailMessage TemporaryPasswordSet(string to, string firstName, string setBy) => Compose(
+        to, firstName, "Your SmartDesk password was changed",
+        new Text($"{setBy} set a temporary password for your SmartDesk account, and you've been signed out everywhere. Ask {setBy} for it; when you next sign in, you'll choose your own."),
+        new Text("If you didn't expect this, tell your manager or your office's SmartDesk administrator."));
+
+    // To an employee who asked to join a team. The same text whether or not the manager's email
+    // matched anyone, so it can't be used to find out who the managers are.
+    public static EmailMessage JoinRequestReceived(string to, string firstName) => Compose(
+        to, firstName, "We've received your SmartDesk sign-up",
+        new Text("Thanks for signing up. Your request to join your manager's team is waiting for approval, and we'll email you as soon as your account is ready to use."));
+
+    public static EmailMessage JoinRequestForManager(
+        string to, string managerFirstName, string applicantName, string applicantEmail, string teamLink) => Compose(
+        to, managerFirstName, $"{applicantName} wants to join your team",
+        new Text($"{applicantName} ({applicantEmail}) signed up for SmartDesk and asked to join your team. Approve or reject the request under My team."),
+        new Link("Review the request", teamLink));
+
+    // The manager's email the applicant typed isn't an active manager's, so an Admin decides.
+    public static EmailMessage JoinRequestForAdmin(
+        string to, string adminFirstName, string applicantName, string applicantEmail, string typedManagerEmail, string usersLink) => Compose(
+        to, adminFirstName, $"New sign-up: {applicantName}",
+        new Text($"{applicantName} ({applicantEmail}) signed up and gave {typedManagerEmail} as their manager, but that isn't an active manager's email. Approve them into a team, or reject the sign-up."),
+        new Link("Review sign-ups", usersLink));
 
     public static EmailMessage SignUpReceived(string to, string firstName) => Compose(
         to, firstName, "We've received your SmartDesk sign-up",
@@ -51,12 +74,12 @@ public static class AccountEmails
 
     public static EmailMessage Approved(string to, string firstName, string signInLink) => Compose(
         to, firstName, "Your SmartDesk account is ready",
-        new Text("An administrator approved your sign-up. You can sign in now, and add the members of your team from My team."),
+        new Text("Your sign-up was approved. You can sign in now."),
         new Link("Sign in", signInLink));
 
     public static EmailMessage Rejected(string to, string firstName) => Compose(
         to, firstName, "Your SmartDesk sign-up",
-        new Text("An administrator reviewed your sign-up and didn't approve it, so no account was created. If you think this is a mistake, contact your office's SmartDesk administrator."));
+        new Text("Your sign-up was reviewed and not approved, so no account was created. If you think this is a mistake, contact your manager or your office's SmartDesk administrator."));
 
     private abstract record Part;
 

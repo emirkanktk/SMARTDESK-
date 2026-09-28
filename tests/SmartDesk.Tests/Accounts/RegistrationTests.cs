@@ -131,7 +131,7 @@ public sealed class RegistrationTests : IDisposable
         var pending = (await _host.FindByEmailAsync(Applicant))!;
         _host.Emails.Sent.Clear();
 
-        var approved = await _host.SendAsync(admin, Roles.Admin, new ApproveAccountCommand(pending.Id));
+        var approved = await _host.SendAsync(admin, Roles.Admin, new ApproveAccountCommand { Id = pending.Id });
 
         approved.Status.Should().Be(AccountStatus.Active);
         (await _host.FindAsync(pending.Id))!.Status.Should().Be(AccountStatus.Active);
@@ -147,9 +147,9 @@ public sealed class RegistrationTests : IDisposable
         var admin = await _host.AddUserAsync("admin@company.example", Roles.Admin);
         var active = await _host.AddUserAsync("member@company.example", Roles.Employee);
 
-        var approve = () => _host.SendAsync(admin, Roles.Admin, new ApproveAccountCommand(active));
+        var approve = () => _host.SendAsync(admin, Roles.Admin, new ApproveAccountCommand { Id = active });
         var reject = () => _host.SendAsync(admin, Roles.Admin, new RejectAccountCommand(active));
-        var unknown = () => _host.SendAsync(admin, Roles.Admin, new ApproveAccountCommand(Guid.NewGuid()));
+        var unknown = () => _host.SendAsync(admin, Roles.Admin, new ApproveAccountCommand { Id = Guid.NewGuid() });
 
         await approve.Should().ThrowAsync<ConflictException>();
         await reject.Should().ThrowAsync<ConflictException>().WithMessage("*Disable the account instead.");
@@ -173,6 +173,73 @@ public sealed class RegistrationTests : IDisposable
 
         await _host.SendAnonymousAsync(SignUp());
         (await _host.FindByEmailAsync(Applicant))!.Status.Should().Be(AccountStatus.PendingApproval);
+    }
+
+    [Fact]
+    public async Task AnEmployeeSignUp_WithTheirManagersEmail_WaitsForThatManager()
+    {
+        var manager = await _host.AddUserAsync("zeynep@company.example", Roles.Manager, firstName: "Zeynep", lastName: "Kaya");
+        await _host.AddUserAsync("admin@company.example", Roles.Admin);
+
+        await _host.SendAnonymousAsync(new RegisterCommand("Deniz", "Arslan", "deniz@company.example", StrongPassword, " ZEYNEP@company.example "));
+
+        (await _host.FindByEmailAsync("deniz@company.example")).Should().BeEquivalentTo(
+            new { Role = Roles.Employee, Status = AccountStatus.PendingApproval, ManagerId = (Guid?)manager });
+        _host.Emails.Sent.Select(e => (e.To, e.Subject)).Should().BeEquivalentTo(new[]
+        {
+            ("deniz@company.example", "We've received your SmartDesk sign-up"),
+            ("zeynep@company.example", "Deniz Arslan wants to join your team"),
+        });
+        CapturingEmailSender.LinkIn(_host.Emails.Sent[1], "http").Should().Be("http://localhost:4200/team");
+    }
+
+    [Theory]
+    [InlineData("nobody@company.example")]
+    [InlineData("mehmet@company.example")] // an employee
+    [InlineData("off@company.example")] // a disabled manager
+    [InlineData("waiting@company.example")] // a manager still waiting for approval
+    public async Task AnEmployeeSignUp_WithAnEmailThatIsntAnActiveManagers_GoesToTheAdmins(string managerEmail)
+    {
+        var manager = await _host.AddUserAsync("zeynep@company.example", Roles.Manager);
+        await _host.AddUserAsync("mehmet@company.example", Roles.Employee, managerId: manager);
+        await _host.AddUserAsync("off@company.example", Roles.Manager, AccountStatus.Disabled);
+        await _host.AddUserAsync("waiting@company.example", Roles.Manager, AccountStatus.PendingApproval);
+        await _host.AddUserAsync("admin@company.example", Roles.Admin, firstName: "Ada");
+
+        await _host.SendAnonymousAsync(new RegisterCommand("Deniz", "Arslan", "deniz@company.example", StrongPassword, managerEmail));
+
+        (await _host.FindByEmailAsync("deniz@company.example")).Should().BeEquivalentTo(
+            new { Role = Roles.Employee, Status = AccountStatus.PendingApproval, ManagerId = (Guid?)null });
+        _host.Emails.Sent.Select(e => (e.To, e.Subject)).Should().BeEquivalentTo(new[]
+        {
+            ("deniz@company.example", "We've received your SmartDesk sign-up"),
+            ("admin@company.example", "New sign-up: Deniz Arslan"),
+        });
+        _host.Emails.Sent[1].Text.Should().Contain($"gave {managerEmail} as their manager");
+    }
+
+    [Fact]
+    public async Task TheApplicantsEmail_IsTheSame_WhetherOrNotTheManagerWasFound()
+    {
+        await _host.AddUserAsync("zeynep@company.example", Roles.Manager);
+
+        await _host.SendAnonymousAsync(new RegisterCommand("Deniz", "Arslan", "deniz@company.example", StrongPassword, "zeynep@company.example"));
+        await _host.SendAnonymousAsync(new RegisterCommand("Deniz", "Arslan", "deniz2@company.example", StrongPassword, "nobody@company.example"));
+
+        var found = _host.Emails.Sent.Single(e => e.To == "deniz@company.example");
+        var notFound = _host.Emails.Sent.Single(e => e.To == "deniz2@company.example");
+        (notFound.Subject, notFound.Text, notFound.Html).Should().Be((found.Subject, found.Text, found.Html));
+    }
+
+    [Theory]
+    [InlineData("not-an-email")]
+    [InlineData(" DENIZ@company.example ")] // their own
+    public async Task AManagersEmail_MustBeAnotherEmailAddress(string managerEmail)
+    {
+        var act = () => _host.SendAnonymousAsync(new RegisterCommand("Deniz", "Arslan", "deniz@company.example", StrongPassword, managerEmail));
+
+        (await act.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e => e.PropertyName == "ManagerEmail");
+        _host.Emails.Sent.Should().BeEmpty();
     }
 
     [Fact]

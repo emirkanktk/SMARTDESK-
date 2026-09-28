@@ -13,4 +13,10 @@ public sealed record UserProfile(
 {
     public AccountStatus Status { get; init; } = AccountStatus.Active;
     public Guid? ManagerId { get; init; }
+
+    // A digest of the account's security stamp, for the token (ADR-0021).
+    public string SessionStamp { get; init; } = string.Empty;
+
+    // Set for an account whose password was chosen by someone else (ADR-0021).
+    public bool MustChangePassword { get; init; }
 }

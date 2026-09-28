@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using SmartDesk.Application;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
+using SmartDesk.Application.Common.Security;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure;
@@ -45,6 +46,8 @@ public sealed class AccountsTestHost : IDisposable
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IUserAccessChecker, UserAccessChecker>();
+        services.AddScoped<UserAccessCache>();
+        services.AddSingleton<IRealtimeSessions>(RealtimeSessions);
         services.AddSingleton<ICurrentUserService>(_currentUser);
         services.AddSingleton<IEmailSender>(Emails);
         services.AddSingleton<IFrontendLinks>(new FrontendLinks(Options.Create(new AppOptions { FrontendUrl = FrontendUrl })));
@@ -63,6 +66,8 @@ public sealed class AccountsTestHost : IDisposable
 
     public CapturingEmailSender Emails { get; } = new();
 
+    public RecordingRealtimeSessions RealtimeSessions { get; } = new();
+
     public SqliteTestDatabase Database => _database;
 
     public void Dispose()
@@ -78,7 +83,8 @@ public sealed class AccountsTestHost : IDisposable
         Guid? managerId = null,
         string firstName = "Test",
         string lastName = "User",
-        string? password = Password)
+        string? password = Password,
+        bool mustChangePassword = false)
     {
         await using var scope = _services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -90,6 +96,7 @@ public sealed class AccountsTestHost : IDisposable
             LastName = lastName,
             Status = status,
             ManagerId = managerId,
+            MustChangePassword = mustChangePassword,
         };
         var created = password is null ? await users.CreateAsync(user) : await users.CreateAsync(user, password);
         Succeeded(created, $"create {email}");
@@ -97,19 +104,32 @@ public sealed class AccountsTestHost : IDisposable
         return user.Id;
     }
 
-    // Sends the request as this caller, with the roles their token would carry.
+    // Sends the request as this caller, with the roles their token would carry and the team
+    // their account is in now, as JwtBearerSetup would add it.
     public async Task<TResponse> SendAsync<TResponse>(Guid? callerId, string callerRole, IRequest<TResponse> request)
     {
-        _currentUser.Set(callerId, callerRole);
         await using var scope = _services.CreateAsyncScope();
+        await SetCallerAsync(scope.ServiceProvider, callerId, callerRole);
         return await scope.ServiceProvider.GetRequiredService<ISender>().Send(request);
     }
 
     public async Task SendAsync(Guid? callerId, string callerRole, IRequest request)
     {
-        _currentUser.Set(callerId, callerRole);
         await using var scope = _services.CreateAsyncScope();
+        await SetCallerAsync(scope.ServiceProvider, callerId, callerRole);
         await scope.ServiceProvider.GetRequiredService<ISender>().Send(request);
+    }
+
+    private async Task SetCallerAsync(IServiceProvider services, Guid? callerId, string callerRole)
+    {
+        Guid? managerId = null;
+        if (callerId is { } id)
+        {
+            var user = await services.GetRequiredService<UserManager<ApplicationUser>>().FindByIdAsync(id.ToString());
+            managerId = user?.ManagerId;
+        }
+
+        _currentUser.Set(callerId, callerRole, callerId is { } caller ? Teams.TeamOf(caller, [callerRole], managerId) : null);
     }
 
     // An anonymous request (sign-up, sign-in).
@@ -133,8 +153,16 @@ public sealed class AccountsTestHost : IDisposable
         return id is { } found ? await FindAsync(found) : null;
     }
 
-    public Task<bool> IsCurrentAsync(Guid userId, params string[] tokenRoles) =>
-        WithAsync(sp => sp.GetRequiredService<IUserAccessChecker>().IsCurrentAsync(userId, tokenRoles, CancellationToken.None));
+    // Would a token for this user with these roles still be accepted? The same test as
+    // JwtBearerSetup, minus the session stamp.
+    public async Task<bool> IsCurrentAsync(Guid userId, params string[] tokenRoles)
+    {
+        var access = await GetAccessAsync(userId);
+        return access is { Status: AccountStatus.Active } && access.Roles.SetEquals(tokenRoles);
+    }
+
+    public Task<UserAccessSnapshot?> GetAccessAsync(Guid userId) =>
+        WithAsync(sp => sp.GetRequiredService<IUserAccessChecker>().GetAsync(userId, CancellationToken.None));
 
     private static void Succeeded(IdentityResult result, string what)
     {
@@ -150,12 +178,22 @@ public sealed class AccountsTestHost : IDisposable
 
         public Guid? UserId { get; private set; }
 
+        public Guid? TeamId { get; private set; }
+
         public bool IsInRole(string role) => UserId is not null && role == _role;
 
-        public void Set(Guid? userId, string role)
+        public void Set(Guid? userId, string role, Guid? teamId)
         {
             UserId = userId;
             _role = role;
+            TeamId = teamId;
         }
+    }
+
+    public sealed class RecordingRealtimeSessions : IRealtimeSessions
+    {
+        public List<Guid> Ended { get; } = [];
+
+        public void End(Guid userId) => Ended.Add(userId);
     }
 }

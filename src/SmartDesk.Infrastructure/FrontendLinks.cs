@@ -27,4 +27,6 @@ public sealed class FrontendLinks(IOptions<AppOptions> options) : IFrontendLinks
     public string ForgotPassword() => $"{Base}/forgot-password";
 
     public string Users() => $"{Base}/admin/users";
+
+    public string Team() => $"{Base}/team";
 }

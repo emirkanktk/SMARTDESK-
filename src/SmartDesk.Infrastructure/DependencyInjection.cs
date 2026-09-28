@@ -96,6 +96,9 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IUserAccessChecker, UserAccessChecker>();
+        services.AddScoped<UserAccessCache>();
+        // The API registers the SignalR one first; this is the fallback without a hub.
+        services.TryAddSingleton<IRealtimeSessions, NoRealtimeSessions>();
         services.AddScoped<IdentityDataSeeder>();
         services.AddScoped<BootstrapAdminSeeder>();
         services.AddScoped<DemoResourceSeeder>();

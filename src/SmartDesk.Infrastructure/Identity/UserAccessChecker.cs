@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using SmartDesk.Application.Common.Interfaces;
@@ -6,27 +9,32 @@ using SmartDesk.Infrastructure.Persistence;
 
 namespace SmartDesk.Infrastructure.Identity;
 
-// Is a token's user still allowed in, as the token describes them (ADR-0020)? A token is
-// otherwise good until it expires, so without this a disabled user, or an Admin demoted to
-// Employee, would keep their old access for up to an hour. One small query per user, cached
-// for 30 seconds; UserAccounts drops the entry the moment it changes that user.
+// The account as it is now, for the checks on every authenticated request (ADR-0020,
+// ADR-0021). A token is otherwise good until it expires, so without this a disabled user, a
+// demoted Admin or an old session after a password change would keep working for up to an
+// hour. One small query per user, cached for 30 seconds; UserAccessCache drops the entry the
+// moment SmartDesk changes that user.
 public sealed class UserAccessChecker(SmartDeskDbContext db, IMemoryCache cache) : IUserAccessChecker
 {
     public static readonly TimeSpan CacheFor = TimeSpan.FromSeconds(30);
 
     public static string CacheKey(Guid userId) => $"user-access:{userId}";
 
-    public async Task<bool> IsCurrentAsync(
-        Guid userId, IReadOnlyCollection<string> tokenRoles, CancellationToken cancellationToken)
-    {
-        var access = await cache.GetOrCreateAsync(CacheKey(userId), async entry =>
+    // What goes into the token instead of the security stamp itself: enough to tell stamps
+    // apart, nothing an attacker could use against Identity.
+    public static string SessionStampOf(string? securityStamp) =>
+        WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.UTF8.GetBytes(securityStamp ?? string.Empty)).AsSpan(0, 12));
+
+    public Task<UserAccessSnapshot?> GetAsync(Guid userId, CancellationToken cancellationToken) =>
+        cache.GetOrCreateAsync(CacheKey(userId), async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheFor;
-            var status = await db.Users
+            var user = await db.Users
+                .AsNoTracking()
                 .Where(u => u.Id == userId)
-                .Select(u => (AccountStatus?)u.Status)
+                .Select(u => new { u.Status, u.SecurityStamp, u.ManagerId, u.MustChangePassword })
                 .SingleOrDefaultAsync(cancellationToken);
-            if (status is null)
+            if (user is null)
             {
                 return null;
             }
@@ -37,11 +45,30 @@ public sealed class UserAccessChecker(SmartDeskDbContext db, IMemoryCache cache)
                     where userRole.UserId == userId
                     select role.Name!)
                 .ToListAsync(cancellationToken);
-            return new Access(status.Value, roles.ToHashSet(StringComparer.Ordinal));
+            return new UserAccessSnapshot(
+                user.Status,
+                roles.ToHashSet(StringComparer.Ordinal),
+                SessionStampOf(user.SecurityStamp),
+                user.ManagerId,
+                user.MustChangePassword);
         });
+}
 
-        return access is { Status: AccountStatus.Active } && access.Roles.SetEquals(tokenRoles);
+// Called after every change to an account: the next request with its token is checked
+// against the database again, and its real-time connections reconnect under the same check.
+public sealed class UserAccessCache(IMemoryCache cache, IRealtimeSessions realtimeSessions)
+{
+    public void Forget(Guid userId)
+    {
+        cache.Remove(UserAccessChecker.CacheKey(userId));
+        realtimeSessions.End(userId);
     }
+}
 
-    private sealed record Access(AccountStatus Status, HashSet<string> Roles);
+// Where there is no real-time hub (tests, tools), there are no connections to end.
+public sealed class NoRealtimeSessions : IRealtimeSessions
+{
+    public void End(Guid userId)
+    {
+    }
 }
