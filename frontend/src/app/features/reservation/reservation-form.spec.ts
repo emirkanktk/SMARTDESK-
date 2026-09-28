@@ -247,6 +247,101 @@ describe('ReservationForm', () => {
 
       expect(element.textContent).toContain('The note is too long.');
     });
+    it('says so when the resources cannot be loaded', async () => {
+      getResources.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+      await render();
+
+      expect(element.textContent).toContain('The list of resources could not be loaded.');
+    });
+
+    it('asks for a start and an end', async () => {
+      await render({ resourceId: room.id });
+      await set('#start', '');
+      await set('#end', '');
+      await submit();
+
+      expect(element.textContent).toContain('Choose a start date and time.');
+      expect(element.textContent).toContain('Choose an end date and time.');
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('checks the end is after the start, and at most 31 days later', async () => {
+      await render({ resourceId: room.id });
+      await set('#start', '2026-10-07T14:00');
+      await set('#end', '2026-10-07T13:00');
+      expect(element.textContent).toContain('The end must be after the start.');
+
+      await set('#end', '2026-11-07T14:15'); // 31 days and a quarter of an hour
+      expect(element.textContent).toContain('A reservation can last at most 31 days.');
+
+      await submit();
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('shows at once what is wrong with an old Book link', async () => {
+      await render({
+        resourceId: room.id,
+        start: utc('2026-10-05T08:00'),
+        end: utc('2026-10-05T09:00'),
+      });
+
+      expect(element.textContent).toContain('The start time is in the past.');
+    });
+
+    it('puts the API messages next to resource, start and end, and the rest above the form', async () => {
+      create.mockReturnValue(
+        throwError(
+          () =>
+            new ApiError(400, 'Invalid', null, {
+              ResourceId: ['That resource does not exist.'],
+              StartDateTime: ['The start is too far ahead.'],
+              EndDateTime: ['The end is too far ahead.'],
+              Other: ['Something else is wrong.'],
+            }),
+        ),
+      );
+      await render({ resourceId: room.id });
+      await submit();
+
+      const fieldErrors = Array.from(element.querySelectorAll('.field-error')).map((e) =>
+        e.textContent!.trim(),
+      );
+      expect(fieldErrors).toEqual([
+        'That resource does not exist.',
+        'The start is too far ahead.',
+        'The end is too far ahead.',
+      ]);
+      expect(field<HTMLElement>('.alert-error').textContent!.trim()).toBe(
+        'Something else is wrong.',
+      );
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('keeps a note on the form when saving fails otherwise', async () => {
+      create.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+      await render({ resourceId: room.id });
+      await submit();
+
+      expect(element.textContent).toContain('The reservation could not be saved.');
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('names both days in the toast when the booking spans them', async () => {
+      create.mockReturnValue(
+        of(
+          fakeReservation({
+            startDateTime: utc('2026-10-07T22:00'),
+            endDateTime: utc('2026-10-08T02:00'),
+          }),
+        ),
+      );
+      await render({ resourceId: room.id });
+      await submit();
+
+      expect(success).toHaveBeenCalledWith(
+        'Meeting Room A is booked for Wed 7 Oct, 22:00 to Thu 8 Oct, 02:00.',
+      );
+    });
   });
 
   describe('changing a reservation', () => {

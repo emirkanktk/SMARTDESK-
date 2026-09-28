@@ -182,6 +182,15 @@ describe('Admin', () => {
     );
   });
 
+  it('names both days for a reservation that runs past midnight', async () => {
+    getCalendar.mockReturnValue(
+      of([booking('rsv-9', '2026-10-08T22:00', '2026-10-09T02:00', theirs)]),
+    );
+    await render();
+
+    expect(rows()[0]).toContain('Thu 8 Oct, 22:00 to Fri 9 Oct, 02:00 4 h');
+  });
+
   it('searches by person, resource and note on the page', async () => {
     await render();
     const search = element.querySelector<HTMLInputElement>('#search')!;
