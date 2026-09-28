@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartDesk.Domain.Constants;
+using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence;
 using SmartDesk.Tests.TestSupport;
@@ -106,6 +107,25 @@ public sealed class BootstrapAdminSeederTests : IDisposable
         isAdmin.Should().BeTrue();
         ownPassword.Should().BeTrue();
         bootstrapPassword.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ASwitchedOffAccount_IsActiveAgain_AndOutOfItsTeam()
+    {
+        // The way back in when every admin has been switched off (ADR-0020).
+        await WithUsersAsync(async users =>
+        {
+            var manager = new ApplicationUser { UserName = "manager@company.example", Email = "manager@company.example" };
+            await users.CreateAsync(manager);
+            var user = new ApplicationUser { UserName = Email, Email = Email, Status = AccountStatus.Disabled, ManagerId = manager.Id };
+            return await users.CreateAsync(user, "Her-Own-Pass-1");
+        });
+
+        await SeedAsync();
+
+        var user = await WithUsersAsync(users => users.FindByEmailAsync(Email));
+        user!.Status.Should().Be(AccountStatus.Active);
+        user.ManagerId.Should().BeNull();
     }
 
     [Fact]

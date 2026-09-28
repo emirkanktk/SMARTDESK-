@@ -8,4 +8,9 @@ public interface IFrontendLinks
     string ResetPassword(string email, string token);
 
     string SignIn();
+
+    string ForgotPassword();
+
+    // The admin's user list, where sign-ups wait for approval.
+    string Users();
 }

@@ -71,7 +71,8 @@ builder.Services
                 }
 
                 return Task.CompletedTask;
-            }
+            },
+            OnTokenValidated = JwtBearerSetup.RequireCurrentAccessAsync,
         };
     });
 

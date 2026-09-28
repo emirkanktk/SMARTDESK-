@@ -1,5 +1,8 @@
+using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Infrastructure.Identity;
 
 namespace SmartDesk.API.Authentication;
@@ -27,4 +30,27 @@ public static class JwtBearerSetup
         ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
         ClockSkew = ClockSkew,
     };
+
+    public const string StaleAccessMessage = "This account has been switched off or its role has changed. Sign in again.";
+
+    // Runs once a token has passed the checks above (ADR-0020). A token stays valid until it
+    // expires, so on its own it would keep a disabled user in, or a demoted Admin an Admin, for
+    // up to an hour. Its user must still be Active and hold exactly the roles it lists;
+    // otherwise the request is unauthenticated (401) and the client signs in again.
+    public static async Task RequireCurrentAccessAsync(TokenValidatedContext context)
+    {
+        var principal = context.Principal;
+        if (!Guid.TryParse(principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            context.Fail("The token doesn't name a user.");
+            return;
+        }
+
+        var roles = principal!.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToList();
+        var checker = context.HttpContext.RequestServices.GetRequiredService<IUserAccessChecker>();
+        if (!await checker.IsCurrentAsync(userId, roles, context.HttpContext.RequestAborted))
+        {
+            context.Fail(StaleAccessMessage);
+        }
+    }
 }

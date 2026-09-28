@@ -23,4 +23,8 @@ public sealed class FrontendLinks(IOptions<AppOptions> options) : IFrontendLinks
         $"{Base}/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
 
     public string SignIn() => $"{Base}/login";
+
+    public string ForgotPassword() => $"{Base}/forgot-password";
+
+    public string Users() => $"{Base}/admin/users";
 }

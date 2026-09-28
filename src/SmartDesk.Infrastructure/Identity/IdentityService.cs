@@ -31,9 +31,10 @@ public sealed class IdentityService(
         // Counts failed attempts and honours Identity's lockout (5 failures -> 5 minutes by
         // default), which a bare UserManager.CheckPasswordAsync would not.
         var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
-        if (result.IsLockedOut || result.IsNotAllowed)
+        if (result.IsLockedOut || result.IsNotAllowed || user.PasswordHash is null)
         {
-            // Identity answers these without looking at the password - same timing reason.
+            // Identity answers these without hashing the password - same timing reason. An
+            // account with no password yet is one whose invitation hasn't been used (ADR-0020).
             VerifyDecoyPassword(password);
         }
 
@@ -123,6 +124,10 @@ public sealed class IdentityService(
     {
         var roles = await userManager.GetRolesAsync(user);
 
-        return new UserProfile(user.Id, user.FirstName, user.LastName, user.Email ?? string.Empty, roles.ToList());
+        return new UserProfile(user.Id, user.FirstName, user.LastName, user.Email ?? string.Empty, roles.ToList())
+        {
+            Status = user.Status,
+            ManagerId = user.ManagerId,
+        };
     }
 }

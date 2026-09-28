@@ -93,6 +93,9 @@ public static class DependencyInjection
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IIdentityService, IdentityService>();
+        services.AddMemoryCache();
+        services.AddScoped<IUserAccounts, UserAccounts>();
+        services.AddScoped<IUserAccessChecker, UserAccessChecker>();
         services.AddScoped<IdentityDataSeeder>();
         services.AddScoped<BootstrapAdminSeeder>();
         services.AddScoped<DemoResourceSeeder>();
