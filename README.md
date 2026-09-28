@@ -74,7 +74,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 ## Backend setup
 
 ```bash
-# 1. Start PostgreSQL
+# 1. Start PostgreSQL and Mailpit (catches the emails the API sends)
 docker compose up -d
 
 # 2. Set the JWT signing key (local dev only - never commit this; at least 32 characters)
@@ -97,6 +97,13 @@ can't reach it. In development, Swagger UI is served at `/swagger`
 `accessToken`, and paste it into **Authorize** to try the protected endpoints. Allowed
 frontend origins for CORS are `Cors:AllowedOrigins` in `appsettings.Development.json` (see
 `docs/DECISIONS.md`, ADR-0006).
+
+**Email.** The API sends email for password resets (ADR-0019). In Development it goes to
+**Mailpit**, started by `docker compose up -d`: open `http://localhost:8025` to read it. Links
+in emails point at `App:FrontendUrl` (`http://localhost:4200` in Development; required
+elsewhere). For a real mail server, set `Email:Smtp:Host`, `Port` and `From`, plus
+`Username` / `Password` as environment variables or secrets. Without `Email:Smtp:Host`, each
+email, link included, is written to the API log instead.
 
 ### Demo users (Development only)
 
@@ -135,7 +142,7 @@ not for a shared one.
 
 ### Optional: run the API in Docker
 
-`docker compose up -d` still starts PostgreSQL only. To run the API next to it, set a
+`docker compose up -d` starts PostgreSQL and Mailpit only. To run the API next to them, set a
 signing key of at least 32 characters and start the `api` profile. Do not also `dotnet run`
 against the same database if you only wanted one of them; they can share PostgreSQL, but
 the container listens on port 8080, not the launchSettings ports.

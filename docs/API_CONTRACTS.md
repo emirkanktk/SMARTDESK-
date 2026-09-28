@@ -14,6 +14,8 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 |---|---|---|---|---|
 | POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt }`. 400 if a field is missing/malformed, 401 on any other failure. |
 | GET | `/api/auth/me` | any authenticated user | `GetCurrentUserQuery` | → `{ id, firstName, lastName, email, roles: string[] }` |
+| POST | `/api/auth/forgot-password` | none | `ForgotPasswordCommand` | body: `{ email }` → **202** always, whether or not an account has this email. For one that does, a reset link is emailed. 400 for a malformed email. |
+| POST | `/api/auth/reset-password` | none | `ResetPasswordCommand` | body: `{ email, token, newPassword }` (email and token come from the emailed link) → 204. 400 with `Token`: "This reset link is invalid or has expired. Ask for a new one." (wrong, used, expired, or another email's token), or with `NewPassword`: Identity's reasons for refusing the password. |
 
 - Login failures all return the same 401 `"Invalid email or password."` - unknown email,
   wrong password and locked-out account are deliberately indistinguishable. Five failed
@@ -27,6 +29,12 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
   refresh token yet - on a 401 the frontend sends the user back to login.
 - Token claims: `sub` (user id), `email`, `given_name`, `family_name`, one `role` claim per
   role (`Admin` / `Employee`).
+- **Password reset (ADR-0019).** The emailed link is
+  `{App:FrontendUrl}/reset-password?email=…&token=…`, where the token is URL-safe. It works for
+  2 hours, and only once: a reset changes the account's security stamp, which the token is tied
+  to. A successful reset also ends a lockout. `forgot-password` answers in the same time
+  whether or not the account exists, because the email is queued rather than sent inline.
+  Both endpoints share the sign-in rate limit above.
 
 ## Resource types
 
