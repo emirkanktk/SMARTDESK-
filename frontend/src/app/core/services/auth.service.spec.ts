@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import { expiredJwt, fakeJwt } from '../../../testing/fake-jwt';
 import { Roles } from '../constants/roles';
+import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
 import { AuthService } from './auth.service';
 
 const TOKEN_STORAGE_KEY = 'smartdesk_access_token';
@@ -58,6 +59,33 @@ describe('AuthService', () => {
     expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBe(token);
     expect(service.hasRole(Roles.Employee)).toBe(true);
     expect(service.isAdmin()).toBe(false);
+  });
+
+  it('asks for a reset link without a session and without a toast', () => {
+    const { service, http } = createService();
+
+    service.forgotPassword('ayse@smartdesk.local').subscribe();
+
+    const req = http.expectOne(`${environment.apiUrl}/auth/forgot-password`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ email: 'ayse@smartdesk.local' });
+    expect(req.request.context.get(ANONYMOUS_REQUEST)).toBe(true);
+    expect(req.request.context.get(SKIP_ERROR_NOTIFICATION)).toBe(true);
+    req.flush(null, { status: 202, statusText: 'Accepted' });
+  });
+
+  it('resets the password with the token from the link', () => {
+    const { service, http } = createService();
+    const body = { email: 'ayse@smartdesk.local', token: 'abc-_1', newPassword: 'New-Pass-7' };
+
+    service.resetPassword(body).subscribe();
+
+    const req = http.expectOne(`${environment.apiUrl}/auth/reset-password`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    expect(req.request.context.get(ANONYMOUS_REQUEST)).toBe(true);
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    http.verify();
   });
 
   it('clears everything on logout', () => {

@@ -18,6 +18,18 @@ export const routes: Routes = [
     loadComponent: () => import('./features/login/login').then((m) => m.Login),
   },
   {
+    // Both open to anyone: the reset link may be opened on a device that's still signed in.
+    path: 'forgot-password',
+    title: 'Forgot password · SmartDesk',
+    loadComponent: () =>
+      import('./features/password/forgot-password').then((m) => m.ForgotPassword),
+  },
+  {
+    path: 'reset-password',
+    title: 'Choose a new password · SmartDesk',
+    loadComponent: () => import('./features/password/reset-password').then((m) => m.ResetPassword),
+  },
+  {
     // Every signed-in screen renders inside the shell. canActivateChild re-checks the
     // session on each navigation, so an expired token is caught before the screen loads.
     path: '',
