@@ -14,4 +14,8 @@ public class ApplicationUser : IdentityUser<Guid>
     public Guid? ManagerId { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // The password was chosen by someone else (an Admin or Manager who added the account or
+    // set a temporary one); the owner must replace it before doing anything else (ADR-0021).
+    public bool MustChangePassword { get; set; }
 }

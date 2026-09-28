@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Accounts.Commands.AddTeamMember;
 using SmartDesk.Application.Features.Accounts.Commands.RemoveTeamMember;
-using SmartDesk.Application.Features.Accounts.Commands.SendPasswordReset;
+using SmartDesk.Application.Features.Accounts.Commands.ApproveAccount;
+using SmartDesk.Application.Features.Accounts.Commands.RejectAccount;
+using SmartDesk.Application.Features.Accounts.Commands.SetTemporaryPassword;
 using SmartDesk.Application.Features.Accounts.Commands.SetAccountStatus;
 using SmartDesk.Application.Features.Accounts.Queries.GetMyTeam;
 using SmartDesk.Domain.Constants;
@@ -24,7 +26,7 @@ public sealed class TeamController(ISender sender) : ControllerBase
     public Task<IReadOnlyList<UserAccount>> GetMembers(CancellationToken cancellationToken) =>
         sender.Send(new GetMyTeamQuery(), cancellationToken);
 
-    // The new member is emailed a link to choose a password.
+    // With a temporary password the Manager hands over; the member replaces it at first sign-in.
     [HttpPost("members")]
     [ProducesResponseType<UserAccount>(StatusCodes.Status201Created)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -59,13 +61,30 @@ public sealed class TeamController(ISender sender) : ControllerBase
     public Task<UserAccount> EnableMember(Guid id, CancellationToken cancellationToken) =>
         sender.Send(new SetAccountStatusCommand(id, Enabled: true), cancellationToken);
 
-    [HttpPost("members/{id:guid}/password-reset")]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [HttpPost("members/{id:guid}/password")]
+    [ProducesResponseType<UserAccount>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> SendMemberPasswordReset(Guid id, CancellationToken cancellationToken)
+    public Task<UserAccount> SetMemberTemporaryPassword(
+        Guid id, SetTemporaryPasswordCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command with { Id = id }, cancellationToken);
+
+    // Requests to join the team, from people who signed up with this manager's email.
+    [HttpPost("requests/{id:guid}/approve")]
+    [ProducesResponseType<UserAccount>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<UserAccount> ApproveRequest(Guid id, CancellationToken cancellationToken) =>
+        sender.Send(new ApproveAccountCommand { Id = id }, cancellationToken);
+
+    [HttpPost("requests/{id:guid}/reject")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RejectRequest(Guid id, CancellationToken cancellationToken)
     {
-        await sender.Send(new SendPasswordResetCommand(id), cancellationToken);
-        return Accepted();
+        await sender.Send(new RejectAccountCommand(id), cancellationToken);
+        return NoContent();
     }
 }

@@ -3,6 +3,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Security;
+using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure.Identity;
 
 namespace SmartDesk.API.Authentication;
@@ -31,26 +33,51 @@ public static class JwtBearerSetup
         ClockSkew = ClockSkew,
     };
 
-    public const string StaleAccessMessage = "This account has been switched off or its role has changed. Sign in again.";
+    public const string StaleAccessMessage =
+        "This session has ended: the account was switched off, its role or password changed. Sign in again.";
 
-    // Runs once a token has passed the checks above (ADR-0020). A token stays valid until it
-    // expires, so on its own it would keep a disabled user in, or a demoted Admin an Admin, for
-    // up to an hour. Its user must still be Active and hold exactly the roles it lists;
-    // otherwise the request is unauthenticated (401) and the client signs in again.
+    // Runs once a token has passed the checks above (ADR-0020, ADR-0021). A token stays valid
+    // until it expires, so on its own it would keep a disabled user in, a demoted Admin an
+    // Admin, or a session going after its password was changed, for up to an hour. Its user must
+    // still be Active, hold exactly the roles it lists, and have the security stamp it was issued
+    // under; otherwise the request is unauthenticated (401) and the client signs in again.
+    // What only the account knows now - its team, a pending password change - is added to the
+    // request's user here, never taken from the token.
     public static async Task RequireCurrentAccessAsync(TokenValidatedContext context)
     {
         var principal = context.Principal;
-        if (!Guid.TryParse(principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (!Guid.TryParse(principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+            || principal!.Identity is not ClaimsIdentity identity)
         {
             context.Fail("The token doesn't name a user.");
             return;
         }
 
-        var roles = principal!.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToList();
         var checker = context.HttpContext.RequestServices.GetRequiredService<IUserAccessChecker>();
-        if (!await checker.IsCurrentAsync(userId, roles, context.HttpContext.RequestAborted))
+        var access = await checker.GetAsync(userId, context.HttpContext.RequestAborted);
+        var tokenRoles = principal.FindAll(ClaimTypes.Role).Select(claim => claim.Value);
+        if (access is not { Status: AccountStatus.Active }
+            || !access.Roles.SetEquals(tokenRoles)
+            || principal.FindFirstValue(SmartDeskClaims.SessionStamp) != access.SessionStamp)
         {
             context.Fail(StaleAccessMessage);
+            return;
+        }
+
+        // Never from the token: only the values set here count.
+        foreach (var claim in identity.FindAll(c => c.Type is SmartDeskClaims.Team or SmartDeskClaims.PasswordChangeRequired).ToList())
+        {
+            identity.RemoveClaim(claim);
+        }
+
+        if (Teams.TeamOf(userId, access.Roles.ToList(), access.ManagerId) is { } team)
+        {
+            identity.AddClaim(new Claim(SmartDeskClaims.Team, team.ToString()));
+        }
+
+        if (access.MustChangePassword)
+        {
+            identity.AddClaim(new Claim(SmartDeskClaims.PasswordChangeRequired, "true"));
         }
     }
 }

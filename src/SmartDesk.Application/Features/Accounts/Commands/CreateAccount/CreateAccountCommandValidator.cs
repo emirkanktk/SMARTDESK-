@@ -12,6 +12,7 @@ public sealed class CreateAccountCommandValidator : AbstractValidator<CreateAcco
         RuleFor(x => x.LastName).PersonName();
         RuleFor(x => x.Email).AccountEmail();
         RuleFor(x => x.Role).AccountRole();
+        RuleFor(x => x.Password).TemporaryPassword();
         RuleFor(x => x.ManagerId)
             .Null()
             .When(x => x.Role != Roles.Employee)

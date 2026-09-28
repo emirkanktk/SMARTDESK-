@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
+using SmartDesk.Application.Common.Security;
 
 namespace SmartDesk.Infrastructure.Identity;
 
@@ -31,6 +32,9 @@ public sealed class JwtTokenGenerator(IOptions<JwtOptions> options, TimeProvider
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
         claims.AddRange(user.Roles.Select(role => new Claim(RoleClaimType, role)));
+
+        // Ties the token to the password it was issued under (ADR-0021).
+        claims.Add(new Claim(SmartDeskClaims.SessionStamp, user.SessionStamp));
 
         var descriptor = new SecurityTokenDescriptor
         {

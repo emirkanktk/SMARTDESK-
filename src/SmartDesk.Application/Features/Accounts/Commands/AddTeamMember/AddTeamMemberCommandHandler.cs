@@ -7,14 +7,14 @@ using SmartDesk.Domain.Constants;
 
 namespace SmartDesk.Application.Features.Accounts.Commands.AddTeamMember;
 
-public sealed class AddTeamMemberCommandHandler(ICurrentUserService currentUser, AccountInvitations invitations)
+public sealed class AddTeamMemberCommandHandler(ICurrentUserService currentUser, AccountCreation creation)
     : IRequestHandler<AddTeamMemberCommand, UserAccount>
 {
     public Task<UserAccount> Handle(AddTeamMemberCommand request, CancellationToken cancellationToken)
     {
         var managerId = currentUser.UserId ?? throw new UnauthorizedException();
 
-        return invitations.InviteAsync(
-            request.FirstName, request.LastName, request.Email, Roles.Employee, managerId, cancellationToken);
+        return creation.CreateAsync(
+            request.FirstName, request.LastName, request.Email, Roles.Employee, managerId, request.Password, cancellationToken);
     }
 }

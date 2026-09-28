@@ -11,5 +11,13 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
         RuleFor(x => x.LastName).PersonName();
         RuleFor(x => x.Email).AccountEmail();
         RuleFor(x => x.Password).NotEmpty().MaximumLength(256);
+
+        RuleFor(x => x.ManagerEmail!)
+            .Cascade(CascadeMode.Stop)
+            .EmailAddress()
+            .MaximumLength(AccountRules.MaxEmailLength)
+            .Must((command, managerEmail) => !string.Equals(managerEmail.Trim(), command.Email.Trim(), StringComparison.OrdinalIgnoreCase))
+            .WithMessage("Your manager's email must be someone else's.")
+            .When(x => !string.IsNullOrWhiteSpace(x.ManagerEmail));
     }
 }

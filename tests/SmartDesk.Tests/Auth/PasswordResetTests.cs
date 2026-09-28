@@ -51,6 +51,9 @@ public sealed class PasswordResetTests : IDisposable
             .AddDefaultTokenProviders();
         services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = tokenLifespan);
         services.AddScoped<IIdentityService, IdentityService>();
+        services.AddMemoryCache();
+        services.AddSingleton<IRealtimeSessions, NoRealtimeSessions>();
+        services.AddScoped<UserAccessCache>();
         services.AddSingleton<IEmailSender>(_emails);
         services.AddSingleton<IFrontendLinks>(new FrontendLinks(
             Options.Create(new AppOptions { FrontendUrl = "http://localhost:4200/" })));
@@ -213,6 +216,28 @@ public sealed class PasswordResetTests : IDisposable
         {
             var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             (await users.IsLockedOutAsync((await users.FindByEmailAsync(Email))!)).Should().BeFalse();
+        }
+    }
+
+    [Fact]
+    public async Task AReset_ReplacesATemporaryPassword_TheOwnerDoesntNeedToChangeItAgain()
+    {
+        await AddUserAsync();
+        await using (var scope = _services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = (await users.FindByEmailAsync(Email))!;
+            user.MustChangePassword = true;
+            (await users.UpdateAsync(user)).Succeeded.Should().BeTrue();
+        }
+        await ForgotAsync(Email);
+
+        await ResetAsync(Email, TokenFromEmail(), NewPassword);
+
+        await using (var scope = _services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            (await users.FindByEmailAsync(Email))!.MustChangePassword.Should().BeFalse();
         }
     }
 

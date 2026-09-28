@@ -13,4 +13,7 @@ public interface IFrontendLinks
 
     // The admin's user list, where sign-ups wait for approval.
     string Users();
+
+    // A Manager's team, where requests to join it wait for approval.
+    string Team();
 }

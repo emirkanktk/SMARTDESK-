@@ -8,7 +8,7 @@ namespace SmartDesk.Application.Features.Auth.Commands.Login;
 public sealed class LoginCommandHandler(IIdentityService identityService, IJwtTokenGenerator tokenGenerator)
     : IRequestHandler<LoginCommand, LoginResponse>
 {
-    public const string PendingApprovalMessage = "Your account is waiting for an administrator's approval. We'll email you when it's ready.";
+    public const string PendingApprovalMessage = "Your account is waiting for approval. We'll email you when it's ready.";
     public const string DisabledMessage = "Your account has been disabled. Contact your administrator.";
 
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -27,6 +27,6 @@ public sealed class LoginCommandHandler(IIdentityService identityService, IJwtTo
 
         var token = tokenGenerator.Generate(user);
 
-        return new LoginResponse(token.Token, token.ExpiresAtUtc);
+        return new LoginResponse(token.Token, token.ExpiresAtUtc, user.MustChangePassword);
     }
 }

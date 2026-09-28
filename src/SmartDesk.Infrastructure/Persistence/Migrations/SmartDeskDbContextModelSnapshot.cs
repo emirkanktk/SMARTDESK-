@@ -375,6 +375,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ManagerId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");

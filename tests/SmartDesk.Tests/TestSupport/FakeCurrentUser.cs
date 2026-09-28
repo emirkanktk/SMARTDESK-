@@ -6,5 +6,7 @@ public sealed class FakeCurrentUser(Guid? userId, params string[] roles) : ICurr
 {
     public Guid? UserId { get; } = userId;
 
+    public Guid? TeamId { get; init; }
+
     public bool IsInRole(string role) => roles.Contains(role);
 }

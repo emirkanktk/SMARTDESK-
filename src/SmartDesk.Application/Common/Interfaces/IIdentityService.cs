@@ -19,6 +19,12 @@ public interface IIdentityService
     // treat both outcomes the same way towards the client (ADR-0019).
     Task<PasswordResetToken?> CreatePasswordResetTokenAsync(string email, CancellationToken cancellationToken);
 
+    // The user's own password change (ADR-0021): checks the current password, sets the new
+    // one under Identity's policy, and clears "must change password". Ends every other
+    // session, since the security stamp moves.
+    Task<ChangePasswordResult> ChangePasswordAsync(
+        Guid userId, string currentPassword, string newPassword, CancellationToken cancellationToken);
+
     // Sets a new password if the token is valid for this email. A successful reset also ends a
     // lockout, so someone locked out by failed attempts can get back in.
     Task<ResetPasswordResult> ResetPasswordAsync(

@@ -17,7 +17,7 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(typeof(AssemblyReference).Assembly);
-        services.AddScoped<AccountInvitations>();
+        services.AddScoped<AccountCreation>();
 
         // FluentValidation localizes its default messages to the machine's UI culture, so the
         // same API would answer in Turkish on one developer's machine and English on another.

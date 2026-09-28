@@ -1,13 +1,14 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Accounts.Commands.ApproveAccount;
 using SmartDesk.Application.Features.Accounts.Commands.AssignManager;
 using SmartDesk.Application.Features.Accounts.Commands.ChangeAccountRole;
 using SmartDesk.Application.Features.Accounts.Commands.CreateAccount;
 using SmartDesk.Application.Features.Accounts.Commands.RejectAccount;
-using SmartDesk.Application.Features.Accounts.Commands.SendPasswordReset;
+using SmartDesk.Application.Features.Accounts.Commands.SetTemporaryPassword;
 using SmartDesk.Application.Features.Accounts.Commands.SetAccountStatus;
 using SmartDesk.Application.Features.Accounts.Queries.GetAccounts;
 using SmartDesk.Domain.Constants;
@@ -33,7 +34,7 @@ public sealed class UsersController(ISender sender) : ControllerBase
         CancellationToken cancellationToken) =>
         sender.Send(new GetAccountsQuery(status, role, search), cancellationToken);
 
-    // The new account's owner is emailed a link to choose a password.
+    // With a temporary password the Admin hands over; the owner replaces it at first sign-in.
     [HttpPost]
     [ProducesResponseType<UserAccount>(StatusCodes.Status201Created)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -44,12 +45,17 @@ public sealed class UsersController(ISender sender) : ControllerBase
         return Created($"/api/users/{account.Id}", account);
     }
 
+    // Optional body { managerId } puts an Employee into a team on the way.
     [HttpPost("{id:guid}/approve")]
     [ProducesResponseType<UserAccount>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public Task<UserAccount> Approve(Guid id, CancellationToken cancellationToken) =>
-        sender.Send(new ApproveAccountCommand(id), cancellationToken);
+    public Task<UserAccount> Approve(
+        Guid id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ApproveAccountCommand? command,
+        CancellationToken cancellationToken) =>
+        sender.Send((command ?? new ApproveAccountCommand()) with { Id = id }, cancellationToken);
 
     // Deletes the waiting sign-up.
     [HttpPost("{id:guid}/reject")]
@@ -92,14 +98,12 @@ public sealed class UsersController(ISender sender) : ControllerBase
     public Task<UserAccount> Enable(Guid id, CancellationToken cancellationToken) =>
         sender.Send(new SetAccountStatusCommand(id, Enabled: true), cancellationToken);
 
-    // Emails the owner a reset link; nobody but them sees or sets the password.
-    [HttpPost("{id:guid}/password-reset")]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    // A temporary password the owner must replace at their next sign-in; their sessions end.
+    [HttpPost("{id:guid}/password")]
+    [ProducesResponseType<UserAccount>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> SendPasswordReset(Guid id, CancellationToken cancellationToken)
-    {
-        await sender.Send(new SendPasswordResetCommand(id), cancellationToken);
-        return Accepted();
-    }
+    public Task<UserAccount> SetTemporaryPassword(Guid id, SetTemporaryPasswordCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command with { Id = id }, cancellationToken);
 }

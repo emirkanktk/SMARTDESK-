@@ -30,6 +30,21 @@ public class LoginCommandHandlerTests
 
         response.AccessToken.Should().Be("jwt-value");
         response.ExpiresAt.Should().Be(expiresAt);
+        response.PasswordChangeRequired.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_TemporaryPassword_SaysItMustBeChanged()
+    {
+        var user = new UserProfile(Guid.NewGuid(), "Elif", "Şahin", "elif@smartdesk.local", [Roles.Employee]) { MustChangePassword = true };
+        _identityService
+            .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _tokenGenerator.Setup(g => g.Generate(user)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddHours(1)));
+
+        var response = await CreateHandler().Handle(new LoginCommand("elif@smartdesk.local", "Temp-Pass-2026"), CancellationToken.None);
+
+        response.PasswordChangeRequired.Should().BeTrue();
     }
 
     [Theory]

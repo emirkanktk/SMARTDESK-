@@ -46,6 +46,9 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IReservationNotifier, SignalRReservationNotifier>();
 builder.Services.TryAddScoped<IReservationNotifier, NullReservationNotifier>();
 builder.Services.AddHostedService<ReservationReminderWorker>();
+// Replaces Infrastructure's no-op fallback: a change to an account cuts its hub connections.
+builder.Services.AddSingleton<HubConnectionRegistry>();
+builder.Services.AddSingleton<IRealtimeSessions>(sp => sp.GetRequiredService<HubConnectionRegistry>());
 
 // Validated at startup by AddInfrastructure (JwtOptions.ValidateOnStart), so a missing or
 // too-short key fails fast with a clear message rather than on the first request.
@@ -138,6 +141,7 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UsePasswordChangeGate();
 
 app.MapControllers();
 app.MapHub<ReservationHub>("/hubs/reservations");

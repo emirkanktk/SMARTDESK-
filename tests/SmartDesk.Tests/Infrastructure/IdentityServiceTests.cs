@@ -34,6 +34,9 @@ public sealed class IdentityServiceTests : IDisposable
             .AddSignInManager();
         services.AddSingleton<IPasswordHasher<ApplicationUser>>(_hasher);
         services.AddScoped<IdentityService>();
+        services.AddMemoryCache();
+        services.AddSingleton<SmartDesk.Application.Common.Interfaces.IRealtimeSessions, NoRealtimeSessions>();
+        services.AddScoped<UserAccessCache>();
         _services = services.BuildServiceProvider();
     }
 
