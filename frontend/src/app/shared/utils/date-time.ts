@@ -80,6 +80,28 @@ export function startOfWeek(date: Date): Date {
   return addDays(result, -sinceMonday);
 }
 
+/** Local midnight on the first of `date`'s month. */
+export function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+/** The first of the month `months` months after `date`'s month, at local midnight. */
+export function addMonths(date: Date, months: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+/** A local month as "2026-10", for query strings. */
+export function toMonthParam(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Local midnight on the first of a "2026-10" month; null when empty or malformed. */
+export function parseMonthParam(value: string | null | undefined): Date | null {
+  const match = value?.match(/^(\d{4})-(\d{2})$/);
+  const month = match ? Number(match[2]) : 0;
+  return match && month >= 1 && month <= 12 ? new Date(Number(match[1]), month - 1, 1) : null;
+}
+
 /** A local date as "2026-10-05", for query strings. */
 export function toDateParam(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');

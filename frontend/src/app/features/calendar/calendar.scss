@@ -191,3 +191,94 @@
     color: var(--color-primary);
   }
 }
+
+.view-switch {
+  display: inline-flex;
+  margin-right: var(--space-2);
+
+  .btn {
+    border-radius: 0;
+  }
+
+  .btn:first-child {
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
+  .btn:last-child {
+    margin-left: -1px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .active {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+  }
+}
+
+.blocks-failed {
+  color: var(--color-danger);
+}
+
+// A blocked window: hatched, and not a link - only admins manage blocks, on their own screen.
+.entry.blocked {
+  border-left-color: var(--color-text-muted);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-bg),
+    var(--color-bg) 6px,
+    var(--color-border) 6px,
+    var(--color-border) 7px
+  );
+  color: var(--color-text-muted);
+  cursor: default;
+
+  &:hover {
+    border-left-color: var(--color-text-muted);
+  }
+}
+
+// Month view: seven equal columns, no pinned resource column.
+.grid.month {
+  min-width: 49rem;
+
+  th,
+  td {
+    width: calc(100% / 7);
+  }
+
+  th:first-child,
+  td:first-child {
+    border-left: 0;
+  }
+
+  td {
+    height: 7.5rem;
+  }
+
+  .outside {
+    background: var(--color-bg);
+    color: var(--color-text-muted);
+  }
+}
+
+.day-number {
+  display: inline-block;
+  margin-bottom: var(--space-1);
+  color: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+
+a.day-number:hover,
+a.day-number:focus-visible {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.more {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}

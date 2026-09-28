@@ -5,31 +5,51 @@
 
 <div class="card toolbar">
   <div class="week-nav">
+    <div class="view-switch" role="group" aria-label="View">
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        [class.active]="mode() === 'week'"
+        [attr.aria-pressed]="mode() === 'week'"
+        (click)="showView('week')"
+      >
+        Week
+      </button>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        [class.active]="mode() === 'month'"
+        [attr.aria-pressed]="mode() === 'month'"
+        (click)="showView('month')"
+      >
+        Month
+      </button>
+    </div>
     <button
       type="button"
       class="btn btn-secondary btn-sm"
-      aria-label="Previous week"
-      (click)="goToWeek(-1)"
+      [attr.aria-label]="'Previous ' + mode()"
+      (click)="go(-1)"
     >
       ‹
     </button>
     <button
       type="button"
       class="btn btn-secondary btn-sm"
-      [disabled]="isThisWeek()"
-      (click)="goToThisWeek()"
+      [disabled]="isCurrent()"
+      (click)="goToCurrent()"
     >
-      This week
+      This {{ mode() }}
     </button>
     <button
       type="button"
       class="btn btn-secondary btn-sm"
-      aria-label="Next week"
-      (click)="goToWeek(1)"
+      [attr.aria-label]="'Next ' + mode()"
+      (click)="go(1)"
     >
       ›
     </button>
-    <h2 class="week-label" aria-live="polite">{{ weekLabel() }}</h2>
+    <h2 class="week-label" aria-live="polite">{{ label() }}</h2>
   </div>
 
   <div class="type-filter">
@@ -50,67 +70,147 @@
     <span>The calendar could not be loaded.</span>
     <button type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
   </div>
-} @else if (rows().length === 0) {
+} @else if (!hasResources()) {
   <p class="card text-muted empty">No resources of this type.</p>
 } @else {
   <p class="text-muted summary">
-    {{ reservationCount() }} {{ reservationCount() === 1 ? 'reservation' : 'reservations' }}
-    this week.
+    {{ reservationCount() }} {{ reservationCount() === 1 ? 'reservation' : 'reservations' }} this
+    {{ mode() }}.
+    @if (blockCount() > 0) {
+      {{ blockCount() }} blocked {{ blockCount() === 1 ? 'window' : 'windows' }}.
+    }
     @if (reservationCount() > 0) {
       Select one to open it.
     }
+    @if (blocksFailed()) {
+      <span class="blocks-failed">Blocked windows could not be loaded.</span>
+    }
   </p>
-  <div class="grid-wrap">
-    <table class="grid">
-      <thead>
-        <tr>
-          <th scope="col" class="resource-col">Resource</th>
-          @for (day of days(); track day.key) {
-            <th scope="col" [class.today]="day.isToday" [class.past]="day.isPast">
-              <span class="dow">{{ day.start | date: 'EEE' }}</span>
-              <span class="dom">{{ day.start | date: 'd MMM' }}</span>
-            </th>
-          }
-        </tr>
-      </thead>
-      <tbody>
-        @for (row of rows(); track row.resource.id) {
-          <tr [class.unavailable]="row.resource.status !== 'Active'">
-            <th scope="row" class="resource-col">
-              <span class="name">{{ row.resource.name }}</span>
-              <span class="text-muted meta">{{ row.resource.location }}</span>
-              @if (row.resource.status !== 'Active') {
-                <app-status-badge [status]="row.resource.status" />
-              }
-            </th>
-            @for (cell of row.cells; track cell.day.key) {
-              <td [class.today]="cell.day.isToday" [class.past]="cell.day.isPast">
-                @for (entry of cell.entries; track entry.reservation.id) {
-                  <a
-                    class="entry"
-                    [class.mine]="entry.mine"
-                    [routerLink]="['/reservations', entry.reservation.id, 'edit']"
-                    [title]="entry.title"
-                  >
-                    <span class="entry-time">{{ entry.time }}</span>
-                    <span class="entry-who">{{ entry.who }}</span>
-                  </a>
-                }
-                @if (cell.book; as book) {
-                  <a
-                    class="book"
-                    routerLink="/reservations/new"
-                    [queryParams]="book.params"
-                    [attr.aria-label]="book.label"
-                    [title]="book.label"
-                    >+</a
-                  >
-                }
-              </td>
+
+  @if (mode() === 'week') {
+    <div class="grid-wrap">
+      <table class="grid">
+        <thead>
+          <tr>
+            <th scope="col" class="resource-col">Resource</th>
+            @for (day of days(); track day.key) {
+              <th scope="col" [class.today]="day.isToday" [class.past]="day.isPast">
+                <span class="dow">{{ day.start | date: 'EEE' }}</span>
+                <span class="dom">{{ day.start | date: 'd MMM' }}</span>
+              </th>
             }
           </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.resource.id) {
+            <tr [class.unavailable]="row.resource.status !== 'Active'">
+              <th scope="row" class="resource-col">
+                <span class="name">{{ row.resource.name }}</span>
+                <span class="text-muted meta">{{ row.resource.location }}</span>
+                @if (row.resource.status !== 'Active') {
+                  <app-status-badge [status]="row.resource.status" />
+                }
+              </th>
+              @for (cell of row.cells; track cell.day.key) {
+                <td [class.today]="cell.day.isToday" [class.past]="cell.day.isPast">
+                  @for (b of cell.blocks; track b.block.id) {
+                    <span class="entry blocked" [title]="b.title">
+                      <span class="entry-time">{{ b.time }}</span>
+                      <span class="entry-who">Blocked: {{ b.block.reason }}</span>
+                    </span>
+                  }
+                  @for (entry of cell.entries; track entry.reservation.id) {
+                    <a
+                      class="entry"
+                      [class.mine]="entry.mine"
+                      [routerLink]="['/reservations', entry.reservation.id, 'edit']"
+                      [title]="entry.title"
+                    >
+                      <span class="entry-time">{{ entry.time }}</span>
+                      <span class="entry-who">{{ entry.who }}</span>
+                    </a>
+                  }
+                  @if (cell.book; as book) {
+                    <a
+                      class="book"
+                      routerLink="/reservations/new"
+                      [queryParams]="book.params"
+                      [attr.aria-label]="book.label"
+                      [title]="book.label"
+                      >+</a
+                    >
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="grid-wrap">
+      <table class="grid month">
+        <thead>
+          <tr>
+            @for (name of weekdays(); track name) {
+              <th scope="col">{{ name }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (week of monthWeeks(); track week[0].day.key) {
+            <tr>
+              @for (d of week; track d.day.key) {
+                <td
+                  [class.today]="d.day.isToday"
+                  [class.past]="d.day.isPast"
+                  [class.outside]="!d.inMonth"
+                >
+                  @if (d.inMonth) {
+                    <a
+                      class="day-number"
+                      routerLink="."
+                      [queryParams]="d.weekParams"
+                      queryParamsHandling="merge"
+                      [attr.aria-label]="'Week of ' + (d.day.start | date: 'EEE d MMM')"
+                      >{{ d.day.start | date: 'd' }}</a
+                    >
+                    @for (item of d.items; track item.key) {
+                      @if (item.entry; as entry) {
+                        <a
+                          class="entry"
+                          [class.mine]="entry.mine"
+                          [routerLink]="['/reservations', entry.reservation.id, 'edit']"
+                          [title]="item.resourceName + ', ' + entry.title"
+                        >
+                          <span class="entry-time">{{ entry.time }}</span>
+                          <span class="entry-who">{{ item.resourceName }} · {{ entry.who }}</span>
+                        </a>
+                      } @else if (item.block; as b) {
+                        <span class="entry blocked" [title]="b.title">
+                          <span class="entry-time">{{ b.time }}</span>
+                          <span class="entry-who">{{ item.resourceName }} · Blocked</span>
+                        </span>
+                      }
+                    }
+                    @if (d.more > 0) {
+                      <a
+                        class="more"
+                        routerLink="."
+                        [queryParams]="d.weekParams"
+                        queryParamsHandling="merge"
+                        >+{{ d.more }} more</a
+                      >
+                    }
+                  } @else {
+                    <span class="day-number">{{ d.day.start | date: 'd' }}</span>
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 }
