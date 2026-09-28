@@ -98,7 +98,7 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 | PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` - full replace → 200, so leaving `reminderMinutes` out turns the reminder off. Rules below. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
-| GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid (400 otherwise). Everyone sees who booked what - it's a shared office calendar. |
+| GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. |
 
 Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
 
@@ -161,7 +161,7 @@ car at the service - without changing its status. Blocks use the same half-open
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| GET | `/api/resource-blocks?from=&to=&resourceId=` | any authenticated user | `GetResourceBlocksQuery` | blocks overlapping `[from, to)`, earliest first; same 42-day limit as the calendar. Drawn next to the calendar's reservations. |
+| GET | `/api/resource-blocks?from=&to=&resourceId=` | any authenticated user | `GetResourceBlocksQuery` | blocks overlapping `[from, to)`, earliest first; same limit as the calendar (42 days plus an hour). Drawn next to the calendar's reservations. |
 | POST | `/api/resource-blocks` | Admin | `CreateResourceBlockCommand` | body: `{ resourceId, startDateTime, endDateTime, reason }` → 201 |
 | DELETE | `/api/resource-blocks/{id}` | Admin | `DeleteResourceBlockCommand` | → 204; 404 if it doesn't exist |
 

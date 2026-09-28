@@ -150,4 +150,11 @@ public class ResourceBlockHandlerTests : IDisposable
     public void Validator_RequiresAReason() =>
         ValidationErrors(Now.UtcDateTime.AddHours(1), Now.UtcDateTime.AddHours(3), "  ")
             .Should().Equal(nameof(CreateResourceBlockCommand.Reason));
+
+    [Theory]
+    [InlineData(42 * 24 + 1, true)] // six local weeks across the autumn clock change
+    [InlineData(42 * 24 + 2, false)]
+    public void QueryValidator_AllowsTheCalendarsSixWeeks_PlusAnHour(int hours, bool valid) =>
+        new GetResourceBlocksQueryValidator().Validate(new GetResourceBlocksQuery(Day, Day.AddHours(hours)))
+            .IsValid.Should().Be(valid);
 }
