@@ -63,6 +63,17 @@ schema it manages; a direct FK is unnecessary since Identity guarantees the user
 exists at reservation-creation time, and the query direction we need (reservations for the
 current user) is fully satisfiable filtering by a scalar `UserId`.
 
+### ResourceTeam
+
+A team a resource belongs to (ADR-0022). Key (`ResourceId`, `TeamId`).
+
+| Field | Type | Notes |
+|---|---|---|
+| ResourceId | Guid | FK → `Resource.Id`, cascade delete |
+| TeamId | Guid | the team's Manager account id; no FK across the Identity boundary. Indexed |
+
+A resource with no rows here is shared by everyone.
+
 ### ResourceBlock
 
 | Field | Type | Notes |
@@ -87,6 +98,8 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
 Resource 1 ── * ResourceBlock
 
 ApplicationUser (Manager) 1 ── * ApplicationUser (Employee, via ManagerId)
+
+Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
 ```
 
 ## Indexes
@@ -145,6 +158,11 @@ ApplicationUser (Manager) 1 ── * ApplicationUser (Employee, via ManagerId)
    at least one active Admin. A Manager who still has team members can't be given another
    role. Only a sign-up waiting for approval is ever deleted (by rejecting it); any other
    account is disabled instead, which keeps its reservations and history.
+9. **Team resources (ADR-0022).** A resource with teams may be seen, booked and blocked only by
+   those teams' members and managers, and by Admins; for anyone else it doesn't exist (404).
+   A resource with no teams is shared by everyone. A Manager manages only resources that
+   belong to their team alone. A Manager whose team has resources keeps the role until they're
+   shared or given to another team.
 
 ## Concurrency (formerly an open question)
 

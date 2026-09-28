@@ -95,7 +95,7 @@ public sealed class UpdateReservationCommandHandler(
                 // Excluding itself: shifting 10:00-11:00 to 10:30-11:30 must not clash with its
                 // own old slot.
                 await BookingGuard.EnsureBookableAsync(
-                    db, request.ResourceId, start, end, reservation.Id, cancellationToken);
+                    db, currentUser, request.ResourceId, start, end, reservation.Id, cancellationToken);
 
                 reservation.ResourceId = request.ResourceId;
                 reservation.StartDateTime = start;

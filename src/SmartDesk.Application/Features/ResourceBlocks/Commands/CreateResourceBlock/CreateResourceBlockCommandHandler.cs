@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Application.Features.ResourceBlocks.Common;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Rules;
@@ -25,11 +26,15 @@ public sealed class CreateResourceBlockCommandHandler(IApplicationDbContext db, 
         {
             await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
-            var resourceName = await db.Resources
-                .Where(r => r.Id == request.ResourceId)
-                .Select(r => r.Name)
-                .SingleOrDefaultAsync(cancellationToken)
+            // An Admin blocks anything; a Manager only what belongs to their team alone (ADR-0022).
+            var resource = await db.Resources
+                .UsableBy(currentUser)
+                .Include(r => r.Teams)
+                .AsNoTracking()
+                .SingleOrDefaultAsync(r => r.Id == request.ResourceId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Resource), request.ResourceId);
+            ResourceManagement.RequireManageable(resource, currentUser);
+            var resourceName = resource.Name;
 
             var alreadyBlocked = await db.ResourceBlocks
                 .Where(b => b.ResourceId == request.ResourceId)

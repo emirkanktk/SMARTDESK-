@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Domain.Rules;
@@ -16,14 +17,17 @@ public static class BookingGuard
     // moved: its own current slot must not count as a clash.
     public static async Task<string> EnsureBookableAsync(
         IApplicationDbContext db,
+        ICurrentUserService user,
         Guid resourceId,
         DateTime start,
         DateTime end,
         Guid? ignoreReservationId,
         CancellationToken cancellationToken)
     {
+        // Another team's resource can't be booked, and isn't even there for the caller (ADR-0022).
         var resource = await db.Resources
             .AsNoTracking()
+            .UsableBy(user)
             .Where(r => r.Id == resourceId)
             .Select(r => new { r.Name, r.Status })
             .SingleOrDefaultAsync(cancellationToken)

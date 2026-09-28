@@ -31,7 +31,7 @@ public sealed class CreateReservationCommandHandler(
             await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
             // Exists, Active, not blocked, no overlap (business rules 1, 3, 7).
-            await BookingGuard.EnsureBookableAsync(db, request.ResourceId, start, end, null, cancellationToken);
+            await BookingGuard.EnsureBookableAsync(db, currentUser, request.ResourceId, start, end, null, cancellationToken);
 
             db.Reservations.Add(new Reservation
             {

@@ -3,6 +3,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using SmartDesk.Application.Common.Behaviors;
 using SmartDesk.Application.Features.Accounts.Common;
+using SmartDesk.Application.Features.Resources.Common;
 
 namespace SmartDesk.Application;
 
@@ -18,6 +19,7 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(typeof(AssemblyReference).Assembly);
         services.AddScoped<AccountCreation>();
+        services.AddScoped<ResourceReader>();
 
         // FluentValidation localizes its default messages to the machine's UI culture, so the
         // same API would answer in Turkish on one developer's machine and English on another.

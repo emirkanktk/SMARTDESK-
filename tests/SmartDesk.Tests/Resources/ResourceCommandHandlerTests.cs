@@ -23,7 +23,7 @@ public class ResourceCommandHandlerTests : IDisposable
             ["TV", "Video Conference", "tv ", ""]);
 
         await using var context = _database.CreateContext();
-        var dto = await new CreateResourceCommandHandler(context).Handle(command, CancellationToken.None);
+        var dto = await new CreateResourceCommandHandler(context, TestAccess.Admin, new Moq.Mock<SmartDesk.Application.Common.Interfaces.IUserAccounts>(Moq.MockBehavior.Strict).Object, TestAccess.Reader()).Handle(command, CancellationToken.None);
 
         dto.Name.Should().Be("Meeting Room A");
         dto.ResourceTypeName.Should().Be("Meeting Room");
@@ -43,7 +43,7 @@ public class ResourceCommandHandlerTests : IDisposable
         { Id = Guid.NewGuid() };
 
         await using var context = _database.CreateContext();
-        var act = () => new UpdateResourceCommandHandler(context).Handle(command, CancellationToken.None);
+        var act = () => new UpdateResourceCommandHandler(context, TestAccess.Admin, TestAccess.Reader()).Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -64,7 +64,7 @@ public class ResourceCommandHandlerTests : IDisposable
         { Id = resource.Id };
 
         await using var context = _database.CreateContext();
-        var dto = await new UpdateResourceCommandHandler(context).Handle(command, CancellationToken.None);
+        var dto = await new UpdateResourceCommandHandler(context, TestAccess.Admin, TestAccess.Reader()).Handle(command, CancellationToken.None);
 
         dto.Name.Should().Be("Meeting Room A (renovated)");
         dto.Capacity.Should().Be(10);

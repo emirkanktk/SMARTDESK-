@@ -30,6 +30,19 @@ public sealed class DemoResourceSeeder(SmartDeskDbContext dbContext, ILogger<Dem
             Create("Camera C-1", ResourceTypeSeedData.CameraId, 1, "IT Storage", ResourceStatus.Maintenance, "4K"),
         };
 
+        // Two resources belong to the demo manager's team (ADR-0022); the rest are shared.
+        var demoTeam = await dbContext.Users
+            .Where(u => u.NormalizedEmail == "MANAGER@SMARTDESK.LOCAL")
+            .Select(u => (Guid?)u.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (demoTeam is { } teamId)
+        {
+            foreach (var resource in resources.Where(r => r.Name is "Meeting Room B" or "Projector P-1"))
+            {
+                resource.Teams.Add(new ResourceTeam { TeamId = teamId });
+            }
+        }
+
         dbContext.Resources.AddRange(resources);
         await dbContext.SaveChangesAsync(cancellationToken);
 

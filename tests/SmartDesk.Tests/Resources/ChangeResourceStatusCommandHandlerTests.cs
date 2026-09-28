@@ -16,7 +16,7 @@ public class ChangeResourceStatusCommandHandlerTests : IDisposable
     private async Task<Application.Features.Resources.Common.ResourceDto> ChangeAsync(Guid id, ResourceStatus status)
     {
         await using var context = _database.CreateContext();
-        return await new ChangeResourceStatusCommandHandler(context)
+        return await new ChangeResourceStatusCommandHandler(context, TestAccess.Admin, TestAccess.Reader())
             .Handle(new ChangeResourceStatusCommand(status) { Id = id }, CancellationToken.None);
     }
 

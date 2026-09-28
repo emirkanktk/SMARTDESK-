@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
@@ -8,7 +9,7 @@ using SmartDesk.Domain.Enums;
 
 namespace SmartDesk.Application.Features.Accounts.Commands.ChangeAccountRole;
 
-public sealed class ChangeAccountRoleCommandHandler(IUserAccounts accounts, ICurrentUserService currentUser)
+public sealed class ChangeAccountRoleCommandHandler(IUserAccounts accounts, ICurrentUserService currentUser, IApplicationDbContext db)
     : IRequestHandler<ChangeAccountRoleCommand, UserAccount>
 {
     public async Task<UserAccount> Handle(ChangeAccountRoleCommand request, CancellationToken cancellationToken)
@@ -37,6 +38,17 @@ public sealed class ChangeAccountRoleCommandHandler(IUserAccounts accounts, ICur
         {
             throw new ConflictException(
                 $"{account.DisplayName} still has {account.TeamSize} team member(s). Move them to another manager or remove them from the team first.");
+        }
+
+        // Their team's resources would belong to nobody (ADR-0022).
+        if (account.Role == Roles.Manager)
+        {
+            var teamResources = await db.ResourceTeams.CountAsync(t => t.TeamId == account.Id, cancellationToken);
+            if (teamResources > 0)
+            {
+                throw new ConflictException(
+                    $"{account.DisplayName}'s team still has {teamResources} resource(s). Make them shared or give them to another team first.");
+            }
         }
 
         await LastAdminGuard.ChangeAsync(

@@ -120,6 +120,24 @@ public sealed class AccountManagementTests : IDisposable
     }
 
     [Fact]
+    public async Task AManagerWhoseTeamHasResources_CantBeGivenAnotherRole()
+    {
+        await AdminAsync();
+        var manager = await _host.AddUserAsync("zeynep@company.example", Roles.Manager, firstName: "Zeynep", lastName: "Kaya");
+        var room = await _host.Database.AddResourceAsync("Meeting Room B");
+        await using (var context = _host.Database.CreateContext())
+        {
+            context.ResourceTeams.Add(new SmartDesk.Domain.Entities.ResourceTeam { ResourceId = room.Id, TeamId = manager });
+            await context.SaveChangesAsync();
+        }
+
+        var act = () => AsAdmin(new ChangeAccountRoleCommand(Roles.Employee) { Id = manager });
+
+        await act.Should().ThrowAsync<ConflictException>().WithMessage("Zeynep Kaya's team still has 1 resource(s).*");
+        (await _host.FindAsync(manager))!.Role.Should().Be(Roles.Manager);
+    }
+
+    [Fact]
     public async Task NobodyChangesTheirOwnRole_OrAWaitingSignUps()
     {
         await AdminAsync();

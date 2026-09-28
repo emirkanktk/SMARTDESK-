@@ -36,6 +36,7 @@ public sealed class AccountsTestHost : IDisposable
         services.AddMemoryCache();
         services.AddSingleton(TimeProvider.System);
         services.AddScoped(_ => _database.CreateContext());
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<SmartDeskDbContext>());
         services
             .AddIdentityCore<ApplicationUser>(options => options.User.RequireUniqueEmail = true)
             .AddRoles<IdentityRole<Guid>>()

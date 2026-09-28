@@ -20,7 +20,7 @@ public class GetReservationByIdQueryHandlerTests : IDisposable
         var reservation = await _database.AddReservationAsync(room.Id, start, start.AddHours(1), userId: owner);
 
         await using var context = _database.CreateContext();
-        var dto = await new GetReservationByIdQueryHandler(context, new FakeIdentityService(new Dictionary<Guid, string> { [owner] = "Mehmet Demir" }))
+        var dto = await new GetReservationByIdQueryHandler(context, TestAccess.Admin, new FakeIdentityService(new Dictionary<Guid, string> { [owner] = "Mehmet Demir" }))
             .Handle(new GetReservationByIdQuery(reservation.Id), CancellationToken.None);
 
         dto.ResourceName.Should().Be("Meeting Room A");
@@ -31,7 +31,7 @@ public class GetReservationByIdQueryHandlerTests : IDisposable
     public async Task Handle_UnknownId_ThrowsNotFound()
     {
         await using var context = _database.CreateContext();
-        var act = () => new GetReservationByIdQueryHandler(context, new FakeIdentityService())
+        var act = () => new GetReservationByIdQueryHandler(context, TestAccess.Admin, new FakeIdentityService())
             .Handle(new GetReservationByIdQuery(Guid.NewGuid()), CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();

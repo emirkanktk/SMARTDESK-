@@ -19,6 +19,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<ResourceFeature> ResourceFeatures => Set<ResourceFeature>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<ResourceBlock> ResourceBlocks => Set<ResourceBlock>();
+    public DbSet<ResourceTeam> ResourceTeams => Set<ResourceTeam>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -54,6 +55,18 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 .WithMany(rt => rt.Resources)
                 .HasForeignKey(e => e.ResourceTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ADR-0022. The team id is a Manager's account id, with no foreign key across the
+        // Identity boundary; indexed for "which resources does this team have".
+        builder.Entity<ResourceTeam>(entity =>
+        {
+            entity.HasKey(e => new { e.ResourceId, e.TeamId });
+            entity.HasIndex(e => e.TeamId);
+            entity.HasOne(e => e.Resource)
+                .WithMany(r => r.Teams)
+                .HasForeignKey(e => e.ResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<ResourceFeature>(entity =>

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using SmartDesk.Application.Common.Interfaces;
 
@@ -8,31 +7,74 @@ namespace SmartDesk.API.Hubs;
 // The bearer token is only checked when a connection opens; without this a disabled user's
 // tab would keep receiving reservation events until it happened to reconnect. Aborting makes
 // the client reconnect, and the reconnect goes through the token checks again.
+//
+// One lock for everything: connections open and close rarely, and a lock keeps "remove the
+// user once their last connection closes" from racing a new connection being added.
 public sealed class HubConnectionRegistry : IRealtimeSessions
 {
-    private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<string, HubCallerContext>> _byUser = new();
+    private readonly Lock _gate = new();
+    private readonly Dictionary<Guid, Dictionary<string, HubCallerContext>> _byUser = [];
 
-    public void Add(Guid userId, HubCallerContext connection) =>
-        _byUser.GetOrAdd(userId, _ => new()).TryAdd(connection.ConnectionId, connection);
-
-    public void Remove(Guid userId, string connectionId)
+    public void Add(Guid userId, HubCallerContext connection)
     {
-        if (_byUser.TryGetValue(userId, out var connections))
+        lock (_gate)
         {
-            connections.TryRemove(connectionId, out _);
+            if (!_byUser.TryGetValue(userId, out var connections))
+            {
+                _byUser[userId] = connections = [];
+            }
+
+            connections[connection.ConnectionId] = connection;
         }
     }
 
-    public int CountFor(Guid userId) => _byUser.TryGetValue(userId, out var connections) ? connections.Count : 0;
+    public void Remove(Guid userId, string connectionId)
+    {
+        lock (_gate)
+        {
+            if (_byUser.TryGetValue(userId, out var connections)
+                && connections.Remove(connectionId)
+                && connections.Count == 0)
+            {
+                _byUser.Remove(userId);
+            }
+        }
+    }
+
+    public int CountFor(Guid userId)
+    {
+        lock (_gate)
+        {
+            return _byUser.TryGetValue(userId, out var connections) ? connections.Count : 0;
+        }
+    }
+
+    public int UsersConnected
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _byUser.Count;
+            }
+        }
+    }
 
     public void End(Guid userId)
     {
-        if (!_byUser.TryRemove(userId, out var connections))
+        List<HubCallerContext> toAbort;
+        lock (_gate)
         {
-            return;
+            if (!_byUser.Remove(userId, out var connections))
+            {
+                return;
+            }
+
+            toAbort = [.. connections.Values];
         }
 
-        foreach (var connection in connections.Values)
+        // Outside the lock: Abort runs the connection's close handlers, which call Remove.
+        foreach (var connection in toAbort)
         {
             connection.Abort();
         }

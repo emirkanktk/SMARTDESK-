@@ -16,4 +16,7 @@ public class Resource
     public ICollection<ResourceFeature> Features { get; set; } = new List<ResourceFeature>();
     public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
     public ICollection<ResourceBlock> Blocks { get; set; } = new List<ResourceBlock>();
+
+    // The teams that may use it; none means everyone may (ADR-0022).
+    public ICollection<ResourceTeam> Teams { get; set; } = new List<ResourceTeam>();
 }

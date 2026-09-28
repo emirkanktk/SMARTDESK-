@@ -7,14 +7,13 @@ using SmartDesk.Domain.Entities;
 
 namespace SmartDesk.Application.Features.Resources.Queries.GetResourceById;
 
-public sealed class GetResourceByIdQueryHandler(IApplicationDbContext db)
+public sealed class GetResourceByIdQueryHandler(IApplicationDbContext db, ICurrentUserService currentUser, ResourceReader reader)
     : IRequestHandler<GetResourceByIdQuery, ResourceDto>
 {
+    // Another team's resource is "not found", like one that doesn't exist (ADR-0022).
     public async Task<ResourceDto> Handle(GetResourceByIdQuery request, CancellationToken cancellationToken) =>
-        await db.Resources
-            .AsNoTracking()
-            .Where(r => r.Id == request.Id)
-            .Select(ResourceDto.Projection)
-            .SingleOrDefaultAsync(cancellationToken)
+        await reader.FindAsync(
+            db.Resources.AsNoTracking().UsableBy(currentUser).Where(r => r.Id == request.Id),
+            cancellationToken)
         ?? throw new NotFoundException(nameof(Resource), request.Id);
 }
