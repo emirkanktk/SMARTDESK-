@@ -158,6 +158,60 @@ describe('ResourceForm', () => {
     expect(navigateByUrl).not.toHaveBeenCalled();
   });
 
+  it('asks for a whole number of people', async () => {
+    await render();
+    await fillValidForm();
+    await type('#capacity', '2.5');
+    await submit();
+
+    expect(element.textContent).toContain('Enter a whole number.');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('stops at 20 features, like the API', async () => {
+    await render();
+    for (let i = 1; i <= 20; i++) {
+      await addFeature(`Feature ${i}`);
+    }
+    expect(element.textContent).not.toContain('at most 20 features');
+
+    await addFeature('Feature 21');
+
+    expect(element.textContent).toContain('A resource can have at most 20 features.');
+    expect(element.textContent).not.toContain('Feature 21');
+  });
+
+  it('keeps the API messages no field can take above the form', async () => {
+    create.mockReturnValue(
+      throwError(() => new ApiError(400, 'Invalid', null, { Other: ['Something else is wrong.'] })),
+    );
+    await render();
+    await fillValidForm();
+    await submit();
+
+    expect(element.querySelector('[role="alert"]')!.textContent!.trim()).toBe(
+      'Something else is wrong.',
+    );
+  });
+
+  it('keeps a note on the form when saving fails otherwise', async () => {
+    create.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+    await render();
+    await fillValidForm();
+    await submit();
+
+    expect(element.textContent).toContain('The resource could not be saved.');
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('says so when the resource types cannot be loaded', async () => {
+    TestBed.inject(ResourceService).getResourceTypes = () =>
+      throwError(() => new ApiError(500, 'Server error'));
+    await render();
+
+    expect(element.textContent).toContain('Resource types could not be loaded.');
+  });
+
   it('loads an existing resource and saves it with its status', async () => {
     await render('res-1');
 
