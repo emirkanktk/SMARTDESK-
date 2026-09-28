@@ -12,9 +12,10 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt }`. 400 if a field is missing/malformed, 401 on wrong credentials. With the right password, 403 for an account that isn't active yet or any more (see below). |
-| POST | `/api/auth/register` | none | `RegisterCommand` | body: `{ firstName, lastName, email, password }` → **202** for valid input, whether or not the email already has an account. Signs up a **Manager** who waits for an Admin's approval (ADR-0020). 400 for missing/malformed fields, or with `Password`: Identity's reasons for refusing it. |
-| GET | `/api/auth/me` | any authenticated user | `GetCurrentUserQuery` | → `{ id, firstName, lastName, email, roles: string[] }` |
+| POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt, passwordChangeRequired }`. 400 if a field is missing/malformed, 401 on wrong credentials. With the right password, 403 for an account that isn't active yet or any more (see below). `passwordChangeRequired: true` means the password was set by someone else and must be changed first (ADR-0021). |
+| POST | `/api/auth/register` | none | `RegisterCommand` | body: `{ firstName, lastName, email, password, managerEmail? }` → **202** for valid input, whether or not the email already has an account. Without `managerEmail`: a **Manager** who waits for an Admin's approval (ADR-0020). With it: an **Employee** asking to join that manager's team, who waits for that manager's approval (ADR-0021). 400 for missing/malformed fields (`managerEmail` must be a valid address and not the applicant's own), or with `Password`: Identity's reasons for refusing it. |
+| GET | `/api/auth/me` | any authenticated user | `GetCurrentUserQuery` | → `{ id, firstName, lastName, email, roles: string[] }`. Also answers while a password change is required. |
+| POST | `/api/auth/change-password` | any authenticated user | `ChangePasswordCommand` | body: `{ currentPassword, newPassword }` → 200 `{ accessToken, expiresAt, passwordChangeRequired: false }` - a **new token**, because every other session of the account ends (ADR-0021). 400 with `CurrentPassword`: "The current password is wrong.", or with `NewPassword`: Identity's reasons, or "Choose a password different from the current one.". Answers while a password change is required. Shares the sign-in rate limit. |
 | POST | `/api/auth/forgot-password` | none | `ForgotPasswordCommand` | body: `{ email }` → **202** always, whether or not an account has this email. For one that does, a reset link is emailed. 400 for a malformed email. |
 | POST | `/api/auth/reset-password` | none | `ResetPasswordCommand` | body: `{ email, token, newPassword }` (email and token come from the emailed link) → 204. 400 with `Token`: "This reset link is invalid or has expired. Ask for a new one." (wrong, used, expired, or another email's token), or with `NewPassword`: Identity's reasons for refusing the password. |
 
@@ -29,20 +30,34 @@ All endpoints are under `/api`. Authenticated endpoints expect `Authorization: B
 - The access token is valid for `Jwt:AccessTokenLifetimeMinutes` (60 by default); there is no
   refresh token yet - on a 401 the frontend sends the user back to login.
 - Token claims: `sub` (user id), `email`, `given_name`, `family_name`, one `role` claim per
-  role (`Admin` / `Manager` / `Employee`).
+  role (`Admin` / `Manager` / `Employee`), and `sst` - a digest of the account's security
+  stamp when the token was issued (ADR-0021). The user's team and a pending password change
+  are never read from the token; the server looks them up on each request.
 - **Account status (ADR-0020).** Signing in with the right password to an account that can't
-  be used answers 403 with a message to show as-is: `"Your account is waiting for an
-  administrator's approval. We'll email you when it's ready."` or `"Your account has been
-  disabled. Contact your administrator."`. A wrong password still gets the plain 401, so these
+  be used answers 403 with a message to show as-is: `"Your account is waiting for approval.
+  We'll email you when it's ready."` or `"Your account has been disabled. Contact your
+  administrator."`. A wrong password still gets the plain 401, so these
   say nothing to someone guessing emails.
 - **A token only works while its account does.** On every request the token's user must
-  still be Active and hold exactly the roles the token lists. Once an account is disabled or
-  its role changes, its existing tokens get **401** on the next request (the answer is cached
-  for up to 30 seconds, and dropped at once when SmartDesk itself makes the change), and the
-  frontend sends the user back to sign in - after a role change, to pick up the new role.
-- **Sign-up (ADR-0020).** A new email becomes a Manager account with status
-  `PendingApproval`; the applicant gets a "we've received your sign-up" email and every
-  active Admin gets one linking to `{App:FrontendUrl}/admin/users`. An email that already has
+  still be Active, hold exactly the roles the token lists, and have the security stamp the
+  token was issued under. Once an account is disabled, its role changes or its password changes
+  (by the owner, a reset link, or a temporary password), its existing tokens get **401** on the
+  next request (the answer is cached for up to 30 seconds, and dropped at once when SmartDesk
+  itself makes the change), and its open real-time connections are cut. The frontend sends the
+  user back to sign in.
+- **Temporary passwords (ADR-0021).** An account created by an Admin or a Manager, or given a
+  temporary password by one, must choose its own password first. Until it does, every endpoint
+  except `GET /api/auth/me` and `POST /api/auth/change-password` answers **403** with
+  `"code": "password-change-required"` in the ProblemDetails. The temporary password is never
+  emailed; the owner is only told that it was set.
+- **Sign-up (ADR-0020, ADR-0021).** Without `managerEmail`, a new email becomes a Manager
+  account with status `PendingApproval`; the applicant gets a "we've received your sign-up"
+  email and every active Admin gets one linking to `{App:FrontendUrl}/admin/users`. With
+  `managerEmail`, it becomes a pending Employee: if the address is an active Manager's, the
+  request joins their team and that manager is emailed a link to `{App:FrontendUrl}/team`;
+  otherwise (unknown, not a manager, disabled or still waiting) it has no team and every active
+  Admin is emailed, with the address the applicant typed. The applicant's email is the same
+  either way, so the form can't be used to find out who the managers are. An email that already has
   an account changes nothing: its owner gets a "you already have an account" email instead,
   and the answer is the same 202. Password rules are checked before the email is looked up,
   so a weak password is refused the same way in both cases. Shares the sign-in rate limit.
@@ -61,25 +76,27 @@ Every account, for Admins (ADR-0020). An account is returned as:
 {
   "id": "…", "firstName": "Mehmet", "lastName": "Demir", "displayName": "Mehmet Demir",
   "email": "employee2@smartdesk.local", "role": "Employee", "status": "Active",
-  "managerId": "…", "managerName": "Zeynep Kaya", "createdAt": "2026-09-28T07:20:00Z", "teamSize": 0
+  "managerId": "…", "managerName": "Zeynep Kaya", "createdAt": "2026-09-28T07:20:00Z", "teamSize": 0,
+  "mustChangePassword": false
 }
 ```
 
 `role` is one of `Admin`, `Manager`, `Employee`; `status` one of `Active`, `PendingApproval`,
 `Disabled`. `managerId`/`managerName` are set only for an Employee in a team; `teamSize` is
-the number of Employees whose manager this account is.
+the number of Employees whose manager this account is, requests to join included;
+`mustChangePassword` is true until the owner replaces a temporary password.
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
 | GET | `/api/users?status=&role=&search=` | Admin | `GetAccountsQuery` | → `[account]`. Sign-ups waiting for approval first, then by name. `search` matches name or email, case-insensitive. Unknown `role` → 400. |
-| POST | `/api/users` | Admin | `CreateAccountCommand` | body: `{ firstName, lastName, email, role, managerId? }` → 201 with the account. It's Active but has no password: its owner is emailed a link to choose one (valid 2 hours; after that, "Forgot password" works). `managerId` only for an Employee, and must be an active Manager (400 otherwise). Email already used → 409. |
-| POST | `/api/users/{id}/approve` | Admin | `ApproveAccountCommand` | → 200 with the account, now Active; the owner is emailed. 409 unless it's waiting for approval. |
+| POST | `/api/users` | Admin | `CreateAccountCommand` | body: `{ firstName, lastName, email, role, password, managerId? }` → 201 with the account. Active, with `password` as a temporary password the Admin hands over; the owner must change it at first sign-in, and is emailed that the account exists (without the password). 400 with `Password`: Identity's reasons. `managerId` only for an Employee, and must be an active Manager (400 otherwise). Email already used → 409. |
+| POST | `/api/users/{id}/approve` | Admin | `ApproveAccountCommand` | optional body `{ managerId }` puts an Employee into that team on the way (400 if not an active Manager; 409 for a Manager sign-up) → 200 with the account, now Active; the owner is emailed. 409 unless it's waiting for approval. |
 | POST | `/api/users/{id}/reject` | Admin | `RejectAccountCommand` | → 204. Deletes the waiting sign-up (so the email can sign up again) and emails the applicant. 409 unless it's waiting for approval - a used account is disabled instead. |
 | PATCH | `/api/users/{id}/role` | Admin | `ChangeAccountRoleCommand` | body: `{ "role": "Manager" }` → 200 with the account. Becoming a Manager or Admin takes an Employee out of their team. 409 for: your own account; a sign-up waiting for approval; a Manager who still has team members (`"Zeynep Kaya still has 2 team member(s). Move them to another manager or remove them from the team first."`); the last active Admin. Same role again is a no-op. |
 | PATCH | `/api/users/{id}/manager` | Admin | `AssignManagerCommand` | body: `{ "managerId": "…" }` or `{ "managerId": null }` → 200 with the account. Moves an Employee into that Manager's team, or out of any team. 409 if the account isn't an Employee; 400 (`managerId`) if the manager isn't an active Manager. |
 | POST | `/api/users/{id}/disable` | Admin | `SetAccountStatusCommand` | → 200 with the account, now Disabled: it can't sign in, and its tokens stop working. 409 for your own account, a sign-up waiting for approval (approve or reject it instead), or the last active Admin. Already disabled is a no-op. Reservations are kept. |
 | POST | `/api/users/{id}/enable` | Admin | `SetAccountStatusCommand` | → 200 with the account, Active again. |
-| POST | `/api/users/{id}/password-reset` | Admin | `SendPasswordResetCommand` | → 202. Emails the owner the same reset link as "Forgot password"; nobody else sees or sets the password, and the old one works until the link is used. 409 unless the account is Active. |
+| POST | `/api/users/{id}/password` | Admin | `SetTemporaryPasswordCommand` | body: `{ password }` → 200 with the account. A temporary password the owner must replace at their next sign-in; all their sessions end, a lockout is lifted, and they're emailed that it happened (without the password). 400 with `Password`: Identity's reasons (nothing changes then). 409 for your own account (change it under your account instead) or a sign-up waiting for approval. |
 
 All of them: unknown `id` → 404, non-Admin → 403.
 
@@ -90,12 +107,14 @@ another Manager, an Admin - answers **404**, the same as an id that doesn't exis
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| GET | `/api/team` | Manager | `GetMyTeamQuery` | → `[account]` (shape above), the caller's team members by name |
-| POST | `/api/team/members` | Manager | `AddTeamMemberCommand` | body: `{ firstName, lastName, email }` → 201 with the new account: an Active Employee in the caller's team, emailed a link to choose a password (as for `POST /api/users`). Email already used → 409. |
-| DELETE | `/api/team/members/{id}` | Manager | `RemoveTeamMemberCommand` | → 204. Takes them out of the team; the account stays, without a team, until an Admin moves or disables it. |
+| GET | `/api/team` | Manager | `GetMyTeamQuery` | → `[account]` (shape above): requests to join the team (`PendingApproval`) first, then the members by name |
+| POST | `/api/team/members` | Manager | `AddTeamMemberCommand` | body: `{ firstName, lastName, email, password }` → 201 with the new account: an Active Employee in the caller's team, with a temporary password (as for `POST /api/users`). Email already used → 409. |
+| POST | `/api/team/requests/{id}/approve` | Manager | `ApproveAccountCommand` | → 200 with the account: a request to join the caller's team, now an Active member; the applicant is emailed. 409 unless it's waiting. |
+| POST | `/api/team/requests/{id}/reject` | Manager | `RejectAccountCommand` | → 204. Deletes the request and emails the applicant. |
+| DELETE | `/api/team/members/{id}` | Manager | `RemoveTeamMemberCommand` | → 204. Takes them out of the team; the account stays, without a team, until an Admin moves or disables it. 409 for a request to join (approve or reject it instead). |
 | POST | `/api/team/members/{id}/disable` | Manager | `SetAccountStatusCommand` | → 200 with the account; as for `/api/users/{id}/disable` |
 | POST | `/api/team/members/{id}/enable` | Manager | `SetAccountStatusCommand` | → 200 with the account |
-| POST | `/api/team/members/{id}/password-reset` | Manager | `SendPasswordResetCommand` | → 202; as for `/api/users/{id}/password-reset` |
+| POST | `/api/team/members/{id}/password` | Manager | `SetTemporaryPasswordCommand` | body: `{ password }` → 200 with the account; as for `/api/users/{id}/password` |
 
 ## Resource types
 

@@ -425,3 +425,49 @@ new tables.
   aren't cut when an account is disabled: they keep receiving calendar events until they
   reconnect. A disabled user's future reservations stay booked until an Admin cancels them.
   Invitation links last 2 hours like any reset link, and "Forgot password" issues a new one.
+
+## ADR-0021: Employees join a team through their manager; accounts made by others get temporary passwords
+
+**Decision:**
+- **Joining a team:** the public sign-up takes an optional manager's email. With it, the
+  applicant becomes a pending Employee. If the address is an active Manager's, the request
+  joins that team, and that manager approves or rejects it under My team
+  (`/api/team/requests/{id}/approve|reject`). Otherwise the request has no team, and the
+  Admins get an email with the address the applicant typed; an Admin can approve it into a
+  team (`POST /api/users/{id}/approve` with `managerId`). Without a manager's email, sign-up is
+  a Manager waiting for an Admin, as in ADR-0020.
+- **Accounts made by an Admin or a Manager** get a temporary password chosen by that person
+  and handed over in person. The account is flagged `MustChangePassword`. The owner is emailed
+  that the account exists, never the password. The emailed invitation link from ADR-0020 is
+  gone. An Admin (anyone) or a Manager (their team) can set a new temporary password later
+  (`/api/users/{id}/password`, `/api/team/members/{id}/password`). That flags the account
+  again, ends its sessions, lifts a lockout, and tells the owner by email.
+- **Forced change on the server:** while the flag is set, every endpoint except
+  `GET /api/auth/me` and `POST /api/auth/change-password` answers 403 with
+  `code: password-change-required` (`PasswordChangeGate`, after authorization). Changing the
+  password, or a reset link (ADR-0019), clears the flag.
+- **Sessions follow the password:** tokens carry `sst`, a digest of the security stamp they
+  were issued under, and `OnTokenValidated` compares it with the account's current stamp.
+  Identity moves the stamp on every password change, so each change ends all earlier sessions.
+  `change-password` returns a fresh token for the session that made it.
+- **Team and flags come from the server:** `OnTokenValidated` adds the user's current team and
+  the "must change password" state to the request, from the same cached access check as the
+  status and roles. It strips any such claims a token might carry.
+- **Real-time connections end with the access:** `HubConnectionRegistry` keeps each user's hub
+  connections. Every account change aborts them, so the client reconnects through the token
+  checks again. This closes the gap noted in the #53 review.
+
+**Why:**
+- An employee knows who their manager is. Asking for that address routes the request to the
+  one person who can vouch for them. Sending unknown addresses to the Admins, with an identical
+  applicant email, means the form can't be used to find out who the managers are.
+- A temporary password handed over in person is how offices usually onboard, and it doesn't
+  depend on the new person's mailbox working on day one. Forcing the change on the server
+  makes sure a password someone else knew is never the one in use. Hiding screens in the
+  frontend would leave the API itself open.
+- Tying tokens to the security stamp is the standard way to make "change your password" also
+  mean "sign out everywhere". Identity already maintains the stamp, and the check rides on the
+  lookup ADR-0020 does anyway.
+- **Trade-offs:** tokens issued before this change have no `sst`, so everyone signs in once
+  more after the upgrade. The 30-second cache and the connection registry are per process
+  (ADR-0020's note on several instances applies).
