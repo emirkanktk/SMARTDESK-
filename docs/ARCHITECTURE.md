@@ -179,7 +179,7 @@ gate `Admin`-only routes (e.g. resource management).
 frontend/src/app/
   core/
     constants/       Roles (mirrors SmartDesk.Domain.Constants.Roles)
-    guards/          authGuard, guestGuard, roleGuard(...roles) / adminGuard
+    guards/          authGuard, guestGuard, sessionGuard, roleGuard(...roles) / adminGuard, managerGuard
     interceptors/    jwtInterceptor, errorInterceptor, ANONYMOUS_REQUEST,
                      SKIP_ERROR_NOTIFICATION
     models/          request/response types, ApiError
@@ -221,8 +221,12 @@ picker drops seconds and any difference would count as a change.
   is a child of the `Shell` route, which is guarded by `authGuard` (`canActivate` +
   `canActivateChild`). An unauthenticated visit is redirected to `/login?returnUrl=...` and
   sent back after sign-in, and only in-app paths are followed. `adminGuard`
-  (`roleGuard(Roles.Admin)`) protects `/admin` and its sub-screens (`/admin/reports`,
-  `/admin/blocks`), and the resource forms.
+  (`roleGuard(Roles.Admin)`) protects `/admin` and its sub-screens (`/admin/reports`, `/admin/users`,
+  `/admin/blocks`), and the resource forms. `managerGuard` protects `/team`. `/register` is
+  guest-only too. A session whose password was set by someone else is sent to
+  `/change-password` by `authGuard` (and by the error interceptor on the API's
+  `password-change-required` 403); that page needs only a session (`sessionGuard`), and the
+  hub stays disconnected until the password is changed (ADR-0021).
 - **HTTP.** `jwtInterceptor` attaches `Authorization: Bearer` to requests for our own API
   only. `errorInterceptor` then turns every failure into an `ApiError` (status, title,
   detail, field errors from `ProblemDetails`).
