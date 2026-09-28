@@ -7,6 +7,7 @@ import {
   nextHalfHour,
   parseDateParam,
   parseIso,
+  startOfDay,
   startOfWeek,
   toDateParam,
   toDateTimeLocal,
@@ -56,6 +57,10 @@ describe('date-time helpers', () => {
     // Across the end of daylight saving: 25 Oct in Europe, 1 Nov in the US.
     expect(toDateTimeLocal(addDays(new Date(2026, 9, 24, 9, 30), 7))).toBe('2026-10-31T09:30');
     expect(toDateTimeLocal(addDays(new Date(2026, 9, 31, 9, 30), 2))).toBe('2026-11-02T09:30');
+  });
+
+  it('finds local midnight of a day', () => {
+    expect(toDateTimeLocal(startOfDay(new Date(2026, 9, 5, 23, 59)))).toBe('2026-10-05T00:00');
   });
 
   it('finds the Monday that starts the week', () => {

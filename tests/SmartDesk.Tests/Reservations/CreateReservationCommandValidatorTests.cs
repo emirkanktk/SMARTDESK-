@@ -47,4 +47,23 @@ public class CreateReservationCommandValidatorTests
     public void Validate_EmptyResourceId_Fails() =>
         _validator.Validate(new CreateReservationCommand(Guid.Empty, NowUtc.AddHours(1), NowUtc.AddHours(2), null))
             .Errors.Should().ContainSingle(e => e.PropertyName == nameof(CreateReservationCommand.ResourceId));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(5)]
+    [InlineData(15)]
+    [InlineData(30)]
+    [InlineData(60)]
+    public void Validate_OfferedReminder_Passes(int? minutes) =>
+        _validator.Validate(new CreateReservationCommand(Guid.NewGuid(), NowUtc.AddHours(1), NowUtc.AddHours(2), null, minutes))
+            .IsValid.Should().BeTrue();
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(10)]
+    [InlineData(90)]
+    [InlineData(-15)]
+    public void Validate_ReminderNotOffered_Fails(int minutes) =>
+        _validator.Validate(new CreateReservationCommand(Guid.NewGuid(), NowUtc.AddHours(1), NowUtc.AddHours(2), null, minutes))
+            .Errors.Should().ContainSingle(e => e.PropertyName == nameof(CreateReservationCommand.ReminderMinutes));
 }

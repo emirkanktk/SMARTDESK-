@@ -228,3 +228,112 @@ fact, and the office is one company, so a group per resource would only matter o
 connection count makes a full broadcast noisy. The hub stays `[Authorize]`, so anonymous
 browsers never receive the payload. Swallowing a failed push keeps the write path
 independent of who happens to be connected.
+
+## ADR-0015: Resource blocks - time-boxed unavailability that never overrides a booking
+
+**Decision:**
+- An Admin can block a resource for one `[start, end)` window with a required reason, stored
+  as `ResourceBlock`. This is separate from `ResourceStatus.Maintenance`, which takes a
+  resource out indefinitely.
+- While the block exists, booking or moving a reservation into the window gets a 409 that
+  quotes the reason, and the availability search leaves the resource out.
+- A block can't be created over `Confirmed` reservations. The 409 says how many overlap,
+  and the admin cancels or moves those first with the existing endpoints. Nor can it
+  overlap another block on the same resource.
+- Creating a block takes the per-resource lock from ADR-0011, and so does every booking.
+  The booking checks (exists, Active, not blocked, no overlap) live in one place,
+  `BookingGuard`, which create and update both call.
+
+**Why:**
+- The brief lists "Kaynak bakım/bloke zamanları" as a bonus. `Maintenance` status is all or
+  nothing: it can't express "unavailable Thursday 10:00-14:00".
+- Cancelling people's reservations automatically when a block lands would be a silent side
+  effect with real consequences. Refusing, and saying how many are in the way, keeps that
+  decision with a person.
+- Sharing the booking lock is what makes the two kinds of claim mutually exclusive without
+  a cross-table database constraint, which PostgreSQL can't express. Tested with a block and
+  a booking for the same slot released at the same instant, over 12 rounds: exactly one
+  succeeded each time, with no errors or deadlocks.
+- Blocks deliberately have no exclusion constraint of their own. They're Admin-only and
+  always written under the lock, so the lock already rules out duplicates. Reservations
+  keep theirs because of the brief's explicit concurrency rule.
+
+## ADR-0016: The first admin of a deployed environment comes from configuration
+
+**Decision:** Outside Development, where ADR-0007 seeds no users, `BootstrapAdmin:Email`
+and `BootstrapAdmin:Password` (environment variables or a secret store) name the first admin.
+On every startup `BootstrapAdminSeeder` creates that account if it doesn't exist and adds it
+to the `Admin` role if it isn't there. It never changes an existing account's password.
+Setting only one of the two fails startup (`ValidateOnStart`). With neither set and no admin
+in the database, it logs a warning. It runs after the demo users, so it works the same in
+Development.
+
+**Why:**
+- Without it, a deployed database has roles but no users, and there's no endpoint to create
+  one. The only way in would be hand-written SQL against Identity's tables.
+- Configuration rather than a sign-up endpoint: nothing about it is reachable over HTTP, and
+  the password lives where the other secrets live (ADR-0005).
+- Never resetting an existing password means leaving the variables in place is harmless. An
+  admin who changed their password isn't overwritten on the next restart, and removing the
+  variables later changes nothing.
+- An existing account with that email is promoted rather than refused. That's the useful
+  reading of "make this person the admin" when they already have an account.
+
+## ADR-0017: The usage report measures the office day, in the admin's time zone
+
+**Decision:** `GET /api/reports/usage` (Admin) reports on whole local days, `from` to `to`
+(at most 92), in the caller's IANA time zone, the same way as the dashboard (ADR-0012). For
+each resource, and summed per type and in total, it gives two figures:
+- `bookedHours`: all the confirmed booked time inside the range
+- `utilization`: the share of the office day that was booked, where the office day is Monday
+  to Friday, 09:00-18:00 local (`ReportRules`)
+
+It also lists the reservation and cancellation counts and the five people with the most
+booked hours. It's computed in memory from the reservations overlapping the range, with no
+new tables.
+
+**Why:**
+- A meeting room is idle every night and weekend by design. Measured against 24/7, a room
+  booked all day every weekday would read 27% and every room would look empty. Against the
+  office day, the same room reads 100%, which is how people talk about it. Booked time outside
+  those hours (a car over the weekend) still shows in `bookedHours`.
+- Local days and local office hours, not UTC: in Istanbul "09:00" is 06:00 UTC, and a day
+  isn't always 24 hours. Each day's window is converted separately, as the dashboard does with
+  midnights.
+- 92 days bounds the work per request (one query, a few thousand rows at most), and a quarter
+  covers the reviews an admin runs. Computing in C# keeps the clipping to office hours per day
+  readable and unit-testable, which in SQL it wouldn't be.
+- Rows are Active resources plus anything with reservations in the range. A retired room still
+  shows what it was used for, while resources retired long ago don't pad the totals with zeros.
+  Past status changes aren't recorded, so availability counts every listed resource for the
+  whole range, and blocked windows aren't subtracted. The numbers are "roughly how full", not
+  billing.
+
+## ADR-0018: Reservation reminders go to the owner over SignalR, once, from a background job
+
+**Decision:**
+- **Choice:** the owner chooses a reminder per reservation, 5, 15, 30 or 60 minutes before the
+  start, or none. It's stored on the reservation as `ReminderMinutes`, with `ReminderSentAt`.
+- **Sending:** a hosted service (`ReservationReminderWorker`) runs `SendDueRemindersCommand`
+  every 30 seconds. It finds reminders whose moment has passed for Confirmed reservations that
+  haven't started, marks each one sent under the reservation's lock (the same lock update and
+  cancel take, ADR-0013), and then sends `ReservationStartingSoon` to the owner only, with
+  `Clients.User`.
+- **Re-arming:** moving the start, or choosing another reminder, clears `ReminderSentAt`.
+- **Delivery:** in-app, plus a desktop notification when the browser allows one. No email.
+
+**Why:**
+- The brief lists "Rezervasyon başlamadan önce bildirim" as a bonus. The hub and the per-user
+  identity SignalR already has, from the token's subject, make "tell this user" one call, with
+  no mail server, templates or addresses to manage.
+- Per reservation, not a global setting: a 15-minute nudge suits a room down the hall, while a
+  company car across town wants an hour.
+- Marking before sending, under the lock, means exactly-once is decided in the database. A
+  reservation moved or cancelled while its reminder was being prepared is re-read, and skipped
+  if it's no longer due. A failed push is then lost rather than repeated every 30 seconds, which
+  is the better failure for a nudge.
+- "Due" is decided in memory among the reservations starting within the longest option (an
+  hour), because "start minus this row's minutes" isn't translated the same way by every
+  database provider. A partial index keeps that scan to the rows still waiting.
+- Not queued for offline users: a reminder that arrives after the meeting started is noise.
+  The dashboard already lists your upcoming reservations for when you come back.

@@ -18,6 +18,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<Resource> Resources => Set<Resource>();
     public DbSet<ResourceFeature> ResourceFeatures => Set<ResourceFeature>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
+    public DbSet<ResourceBlock> ResourceBlocks => Set<ResourceBlock>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -65,6 +66,12 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             // CreateReservationCommand will run on every write.
             entity.HasIndex(e => new { e.ResourceId, e.Status, e.StartDateTime, e.EndDateTime });
 
+            // The reminder job (ADR-0018) looks every 30 seconds for reminders still to send
+            // among reservations starting soon; this keeps that to a scan of just those rows.
+            entity.HasIndex(e => e.StartDateTime)
+                .HasDatabaseName("IX_Reservations_PendingReminders")
+                .HasFilter("\"ReminderMinutes\" IS NOT NULL AND \"ReminderSentAt\" IS NULL");
+
             // Business rule 2, enforced by the database as well as the validator.
             entity.ToTable(t => t.HasCheckConstraint(
                 ReservationConstraints.EndAfterStart, "\"EndDateTime\" > \"StartDateTime\""));
@@ -72,6 +79,23 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             // Business rule 1's hard guarantee is a PostgreSQL exclusion constraint
             // (ReservationConstraints.NoOverlap). EF can't model it, so it's created in raw SQL
             // by the AddReservationOverlapConstraint migration - see ADR-0011.
+        });
+
+        builder.Entity<ResourceBlock>(entity =>
+        {
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(200);
+
+            entity.HasOne(e => e.Resource)
+                .WithMany(r => r.Blocks)
+                .HasForeignKey(e => e.ResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Serves both "is this resource blocked for [start, end)?" on every booking and the
+            // calendar's range query.
+            entity.HasIndex(e => new { e.ResourceId, e.StartDateTime, e.EndDateTime });
+
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_ResourceBlocks_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\""));
         });
     }
 

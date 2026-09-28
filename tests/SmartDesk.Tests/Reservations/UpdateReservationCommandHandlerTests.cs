@@ -111,6 +111,43 @@ public class UpdateReservationCommandHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_InProgressOnAResourceNowUnderMaintenance_CanEndEarly()
+    {
+        var room = await _database.AddResourceAsync("Meeting Room A", status: ResourceStatus.Maintenance);
+        var reservation = await ReservationAsync(8.5, 11, room.Id); // started at 08:30, now is 09:00
+
+        var dto = await UpdateAsync(reservation, Move(reservation, 8.5, 9.5));
+
+        dto.EndDateTime.Should().Be(At(9.5));
+        _notifier.Verify(n => n.ReservationUpdatedAsync(It.Is<ReservationDto>(r => r.Id == reservation.Id), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_UpcomingShortenedWithinItsSlotOnAnInactiveResource_IsAllowed()
+    {
+        var room = await _database.AddResourceAsync("Meeting Room A", status: ResourceStatus.Inactive);
+        var reservation = await ReservationAsync(10, 12, room.Id);
+
+        var dto = await UpdateAsync(reservation, Move(reservation, 10.5, 11.5));
+
+        dto.StartDateTime.Should().Be(At(10.5));
+        dto.EndDateTime.Should().Be(At(11.5));
+    }
+
+    [Fact]
+    public async Task Handle_ExtendedOnAResourceNowUnderMaintenance_ThrowsConflictAndKeepsTheOldSlot()
+    {
+        // Growing past its old slot is a new claim, so an inactive resource still refuses it.
+        var room = await _database.AddResourceAsync("Meeting Room A", status: ResourceStatus.Maintenance);
+        var reservation = await ReservationAsync(10, 11, room.Id);
+
+        var act = () => UpdateAsync(reservation, Move(reservation, 10, 12));
+
+        await act.Should().ThrowAsync<ConflictException>().WithMessage("*status: Maintenance*");
+        (await ReloadAsync(reservation.Id)).EndDateTime.Should().Be(At(11));
+    }
+
+    [Fact]
     public async Task Handle_InProgress_EndCanBeExtended()
     {
         var reservation = await ReservationAsync(8.5, 9.5); // started at 08:30, now is 09:00
@@ -176,6 +213,58 @@ public class UpdateReservationCommandHandlerTests : IDisposable
         var dto = await UpdateAsync(reservation, Move(reservation, 12, 13), new FakeCurrentUser(Guid.NewGuid(), Roles.Admin));
         dto.StartDateTime.Should().Be(At(12));
         dto.UserId.Should().Be(OwnerId, "an admin editing a reservation doesn't take it over");
+    }
+
+    private async Task<Reservation> RemindedAsync(double startHour, double endHour, int minutes = 15)
+    {
+        var room = await _database.AddResourceAsync($"Room {Guid.NewGuid():N}");
+        return await _database.AddReservationAsync(
+            room.Id, At(startHour), At(endHour), userId: OwnerId, reminderMinutes: minutes, reminderSentAt: NowUtc);
+    }
+
+    [Fact]
+    public async Task Handle_ANewStart_ClearsASentReminder_SoTheNewTimeIsRemindedToo()
+    {
+        var reservation = await RemindedAsync(10, 11);
+
+        await UpdateAsync(reservation, Move(reservation, 13, 14) with { ReminderMinutes = 15 });
+
+        var stored = await ReloadAsync(reservation.Id);
+        stored.ReminderMinutes.Should().Be(15);
+        stored.ReminderSentAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_OnlyANewEnd_KeepsASentReminder()
+    {
+        var reservation = await RemindedAsync(10, 11);
+
+        await UpdateAsync(reservation, Move(reservation, 10, 12) with { ReminderMinutes = 15 });
+
+        (await ReloadAsync(reservation.Id)).ReminderSentAt.Should().Be(NowUtc);
+    }
+
+    [Fact]
+    public async Task Handle_ANewReminderTime_ClearsTheSentMark_AndBroadcasts()
+    {
+        var reservation = await RemindedAsync(10, 11);
+
+        var dto = await UpdateAsync(reservation, Move(reservation, 10, 11) with { ReminderMinutes = 30 });
+
+        dto.ReminderMinutes.Should().Be(30);
+        (await ReloadAsync(reservation.Id)).ReminderSentAt.Should().BeNull();
+        _notifier.Verify(n => n.ReservationUpdatedAsync(It.IsAny<ReservationDto>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_LeavingTheReminderOut_TurnsItOff()
+    {
+        var reservation = await RemindedAsync(10, 11);
+
+        var dto = await UpdateAsync(reservation, Move(reservation, 10, 11));
+
+        dto.ReminderMinutes.Should().BeNull();
+        (await ReloadAsync(reservation.Id)).ReminderMinutes.Should().BeNull();
     }
 
     [Fact]

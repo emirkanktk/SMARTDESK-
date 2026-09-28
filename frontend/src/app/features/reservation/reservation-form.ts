@@ -15,6 +15,8 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize, map } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import {
+  DEFAULT_REMINDER_MINUTES,
+  REMINDER_OPTIONS,
   RESERVATION_LIMITS,
   Reservation,
   UpdateReservationRequest,
@@ -22,6 +24,7 @@ import {
 import { Resource } from '../../core/models/resource.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
 import {
@@ -69,6 +72,7 @@ export class ReservationForm implements OnInit {
   private readonly resourceService = inject(ResourceService);
   private readonly authService = inject(AuthService);
   private readonly notifications = inject(NotificationService);
+  private readonly reminderAlerts = inject(ReminderAlertsService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly locale = inject(LOCALE_ID);
@@ -81,6 +85,9 @@ export class ReservationForm implements OnInit {
   readonly end = input<string>();
 
   protected readonly limits = L;
+  protected readonly reminderOptions = REMINDER_OPTIONS;
+  /** Desktop notifications turned off in the browser: the reminder then only shows in the app. */
+  protected readonly desktopBlocked = this.reminderAlerts.permission() === 'denied';
 
   protected readonly form = inject(NonNullableFormBuilder).group(
     {
@@ -88,6 +95,7 @@ export class ReservationForm implements OnInit {
       startDateTime: ['', Validators.required],
       endDateTime: ['', Validators.required],
       note: ['', Validators.maxLength(L.noteMaxLength)],
+      reminderMinutes: [DEFAULT_REMINDER_MINUTES as number | null],
     },
     { validators: dateRangeValidator(rangeRules('create')) },
   );
@@ -133,6 +141,7 @@ export class ReservationForm implements OnInit {
   protected readonly loading = signal(false);
   protected readonly loadFailed = signal(false);
   protected readonly saving = signal(false);
+  protected readonly cancelling = signal(false);
   protected readonly formError = signal<string | null>(null);
   /** A 409 from the API, e.g. the slot was taken meanwhile. Its detail is shown as-is. */
   protected readonly conflict = signal<string | null>(null);
@@ -203,6 +212,10 @@ export class ReservationForm implements OnInit {
 
     const body = this.toRequest();
     const reservation = this.reservation();
+    if (body.reminderMinutes !== null) {
+      // Asked here because saving is a user action; asked at page load it would be blocked.
+      this.reminderAlerts.requestPermissionIfUnasked();
+    }
     const request = reservation
       ? this.reservationService.update(reservation.id, body)
       : this.reservationService.create(body);
@@ -275,11 +288,51 @@ export class ReservationForm implements OnInit {
       startDateTime: toDateTimeLocal(start),
       endDateTime: toDateTimeLocal(end),
       note: '',
+      reminderMinutes: DEFAULT_REMINDER_MINUTES,
     });
     if (linkStart && linkEnd && this.form.invalid) {
       this.form.markAllAsTouched(); // e.g. an old link whose start is now in the past
     }
     this.keepDuration();
+  }
+
+  /** Cancels the reservation being changed, for its owner or an admin. */
+  protected cancelReservation(): void {
+    const reservation = this.reservation();
+    if (!reservation) {
+      return;
+    }
+    const someoneElse = this.bookedBy();
+    const owner = someoneElse ? `${someoneElse}'s` : 'your';
+    const when = this.formatRange(reservation);
+    if (!confirm(`Cancel ${owner} ${reservation.resourceName} reservation for ${when}?`)) {
+      return;
+    }
+
+    this.cancelling.set(true);
+    this.formError.set(null);
+    this.conflict.set(null);
+    this.reservationService
+      .cancel(reservation.id)
+      .pipe(finalize(() => this.cancelling.set(false)))
+      .subscribe({
+        next: (cancelled) => {
+          const sentence = owner.charAt(0).toUpperCase() + owner.slice(1);
+          this.notifications.success(
+            `${sentence} ${cancelled.resourceName} reservation for ${when} was cancelled.`,
+          );
+          // Back to the list it most likely came from: your own, or the admin overview.
+          void this.router.navigateByUrl(someoneElse ? '/admin' : '/reservations/mine');
+        },
+        error: (error: unknown) => {
+          if (error instanceof ApiError && error.status === 409) {
+            this.load(reservation.id); // it ended meanwhile: show it read-only, with why
+            return;
+          }
+          // 403/404/5xx already raised a toast; keep a note on the form as well.
+          this.formError.set('The reservation could not be cancelled.');
+        },
+      });
   }
 
   private load(id: string): void {
@@ -325,10 +378,13 @@ export class ReservationForm implements OnInit {
       startDateTime: originalStart,
       endDateTime: toDateTimeLocal(end),
       note: reservation.note ?? '',
+      reminderMinutes: reservation.reminderMinutes,
     });
     if (mode === 'inProgress') {
       this.form.controls.resourceId.disable();
       this.form.controls.startDateTime.disable();
+      // Too late for a reminder; the stored choice is sent back as it is.
+      this.form.controls.reminderMinutes.disable();
     }
     this.keepDuration();
   }
@@ -346,6 +402,7 @@ export class ReservationForm implements OnInit {
       startDateTime: toIso(value.startDateTime, original?.startDateTime),
       endDateTime: toIso(value.endDateTime, original?.endDateTime),
       note: value.note.trim() || null,
+      reminderMinutes: value.reminderMinutes,
     };
   }
 

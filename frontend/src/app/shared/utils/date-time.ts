@@ -68,9 +68,14 @@ export function addDays(date: Date, days: number): Date {
   return result;
 }
 
+/** Local midnight at the start of `date`'s day. */
+export function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 /** Local midnight at the start of the week (Monday) that contains `date`. */
 export function startOfWeek(date: Date): Date {
-  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const result = startOfDay(date);
   const sinceMonday = (result.getDay() + 6) % 7; // getDay(): Sunday = 0
   return addDays(result, -sinceMonday);
 }

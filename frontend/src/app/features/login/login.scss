@@ -1,9 +1,22 @@
 :host {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--space-3);
   min-height: 100vh;
   padding: var(--space-4);
+}
+
+.back {
+  width: 100%;
+  max-width: 400px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-primary);
+  }
 }
 
 .login-card {
@@ -14,7 +27,11 @@
 
 h1 {
   margin-bottom: var(--space-1);
-  color: var(--color-primary);
+
+  a {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
 }
 
 .subtitle {

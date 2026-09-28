@@ -1,0 +1,199 @@
+<div class="page-header">
+  <h1>Usage report</h1>
+  <div class="header-actions">
+    <button
+      type="button"
+      class="btn btn-secondary"
+      [disabled]="loading() || !!rangeError()"
+      (click)="reload()"
+    >
+      {{ loading() ? 'Loading…' : 'Refresh' }}
+    </button>
+    <a class="btn btn-secondary" routerLink="/admin">Back to admin</a>
+  </div>
+</div>
+
+<div class="card filters">
+  <div class="field">
+    <label for="from">From</label>
+    <input
+      id="from"
+      class="input"
+      type="date"
+      [value]="dateValue(range().first)"
+      (change)="setDay('from', $event)"
+    />
+  </div>
+  <div class="field">
+    <label for="to">To</label>
+    <input
+      id="to"
+      class="input"
+      type="date"
+      [value]="dateValue(range().last)"
+      (change)="setDay('to', $event)"
+    />
+  </div>
+  <div class="field">
+    <label for="type">Type</label>
+    <select id="type" class="input" (change)="selectType($event)">
+      <option value="" [selected]="!type()">All types</option>
+      @for (t of types(); track t.id) {
+        <option [value]="t.id" [selected]="t.id === type()">{{ t.name }}</option>
+      }
+    </select>
+  </div>
+  <div class="presets" role="group" aria-label="Quick ranges">
+    <button type="button" class="btn btn-secondary btn-sm" (click)="applyPreset('last7')">
+      Last 7 days
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="applyPreset('last30')">
+      Last 30 days
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="applyPreset('thisMonth')">
+      This month
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="applyPreset('lastMonth')">
+      Last month
+    </button>
+  </div>
+</div>
+
+@if (rangeError(); as error) {
+  <p class="alert-error" role="alert">{{ error }}</p>
+} @else if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span>The report could not be loaded.</span>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">Try again</button>
+  </div>
+} @else if (report(); as r) {
+  <div [attr.aria-busy]="loading()">
+    <ul class="tiles">
+      <li class="card tile">
+        <span class="value">{{ percent(r.totals.utilization) }}</span>
+        <span class="label">of office hours booked</span>
+      </li>
+      <li class="card tile">
+        <span class="value">{{ hours(r.totals.bookedHours) }}</span>
+        <span class="label">booked in total</span>
+      </li>
+      <li class="card tile">
+        <span class="value">{{ r.totals.reservations }}</span>
+        <span class="label">reservations</span>
+      </li>
+      <li class="card tile">
+        <span class="value">{{ r.totals.cancelled }}</span>
+        <span class="label">cancelled</span>
+      </li>
+    </ul>
+
+    <p class="text-muted note">
+      Office hours are {{ r.workingHours }} in {{ r.timeZone }}:
+      {{ hours(r.workingHoursPerResource) }} per resource from {{ r.from }} to {{ r.to }}. Booked
+      hours also count nights and weekends.
+    </p>
+
+    @if (r.resources.length === 0) {
+      <p class="text-muted empty" role="status">No resources to report on for this range.</p>
+    } @else {
+      <section aria-labelledby="by-resource">
+        <h2 id="by-resource" class="section-title">By resource</h2>
+        <div class="card table-wrap">
+          <table class="table resources">
+            <thead>
+              <tr>
+                <th scope="col">Resource</th>
+                <th scope="col">Utilization</th>
+                <th scope="col" class="num">Booked</th>
+                <th scope="col" class="num">Office hours</th>
+                <th scope="col" class="num">Reservations</th>
+                <th scope="col" class="num">Cancelled</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of r.resources; track row.resourceId) {
+                <tr>
+                  <td>
+                    <span class="name">{{ row.resourceName }}</span>
+                    <span class="text-muted type">{{ row.resourceTypeName }}</span>
+                    @if (row.status !== 'Active') {
+                      <app-status-badge [status]="row.status" />
+                    }
+                  </td>
+                  <td>
+                    <div class="utilization">
+                      <span class="bar" aria-hidden="true">
+                        <span class="fill" [style.width]="barWidth(row.utilization)"></span>
+                      </span>
+                      <span class="percent">{{ percent(row.utilization) }}</span>
+                    </div>
+                  </td>
+                  <td class="num">{{ hours(row.bookedHours) }}</td>
+                  <td class="num">{{ hours(row.workingHoursBooked) }}</td>
+                  <td class="num">{{ row.reservations }}</td>
+                  <td class="num">{{ row.cancelled }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="by-type">
+        <h2 id="by-type" class="section-title">By type</h2>
+        <div class="card table-wrap">
+          <table class="table types">
+            <thead>
+              <tr>
+                <th scope="col">Type</th>
+                <th scope="col">Utilization</th>
+                <th scope="col" class="num">Booked</th>
+                <th scope="col" class="num">Resources</th>
+                <th scope="col" class="num">Reservations</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of r.byType; track t.resourceTypeId) {
+                <tr>
+                  <td class="name">{{ t.resourceTypeName }}</td>
+                  <td>
+                    <div class="utilization">
+                      <span class="bar" aria-hidden="true">
+                        <span class="fill" [style.width]="barWidth(t.utilization)"></span>
+                      </span>
+                      <span class="percent">{{ percent(t.utilization) }}</span>
+                    </div>
+                  </td>
+                  <td class="num">{{ hours(t.bookedHours) }}</td>
+                  <td class="num">{{ t.resources }}</td>
+                  <td class="num">{{ t.reservations }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    <section aria-labelledby="top-users">
+      <h2 id="top-users" class="section-title">Most booked by</h2>
+      @if (r.topUsers.length === 0) {
+        <p class="text-muted empty">Nobody booked anything in this range.</p>
+      } @else {
+        <ol class="card people">
+          @for (u of r.topUsers; track u.userId) {
+            <li>
+              <span class="name">{{ u.displayName ?? 'Unknown user' }}</span>
+              <span class="text-muted">
+                {{ hours(u.bookedHours) }} · {{ u.reservations }}
+                {{ u.reservations === 1 ? 'reservation' : 'reservations' }}
+              </span>
+            </li>
+          }
+        </ol>
+      }
+    </section>
+  </div>
+} @else {
+  <p class="text-muted" role="status">Loading the report…</p>
+}

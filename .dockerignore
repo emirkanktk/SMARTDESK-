@@ -1,0 +1,10 @@
+**/.git
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/node_modules
+frontend/dist
+**/.angular
+**/*.user
+**/.env

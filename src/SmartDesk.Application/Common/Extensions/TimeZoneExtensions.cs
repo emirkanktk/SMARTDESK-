@@ -11,14 +11,15 @@ public static class TimeZoneExtensions
     {
         var localDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utcNow, DateTimeKind.Utc), zone).Date;
 
-        return (LocalMidnightToUtc(zone, localDate), LocalMidnightToUtc(zone, localDate.AddDays(1)));
+        return (zone.LocalToUtc(localDate), zone.LocalToUtc(localDate.AddDays(1)));
     }
 
-    // In the few zones that switch clocks at midnight, 00:00 can be skipped that day; the day
-    // then starts at the first valid local minute.
-    private static DateTime LocalMidnightToUtc(TimeZoneInfo zone, DateTime localDate)
+    // The UTC instant of a local wall-clock time in the zone. A time the clocks skip (02:30 on
+    // a spring-forward night, or 00:00 in the few zones that switch at midnight) moves to the
+    // first valid local minute after it.
+    public static DateTime LocalToUtc(this TimeZoneInfo zone, DateTime localTime)
     {
-        var local = DateTime.SpecifyKind(localDate, DateTimeKind.Unspecified);
+        var local = DateTime.SpecifyKind(localTime, DateTimeKind.Unspecified);
         while (zone.IsInvalidTime(local))
         {
             local = local.AddMinutes(1);

@@ -1,9 +1,8 @@
-using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.IdentityModel.Tokens;
+using SmartDesk.API.Authentication;
 using SmartDesk.API.Hubs;
 using SmartDesk.API.Middleware;
 using SmartDesk.API.OpenApi;
@@ -23,7 +22,13 @@ var builder = WebApplication.CreateBuilder(args);
 // responses with the first, but the OpenAPI generator builds its schemas from the second,
 // so setting only one makes the documented type (integer) disagree with the real one.
 builder.Services.AddControllers()
-    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        // An unparseable body (e.g. "status": "Broken") still gets a 400 with the field path,
+        // but not the serializer's own message, which names internal command types.
+        options.AllowInputFormatterExceptionMessages = false;
+    });
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi(options =>
@@ -40,6 +45,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 // Registered before the TryAdd below, so this wins and the null notifier stays a fallback.
 builder.Services.AddScoped<IReservationNotifier, SignalRReservationNotifier>();
 builder.Services.TryAddScoped<IReservationNotifier, NullReservationNotifier>();
+builder.Services.AddHostedService<ReservationReminderWorker>();
 
 // Validated at startup by AddInfrastructure (JwtOptions.ValidateOnStart), so a missing or
 // too-short key fails fast with a clear message rather than on the first request.
@@ -48,16 +54,7 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtOptions.Issuer,
-            ValidAudience = jwtOptions.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key))
-        };
+        options.TokenValidationParameters = JwtBearerSetup.ValidationParameters(jwtOptions);
 
         // SignalR's browser client can't set an Authorization header on the websocket
         // handshake, so it sends the token as a query string param instead - read it from
@@ -105,6 +102,13 @@ builder.Services.AddSmartDeskRateLimiting(builder.Configuration);
 var app = builder.Build();
 
 // Roles in every environment; demo users and resources only in Development (ADR-0007).
+// Off by default: migrations are applied on purpose with `dotnet ef database update`. The
+// docker-compose API service turns it on, since its database starts empty.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    await app.Services.MigrateDatabaseAsync();
+}
+
 await app.Services.SeedDatabaseAsync(includeDemoData: app.Environment.IsDevelopment());
 
 // Configure the HTTP request pipeline.
@@ -115,6 +119,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+
+// Tells browsers to reach this host over HTTPS only from then on. Sent on HTTPS responses
+// outside Development; the middleware leaves localhost out in any case.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
 
@@ -132,3 +143,5 @@ app.MapHub<ReservationHub>("/hubs/reservations");
 app.MapHealthChecks("/health").AllowAnonymous();
 
 app.Run();
+
+public partial class Program;

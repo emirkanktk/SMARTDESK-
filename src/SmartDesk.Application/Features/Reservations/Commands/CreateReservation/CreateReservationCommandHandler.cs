@@ -6,7 +6,6 @@ using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
-using SmartDesk.Domain.Rules;
 
 namespace SmartDesk.Application.Features.Reservations.Commands.CreateReservation;
 
@@ -31,27 +30,8 @@ public sealed class CreateReservationCommandHandler(
         {
             await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
-            var resource = await db.Resources
-                .AsNoTracking()
-                .Where(r => r.Id == request.ResourceId)
-                .Select(r => new { r.Name, r.Status })
-                .SingleOrDefaultAsync(cancellationToken)
-                ?? throw new NotFoundException(nameof(Resource), request.ResourceId);
-
-            // Business rule 3.
-            if (resource.Status != ResourceStatus.Active)
-            {
-                throw new ConflictException($"{resource.Name} can't be reserved right now (status: {resource.Status}).");
-            }
-
-            // Business rule 1.
-            var overlaps = await db.Reservations
-                .Where(r => r.ResourceId == request.ResourceId)
-                .AnyAsync(ReservationOverlap.ConfirmedOverlapping(start, end), cancellationToken);
-            if (overlaps)
-            {
-                throw new ConflictException($"{resource.Name} is already reserved for part of that time.");
-            }
+            // Exists, Active, not blocked, no overlap (business rules 1, 3, 7).
+            await BookingGuard.EnsureBookableAsync(db, request.ResourceId, start, end, null, cancellationToken);
 
             db.Reservations.Add(new Reservation
             {
@@ -62,6 +42,7 @@ public sealed class CreateReservationCommandHandler(
                 EndDateTime = end,
                 Status = ReservationStatus.Confirmed,
                 Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+                ReminderMinutes = request.ReminderMinutes,
             });
 
             await db.SaveChangesAsync(cancellationToken);

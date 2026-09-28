@@ -9,7 +9,6 @@ using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
-using SmartDesk.Domain.Rules;
 
 namespace SmartDesk.Application.Features.Reservations.Commands.UpdateReservation;
 
@@ -56,6 +55,15 @@ public sealed class UpdateReservationCommandHandler(
 
             var resourceChanged = request.ResourceId != reservation.ResourceId;
             var timeChanged = start != reservation.StartDateTime || end != reservation.EndDateTime;
+            var startChanged = start != reservation.StartDateTime;
+            var reminderChanged = request.ReminderMinutes != reservation.ReminderMinutes;
+
+            // Shortening it on the same resource claims nothing new: the reservation already
+            // holds its whole old slot, so no other booking can be in the part it keeps. It's
+            // also how someone ends early on a resource that has since gone into maintenance,
+            // which the booking checks below would refuse.
+            var staysWithinItsSlot = !resourceChanged
+                && start >= reservation.StartDateTime && end <= reservation.EndDateTime;
 
             if (reservation.StartDateTime <= now)
             {
@@ -78,41 +86,38 @@ public sealed class UpdateReservationCommandHandler(
                     [new ValidationFailure(nameof(UpdateReservationCommand.StartDateTime), "A reservation can't start in the past.")]);
             }
 
-            if (resourceChanged || timeChanged)
+            if (!staysWithinItsSlot)
             {
                 // Moving the booking in time or to another resource is a new claim on that
                 // resource, so it goes through the same checks as a new booking.
                 await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
-                var resource = await db.Resources
-                    .AsNoTracking()
-                    .Where(r => r.Id == request.ResourceId)
-                    .Select(r => new { r.Name, r.Status })
-                    .SingleOrDefaultAsync(cancellationToken)
-                    ?? throw new NotFoundException(nameof(Resource), request.ResourceId);
-
-                if (resource.Status != ResourceStatus.Active)
-                {
-                    throw new ConflictException($"{resource.Name} can't be reserved right now (status: {resource.Status}).");
-                }
-
                 // Excluding itself: shifting 10:00-11:00 to 10:30-11:30 must not clash with its
                 // own old slot.
-                var overlaps = await db.Reservations
-                    .Where(r => r.ResourceId == request.ResourceId && r.Id != reservation.Id)
-                    .AnyAsync(ReservationOverlap.ConfirmedOverlapping(start, end), cancellationToken);
-                if (overlaps)
-                {
-                    throw new ConflictException($"{resource.Name} is already reserved for part of that time.");
-                }
+                await BookingGuard.EnsureBookableAsync(
+                    db, request.ResourceId, start, end, reservation.Id, cancellationToken);
 
                 reservation.ResourceId = request.ResourceId;
                 reservation.StartDateTime = start;
                 reservation.EndDateTime = end;
             }
+            else
+            {
+                reservation.StartDateTime = start;
+                reservation.EndDateTime = end;
+            }
 
-            changed = resourceChanged || timeChanged || note != reservation.Note;
+            changed = resourceChanged || timeChanged || reminderChanged || note != reservation.Note;
             reservation.Note = note;
+
+            // A new start or a new reminder time means the reminder is due at a new moment, so
+            // it goes out again even if the old one was already sent (ADR-0018).
+            if (startChanged || reminderChanged)
+            {
+                reservation.ReminderSentAt = null;
+            }
+
+            reservation.ReminderMinutes = request.ReminderMinutes;
 
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);

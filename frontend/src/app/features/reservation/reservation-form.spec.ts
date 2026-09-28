@@ -6,6 +6,7 @@ import { CurrentUser } from '../../core/models/auth.model';
 import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
@@ -41,7 +42,13 @@ describe('ReservationForm', () => {
   let getReservation: ReturnType<typeof vi.fn>;
   let create: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
+  let cancel: ReturnType<typeof vi.fn>;
+  let confirmSpy: ReturnType<typeof vi.spyOn>;
   let success: ReturnType<typeof vi.fn>;
+  let reminderAlerts: {
+    permission: ReturnType<typeof vi.fn>;
+    requestPermissionIfUnasked: ReturnType<typeof vi.fn>;
+  };
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
   let fixture: ComponentFixture<ReservationForm>;
   let element: HTMLElement;
@@ -55,23 +62,33 @@ describe('ReservationForm', () => {
     getReservation = vi.fn(() => of(fakeReservation()));
     create = vi.fn(() => of(fakeReservation()));
     update = vi.fn(() => of(fakeReservation()));
+    cancel = vi.fn(() => of(fakeReservation({ status: 'Cancelled' })));
+    confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     success = vi.fn();
+    reminderAlerts = {
+      permission: vi.fn(() => 'default'),
+      requestPermissionIfUnasked: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [ReservationForm],
       providers: [
         provideRouter([]),
         { provide: ResourceService, useValue: { getResources } },
-        { provide: ReservationService, useValue: { getReservation, create, update } },
+        { provide: ReservationService, useValue: { getReservation, create, update, cancel } },
         { provide: AuthService, useValue: { currentUser, isAdmin } },
         { provide: NotificationService, useValue: { success } },
+        { provide: ReminderAlertsService, useValue: reminderAlerts },
       ],
     }).compileComponents();
 
     navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    confirmSpy.mockRestore();
+  });
 
   async function render(inputs: Record<string, string> = {}): Promise<void> {
     fixture = TestBed.createComponent(ReservationForm);
@@ -152,6 +169,7 @@ describe('ReservationForm', () => {
         startDateTime: utc('2026-10-07T14:00'),
         endDateTime: utc('2026-10-07T15:30'),
         note: 'Sprint planning',
+        reminderMinutes: 15,
       });
       expect(success.mock.calls[0][0]).toContain('Meeting Room A is booked for');
       expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
@@ -257,6 +275,7 @@ describe('ReservationForm', () => {
         startDateTime: utc('2026-10-07T14:00'),
         endDateTime: utc('2026-10-07T17:00'),
         note: 'Retro',
+        reminderMinutes: null,
       });
       expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
     });
@@ -278,6 +297,7 @@ describe('ReservationForm', () => {
         startDateTime: reservation.startDateTime, // seconds kept, so the API sees no change
         endDateTime: utc('2026-10-05T11:30'),
         note: 'Sprint planning',
+        reminderMinutes: null,
       });
     });
 
@@ -380,6 +400,176 @@ describe('ReservationForm', () => {
       await render({ id: 'missing' });
 
       expect(element.textContent).toContain('This reservation could not be loaded.');
+    });
+  });
+
+  describe('cancelling', () => {
+    // Local times, so the wording is the same in every zone.
+    const upcoming = fakeReservation({
+      startDateTime: utc('2026-10-07T14:00'),
+      endDateTime: utc('2026-10-07T15:30'),
+    });
+
+    function cancelButton(): HTMLButtonElement | null {
+      return element.querySelector<HTMLButtonElement>('.cancel-reservation');
+    }
+
+    it('cancels your own reservation after confirming, then goes to my reservations', async () => {
+      getReservation.mockReturnValue(of(upcoming));
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Cancel your Meeting Room A reservation for Wed 7 Oct, 14:00-15:30?',
+      );
+      expect(cancel).toHaveBeenCalledWith('rsv-1');
+      expect(success).toHaveBeenCalledWith(
+        'Your Meeting Room A reservation for Wed 7 Oct, 14:00-15:30 was cancelled.',
+      );
+      expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
+    });
+
+    it("lets an admin cancel someone else's, naming them, then goes back to the admin panel", async () => {
+      isAdmin.set(true);
+      getReservation.mockReturnValue(
+        of({ ...upcoming, userId: 'someone-else', userDisplayName: 'Mehmet Demir' }),
+      );
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        "Cancel Mehmet Demir's Meeting Room A reservation for Wed 7 Oct, 14:00-15:30?",
+      );
+      expect(success).toHaveBeenCalledWith(
+        "Mehmet Demir's Meeting Room A reservation for Wed 7 Oct, 14:00-15:30 was cancelled.",
+      );
+      expect(navigateByUrl).toHaveBeenCalledWith('/admin');
+    });
+
+    it('is offered for a reservation in progress', async () => {
+      getReservation.mockReturnValue(of(inProgress()));
+      await render({ id: 'rsv-1' });
+
+      expect(cancelButton()).not.toBeNull();
+    });
+
+    it('is not offered when booking or for a read-only reservation', async () => {
+      await render();
+      expect(cancelButton()).toBeNull();
+
+      getReservation.mockReturnValue(of(fakeReservation({ status: 'Cancelled' })));
+      await render({ id: 'rsv-1' });
+      expect(cancelButton()).toBeNull();
+    });
+
+    it('does nothing when the confirmation is declined', async () => {
+      confirmSpy.mockReturnValue(false);
+      getReservation.mockReturnValue(of(upcoming));
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(cancel).not.toHaveBeenCalled();
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('shows it read-only when it ended in the meantime', async () => {
+      getReservation.mockReturnValueOnce(of(upcoming)).mockReturnValue(
+        of({
+          ...upcoming,
+          startDateTime: utc('2026-10-05T08:00'),
+          endDateTime: utc('2026-10-05T09:00'),
+        }),
+      );
+      cancel.mockReturnValue(
+        throwError(() => new ApiError(409, 'Conflict', 'This reservation has already ended.')),
+      );
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(getReservation).toHaveBeenCalledTimes(2);
+      expect(element.textContent).toContain('has ended, so it can no longer be changed');
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('keeps the form with a note when cancelling fails otherwise', async () => {
+      getReservation.mockReturnValue(of(upcoming));
+      cancel.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+      await render({ id: 'rsv-1' });
+      cancelButton()!.click();
+      await fixture.whenStable();
+
+      expect(element.textContent).toContain('The reservation could not be cancelled.');
+      expect(cancelButton()!.disabled).toBe(false);
+    });
+  });
+
+  describe('reminder', () => {
+    it('starts a new booking with a 15-minute reminder and offers the other choices', async () => {
+      await render({ resourceId: room.id });
+
+      const options = Array.from(field<HTMLSelectElement>('#reminder').options).map((o) =>
+        o.textContent!.trim(),
+      );
+      expect(options).toEqual([
+        'No reminder',
+        '5 minutes before',
+        '15 minutes before',
+        '30 minutes before',
+        '60 minutes before',
+      ]);
+      expect(field<HTMLSelectElement>('#reminder').selectedOptions[0].textContent!.trim()).toBe(
+        '15 minutes before',
+      );
+    });
+
+    it('books with the chosen reminder, or none, and asks for notifications only with one', async () => {
+      await render({ resourceId: room.id });
+      await set('#reminder', field<HTMLSelectElement>('#reminder').options[3].value); // 30
+      await submit();
+      expect(create).toHaveBeenLastCalledWith(expect.objectContaining({ reminderMinutes: 30 }));
+      expect(reminderAlerts.requestPermissionIfUnasked).toHaveBeenCalledTimes(1);
+
+      await render({ resourceId: room.id });
+      await set('#reminder', field<HTMLSelectElement>('#reminder').options[0].value); // none
+      await submit();
+      expect(create).toHaveBeenLastCalledWith(expect.objectContaining({ reminderMinutes: null }));
+      expect(reminderAlerts.requestPermissionIfUnasked).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows and keeps the stored reminder when changing a reservation', async () => {
+      getReservation.mockReturnValue(of(fakeReservation({ reminderMinutes: 60 })));
+      await render({ id: 'rsv-1' });
+
+      expect(field<HTMLSelectElement>('#reminder').selectedOptions[0].textContent!.trim()).toBe(
+        '60 minutes before',
+      );
+      await set('#note', 'Retro');
+      await submit();
+      expect(update).toHaveBeenCalledWith(
+        'rsv-1',
+        expect.objectContaining({ note: 'Retro', reminderMinutes: 60 }),
+      );
+    });
+
+    it('hides the reminder once the reservation has started, and sends the stored one back', async () => {
+      getReservation.mockReturnValue(of({ ...inProgress(), reminderMinutes: 5 }));
+      await render({ id: 'rsv-1' });
+
+      expect(element.querySelector('#reminder')).toBeNull();
+      await set('#end', '2026-10-05T11:30');
+      await submit();
+      expect(update).toHaveBeenCalledWith('rsv-1', expect.objectContaining({ reminderMinutes: 5 }));
+    });
+
+    it('says the reminder stays in the app when desktop notifications are blocked', async () => {
+      reminderAlerts.permission.mockReturnValue('denied');
+      await render({ resourceId: room.id });
+
+      expect(element.textContent).toContain('Desktop notifications are blocked in this browser');
     });
   });
 });

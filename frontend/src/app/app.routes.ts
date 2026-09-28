@@ -4,6 +4,14 @@ import { Shell } from './layout/shell/shell';
 
 export const routes: Routes = [
   {
+    // The public front page. Signed-in users go straight to their dashboard instead.
+    path: '',
+    pathMatch: 'full',
+    canActivate: [guestGuard],
+    title: 'SmartDesk · Office resources and reservations',
+    loadComponent: () => import('./features/home/home').then((m) => m.Home),
+  },
+  {
     path: 'login',
     canActivate: [guestGuard],
     title: 'Sign in · SmartDesk',
@@ -17,7 +25,6 @@ export const routes: Routes = [
     canActivate: [authGuard],
     canActivateChild: [authGuard],
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       {
         path: 'dashboard',
         title: 'Dashboard · SmartDesk',
@@ -78,7 +85,14 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin').then((m) => m.Admin),
       },
+      {
+        path: 'admin/reports',
+        title: 'Usage report · SmartDesk',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/reports/usage-report').then((m) => m.UsageReport),
+      },
     ],
   },
-  { path: '**', redirectTo: 'dashboard' },
+  // Unknown address: the front page, which forwards signed-in users to their dashboard.
+  { path: '**', redirectTo: '' },
 ];

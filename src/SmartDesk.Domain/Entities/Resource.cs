@@ -15,4 +15,5 @@ public class Resource
     public ResourceType ResourceType { get; set; } = null!;
     public ICollection<ResourceFeature> Features { get; set; } = new List<ResourceFeature>();
     public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+    public ICollection<ResourceBlock> Blocks { get; set; } = new List<ResourceBlock>();
 }
