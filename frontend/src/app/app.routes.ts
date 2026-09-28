@@ -103,6 +103,13 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () => import('./features/reports/usage-report').then((m) => m.UsageReport),
       },
+      {
+        path: 'admin/blocks',
+        title: 'Blocked windows · SmartDesk',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/resource-blocks/resource-blocks').then((m) => m.ResourceBlocks),
+      },
     ],
   },
   // Unknown address: the front page, which forwards signed-in users to their dashboard.

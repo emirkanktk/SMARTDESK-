@@ -1,0 +1,224 @@
+<div class="page-header">
+  <h1>Blocked windows</h1>
+  <a class="btn btn-secondary" routerLink="/admin">Back to admin</a>
+</div>
+
+<p class="text-muted intro">
+  A block takes a resource out of booking for one window - maintenance, an event, a car at the
+  service - without changing its status. Reservations already in that window stay: cancel or move
+  them first.
+</p>
+
+<section aria-labelledby="new-block-heading">
+  <h2 id="new-block-heading" class="section-title">Block a resource</h2>
+  <form class="card form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (formError(); as message) {
+      <div class="alert-error" role="alert">{{ message }}</div>
+    }
+    @if (conflict(); as c) {
+      <div class="alert-error conflict" role="alert">
+        <span>{{ c.message }}</span>
+        @if (c.reservations; as params) {
+          <a routerLink="/admin" [queryParams]="params">See the reservations then</a>
+        }
+      </div>
+    }
+    @if (resourcesFailed()) {
+      <div class="alert-error" role="alert">The list of resources could not be loaded.</div>
+    }
+
+    <div class="field">
+      <label for="block-resource">Resource</label>
+      <select
+        id="block-resource"
+        class="input"
+        formControlName="resourceId"
+        [class.invalid]="resourceError()"
+      >
+        <option value="" disabled>Select a resource</option>
+        @for (group of resourceGroups(); track group.typeName) {
+          <optgroup [label]="group.typeName">
+            @for (option of group.resources; track option.id) {
+              <option [value]="option.id">{{ option.label }}</option>
+            }
+          </optgroup>
+        }
+      </select>
+      @if (resourceError(); as error) {
+        <span class="field-error">{{ error }}</span>
+      } @else if (selectedResource(); as r) {
+        <span class="text-muted hint">{{ r.location }}</span>
+      }
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="block-start">From</label>
+        <input
+          id="block-start"
+          class="input"
+          type="datetime-local"
+          step="900"
+          formControlName="startDateTime"
+          [min]="minStart"
+          [class.invalid]="startError()"
+        />
+        @if (startError(); as error) {
+          <span class="field-error">{{ error }}</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="block-end">To</label>
+        <input
+          id="block-end"
+          class="input"
+          type="datetime-local"
+          step="900"
+          formControlName="endDateTime"
+          [min]="form.controls.startDateTime.value"
+          [class.invalid]="endError()"
+        />
+        @if (endError(); as error) {
+          <span class="field-error">{{ error }}</span>
+        } @else if (duration(); as duration) {
+          <span class="text-muted hint">{{ duration }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="block-reason">Reason</label>
+      <input
+        id="block-reason"
+        class="input"
+        type="text"
+        formControlName="reason"
+        [maxlength]="limits.reasonMaxLength"
+        [class.invalid]="reasonError()"
+        placeholder="Projector replacement"
+      />
+      @if (reasonError(); as error) {
+        <span class="field-error">{{ error }}</span>
+      } @else {
+        <span class="text-muted hint"
+          >Shown to anyone who tries to book it then. {{ reasonLength() }} /
+          {{ limits.reasonMaxLength }}</span
+        >
+      }
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Blocking…' : 'Block' }}
+      </button>
+    </div>
+  </form>
+</section>
+
+<section aria-labelledby="blocks-heading">
+  <h2 id="blocks-heading" class="section-title">Blocks</h2>
+
+  <div class="card filters">
+    <div class="field">
+      <label for="from">From</label>
+      <input
+        id="from"
+        class="input"
+        type="date"
+        [value]="dateValue(range().start)"
+        (change)="setDay('from', $event)"
+      />
+    </div>
+    <div class="field">
+      <label for="to">To</label>
+      <input
+        id="to"
+        class="input"
+        type="date"
+        [value]="dateValue(range().last)"
+        (change)="setDay('to', $event)"
+      />
+    </div>
+    <div class="field">
+      <label for="resource">Resource</label>
+      <select id="resource" class="input" (change)="selectResource($event)">
+        <option value="" [selected]="!resource()">All resources</option>
+        @for (group of resourceGroups(); track group.typeName) {
+          <optgroup [label]="group.typeName">
+            @for (option of group.resources; track option.id) {
+              <option [value]="option.id" [selected]="option.id === resource()">
+                {{ option.label }}
+              </option>
+            }
+          </optgroup>
+        }
+      </select>
+    </div>
+  </div>
+
+  @if (rangeError(); as error) {
+    <div class="alert-error" role="alert">{{ error }}</div>
+  } @else if (loading()) {
+    <p class="text-muted" role="status">Loading blocks…</p>
+  } @else if (loadFailed()) {
+    <div class="alert-error load-error" role="alert">
+      <span>Blocks could not be loaded.</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
+    </div>
+  } @else {
+    <p class="text-muted summary">
+      {{ rows().length }} {{ rows().length === 1 ? 'block' : 'blocks' }} from
+      {{ range().start | date: 'EEE d MMM' }} to {{ range().last | date: 'EEE d MMM' }}.
+    </p>
+
+    @if (rows().length === 0) {
+      <p class="card text-muted empty">No blocks in this range.</p>
+    } @else {
+      <div class="table-wrap card">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">When</th>
+              <th scope="col">Resource</th>
+              <th scope="col">Reason</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.block.id) {
+              <tr [class.ended]="row.ended">
+                <td class="when">
+                  {{ row.when }}
+                  <span class="text-muted duration">{{ row.duration }}</span>
+                  @if (row.inProgress) {
+                    <span class="pill in-progress">In progress</span>
+                  }
+                </td>
+                <td>
+                  <span class="name">{{ row.block.resourceName }}</span>
+                  @if (row.meta) {
+                    <span class="text-muted meta">{{ row.meta }}</span>
+                  }
+                </td>
+                <td class="reason">{{ row.block.reason }}</td>
+                <td class="actions">
+                  @if (!row.ended) {
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm remove"
+                      [disabled]="removingId() === row.block.id"
+                      (click)="remove(row)"
+                    >
+                      {{ removingId() === row.block.id ? 'Removing…' : 'Remove' }}
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</section>

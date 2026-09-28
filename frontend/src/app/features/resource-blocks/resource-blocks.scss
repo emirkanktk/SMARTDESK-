@@ -1,0 +1,132 @@
+.intro {
+  max-width: 720px;
+  margin: 0 0 var(--space-5);
+}
+
+.section-title {
+  margin: 0 0 var(--space-3);
+  font-size: 1.0625rem;
+}
+
+.form {
+  max-width: 720px;
+  margin-bottom: var(--space-6);
+}
+
+// Fields already keep their own bottom margin, so only the columns need a gap; a row gap
+// would double the space when they stack on narrow screens.
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--space-4);
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hint {
+  font-size: 0.8125rem;
+}
+
+.conflict {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+
+  a {
+    color: inherit;
+    font-weight: 600;
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 2fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+
+  .field {
+    margin-bottom: 0;
+  }
+
+  // Date inputs don't shrink below their own width, which two columns can't fit here.
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.summary {
+  margin: 0 0 var(--space-2);
+  font-size: 0.875rem;
+}
+
+.empty {
+  text-align: center;
+}
+
+.table {
+  min-width: 40rem;
+
+  .ended td {
+    color: var(--color-text-muted);
+  }
+}
+
+.when {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.name,
+.meta,
+.duration {
+  display: block;
+}
+
+.meta,
+.duration {
+  font-size: 0.8125rem;
+}
+
+.reason {
+  max-width: 20rem;
+}
+
+.pill {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.in-progress {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+.remove:hover:not(:disabled) {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
