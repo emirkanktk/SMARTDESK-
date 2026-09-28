@@ -115,7 +115,7 @@ ADR-0007). All four share the password `SmartDesk123!`.
 | Email | Role |
 |---|---|
 | `admin@smartdesk.local` | Admin - manages every account, resource and block |
-| `manager@smartdesk.local` | Manager - manages their own team (both employees below) |
+| `manager@smartdesk.local` | Manager - manages their own team (both employees below) and its resources (Meeting Room B, Projector P-1) |
 | `employee1@smartdesk.local` | Employee, in the manager's team |
 | `employee2@smartdesk.local` | Employee, in the manager's team |
 

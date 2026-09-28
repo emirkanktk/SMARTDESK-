@@ -127,14 +127,22 @@ Camera (fixed ids, same in every environment). There's no endpoint to add types 
 
 ## Resources
 
+**Teams (ADR-0022).** A resource belongs to one or more managers' teams, or to none, which
+makes it shared by everyone. A team's members and its manager may see and book its resources;
+nobody else may, apart from Admins, who see and manage everything. For anyone else, another
+team's resource behaves as if it didn't exist: it's left out of every list and search, and asking
+for it by id, booking it or blocking it answers **404**. A resource several teams share is booked
+first come, first served, under the usual overlap rule.
+
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| GET | `/api/resources` | any authenticated user | `GetResourcesQuery` | optional query params `resourceTypeId`, `status`. Returns every status unless filtered (the Resources screen shows inactive ones greyed out). |
-| GET | `/api/resources/{id}` | any authenticated user | `GetResourceByIdQuery` | 404 if it doesn't exist. For the admin edit form. |
+| GET | `/api/resources` | any authenticated user | `GetResourcesQuery` | optional query params `resourceTypeId`, `status`. Every status unless filtered (the Resources screen shows inactive ones greyed out), but only resources the caller may use. |
+| GET | `/api/resources/{id}` | any authenticated user | `GetResourceByIdQuery` | 404 if it doesn't exist or belongs to other teams. For the edit form. |
 | GET | `/api/resources/available` | any authenticated user | `GetAvailableResourcesQuery` | query params: `startDateTime`, `endDateTime`, optional `resourceTypeId`, `minCapacity`. Rules below. |
-| POST | `/api/resources` | Admin | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[] }` → 201 with `Location` header. Always created `Active`. |
-| PUT | `/api/resources/{id}` | Admin | `UpdateResourceCommand` | body: the POST fields plus `status`. Full replace: omitting `features` removes them all. |
-| PATCH | `/api/resources/{id}/status` | Admin | `ChangeResourceStatusCommand` | body: `{ "status": "Inactive" }` → 200 with the resource. Changes only the status, so an Activate/Deactivate button can't overwrite another admin's edit the way a full PUT can. Same status again is a no-op. Existing reservations are kept. |
+| POST | `/api/resources` | Admin or Manager | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[], teamIds?: guid[] }` → 201 with `Location` header. Always created `Active`. An Admin chooses `teamIds` (none: shared; each must be an active Manager's, 400 otherwise). A Manager's resource always belongs to their own team only; naming another team is 403. |
+| PUT | `/api/resources/{id}` | Admin or Manager | `UpdateResourceCommand` | body: the POST fields (without `teamIds`) plus `status`. Full replace: omitting `features` removes them all. A Manager may edit only a resource that belongs to their team alone; a shared resource, or one other teams share, is 403. Teams don't change here. |
+| PATCH | `/api/resources/{id}/status` | Admin or Manager | `ChangeResourceStatusCommand` | body: `{ "status": "Inactive" }` → 200 with the resource. Changes only the status, so an Activate/Deactivate button can't overwrite another admin's edit the way a full PUT can. Same status again is a no-op. Existing reservations are kept. A Manager, as for PUT. |
+| PATCH | `/api/resources/{id}/teams` | Admin | `SetResourceTeamsCommand` | body: `{ "teamIds": ["…"] }` → 200 with the resource. Replaces its teams; `[]` makes it shared. Each id must be an active Manager's (400 otherwise), at most 20. Existing reservations are kept. |
 
 Every resource endpoint returns the same shape:
 
@@ -145,7 +153,8 @@ Every resource endpoint returns the same shape:
   "capacity": 8, "location": "2nd Floor",
   "status": "Active",            // "Active" | "Inactive" | "Maintenance"
   "description": null,
-  "features": ["TV", "Video Conference"]
+  "features": ["TV", "Video Conference"],
+  "teams": [{ "id": "…", "managerName": "Zeynep Kaya" }]   // [] = shared by everyone
 }
 ```
 
@@ -154,7 +163,7 @@ Every resource endpoint returns the same shape:
 duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 
 **Availability rules** (`/api/resources/available`):
-- Only `Active` resources are returned; `Inactive` / `Maintenance` never are.
+- Only `Active` resources the caller may use are returned; `Inactive` / `Maintenance` never are.
 - A resource with a block (see Resource blocks) overlapping the window isn't returned either.
 - A resource is excluded if it has a `Confirmed` reservation overlapping
   `[startDateTime, endDateTime)`. Ranges are half-open, so back-to-back bookings are fine:
@@ -173,12 +182,12 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` → 201. The owner is always the caller. `reminderMinutes`: 5, 15, 30 or 60, or null / omitted for no reminder (see Real-time). |
-| GET | `/api/reservations/{id}` | any authenticated user | `GetReservationByIdQuery` | one reservation, any status; 404 if it doesn't exist. For the edit form and for opening a calendar entry. |
+| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` → 201. The owner is always the caller. `reminderMinutes`: 5, 15, 30 or 60, or null / omitted for no reminder (see Real-time). Another team's resource is 404 (ADR-0022). |
+| GET | `/api/reservations/{id}` | any authenticated user | `GetReservationByIdQuery` | one reservation, any status; 404 if it doesn't exist. For the edit form and for opening a calendar entry. Your own reservation always; anyone else's only on a resource you may use (404 otherwise, ADR-0022). |
 | PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` - full replace → 200, so leaving `reminderMinutes` out turns the reminder off. Rules below. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
-| GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. |
+| GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. Only reservations on resources the caller may use (ADR-0022). |
 
 Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
 
@@ -241,9 +250,9 @@ car at the service - without changing its status. Blocks use the same half-open
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| GET | `/api/resource-blocks?from=&to=&resourceId=` | any authenticated user | `GetResourceBlocksQuery` | blocks overlapping `[from, to)`, earliest first; same limit as the calendar (42 days plus an hour). Drawn next to the calendar's reservations. |
-| POST | `/api/resource-blocks` | Admin | `CreateResourceBlockCommand` | body: `{ resourceId, startDateTime, endDateTime, reason }` → 201 |
-| DELETE | `/api/resource-blocks/{id}` | Admin | `DeleteResourceBlockCommand` | → 204; 404 if it doesn't exist |
+| GET | `/api/resource-blocks?from=&to=&resourceId=` | any authenticated user | `GetResourceBlocksQuery` | blocks overlapping `[from, to)`, earliest first; same limit as the calendar (42 days plus an hour). Drawn next to the calendar's reservations. Only blocks on resources the caller may use. |
+| POST | `/api/resource-blocks` | Admin or Manager | `CreateResourceBlockCommand` | body: `{ resourceId, startDateTime, endDateTime, reason }` → 201. A Manager may block only a resource that belongs to their team alone (403 for a shared one; 404 for another team's, ADR-0022). |
+| DELETE | `/api/resource-blocks/{id}` | Admin or Manager | `DeleteResourceBlockCommand` | → 204; 404 if it doesn't exist. A Manager, as for POST. |
 
 ```json
 {
@@ -271,7 +280,7 @@ leaves the resource out.
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| GET | `/api/dashboard?timeZone=Europe/Istanbul` | any authenticated user | `GetDashboardQuery` | today's reservations, resources currently in use, the caller's upcoming reservations |
+| GET | `/api/dashboard?timeZone=Europe/Istanbul` | any authenticated user | `GetDashboardQuery` | today's reservations, resources currently in use, the caller's upcoming reservations Today's list, in-use list and the active-resource count cover only resources the caller may use; their own upcoming reservations are all theirs (ADR-0022). |
 
 `timeZone` is an IANA id - in the browser, `Intl.DateTimeFormat().resolvedOptions().timeZone`.
 It decides what "today" means: the server runs on UTC, so without it 01:30 in Istanbul would
@@ -334,7 +343,7 @@ What the numbers mean (ADR-0017):
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. Events on a shared resource go to everyone; on a team resource only to that resource's teams and the Admins (ADR-0022). |
 
 All three events carry the reservation object shown under Reservations above, as it is after
 the change. For `ReservationUpdated` the resource or the times may be different from

@@ -471,3 +471,44 @@ new tables.
 - **Trade-offs:** tokens issued before this change have no `sst`, so everyone signs in once
   more after the upgrade. The 30-second cache and the connection registry are per process
   (ADR-0020's note on several instances applies).
+
+## ADR-0022: Resources belong to teams, or are shared by everyone
+
+**Decision:**
+- **Ownership:** `ResourceTeam (ResourceId, TeamId)`, many-to-many. A team is identified by its
+  Manager's account id, as in ADR-0020, and there's no foreign key across the Identity
+  boundary. A resource with no teams is shared by everyone. One with teams may be used by
+  those teams' members and managers only. One with several teams is theirs to share, first come
+  first served, and the overlap rule (business rule 1) keeps the availability honest.
+- **Visibility:** `ResourceAccess` holds the rule once, as query filters every handler applies
+  for a non-Admin:
+  - resources: list, by id, availability
+  - the calendar and a reservation by id (the owner always sees their own)
+  - the dashboard's office-wide lists and counts
+  - blocks
+  Another team's resource answers 404, like one that doesn't exist, so its name and schedule
+  don't leak. Booking re-checks it inside the booking lock (`BookingGuard`).
+- **Management:** Admins create resources for any teams, or shared, and change a resource's
+  teams (`PATCH /api/resources/{id}/teams`). A Manager creates resources for their own team
+  (always theirs alone). They edit, switch on and off, and block only resources that belong
+  to their team alone. A shared resource, or one other teams use too, stays an Admin's (403).
+- **Real-time:** a shared resource's events still go to everyone. A team resource's go only
+  to the `team:{id}` groups of its teams and to `admins`. Each connection joins these groups
+  from the account as it is now. A team change aborts the user's connections (ADR-0021), so
+  the reconnect joins the right group.
+- **Consistency:** a Manager whose team has resources can't be given another role until the
+  resources are shared or given to another team, just as with team members (ADR-0020).
+  Changing a resource's teams keeps existing reservations, as a status change does.
+
+**Why:**
+- Each manager's people use that manager's things; another team's equipment isn't theirs to
+  book. When two teams do need the same thing, assigning it to both is simpler and fairer than
+  lending it out case by case. Availability already settles who gets which hour.
+- Filtering in the query, rather than checking after loading, keeps lists, counts and searches
+  consistent with each other, and one set of expressions means they can't drift apart.
+- Letting managers run their own team's resources spreads the work without handing them
+  anything shared, which affects everyone.
+- **Trade-offs:** someone moved to another team keeps the reservations they already made on
+  their old team's resources. They can still see and cancel them, but can't make new ones there.
+  Group membership is set when a connection opens, so a change made without SmartDesk (directly
+  in the database) reaches open connections only on their next reconnect.
