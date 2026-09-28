@@ -42,6 +42,13 @@ describe('Login', () => {
     input.dispatchEvent(new Event('input'));
   }
 
+  it('links back to the front page', () => {
+    const back = element.querySelector<HTMLAnchorElement>('a.back')!;
+
+    expect(back.textContent).toContain('Back to home');
+    expect(back.getAttribute('href')).toBe('/');
+  });
+
   it('shows field errors and does not call the API when the form is invalid', async () => {
     await fillAndSubmit('not-an-email', '');
 

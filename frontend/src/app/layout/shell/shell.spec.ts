@@ -47,13 +47,13 @@ describe('Shell', () => {
     expect(navLabels(element)).toContain('Admin');
   });
 
-  it('signs out and goes to login', async () => {
+  it('signs out and goes to the front page', async () => {
     const navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const element = await render();
 
     element.querySelector<HTMLButtonElement>('button')!.click();
 
     expect(logout).toHaveBeenCalled();
-    expect(navigateByUrl).toHaveBeenCalledWith('/login');
+    expect(navigateByUrl).toHaveBeenCalledWith('/');
   });
 });
