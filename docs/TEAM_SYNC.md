@@ -11,8 +11,8 @@ Burak (integration) left the team on 2026-09-28. His area moved to Emirkan: Sign
 Docker (#18) and the integration tests (#21) are done; the optional LLM assistant wasn't
 started.
 
-Two-person fallback: one person leans backend, one leans frontend; authentication and
-SignalR are handled together since both sides need to agree on the contract.
+One person leans backend, one leans frontend; authentication and SignalR are handled
+together since both sides need to agree on the contract.
 
 Don't change another owner's area without coordinating first - open a PR and tag them, or
 raise it in whatever channel the team actually uses day to day. Tagging the module owner

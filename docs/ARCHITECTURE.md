@@ -257,4 +257,4 @@ picker drops seconds and any difference would count as a change.
 ## 8. Team ownership boundaries
 
 See [TEAM_SYNC.md](TEAM_SYNC.md) for who owns which module and how branches/PRs are
-expected to flow between the three of us.
+expected to flow between the two of us.
