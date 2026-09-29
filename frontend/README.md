@@ -107,6 +107,40 @@ bar, front page, sign-in). The choice is kept per browser, and switching reloads
   `toLocaleString()` without a locale.
 - Unit tests run in English, the language of the code.
 
+## Browser tests
+
+`e2e/` holds [Playwright](https://playwright.dev/) tests that drive the real app in a browser:
+sign-in and the language, booking with a conflict, a booking reaching another window's calendar
+live, a blocked window, a manager's team resource, joining a team through the manager, and a
+temporary password that has to be replaced. `screens.spec.ts` also opens every
+screen in Turkish, runs [axe](https://github.com/dequelabs/axe-core) on it (WCAG 2.1 AA and best
+practices), and checks that nothing is wider than a 390px phone. They need the whole app
+running with the Development seed:
+
+```bash
+dotnet run --project src/SmartDesk.API --launch-profile https   # from the repo root
+npx ng serve                                                    # from frontend/
+npm run e2e                                                     # about a minute
+```
+
+- **Browser:** the Edge installed on the machine, so there's nothing to download. Set
+  `E2E_CHANNEL=` (empty) to use Playwright's own Chromium instead, after
+  `npx playwright install chromium`.
+- **Other addresses:** `E2E_BASE_URL` (default `http://localhost:4200`), `E2E_API_URL`
+  (`https://localhost:7065/api`) and `E2E_PASSWORD` (the seed's).
+- **Data:** each test makes its own resource or account through the API. At the end it cancels
+  that resource's bookings and deactivates it, or takes the account out of its team and
+  disables it: used ones can't be deleted, and a sign-up still waiting is rejected, which
+  deletes it. A local database collects inactive "E2E …" resources and disabled
+  `e2e-…@example.com` accounts over time; they don't affect anything else, and the demo
+  users are left as seeded.
+- **A failure** keeps a trace in `test-results/`: `npx playwright show-trace <file>` replays it
+  step by step.
+- **Writing one:** use the fixtures in `e2e/support.ts`: `open('ayse')` for a signed-in window,
+  `resource` for a fresh resource, and `admin` for the API. Wait on what the user sees
+  (`expect(...).toBeVisible()`), never on a timeout. Type-check with
+  `npx tsc -p e2e/tsconfig.json`.
+
 ## Writing tests
 
 Specs sit next to the code (`*.spec.ts`) and run on [Vitest](https://vitest.dev/) through
