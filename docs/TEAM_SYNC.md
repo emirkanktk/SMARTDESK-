@@ -4,9 +4,12 @@
 
 | Person | Focus | Owns |
 |---|---|---|
-| Emirkan | Backend | Onion solution structure, Domain/Application layers, CQRS+MediatR pipeline, EF Core/PostgreSQL migrations, JWT/Identity auth, reservation business rules |
+| Emirkan | Backend + integration | Onion solution structure, Domain/Application layers, CQRS+MediatR pipeline, EF Core/PostgreSQL migrations, JWT/Identity auth, reservation business rules; since 2026-09-28 also SignalR, Docker, the optional LLM integration and integration tests |
 | Lütfi | Frontend | Angular architecture, screens, forms, API integration |
-| Burak | Integration | Auth support, SignalR, Docker, optional LLM integration, integration tests |
+
+Burak (integration) left the team on 2026-09-28. His area moved to Emirkan: SignalR (#17),
+Docker (#18) and the integration tests (#21) are done; the optional LLM assistant wasn't
+started.
 
 Two-person fallback: one person leans backend, one leans frontend; authentication and
 SignalR are handled together since both sides need to agree on the contract.
@@ -27,16 +30,15 @@ is a notice. It does not add a second required approval.
 ## Review and merge rules
 
 Each author has exactly one reviewer responsible for approving their PRs. That approval is
-required before merge, including one-line fixes and docs-only changes. The other two may
+required before merge, including one-line fixes and docs-only changes. Anyone else may
 comment, but their approval is not required. The author does not approve their own PR.
-If the designated reviewer is away or hasn't reviewed within one working day, the third
-teammate may approve instead - say so in the PR.
+With two people there is no third teammate to step in, so a PR waits for the other
+person's approval.
 
 | Author | Responsible reviewer |
 |---|---|
-| Emirkan | Burak |
+| Emirkan | Lütfi |
 | Lütfi | Emirkan |
-| Burak | Lütfi |
 
 Request that reviewer on every PR. Approval follows the author, not the module: a PR that
 touches someone else's area still needs only the author's designated reviewer.
@@ -53,7 +55,6 @@ rule holds only because we follow it - only the reviewer who approved clicks mer
   that nothing was pushed after your approval (if something was, review it first) and that
   the branch still builds and passes tests. Use a merge commit, not squash, so stacked PRs
   built on the branch keep a clean diff.
-  When the third teammate approved under the one-working-day fallback, they merge.
 - Don't merge while a requested reviewer is still reviewing - wait for their review or ask
   them first, even if you already have the approval you need.
 - After merging a PR that another open PR is stacked on, retarget that PR to `main`
@@ -66,7 +67,7 @@ rule holds only because we follow it - only the reviewer who approved clicks mer
 
 Before starting on something nobody's picked up yet - especially something that touches
 more than one person's area (auth, the reservation overlap contract, SignalR event
-shapes) - say so first (a PR description, a comment, whatever's visible to the other two)
+shapes) - say so first (a PR description, a comment, whatever's visible to the other person)
 so two people don't build the same thing in parallel.
 
 ## Keeping docs honest
