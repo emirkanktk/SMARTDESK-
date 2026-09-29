@@ -14,6 +14,7 @@
 | ManagerId | Guid? | FK → `ApplicationUser.Id` (restrict delete). Set only for an `Employee` in a Manager's team. |
 | CreatedAt | DateTime (UTC) | when the account was made; existing accounts got the migration's time |
 | MustChangePassword | bool | the password was chosen by an Admin or Manager; the owner must replace it before anything else (ADR-0021) |
+| Language | string? (max 8) | `en` or `tr`: the language the user last signed in with, which their emails are written in. Null for an account that hasn't signed in since the column was added (ADR-0023). |
 | (roles) | — | assigned via `AspNetUserRoles`, one of `Roles.Admin` / `Roles.Manager` / `Roles.Employee` |
 
 ### ResourceType
