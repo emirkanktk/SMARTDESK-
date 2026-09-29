@@ -8,7 +8,7 @@ import { NotificationService } from '../services/notification.service';
 import { isApiUrl } from '../utils/api-url';
 import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from './http-context.tokens';
 
-const SESSION_ENDED_MESSAGE = 'Your session has expired. Please sign in again.';
+const SESSION_ENDED_MESSAGE = $localize`:@@error.sessionEnded:Your session has expired. Please sign in again.`;
 /** The ProblemDetails code the API sends while the password must be changed first. */
 const PASSWORD_CHANGE_REQUIRED = 'password-change-required';
 
@@ -101,11 +101,11 @@ function messageFor(error: ApiError): string | null {
     case error.status === 0:
       return error.title;
     case error.status === 403:
-      return 'You do not have permission to do that.';
+      return $localize`:@@error.forbidden:You do not have permission to do that.`;
     case error.status === 404:
-      return 'The requested item could not be found.';
+      return $localize`:@@error.notFound:The requested item could not be found.`;
     case error.status >= 500:
-      return 'Something went wrong on the server. Please try again.';
+      return $localize`:@@error.server:Something went wrong on the server. Please try again.`;
     default:
       return null;
   }

@@ -129,8 +129,16 @@ export function formatDuration(start: Date, end: Date): string {
   minutes -= hours * 60;
 
   const parts: string[] = [];
-  if (days) parts.push(days === 1 ? '1 day' : `${days} days`);
-  if (hours) parts.push(`${hours} h`);
-  if (minutes || parts.length === 0) parts.push(`${minutes} min`);
+  if (days) {
+    parts.push(
+      days === 1
+        ? $localize`:@@duration.oneDay:1 day`
+        : $localize`:@@duration.days:${days}:days: days`,
+    );
+  }
+  if (hours) parts.push($localize`:@@duration.hours:${hours}:hours: h`);
+  if (minutes || parts.length === 0) {
+    parts.push($localize`:@@duration.minutes:${minutes}:minutes: min`);
+  }
   return parts.join(' ');
 }

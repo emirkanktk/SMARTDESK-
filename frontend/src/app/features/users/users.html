@@ -1,14 +1,18 @@
 <div class="page-header">
-  <h1>Users</h1>
+  <h1 i18n="@@nav.users">Users</h1>
   <button type="button" class="btn btn-primary" (click)="toggleForm()">
-    {{ showForm() ? 'Close' : 'Add account' }}
+    @if (showForm()) {
+      <ng-container i18n="@@common.close">Close</ng-container>
+    } @else {
+      <ng-container i18n="@@accounts.add">Add account</ng-container>
+    }
   </button>
 </div>
 
 @if (showForm()) {
   <form class="card add-form" [formGroup]="form" (ngSubmit)="create()" novalidate>
-    <h2 class="section-title">Add an account</h2>
-    <p class="text-muted hint">
+    <h2 class="section-title" i18n="@@accounts.addTitle">Add an account</h2>
+    <p class="text-muted hint" i18n="@@users.addHint">
       Choose a temporary password and give it to them in person. They'll choose their own when they
       first sign in; the password is never emailed.
     </p>
@@ -19,7 +23,7 @@
 
     <div class="grid">
       <div class="field">
-        <label for="new-first-name">First name</label>
+        <label for="new-first-name" i18n="@@field.firstName">First name</label>
         <input
           id="new-first-name"
           class="input"
@@ -34,7 +38,7 @@
         }
       </div>
       <div class="field">
-        <label for="new-last-name">Last name</label>
+        <label for="new-last-name" i18n="@@field.lastName">Last name</label>
         <input
           id="new-last-name"
           class="input"
@@ -49,7 +53,7 @@
         }
       </div>
       <div class="field">
-        <label for="new-email">Email</label>
+        <label for="new-email" i18n="@@field.email">Email</label>
         <input
           id="new-email"
           type="email"
@@ -64,18 +68,18 @@
         }
       </div>
       <div class="field">
-        <label for="new-role">Role</label>
+        <label for="new-role" i18n="@@field.role">Role</label>
         <select id="new-role" class="input" formControlName="role">
           @for (role of roles; track role) {
-            <option [value]="role">{{ role }}</option>
+            <option [value]="role">{{ roleLabel(role) }}</option>
           }
         </select>
       </div>
       @if (form.controls.role.value === 'Employee') {
         <div class="field">
-          <label for="new-manager">Team</label>
+          <label for="new-manager" i18n="@@resources.team">Team</label>
           <select id="new-manager" class="input" formControlName="managerId">
-            <option value="">No team</option>
+            <option value="" i18n="@@users.noTeam">No team</option>
             @for (manager of managers(); track manager.id) {
               <option [value]="manager.id">{{ manager.displayName }}</option>
             }
@@ -83,7 +87,7 @@
         </div>
       }
       <div class="field">
-        <label for="new-password">Temporary password</label>
+        <label for="new-password" i18n="@@accounts.tempPassword">Temporary password</label>
         <div class="password-row">
           <input
             id="new-password"
@@ -96,7 +100,12 @@
             [attr.aria-invalid]="!!fieldError('password')"
             aria-describedby="new-password-error"
           />
-          <button type="button" class="btn btn-secondary" (click)="generatePassword()">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="generatePassword()"
+            i18n="@@tempPassword.generate"
+          >
             Generate
           </button>
         </div>
@@ -107,19 +116,24 @@
     </div>
 
     <button type="submit" class="btn btn-primary" [disabled]="saving()">
-      {{ saving() ? 'Adding…' : 'Add account' }}
+      @if (saving()) {
+        <ng-container i18n="@@accounts.adding">Adding…</ng-container>
+      } @else {
+        <ng-container i18n="@@accounts.add">Add account</ng-container>
+      }
     </button>
   </form>
 }
 
 <div class="card filters">
-  <div class="tabs" role="group" aria-label="Status">
+  <div class="tabs" role="group" aria-label="Status" i18n-aria-label="@@field.status">
     <button
       type="button"
       class="tab"
       [class.active]="statusFilter() === ''"
       [attr.aria-pressed]="statusFilter() === ''"
       (click)="setStatusFilter('')"
+      i18n="@@users.all"
     >
       All
     </button>
@@ -130,7 +144,7 @@
       [attr.aria-pressed]="statusFilter() === 'PendingApproval'"
       (click)="setStatusFilter('PendingApproval')"
     >
-      Waiting for approval
+      <ng-container i18n="@@status.account.pending">Waiting for approval</ng-container>
       @if (pendingCount() > 0) {
         <span class="count-badge">{{ pendingCount() }}</span>
       }
@@ -141,6 +155,7 @@
       [class.active]="statusFilter() === 'Active'"
       [attr.aria-pressed]="statusFilter() === 'Active'"
       (click)="setStatusFilter('Active')"
+      i18n="@@users.tab.active"
     >
       Active
     </button>
@@ -150,26 +165,28 @@
       [class.active]="statusFilter() === 'Disabled'"
       [attr.aria-pressed]="statusFilter() === 'Disabled'"
       (click)="setStatusFilter('Disabled')"
+      i18n="@@users.tab.disabled"
     >
       Disabled
     </button>
   </div>
   <div class="field">
-    <label for="role-filter">Role</label>
+    <label for="role-filter" i18n="@@field.role">Role</label>
     <select id="role-filter" class="input" (change)="setRoleFilter($event)">
-      <option value="">All roles</option>
+      <option value="" i18n="@@users.allRoles">All roles</option>
       @for (role of roles; track role) {
-        <option [value]="role">{{ role }}</option>
+        <option [value]="role">{{ roleLabel(role) }}</option>
       }
     </select>
   </div>
   <div class="field search">
-    <label for="search">Search</label>
+    <label for="search" i18n="@@resources.search">Search</label>
     <input
       id="search"
       class="input"
       type="search"
       placeholder="Name or email"
+      i18n-placeholder="@@users.searchPlaceholder"
       [value]="search()"
       (input)="setSearch($event)"
     />
@@ -177,24 +194,33 @@
 </div>
 
 @if (loading()) {
-  <p class="text-muted" role="status">Loading accounts…</p>
+  <p class="text-muted" role="status" i18n="@@accounts.loading">Loading accounts…</p>
 } @else if (loadFailed()) {
   <div class="alert-error load-error" role="alert">
-    <span>Accounts could not be loaded.</span>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    <span i18n="@@accounts.loadFailed">Accounts could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="load()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
   </div>
 } @else if (rows().length === 0) {
-  <p class="card text-muted empty">No accounts match these filters.</p>
+  <p class="card text-muted empty" i18n="@@users.noMatch">No accounts match these filters.</p>
 } @else {
   <div class="table-wrap card">
     <table class="table">
       <thead>
         <tr>
-          <th scope="col">Name</th>
-          <th scope="col">Role</th>
-          <th scope="col">Team</th>
-          <th scope="col">Status</th>
-          <th scope="col"><span class="visually-hidden">Actions</span></th>
+          <th scope="col" i18n="@@field.name">Name</th>
+          <th scope="col" i18n="@@field.role">Role</th>
+          <th scope="col" i18n="@@resources.team">Team</th>
+          <th scope="col" i18n="@@field.status">Status</th>
+          <th scope="col">
+            <span class="visually-hidden" i18n="@@common.actions">Actions</span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -204,24 +230,28 @@
               <span class="name">
                 {{ account.displayName }}
                 @if (isSelf(account)) {
-                  <span class="you">(you)</span>
+                  <span class="you" i18n="@@accounts.you">(you)</span>
                 }
               </span>
               <span class="text-muted meta">{{ account.email }}</span>
-              <span class="text-muted meta">Since {{ account.createdAt | date: 'd MMM y' }}</span>
+              <span class="text-muted meta" i18n="@@accounts.since"
+                >Since {{ account.createdAt | date: 'd MMM y' }}</span
+              >
             </td>
             <td>
               @if (isSelf(account) || account.status === 'PendingApproval') {
-                {{ account.role }}
+                {{ roleLabel(account.role) }}
               } @else {
                 <select
                   class="input input-sm"
-                  [attr.aria-label]="'Role of ' + account.displayName"
+                  [attr.aria-label]="roleOfLabel(account)"
                   [disabled]="busyId() === account.id"
                   (change)="changeRole(account, $event)"
                 >
                   @for (role of roles; track role) {
-                    <option [value]="role" [selected]="role === account.role">{{ role }}</option>
+                    <option [value]="role" [selected]="role === account.role">
+                      {{ roleLabel(role) }}
+                    </option>
                   }
                 </select>
               }
@@ -230,25 +260,38 @@
               @if (account.role === 'Employee') {
                 <select
                   class="input input-sm"
-                  [attr.aria-label]="'Team of ' + account.displayName"
+                  [attr.aria-label]="teamOfLabel(account)"
                   [disabled]="busyId() === account.id"
                   (change)="assignManager(account, $event)"
                 >
-                  <option value="" [selected]="!account.managerId">No team</option>
+                  <option value="" [selected]="!account.managerId" i18n="@@users.noTeam">
+                    No team
+                  </option>
                   @for (manager of managers(); track manager.id) {
                     <option [value]="manager.id" [selected]="manager.id === account.managerId">
                       {{ manager.displayName }}
                     </option>
                   }
                   @if (account.managerId && !isActiveManager(account.managerId)) {
-                    <option [value]="account.managerId" selected disabled>
+                    <option
+                      [value]="account.managerId"
+                      selected
+                      disabled
+                      i18n="@@users.managerNotActive"
+                    >
                       {{ account.managerName }} (not active)
                     </option>
                   }
                 </select>
               } @else if (account.role === 'Manager' && account.status !== 'PendingApproval') {
                 <span class="text-muted">
-                  {{ account.teamSize }} {{ account.teamSize === 1 ? 'member' : 'members' }}
+                  @if (account.teamSize === 1) {
+                    <ng-container i18n="@@users.oneMember">1 member</ng-container>
+                  } @else {
+                    <ng-container i18n="@@users.members"
+                      >{{ account.teamSize }} members</ng-container
+                    >
+                  }
                 </span>
               } @else {
                 <span class="text-muted">—</span>
@@ -257,7 +300,9 @@
             <td>
               <app-account-status-badge [status]="account.status" />
               @if (account.mustChangePassword) {
-                <span class="text-muted meta">Temporary password</span>
+                <span class="text-muted meta" i18n="@@accounts.tempPassword"
+                  >Temporary password</span
+                >
               }
             </td>
             <td class="actions">
@@ -267,6 +312,7 @@
                   class="btn btn-primary btn-sm"
                   [disabled]="busyId() === account.id"
                   (click)="approve(account)"
+                  i18n="@@accounts.approve"
                 >
                   Approve
                 </button>
@@ -275,6 +321,7 @@
                   class="btn btn-secondary btn-sm danger"
                   [disabled]="busyId() === account.id"
                   (click)="reject(account)"
+                  i18n="@@accounts.reject"
                 >
                   Reject
                 </button>
@@ -284,6 +331,7 @@
                   class="btn btn-secondary btn-sm"
                   [disabled]="busyId() === account.id || passwordFor() === account.id"
                   (click)="openPassword(account)"
+                  i18n="@@accounts.setPassword"
                 >
                   Set password
                 </button>
@@ -293,6 +341,7 @@
                     class="btn btn-secondary btn-sm danger"
                     [disabled]="busyId() === account.id"
                     (click)="setEnabled(account, false)"
+                    i18n="@@accounts.disable"
                   >
                     Disable
                   </button>
@@ -302,6 +351,7 @@
                     class="btn btn-secondary btn-sm"
                     [disabled]="busyId() === account.id"
                     (click)="setEnabled(account, true)"
+                    i18n="@@accounts.enable"
                   >
                     Enable
                   </button>
@@ -326,5 +376,7 @@
       </tbody>
     </table>
   </div>
-  <p class="text-muted count">Showing {{ rows().length }} of {{ total() }}</p>
+  <p class="text-muted count" i18n="@@resources.count">
+    Showing {{ rows().length }} of {{ total() }}
+  </p>
 }

@@ -1,39 +1,59 @@
 <div class="page-header">
-  <h1>{{ id() ? 'Change reservation' : 'Book a resource' }}</h1>
+  <h1>
+    @if (id()) {
+      <ng-container i18n="@@reservationForm.editTitle">Change reservation</ng-container>
+    } @else {
+      <ng-container i18n="@@reservationForm.newTitle">Book a resource</ng-container>
+    }
+  </h1>
   @if (id()) {
-    <a class="btn btn-secondary" routerLink="/reservations/mine">Back to my reservations</a>
+    <a class="btn btn-secondary" routerLink="/reservations/mine" i18n="@@reservationForm.backToMine"
+      >Back to my reservations</a
+    >
   } @else {
-    <a class="btn btn-secondary" routerLink="/availability" [queryParams]="searchParams()"
+    <a
+      class="btn btn-secondary"
+      routerLink="/availability"
+      [queryParams]="searchParams()"
+      i18n="@@reservationForm.backToSearch"
       >Back to search</a
     >
   }
 </div>
 
 @if (loading()) {
-  <p class="text-muted" role="status">Loading reservation…</p>
+  <p class="text-muted" role="status" i18n="@@reservationForm.loading">Loading reservation…</p>
 } @else if (loadFailed()) {
-  <div class="alert-error" role="alert">This reservation could not be loaded.</div>
+  <div class="alert-error" role="alert" i18n="@@reservationForm.loadFailed">
+    This reservation could not be loaded.
+  </div>
 } @else if (mode() === 'readOnly') {
   @if (reservation(); as r) {
     <section class="card form">
       <p class="notice" role="status">{{ readOnlyReason() }}</p>
       <dl class="details">
-        <dt>Resource</dt>
+        <dt i18n="@@field.resource">Resource</dt>
         <dd>
           {{ r.resourceName }}
           <span class="text-muted">· {{ r.resourceTypeName }}, {{ r.resourceLocation }}</span>
         </dd>
-        <dt>When</dt>
-        <dd>
+        <dt i18n="@@reservationForm.when">When</dt>
+        <dd i18n="@@reservationForm.whenRange">
           {{ r.startDateTime | date: 'EEE d MMM y, HH:mm' }} to
           {{ r.endDateTime | date: 'EEE d MMM y, HH:mm' }}
         </dd>
-        <dt>Booked by</dt>
-        <dd>{{ r.userDisplayName ?? 'Unknown user' }}</dd>
-        <dt>Status</dt>
-        <dd>{{ r.status }}</dd>
+        <dt i18n="@@reservationForm.bookedByLabel">Booked by</dt>
+        <dd>
+          @if (r.userDisplayName) {
+            {{ r.userDisplayName }}
+          } @else {
+            <ng-container i18n="@@common.unknownUser">Unknown user</ng-container>
+          }
+        </dd>
+        <dt i18n="@@field.status">Status</dt>
+        <dd>{{ statusLabel(r.status) }}</dd>
         @if (r.note) {
-          <dt>Note</dt>
+          <dt i18n="@@field.note">Note</dt>
           <dd class="note">{{ r.note }}</dd>
         }
       </dl>
@@ -48,28 +68,30 @@
       <div class="alert-error conflict" role="alert">
         <span>{{ message }}</span>
         @if (mode() !== 'inProgress' && alternativesParams(); as params) {
-          <a routerLink="/availability" [queryParams]="params">See what else is free then</a>
+          <a routerLink="/availability" [queryParams]="params" i18n="@@reservationForm.alternatives"
+            >See what else is free then</a
+          >
         }
       </div>
     }
     @if (mode() === 'inProgress') {
-      <p class="notice" role="status">
+      <p class="notice" role="status" i18n="@@reservationForm.inProgress">
         This reservation has already started, so only its end time and note can change.
       </p>
     }
     @if (bookedBy(); as name) {
-      <p class="text-muted booked-by">Booked by {{ name }}</p>
+      <p class="text-muted booked-by" i18n="@@reservationForm.bookedBy">Booked by {{ name }}</p>
     }
 
     <div class="field">
-      <label for="resource">Resource</label>
+      <label for="resource" i18n="@@field.resource">Resource</label>
       <select
         id="resource"
         class="input"
         formControlName="resourceId"
         [class.invalid]="resourceError()"
       >
-        <option value="" disabled>Select a resource</option>
+        <option value="" disabled i18n="@@reservationForm.selectResource">Select a resource</option>
         @for (group of resourceGroups(); track group.typeName) {
           <optgroup [label]="group.typeName">
             @for (option of group.options; track option.id) {
@@ -84,7 +106,14 @@
         <span class="text-muted hint resource-info">
           {{ r.location }}
           @if (r.capacity !== null) {
-            · {{ r.capacity }} {{ r.capacity === 1 ? 'person' : 'people' }}
+            ·
+            @if (r.capacity === 1) {
+              <ng-container i18n="@@availability.onePerson">1 person</ng-container>
+            } @else {
+              <ng-container i18n="@@availability.people.count"
+                >{{ r.capacity }} people</ng-container
+              >
+            }
           }
           @if (r.features.length > 0) {
             · {{ r.features.join(', ') }}
@@ -95,7 +124,7 @@
 
     <div class="row">
       <div class="field">
-        <label for="start">From</label>
+        <label for="start" i18n="@@field.from">From</label>
         <input
           id="start"
           class="input"
@@ -111,7 +140,7 @@
       </div>
 
       <div class="field">
-        <label for="end">To</label>
+        <label for="end" i18n="@@field.to">To</label>
         <input
           id="end"
           class="input"
@@ -130,7 +159,9 @@
     </div>
 
     <div class="field">
-      <label for="note">Note <span class="text-muted">(optional)</span></label>
+      <label for="note" i18n="@@reservationForm.note"
+        >Note <span class="text-muted">(optional)</span></label
+      >
       <textarea
         id="note"
         class="input"
@@ -139,6 +170,7 @@
         [maxlength]="limits.noteMaxLength"
         [class.invalid]="noteError()"
         placeholder="Sprint planning"
+        i18n-placeholder="@@reservationForm.notePlaceholder"
       ></textarea>
       @if (noteError(); as error) {
         <span class="field-error">{{ error }}</span>
@@ -149,19 +181,25 @@
 
     @if (mode() !== 'inProgress') {
       <div class="field">
-        <label for="reminder">Reminder</label>
+        <label for="reminder" i18n="@@reservationForm.reminder">Reminder</label>
         <select id="reminder" class="input" formControlName="reminderMinutes">
-          <option [ngValue]="null">No reminder</option>
+          <option [ngValue]="null" i18n="@@reservationForm.noReminder">No reminder</option>
           @for (minutes of reminderOptions; track minutes) {
-            <option [ngValue]="minutes">{{ minutes }} minutes before</option>
+            <option [ngValue]="minutes" i18n="@@reservationForm.minutesBefore">
+              {{ minutes }} minutes before
+            </option>
           }
         </select>
         <span class="text-muted hint">
           @if (desktopBlocked) {
-            Desktop notifications are blocked in this browser, so the reminder shows in SmartDesk
-            only.
+            <ng-container i18n="@@reservationForm.desktopBlocked"
+              >Desktop notifications are blocked in this browser, so the reminder shows in SmartDesk
+              only.</ng-container
+            >
           } @else {
-            Shown in SmartDesk, and as a desktop notification if you allow it.
+            <ng-container i18n="@@reservationForm.desktopAllowed"
+              >Shown in SmartDesk, and as a desktop notification if you allow it.</ng-container
+            >
           }
         </span>
       </div>
@@ -175,11 +213,21 @@
           [disabled]="cancelling() || saving()"
           (click)="cancelReservation()"
         >
-          {{ cancelling() ? 'Cancelling…' : 'Cancel reservation' }}
+          @if (cancelling()) {
+            <ng-container i18n="@@reservationForm.cancelling">Cancelling…</ng-container>
+          } @else {
+            <ng-container i18n="@@reservationForm.cancel">Cancel reservation</ng-container>
+          }
         </button>
       }
       <button type="submit" class="btn btn-primary" [disabled]="saving() || cancelling()">
-        {{ saving() ? 'Saving…' : id() ? 'Save changes' : 'Book' }}
+        @if (saving()) {
+          <ng-container i18n="@@common.saving">Saving…</ng-container>
+        } @else if (id()) {
+          <ng-container i18n="@@common.saveChanges">Save changes</ng-container>
+        } @else {
+          <ng-container i18n="@@availability.book">Book</ng-container>
+        }
       </button>
     </div>
   </form>

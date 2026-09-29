@@ -38,7 +38,12 @@ import {
 } from '../../shared/utils/date-time';
 import { keepDurationWhenStartMoves } from '../../shared/utils/keep-duration';
 import { applyServerErrors } from '../../shared/utils/server-errors';
-import { DateRangeOptions, dateRangeValidator } from '../../shared/validators/date-range.validator';
+import {
+  DateRangeOptions,
+  RANGE_MESSAGES,
+  dateRangeValidator,
+} from '../../shared/validators/date-range.validator';
+import { reservationStatusLabel } from '../../core/i18n/labels';
 
 const L = RESERVATION_LIMITS;
 const DEFAULT_DURATION_MIN = 60;
@@ -104,11 +109,12 @@ export class ReservationForm implements OnInit {
   /** The reservation being changed; null when booking. */
   protected readonly reservation = signal<Reservation | null>(null);
   protected readonly readOnlyReason = signal<string | null>(null);
+  protected readonly statusLabel = reservationStatusLabel;
   /** Who booked it, when an admin is changing someone else's reservation. */
   protected readonly bookedBy = computed(() => {
     const reservation = this.reservation();
     return reservation && reservation.userId !== this.authService.currentUser()?.id
-      ? (reservation.userDisplayName ?? 'another user')
+      ? (reservation.userDisplayName ?? $localize`:@@reservationForm.anotherUser:another user`)
       : null;
   });
 
@@ -127,7 +133,7 @@ export class ReservationForm implements OnInit {
       ...active,
       {
         id: reservation.resourceId,
-        name: `${reservation.resourceName} (not bookable right now)`,
+        name: $localize`:@@reservationForm.notBookable:${reservation.resourceName}:resource: (not bookable right now)`,
         resourceTypeId: null,
         typeName: reservation.resourceTypeName,
         location: reservation.resourceLocation,
@@ -168,7 +174,10 @@ export class ReservationForm implements OnInit {
   ngOnInit(): void {
     this.resourceService.getResources({ status: 'Active' }).subscribe({
       next: (resources) => this.activeResources.set(resources.map(toOption)),
-      error: () => this.formError.set('The list of resources could not be loaded.'),
+      error: () =>
+        this.formError.set(
+          $localize`:@@reservationForm.resourcesFailed:The list of resources could not be loaded.`,
+        ),
     });
 
     const id = this.id();
@@ -227,8 +236,8 @@ export class ReservationForm implements OnInit {
       next: (saved) => {
         this.notifications.success(
           reservation
-            ? `Your changes to the ${saved.resourceName} reservation were saved.`
-            : `${saved.resourceName} is booked for ${this.formatRange(saved)}.`,
+            ? $localize`:@@reservationForm.saved:Your changes to the ${saved.resourceName}:resource: reservation were saved.`
+            : $localize`:@@reservationForm.booked:${saved.resourceName}:resource: is booked for ${this.formatRange(saved)}:when:.`,
         );
         void this.router.navigateByUrl('/reservations/mine');
       },
@@ -240,17 +249,17 @@ export class ReservationForm implements OnInit {
     const control = this.form.controls.resourceId;
     if (!control.touched || !control.errors) return null;
     if (control.hasError('server')) return control.getError('server') as string;
-    return 'Choose a resource.';
+    return $localize`:@@reservationForm.chooseResource:Choose a resource.`;
   }
 
   protected startError(): string | null {
     const control = this.form.controls.startDateTime;
     if (!this.rangeTouched()) return null;
-    if (control.hasError('required')) return 'Choose a start date and time.';
+    if (control.hasError('required')) return RANGE_MESSAGES.chooseStart();
     if (control.hasError('server')) return control.getError('server') as string;
-    if (this.form.hasError('startInPast')) return 'The start time is in the past.';
+    if (this.form.hasError('startInPast')) return RANGE_MESSAGES.startInPast();
     if (this.form.hasError('startTooFarAhead')) {
-      return `Bookings can start at most ${L.maxAdvanceDays} days ahead.`;
+      return $localize`:@@reservationForm.tooFarAhead:Bookings can start at most ${L.maxAdvanceDays}:days: days ahead.`;
     }
     return null;
   }
@@ -258,12 +267,14 @@ export class ReservationForm implements OnInit {
   protected endError(): string | null {
     const control = this.form.controls.endDateTime;
     if (!this.rangeTouched()) return null;
-    if (control.hasError('required')) return 'Choose an end date and time.';
+    if (control.hasError('required')) return RANGE_MESSAGES.chooseEnd();
     if (control.hasError('server')) return control.getError('server') as string;
-    if (this.form.hasError('endInPast')) return 'The end time has already passed.';
-    if (this.form.hasError('rangeOrder')) return 'The end must be after the start.';
+    if (this.form.hasError('endInPast')) {
+      return $localize`:@@reservationForm.endPassed:The end time has already passed.`;
+    }
+    if (this.form.hasError('rangeOrder')) return RANGE_MESSAGES.endAfterStart();
     if (this.form.hasError('rangeTooLong')) {
-      return `A reservation can last at most ${L.maxDays} days.`;
+      return $localize`:@@reservationForm.tooLong:A reservation can last at most ${L.maxDays}:days: days.`;
     }
     return null;
   }
@@ -272,7 +283,7 @@ export class ReservationForm implements OnInit {
     const control = this.form.controls.note;
     if (!control.touched || !control.errors) return null;
     if (control.hasError('server')) return control.getError('server') as string;
-    return `Use at most ${L.noteMaxLength} characters.`;
+    return $localize`:@@field.maxLength:Use at most ${L.noteMaxLength}:max: characters.`;
   }
 
   private rangeTouched(): boolean {
@@ -306,9 +317,12 @@ export class ReservationForm implements OnInit {
       return;
     }
     const someoneElse = this.bookedBy();
-    const owner = someoneElse ? `${someoneElse}'s` : 'your';
+    const resource = reservation.resourceName;
     const when = this.formatRange(reservation);
-    if (!confirm(`Cancel ${owner} ${reservation.resourceName} reservation for ${when}?`)) {
+    const question = someoneElse
+      ? $localize`:@@reservationForm.confirmCancelOther:Cancel ${someoneElse}:owner:'s ${resource}:resource: reservation for ${when}:when:?`
+      : $localize`:@@reservationForm.confirmCancel:Cancel your ${resource}:resource: reservation for ${when}:when:?`;
+    if (!confirm(question)) {
       return;
     }
 
@@ -320,9 +334,11 @@ export class ReservationForm implements OnInit {
       .pipe(finalize(() => this.cancelling.set(false)))
       .subscribe({
         next: (cancelled) => {
-          const sentence = owner.charAt(0).toUpperCase() + owner.slice(1);
+          const name = cancelled.resourceName;
           this.notifications.success(
-            `${sentence} ${cancelled.resourceName} reservation for ${when} was cancelled.`,
+            someoneElse
+              ? $localize`:@@reservationForm.cancelledOther:${someoneElse}:owner:'s ${name}:resource: reservation for ${when}:when: was cancelled.`
+              : $localize`:@@reservationForm.cancelled:Your ${name}:resource: reservation for ${when}:when: was cancelled.`,
           );
           // Back to the list it most likely came from: your own, or the admin overview.
           void this.router.navigateByUrl(someoneElse ? '/admin' : '/reservations/mine');
@@ -333,7 +349,9 @@ export class ReservationForm implements OnInit {
             return;
           }
           // 403/404/5xx already raised a toast; keep a note on the form as well.
-          this.formError.set('The reservation could not be cancelled.');
+          this.formError.set(
+            $localize`:@@reservationForm.cancelFailed:The reservation could not be cancelled.`,
+          );
         },
       });
   }
@@ -359,12 +377,14 @@ export class ReservationForm implements OnInit {
     // Same order of checks as the API, so the reason matches what a PUT would answer.
     let readOnlyReason: string | null = null;
     if (reservation.userId !== user?.id && !this.authService.isAdmin()) {
-      const owner = reservation.userDisplayName ?? 'the person who booked it';
-      readOnlyReason = `Only ${owner} or an admin can change this reservation.`;
+      const owner =
+        reservation.userDisplayName ??
+        $localize`:@@reservationForm.theBooker:the person who booked it`;
+      readOnlyReason = $localize`:@@reservationForm.onlyOwner:Only ${owner}:owner: or an admin can change this reservation.`;
     } else if (reservation.status === 'Cancelled') {
-      readOnlyReason = 'This reservation was cancelled, so it can no longer be changed.';
+      readOnlyReason = $localize`:@@reservationForm.wasCancelled:This reservation was cancelled, so it can no longer be changed.`;
     } else if (end.getTime() <= now) {
-      readOnlyReason = 'This reservation has ended, so it can no longer be changed.';
+      readOnlyReason = $localize`:@@reservationForm.hasEnded:This reservation has ended, so it can no longer be changed.`;
     }
     this.readOnlyReason.set(readOnlyReason);
     const mode: Mode = readOnlyReason
@@ -420,7 +440,9 @@ export class ReservationForm implements OnInit {
       return;
     }
     // Other failures already raised a toast; keep a note on the form as well.
-    this.formError.set('The reservation could not be saved.');
+    this.formError.set(
+      $localize`:@@reservationForm.saveFailed:The reservation could not be saved.`,
+    );
   }
 
   private formatRange(reservation: Reservation): string {
@@ -431,7 +453,7 @@ export class ReservationForm implements OnInit {
       new Date(reservation.endDateTime).toDateString();
     return sameDay
       ? `${start}-${end}`
-      : `${start} to ${formatDate(reservation.endDateTime, RANGE_FORMAT, this.locale)}`;
+      : $localize`:@@common.rangeTo:${start}:start: to ${formatDate(reservation.endDateTime, RANGE_FORMAT, this.locale)}:end:`;
   }
 }
 

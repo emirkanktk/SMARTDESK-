@@ -15,9 +15,14 @@ export function canManageResource(
   );
 }
 
+/** "Zeynep Kaya's team": a team is named after its manager. */
+export function teamName(managerName: string): string {
+  return $localize`:@@resources.teamName:${managerName}:manager:'s team`;
+}
+
 /** "Shared", "Zeynep Kaya's team", or several managers' names. */
 export function teamLabel(resource: Resource): string {
-  if (resource.teams.length === 0) return 'Shared';
-  if (resource.teams.length === 1) return `${resource.teams[0].managerName}'s team`;
+  if (resource.teams.length === 0) return $localize`:@@resources.shared:Shared`;
+  if (resource.teams.length === 1) return teamName(resource.teams[0].managerName);
   return resource.teams.map((t) => t.managerName).join(', ');
 }

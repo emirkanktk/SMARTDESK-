@@ -1,10 +1,10 @@
 <div class="page-header">
-  <h1>Find a free resource</h1>
+  <h1 i18n="@@dashboard.findFree">Find a free resource</h1>
 </div>
 
 <form class="card search" [formGroup]="form" (ngSubmit)="search()" novalidate>
   <div class="field">
-    <label for="start">From</label>
+    <label for="start" i18n="@@field.from">From</label>
     <input
       id="start"
       class="input"
@@ -20,7 +20,7 @@
   </div>
 
   <div class="field">
-    <label for="end">To</label>
+    <label for="end" i18n="@@field.to">To</label>
     <input
       id="end"
       class="input"
@@ -38,9 +38,9 @@
   </div>
 
   <div class="field">
-    <label for="type">Type</label>
+    <label for="type" i18n="@@field.type">Type</label>
     <select id="type" class="input" formControlName="resourceTypeId">
-      <option value="">Any type</option>
+      <option value="" i18n="@@availability.anyType">Any type</option>
       @for (type of types(); track type.id) {
         <option [value]="type.id">{{ type.name }}</option>
       }
@@ -48,7 +48,9 @@
   </div>
 
   <div class="field">
-    <label for="capacity">People <span class="text-muted">(optional)</span></label>
+    <label for="capacity" i18n="@@availability.people"
+      >People <span class="text-muted">(optional)</span></label
+    >
     <input
       id="capacity"
       class="input"
@@ -57,6 +59,7 @@
       step="1"
       formControlName="minCapacity"
       placeholder="Any"
+      i18n-placeholder="@@availability.any"
       [class.invalid]="capacityError()"
     />
     @if (capacityError(); as error) {
@@ -65,7 +68,11 @@
   </div>
 
   <button type="submit" class="btn btn-primary search-button" [disabled]="searching()">
-    {{ searching() ? 'Searching…' : 'Search' }}
+    @if (searching()) {
+      <ng-container i18n="@@availability.searching">Searching…</ng-container>
+    } @else {
+      <ng-container i18n="@@availability.search">Search</ng-container>
+    }
   </button>
 </form>
 
@@ -77,18 +84,30 @@
   <section class="results" aria-live="polite" [class.stale]="searching()">
     <p class="summary">
       @if (result.resources.length === 0) {
-        Nothing is free
+        <ng-container i18n="@@availability.summaryNone"
+          >Nothing is free from <strong>{{ searchedStart() | date: 'EEE d MMM, HH:mm' }}</strong> to
+          <strong>{{ searchedEnd() | date: 'EEE d MMM, HH:mm' }}</strong></ng-container
+        >
+      } @else if (result.resources.length === 1) {
+        <ng-container i18n="@@availability.summaryOne"
+          ><strong>1</strong> resource is free from
+          <strong>{{ searchedStart() | date: 'EEE d MMM, HH:mm' }}</strong> to
+          <strong>{{ searchedEnd() | date: 'EEE d MMM, HH:mm' }}</strong></ng-container
+        >
       } @else {
-        <strong>{{ result.resources.length }}</strong>
-        {{ result.resources.length === 1 ? 'resource is' : 'resources are' }} free
+        <ng-container i18n="@@availability.summaryMany"
+          ><strong>{{ result.resources.length }}</strong> resources are free from
+          <strong>{{ searchedStart() | date: 'EEE d MMM, HH:mm' }}</strong> to
+          <strong>{{ searchedEnd() | date: 'EEE d MMM, HH:mm' }}</strong></ng-container
+        >
       }
-      from <strong>{{ searchedStart() | date: 'EEE d MMM, HH:mm' }}</strong> to
-      <strong>{{ searchedEnd() | date: 'EEE d MMM, HH:mm' }}</strong
-      >&nbsp;<span class="text-muted">({{ searchedDuration() }})</span>
+      <span class="text-muted">&nbsp;({{ searchedDuration() }})</span>
     </p>
 
     @if (result.resources.length === 0) {
-      <p class="text-muted empty">Try a different time, a shorter range or another type.</p>
+      <p class="text-muted empty" i18n="@@availability.tryAnother">
+        Try a different time, a shorter range or another type.
+      </p>
     } @else {
       <ul class="grid">
         @for (resource of result.resources; track resource.id) {
@@ -98,8 +117,14 @@
               <span class="badge">{{ resource.resourceTypeName }}</span>
             </div>
             <p class="text-muted meta">
-              {{ resource.location }} · {{ resource.capacity }}
-              {{ resource.capacity === 1 ? 'person' : 'people' }}
+              {{ resource.location }} ·
+              @if (resource.capacity === 1) {
+                <ng-container i18n="@@availability.onePerson">1 person</ng-container>
+              } @else {
+                <ng-container i18n="@@availability.people.count"
+                  >{{ resource.capacity }} people</ng-container
+                >
+              }
             </p>
             @if (resource.description) {
               <p class="description">{{ resource.description }}</p>
@@ -115,16 +140,17 @@
               class="btn btn-primary book"
               routerLink="/reservations/new"
               [queryParams]="bookingParams(resource)"
+              i18n="@@availability.book"
               >Book</a
             >
           </li>
         }
       </ul>
-      <p class="text-muted note">
+      <p class="text-muted note" i18n="@@availability.note">
         Availability is checked again when you book, in case someone takes the slot first.
       </p>
     }
   </section>
 } @else if (searching()) {
-  <p class="text-muted" role="status">Searching…</p>
+  <p class="text-muted" role="status" i18n="@@availability.searching">Searching…</p>
 }

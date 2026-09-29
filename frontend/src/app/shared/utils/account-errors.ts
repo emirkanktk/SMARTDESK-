@@ -7,7 +7,7 @@ import { ApiError } from '../../core/models/api-error.model';
  */
 export function accountActionError(error: unknown): string | null {
   if (!(error instanceof ApiError)) {
-    return 'Something went wrong. Please try again.';
+    return $localize`:@@error.generic:Something went wrong. Please try again.`;
   }
   switch (error.status) {
     case 409:

@@ -1,13 +1,16 @@
 <div class="page-header">
-  <h1>My team</h1>
+  <h1 i18n="@@nav.team">My team</h1>
 </div>
 
 @if (requests().length > 0) {
   <section class="card requests" aria-labelledby="requests-title">
     <h2 id="requests-title" class="section-title">
-      Requests to join <span class="count-badge">{{ requests().length }}</span>
+      <ng-container i18n="@@team.requests">Requests to join</ng-container>
+      <span class="count-badge">{{ requests().length }}</span>
     </h2>
-    <p class="text-muted hint">These people signed up and gave your email as their manager's.</p>
+    <p class="text-muted hint" i18n="@@team.requestsHint">
+      These people signed up and gave your email as their manager's.
+    </p>
     <ul class="request-list">
       @for (request of requests(); track request.id) {
         <li>
@@ -21,6 +24,7 @@
               class="btn btn-primary btn-sm"
               [disabled]="busyId() === request.id"
               (click)="approve(request)"
+              i18n="@@accounts.approve"
             >
               Approve
             </button>
@@ -29,6 +33,7 @@
               class="btn btn-secondary btn-sm danger"
               [disabled]="busyId() === request.id"
               (click)="reject(request)"
+              i18n="@@accounts.reject"
             >
               Reject
             </button>
@@ -40,8 +45,8 @@
 }
 
 <form class="card add-form" [formGroup]="form" (ngSubmit)="add()" novalidate>
-  <h2 class="section-title">Add a team member</h2>
-  <p class="text-muted hint">
+  <h2 class="section-title" i18n="@@team.addTitle">Add a team member</h2>
+  <p class="text-muted hint" i18n="@@users.addHint">
     Choose a temporary password and give it to them in person. They'll choose their own when they
     first sign in; the password is never emailed.
   </p>
@@ -52,7 +57,7 @@
 
   <div class="grid">
     <div class="field">
-      <label for="member-first-name">First name</label>
+      <label for="member-first-name" i18n="@@field.firstName">First name</label>
       <input
         id="member-first-name"
         class="input"
@@ -67,7 +72,7 @@
       }
     </div>
     <div class="field">
-      <label for="member-last-name">Last name</label>
+      <label for="member-last-name" i18n="@@field.lastName">Last name</label>
       <input
         id="member-last-name"
         class="input"
@@ -82,7 +87,7 @@
       }
     </div>
     <div class="field">
-      <label for="member-email">Email</label>
+      <label for="member-email" i18n="@@field.email">Email</label>
       <input
         id="member-email"
         type="email"
@@ -97,7 +102,7 @@
       }
     </div>
     <div class="field">
-      <label for="member-password">Temporary password</label>
+      <label for="member-password" i18n="@@accounts.tempPassword">Temporary password</label>
       <div class="password-row">
         <input
           id="member-password"
@@ -110,7 +115,12 @@
           [attr.aria-invalid]="!!fieldError('password')"
           aria-describedby="member-password-error"
         />
-        <button type="button" class="btn btn-secondary" (click)="generatePassword()">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="generatePassword()"
+          i18n="@@tempPassword.generate"
+        >
           Generate
         </button>
       </div>
@@ -121,27 +131,42 @@
   </div>
 
   <button type="submit" class="btn btn-primary" [disabled]="saving()">
-    {{ saving() ? 'Adding…' : 'Add to my team' }}
+    @if (saving()) {
+      <ng-container i18n="@@accounts.adding">Adding…</ng-container>
+    } @else {
+      <ng-container i18n="@@team.add">Add to my team</ng-container>
+    }
   </button>
 </form>
 
 @if (loading()) {
-  <p class="text-muted" role="status">Loading your team…</p>
+  <p class="text-muted" role="status" i18n="@@team.loading">Loading your team…</p>
 } @else if (loadFailed()) {
   <div class="alert-error load-error" role="alert">
-    <span>Your team could not be loaded.</span>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    <span i18n="@@team.loadFailed">Your team could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="load()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
   </div>
 } @else if (rows().length === 0) {
-  <p class="card text-muted empty">Nobody is in your team yet. Add your first member above.</p>
+  <p class="card text-muted empty" i18n="@@team.empty">
+    Nobody is in your team yet. Add your first member above.
+  </p>
 } @else {
   <div class="table-wrap card">
     <table class="table">
       <thead>
         <tr>
-          <th scope="col">Name</th>
-          <th scope="col">Status</th>
-          <th scope="col"><span class="visually-hidden">Actions</span></th>
+          <th scope="col" i18n="@@field.name">Name</th>
+          <th scope="col" i18n="@@field.status">Status</th>
+          <th scope="col">
+            <span class="visually-hidden" i18n="@@common.actions">Actions</span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -154,7 +179,9 @@
             <td>
               <app-account-status-badge [status]="member.status" />
               @if (member.mustChangePassword) {
-                <span class="text-muted meta">Temporary password</span>
+                <span class="text-muted meta" i18n="@@accounts.tempPassword"
+                  >Temporary password</span
+                >
               }
             </td>
             <td class="actions">
@@ -163,6 +190,7 @@
                 class="btn btn-secondary btn-sm"
                 [disabled]="busyId() === member.id || passwordFor() === member.id"
                 (click)="openPassword(member)"
+                i18n="@@accounts.setPassword"
               >
                 Set password
               </button>
@@ -172,6 +200,7 @@
                   class="btn btn-secondary btn-sm danger"
                   [disabled]="busyId() === member.id"
                   (click)="setEnabled(member, false)"
+                  i18n="@@accounts.disable"
                 >
                   Disable
                 </button>
@@ -181,6 +210,7 @@
                   class="btn btn-secondary btn-sm"
                   [disabled]="busyId() === member.id"
                   (click)="setEnabled(member, true)"
+                  i18n="@@accounts.enable"
                 >
                   Enable
                 </button>
@@ -190,6 +220,7 @@
                 class="btn btn-secondary btn-sm danger"
                 [disabled]="busyId() === member.id"
                 (click)="removeFromTeam(member)"
+                i18n="@@team.remove"
               >
                 Remove from team
               </button>
@@ -213,6 +244,10 @@
     </table>
   </div>
   <p class="text-muted count">
-    {{ rows().length }} {{ rows().length === 1 ? 'member' : 'members' }}
+    @if (rows().length === 1) {
+      <ng-container i18n="@@users.oneMember">1 member</ng-container>
+    } @else {
+      <ng-container i18n="@@users.members">{{ rows().length }} members</ng-container>
+    }
   </p>
 }

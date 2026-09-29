@@ -55,9 +55,9 @@ export class MyReservations implements OnInit {
   private readonly locale = inject(LOCALE_ID);
 
   protected readonly tabs: { id: Tab; label: string }[] = [
-    { id: 'upcoming', label: 'Upcoming' },
-    { id: 'past', label: 'Past' },
-    { id: 'cancelled', label: 'Cancelled' },
+    { id: 'upcoming', label: $localize`:@@mine.tab.upcoming:Upcoming` },
+    { id: 'past', label: $localize`:@@mine.tab.past:Past` },
+    { id: 'cancelled', label: $localize`:@@status.reservation.cancelled:Cancelled` },
   ];
   protected readonly activeTab = signal<Tab>('upcoming');
 
@@ -90,7 +90,7 @@ export class MyReservations implements OnInit {
           reservation.status === 'Confirmed' && start.getTime() <= now && end.getTime() > now,
         reminder:
           minutes != null && reservation.status === 'Confirmed' && start.getTime() > now
-            ? `Reminder ${minutes} min before`
+            ? $localize`:@@mine.reminder:Reminder ${minutes}:minutes: min before`
             : null,
       };
     });
@@ -182,7 +182,13 @@ export class MyReservations implements OnInit {
 
   protected cancel(item: Item): void {
     const { reservation } = item;
-    if (!confirm(`Cancel your ${reservation.resourceName} reservation for ${this.when(item)}?`)) {
+    const resource = reservation.resourceName;
+    const when = this.when(item);
+    if (
+      !confirm(
+        $localize`:@@reservationForm.confirmCancel:Cancel your ${resource}:resource: reservation for ${when}:when:?`,
+      )
+    ) {
       return;
     }
 
@@ -194,7 +200,7 @@ export class MyReservations implements OnInit {
         next: (cancelled) => {
           this.upsert(cancelled);
           this.notifications.success(
-            `Your ${cancelled.resourceName} reservation for ${this.when(item)} was cancelled.`,
+            $localize`:@@reservationForm.cancelled:Your ${cancelled.resourceName}:resource: reservation for ${when}:when: was cancelled.`,
           );
         },
         error: (error: unknown) => {
@@ -211,7 +217,9 @@ export class MyReservations implements OnInit {
   private when(item: Item): string {
     const start = formatDate(item.start, 'EEE d MMM, HH:mm', this.locale);
     const end = formatDate(item.end, item.sameDay ? 'HH:mm' : 'EEE d MMM, HH:mm', this.locale);
-    return item.sameDay ? `${start}-${end}` : `${start} to ${end}`;
+    return item.sameDay
+      ? `${start}-${end}`
+      : $localize`:@@common.rangeTo:${start}:start: to ${end}:end:`;
   }
 
   /**

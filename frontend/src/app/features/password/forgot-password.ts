@@ -56,8 +56,9 @@ export class ForgotPassword {
 function requestError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 0) return error.title;
-    if (error.status === 429) return 'Too many attempts. Please wait a minute and try again.';
-    if (error.status === 400) return 'Enter a valid email address.';
+    if (error.status === 429)
+      return $localize`:@@error.tooManyAttempts:Too many attempts. Please wait a minute and try again.`;
+    if (error.status === 400) return $localize`:@@field.emailInvalid:Enter a valid email address.`;
   }
-  return 'Something went wrong. Please try again.';
+  return $localize`:@@error.generic:Something went wrong. Please try again.`;
 }

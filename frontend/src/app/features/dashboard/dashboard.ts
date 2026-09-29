@@ -52,10 +52,26 @@ export class Dashboard {
     const stats = this.data()?.stats;
     if (!stats) return [];
     return [
-      { label: 'Active resources', value: stats.activeResources, link: '/resources' },
-      { label: 'In use now', value: stats.resourcesInUseNow, link: null },
-      { label: 'Reservations today', value: stats.reservationsToday, link: null },
-      { label: 'Your upcoming', value: stats.myUpcomingReservations, link: '/reservations/mine' },
+      {
+        label: $localize`:@@dashboard.tile.active:Active resources`,
+        value: stats.activeResources,
+        link: '/resources',
+      },
+      {
+        label: $localize`:@@dashboard.inUseNow:In use now`,
+        value: stats.resourcesInUseNow,
+        link: null,
+      },
+      {
+        label: $localize`:@@dashboard.tile.today:Reservations today`,
+        value: stats.reservationsToday,
+        link: null,
+      },
+      {
+        label: $localize`:@@dashboard.tile.upcoming:Your upcoming`,
+        value: stats.myUpcomingReservations,
+        link: '/reservations/mine',
+      },
     ];
   });
 
@@ -114,7 +130,9 @@ export class Dashboard {
       return {
         reservation,
         mine,
-        who: mine ? 'You' : (reservation.userDisplayName ?? 'Someone'),
+        who: mine
+          ? $localize`:@@common.you:You`
+          : (reservation.userDisplayName ?? $localize`:@@common.someone:Someone`),
         startFormat: startFormat(start),
         endFormat: endFormat(end),
         runningNow: start <= now && end > now,

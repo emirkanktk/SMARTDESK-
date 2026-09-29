@@ -1,64 +1,75 @@
 <div class="page-header">
-  <h1>Resources</h1>
+  <h1 i18n="@@nav.resources">Resources</h1>
   @if (canCreate()) {
-    <a class="btn btn-primary" routerLink="/resources/new">New resource</a>
+    <a class="btn btn-primary" routerLink="/resources/new" i18n="@@resources.new">New resource</a>
   }
 </div>
 
 <form class="filters card" [formGroup]="filters" (submit)="$event.preventDefault()">
   <div class="field">
-    <label for="search">Search</label>
+    <label for="search" i18n="@@resources.search">Search</label>
     <input
       id="search"
       class="input"
       type="search"
       formControlName="search"
       placeholder="Name, location or feature"
+      i18n-placeholder="@@resources.searchPlaceholder"
     />
   </div>
   <div class="field">
-    <label for="type">Type</label>
+    <label for="type" i18n="@@field.type">Type</label>
     <select id="type" class="input" formControlName="resourceTypeId">
-      <option value="">All types</option>
+      <option value="" i18n="@@field.allTypes">All types</option>
       @for (type of types(); track type.id) {
         <option [value]="type.id">{{ type.name }}</option>
       }
     </select>
   </div>
   <div class="field">
-    <label for="status">Status</label>
+    <label for="status" i18n="@@field.status">Status</label>
     <select id="status" class="input" formControlName="status">
-      <option value="">All statuses</option>
+      <option value="" i18n="@@resources.allStatuses">All statuses</option>
       @for (status of statuses; track status) {
-        <option [value]="status">{{ status }}</option>
+        <option [value]="status">{{ statusLabel(status) }}</option>
       }
     </select>
   </div>
-  <button type="button" class="btn btn-secondary" (click)="clearFilters()">Clear</button>
+  <button type="button" class="btn btn-secondary" (click)="clearFilters()" i18n="@@common.clear">
+    Clear
+  </button>
 </form>
 
 @if (loading()) {
-  <p class="text-muted" role="status">Loading resources…</p>
+  <p class="text-muted" role="status" i18n="@@resources.loading">Loading resources…</p>
 } @else if (loadFailed()) {
-  <div class="alert-error" role="alert">Resources could not be loaded. Please try again.</div>
+  <div class="alert-error" role="alert" i18n="@@resources.loadFailed">
+    Resources could not be loaded. Please try again.
+  </div>
 } @else if (visibleResources().length === 0) {
   <p class="text-muted empty">
-    {{ resources().length === 0 ? 'No resources yet.' : 'No resources match these filters.' }}
+    @if (resources().length === 0) {
+      <ng-container i18n="@@resources.none">No resources yet.</ng-container>
+    } @else {
+      <ng-container i18n="@@resources.noMatch">No resources match these filters.</ng-container>
+    }
   </p>
 } @else {
   <div class="table-wrap card">
     <table class="table">
       <thead>
         <tr>
-          <th scope="col">Name</th>
-          <th scope="col">Type</th>
-          <th scope="col" class="num">Capacity</th>
-          <th scope="col">Location</th>
-          <th scope="col">Features</th>
-          <th scope="col">Team</th>
-          <th scope="col">Status</th>
+          <th scope="col" i18n="@@field.name">Name</th>
+          <th scope="col" i18n="@@field.type">Type</th>
+          <th scope="col" class="num" i18n="@@field.capacity">Capacity</th>
+          <th scope="col" i18n="@@field.location">Location</th>
+          <th scope="col" i18n="@@field.features">Features</th>
+          <th scope="col" i18n="@@resources.team">Team</th>
+          <th scope="col" i18n="@@field.status">Status</th>
           @if (canCreate()) {
-            <th scope="col"><span class="visually-hidden">Actions</span></th>
+            <th scope="col">
+              <span class="visually-hidden" i18n="@@common.actions">Actions</span>
+            </th>
           }
         </tr>
       </thead>
@@ -93,6 +104,7 @@
                   <a
                     class="btn btn-secondary btn-sm"
                     [routerLink]="['/resources', resource.id, 'edit']"
+                    i18n="@@common.edit"
                     >Edit</a
                   >
                   <button
@@ -101,7 +113,11 @@
                     [disabled]="busyId() === resource.id"
                     (click)="toggleActive(resource)"
                   >
-                    {{ resource.status === 'Active' ? 'Deactivate' : 'Activate' }}
+                    @if (resource.status === 'Active') {
+                      <ng-container i18n="@@resources.deactivate">Deactivate</ng-container>
+                    } @else {
+                      <ng-container i18n="@@resources.activate">Activate</ng-container>
+                    }
                   </button>
                 }
               </td>
@@ -111,7 +127,7 @@
       </tbody>
     </table>
   </div>
-  <p class="text-muted count">
+  <p class="text-muted count" i18n="@@resources.count">
     Showing {{ visibleResources().length }} of {{ resources().length }}
   </p>
 }

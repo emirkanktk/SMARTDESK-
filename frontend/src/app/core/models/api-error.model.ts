@@ -20,18 +20,26 @@ export class ApiError extends Error {
 
   static fromHttpError(error: HttpErrorResponse): ApiError {
     if (error.status === 0) {
-      return new ApiError(0, 'Cannot reach the server. Check your connection and try again.');
+      return new ApiError(
+        0,
+        $localize`:@@error.unreachable:Cannot reach the server. Check your connection and try again.`,
+      );
     }
 
     const body: unknown = error.error;
     if (typeof body !== 'object' || body === null) {
-      return new ApiError(error.status, error.statusText || 'Request failed.');
+      return new ApiError(
+        error.status,
+        error.statusText || $localize`:@@error.requestFailed:Request failed.`,
+      );
     }
 
     const problem = body as { title?: unknown; detail?: unknown; errors?: unknown; code?: unknown };
     return new ApiError(
       error.status,
-      typeof problem.title === 'string' ? problem.title : error.statusText || 'Request failed.',
+      typeof problem.title === 'string'
+        ? problem.title
+        : error.statusText || $localize`:@@error.requestFailed:Request failed.`,
       typeof problem.detail === 'string' ? problem.detail : null,
       isFieldErrorMap(problem.errors) ? problem.errors : {},
       typeof problem.code === 'string' ? problem.code : null,

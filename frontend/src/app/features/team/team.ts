@@ -10,7 +10,7 @@ import { TemporaryPasswordForm } from '../../shared/components/temporary-passwor
 import { accountActionError } from '../../shared/utils/account-errors';
 import { applyServerErrors } from '../../shared/utils/server-errors';
 import { generateTemporaryPassword } from '../../shared/utils/temporary-password';
-import { passwordValidator } from '../../shared/validators/password.validator';
+import { missingRulesMessage, passwordValidator } from '../../shared/validators/password.validator';
 
 /** The API's limit on names (AccountRules.MaxNameLength). */
 const MAX_NAME_LENGTH = 100;
@@ -86,19 +86,25 @@ export class Team {
   protected approve(request: UserAccount): void {
     this.run(request, this.accountService.approveRequest(request.id), (member) => {
       this.replace(member);
-      this.notifications.success(`${member.displayName} joined your team. They've been emailed.`);
+      this.notifications.success(
+        $localize`:@@team.joined:${member.displayName}:name: joined your team. They've been emailed.`,
+      );
     });
   }
 
   protected reject(request: UserAccount): void {
     if (
-      !confirm(`Reject ${request.displayName}'s request to join your team? It will be deleted.`)
+      !confirm(
+        $localize`:@@team.confirmReject:Reject ${request.displayName}:name:'s request to join your team? It will be deleted.`,
+      )
     ) {
       return;
     }
     this.run(request, this.accountService.rejectRequest(request.id), () => {
       this.remove(request.id);
-      this.notifications.success(`${request.displayName}'s request was rejected.`);
+      this.notifications.success(
+        $localize`:@@team.rejected:${request.displayName}:name:'s request was rejected.`,
+      );
     });
   }
 
@@ -127,7 +133,7 @@ export class Team {
         next: (member) => {
           this.accounts.update((list) => [...list, member]);
           this.notifications.success(
-            `${member.displayName} was added. Give them the temporary password; they'll choose their own when they first sign in.`,
+            $localize`:@@accounts.added:${member.displayName}:name: was added. Give them the temporary password; they'll choose their own when they first sign in.`,
           );
           this.form.reset();
         },
@@ -162,7 +168,7 @@ export class Team {
           this.replace(updated);
           this.closePassword();
           this.notifications.success(
-            `${updated.displayName} has a temporary password now and has been signed out.`,
+            $localize`:@@accounts.tempPasswordSet:${updated.displayName}:name: has a temporary password now and has been signed out.`,
           );
         },
         error: (error: unknown) => {
@@ -178,14 +184,18 @@ export class Team {
   protected setEnabled(member: UserAccount, enabled: boolean): void {
     if (
       !enabled &&
-      !confirm(`Disable ${member.displayName}? They'll be signed out and can't sign in.`)
+      !confirm(
+        $localize`:@@accounts.confirmDisable:Disable ${member.displayName}:name:? They'll be signed out and can't sign in.`,
+      )
     ) {
       return;
     }
     this.run(member, this.accountService.setTeamMemberEnabled(member.id, enabled), (updated) => {
       this.replace(updated);
       this.notifications.success(
-        `${updated.displayName} is ${enabled ? 'enabled again' : 'disabled'}.`,
+        enabled
+          ? $localize`:@@accounts.enabled:${updated.displayName}:name: is enabled again.`
+          : $localize`:@@accounts.disabled:${updated.displayName}:name: is disabled.`,
       );
     });
   }
@@ -193,14 +203,16 @@ export class Team {
   protected removeFromTeam(member: UserAccount): void {
     if (
       !confirm(
-        `Take ${member.displayName} out of your team? Their account stays; an administrator can move it to another team.`,
+        $localize`:@@team.confirmRemove:Take ${member.displayName}:name: out of your team? Their account stays; an administrator can move it to another team.`,
       )
     ) {
       return;
     }
     this.run(member, this.accountService.removeTeamMember(member.id), () => {
       this.remove(member.id);
-      this.notifications.success(`${member.displayName} is no longer in your team.`);
+      this.notifications.success(
+        $localize`:@@team.removed:${member.displayName}:name: is no longer in your team.`,
+      );
     });
   }
 
@@ -209,11 +221,17 @@ export class Team {
     if (!c.touched || c.valid) return null;
     if (c.hasError('server')) return c.getError('server') as string;
     if (c.hasError('required')) {
-      return control === 'password' ? 'Type or generate a password.' : 'This field is required.';
+      return control === 'password'
+        ? $localize`:@@accounts.passwordRequired:Type or generate a password.`
+        : $localize`:@@field.required:This field is required.`;
     }
-    if (c.hasError('maxlength')) return `Use at most ${MAX_NAME_LENGTH} characters.`;
+    if (c.hasError('maxlength')) {
+      return $localize`:@@field.maxLength:Use at most ${MAX_NAME_LENGTH}:max: characters.`;
+    }
     const missing = c.getError('password') as string[] | null;
-    return missing ? `Add ${missing.join(', ')}.` : 'Enter a valid email address.';
+    return missing
+      ? missingRulesMessage(missing)
+      : $localize`:@@field.emailInvalid:Enter a valid email address.`;
   }
 
   private run<T>(account: UserAccount, action: Observable<T>, done: (result: T) => void): void {

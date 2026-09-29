@@ -1,53 +1,74 @@
 <header class="topbar">
   <a class="brand" routerLink="/">SmartDesk</a>
-  <a class="btn btn-primary" routerLink="/login">Sign in</a>
+  <div class="topbar-actions">
+    <app-language-switch />
+    <a class="btn btn-primary" routerLink="/login" i18n="@@home.signIn">Sign in</a>
+  </div>
 </header>
 
 <main>
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero-text">
-      <p class="eyebrow">Office resources &amp; reservations</p>
-      <h1 id="hero-title">Book meeting rooms, desks and equipment in seconds.</h1>
-      <p class="lead">
+      <p class="eyebrow" i18n="@@home.eyebrow">Office resources &amp; reservations</p>
+      <h1 id="hero-title" i18n="@@home.headline">
+        Book meeting rooms, desks and equipment in seconds.
+      </h1>
+      <p class="lead" i18n="@@home.lead">
         See what’s free, reserve it, and watch the office calendar update live. SmartDesk makes sure
         no two people ever get the same slot.
       </p>
       <div class="actions">
-        <a class="btn btn-primary btn-lg" routerLink="/login">Sign in</a>
-        <a class="btn btn-secondary btn-lg" href="#how-it-works">How it works</a>
+        <a class="btn btn-primary btn-lg" routerLink="/login" i18n="@@home.signIn">Sign in</a>
+        <a class="btn btn-secondary btn-lg" href="#how-it-works" i18n="@@home.howItWorksLink"
+          >How it works</a
+        >
       </div>
     </div>
 
-    <!-- An illustration of the product, not live data. -->
+    <!-- An illustration of the product, not live data. Resource names are as seeded. -->
     <div class="preview card" aria-hidden="true">
-      <p class="preview-title">Today</p>
+      <p class="preview-title" i18n="@@home.preview.today">Today</p>
       <ul>
         <li>
           <span class="time">09:30</span>
-          <span class="what"><strong>Meeting Room A</strong> Sprint planning</span>
-          <span class="state busy">Booked</span>
+          <span class="what"
+            ><strong>Meeting Room A</strong>
+            <ng-container i18n="@@home.preview.sprintPlanning">Sprint planning</ng-container></span
+          >
+          <span class="state busy" i18n="@@home.preview.booked">Booked</span>
         </li>
         <li>
           <span class="time">11:00</span>
-          <span class="what"><strong>Desk 3-01</strong> 3rd Floor</span>
-          <span class="state free">Free</span>
+          <span class="what"
+            ><strong>Desk 3-01</strong>
+            <ng-container i18n="@@home.preview.thirdFloor">3rd Floor</ng-container></span
+          >
+          <span class="state free" i18n="@@home.preview.free">Free</span>
         </li>
         <li>
           <span class="time">14:00</span>
-          <span class="what"><strong>Company Car</strong> Client visit</span>
-          <span class="state busy">Booked</span>
+          <span class="what"
+            ><strong>Company Car</strong>
+            <ng-container i18n="@@home.preview.clientVisit">Client visit</ng-container></span
+          >
+          <span class="state busy" i18n="@@home.preview.booked">Booked</span>
         </li>
         <li>
           <span class="time">16:30</span>
-          <span class="what"><strong>Board Room</strong> 5th Floor</span>
-          <span class="state free">Free</span>
+          <span class="what"
+            ><strong>Board Room</strong>
+            <ng-container i18n="@@home.preview.fifthFloor">5th Floor</ng-container></span
+          >
+          <span class="state free" i18n="@@home.preview.free">Free</span>
         </li>
       </ul>
     </div>
   </section>
 
   <section class="features" aria-labelledby="features-title">
-    <h2 id="features-title">Everything the office shares, in one place</h2>
+    <h2 id="features-title" i18n="@@home.featuresTitle">
+      Everything the office shares, in one place
+    </h2>
     <ul class="feature-grid">
       @for (feature of features; track feature.title) {
         <li class="card feature">
@@ -59,7 +80,7 @@
   </section>
 
   <section id="how-it-works" class="steps" aria-labelledby="steps-title">
-    <h2 id="steps-title">How it works</h2>
+    <h2 id="steps-title" i18n="@@home.howItWorks">How it works</h2>
     <ol class="step-list">
       @for (step of steps; track step.title; let i = $index) {
         <li class="step">
@@ -75,8 +96,8 @@
 
   @if (showDemoAccounts) {
     <section class="card demo" aria-labelledby="demo-title">
-      <h2 id="demo-title">Demo accounts</h2>
-      <p class="text-muted">
+      <h2 id="demo-title" i18n="@@home.demoTitle">Demo accounts</h2>
+      <p class="text-muted" i18n="@@home.demoText">
         Only in this development build. Every account uses the password
         <code>{{ demoPassword }}</code
         >.
@@ -92,12 +113,14 @@
   }
 
   <section class="cta" aria-labelledby="cta-title">
-    <h2 id="cta-title">Ready to book?</h2>
-    <a class="btn btn-primary btn-lg" routerLink="/login">Sign in to SmartDesk</a>
+    <h2 id="cta-title" i18n="@@home.ctaTitle">Ready to book?</h2>
+    <a class="btn btn-primary btn-lg" routerLink="/login" i18n="@@home.ctaButton"
+      >Sign in to SmartDesk</a
+    >
   </section>
 </main>
 
 <footer class="footer text-muted">
   <span>© {{ year }} SmartDesk</span>
-  <span>Office resource &amp; reservation system</span>
+  <span i18n="@@home.footer">Office resource &amp; reservation system</span>
 </footer>

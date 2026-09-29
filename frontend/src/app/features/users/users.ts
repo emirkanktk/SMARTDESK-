@@ -13,7 +13,9 @@ import { TemporaryPasswordForm } from '../../shared/components/temporary-passwor
 import { accountActionError } from '../../shared/utils/account-errors';
 import { applyServerErrors } from '../../shared/utils/server-errors';
 import { generateTemporaryPassword } from '../../shared/utils/temporary-password';
-import { passwordValidator } from '../../shared/validators/password.validator';
+import { missingRulesMessage, passwordValidator } from '../../shared/validators/password.validator';
+import { roleLabel } from '../../core/i18n/labels';
+import { teamName } from '../../shared/utils/resource-access';
 
 /** The API's limit on names (AccountRules.MaxNameLength). */
 const MAX_NAME_LENGTH = 100;
@@ -122,6 +124,16 @@ export class Users {
     this.search.set((event.target as HTMLInputElement).value);
   }
 
+  protected readonly roleLabel = roleLabel;
+
+  protected roleOfLabel(account: UserAccount): string {
+    return $localize`:@@users.roleOf:Role of ${account.displayName}:name:`;
+  }
+
+  protected teamOfLabel(account: UserAccount): string {
+    return $localize`:@@users.teamOf:Team of ${account.displayName}:name:`;
+  }
+
   protected isSelf(account: UserAccount): boolean {
     return account.id === this.currentUserId();
   }
@@ -134,17 +146,25 @@ export class Users {
   protected approve(account: UserAccount): void {
     this.run(account, this.accountService.approve(account.id), (updated) => {
       this.replace(updated);
-      this.notifications.success(`${updated.displayName} can sign in now. They've been emailed.`);
+      this.notifications.success(
+        $localize`:@@accounts.approved:${updated.displayName}:name: can sign in now. They've been emailed.`,
+      );
     });
   }
 
   protected reject(account: UserAccount): void {
-    if (!confirm(`Reject the sign-up of ${account.displayName}? It will be deleted.`)) {
+    if (
+      !confirm(
+        $localize`:@@accounts.confirmReject:Reject the sign-up of ${account.displayName}:name:? It will be deleted.`,
+      )
+    ) {
       return;
     }
     this.run(account, this.accountService.reject(account.id), () => {
       this.accounts.update((list) => list.filter((a) => a.id !== account.id));
-      this.notifications.success(`The sign-up of ${account.displayName} was rejected.`);
+      this.notifications.success(
+        $localize`:@@accounts.rejected:The sign-up of ${account.displayName}:name: was rejected.`,
+      );
     });
   }
 
@@ -154,7 +174,7 @@ export class Users {
     if (role === account.role) {
       return;
     }
-    if (!confirm(`Make ${account.displayName} ${articleFor(role)} ${role}?`)) {
+    if (!confirm(makeRoleQuestion(account.displayName, role))) {
       select.value = account.role;
       return;
     }
@@ -163,7 +183,7 @@ export class Users {
       this.accountService.changeRole(account.id, role),
       (updated) => {
         this.replace(updated);
-        this.notifications.success(`${updated.displayName} is now ${articleFor(role)} ${role}.`);
+        this.notifications.success(nowRoleMessage(updated.displayName, role));
         // Their team (if they had one as an Employee) changed too.
         if (account.managerId) this.refreshTeamSizes();
       },
@@ -182,8 +202,8 @@ export class Users {
         this.refreshTeamSizes();
         this.notifications.success(
           updated.managerName
-            ? `${updated.displayName} is now in ${updated.managerName}'s team.`
-            : `${updated.displayName} is no longer in a team.`,
+            ? $localize`:@@users.nowInTeam:${updated.displayName}:name: is now in ${teamName(updated.managerName)}:team:.`
+            : $localize`:@@users.noLongerInTeam:${updated.displayName}:name: is no longer in a team.`,
         );
       },
       () => (select.value = account.managerId ?? ''),
@@ -193,14 +213,18 @@ export class Users {
   protected setEnabled(account: UserAccount, enabled: boolean): void {
     if (
       !enabled &&
-      !confirm(`Disable ${account.displayName}? They'll be signed out and can't sign in.`)
+      !confirm(
+        $localize`:@@accounts.confirmDisable:Disable ${account.displayName}:name:? They'll be signed out and can't sign in.`,
+      )
     ) {
       return;
     }
     this.run(account, this.accountService.setEnabled(account.id, enabled), (updated) => {
       this.replace(updated);
       this.notifications.success(
-        `${updated.displayName} is ${enabled ? 'enabled again' : 'disabled'}.`,
+        enabled
+          ? $localize`:@@accounts.enabled:${updated.displayName}:name: is enabled again.`
+          : $localize`:@@accounts.disabled:${updated.displayName}:name: is disabled.`,
       );
     });
   }
@@ -226,7 +250,7 @@ export class Users {
           this.replace(updated);
           this.closePassword();
           this.notifications.success(
-            `${updated.displayName} has a temporary password now and has been signed out.`,
+            $localize`:@@accounts.tempPasswordSet:${updated.displayName}:name: has a temporary password now and has been signed out.`,
           );
         },
         error: (error: unknown) => {
@@ -273,7 +297,7 @@ export class Users {
           this.accounts.update((list) => [...list, account]);
           if (account.managerId) this.refreshTeamSizes();
           this.notifications.success(
-            `${account.displayName} was added. Give them the temporary password; they'll choose their own when they first sign in.`,
+            $localize`:@@accounts.added:${account.displayName}:name: was added. Give them the temporary password; they'll choose their own when they first sign in.`,
           );
           this.form.reset({
             firstName: '',
@@ -300,11 +324,17 @@ export class Users {
     if (!c.touched || c.valid) return null;
     if (c.hasError('server')) return c.getError('server') as string;
     if (c.hasError('required')) {
-      return control === 'password' ? 'Type or generate a password.' : 'This field is required.';
+      return control === 'password'
+        ? $localize`:@@accounts.passwordRequired:Type or generate a password.`
+        : $localize`:@@field.required:This field is required.`;
     }
-    if (c.hasError('maxlength')) return `Use at most ${MAX_NAME_LENGTH} characters.`;
+    if (c.hasError('maxlength')) {
+      return $localize`:@@field.maxLength:Use at most ${MAX_NAME_LENGTH}:max: characters.`;
+    }
     const missing = c.getError('password') as string[] | null;
-    return missing ? `Add ${missing.join(', ')}.` : 'Enter a valid email address.';
+    return missing
+      ? missingRulesMessage(missing)
+      : $localize`:@@field.emailInvalid:Enter a valid email address.`;
   }
 
   private run<T>(
@@ -343,6 +373,24 @@ function compareAccounts(a: UserAccount, b: UserAccount): number {
   return pending || a.displayName.localeCompare(b.displayName) || a.email.localeCompare(b.email);
 }
 
-function articleFor(role: Role): string {
-  return role === Roles.Admin || role === Roles.Employee ? 'an' : 'a';
+function makeRoleQuestion(name: string, role: Role): string {
+  switch (role) {
+    case Roles.Admin:
+      return $localize`:@@users.makeAdmin:Make ${name}:name: an Admin?`;
+    case Roles.Manager:
+      return $localize`:@@users.makeManager:Make ${name}:name: a Manager?`;
+    case Roles.Employee:
+      return $localize`:@@users.makeEmployee:Make ${name}:name: an Employee?`;
+  }
+}
+
+function nowRoleMessage(name: string, role: Role): string {
+  switch (role) {
+    case Roles.Admin:
+      return $localize`:@@users.nowAdmin:${name}:name: is now an Admin.`;
+    case Roles.Manager:
+      return $localize`:@@users.nowManager:${name}:name: is now a Manager.`;
+    case Roles.Employee:
+      return $localize`:@@users.nowEmployee:${name}:name: is now an Employee.`;
+  }
 }

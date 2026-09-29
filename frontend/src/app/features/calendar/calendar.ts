@@ -259,6 +259,41 @@ export class Calendar {
   protected readonly reservationCount = computed(() => this.reservations().length);
   protected readonly blockCount = computed(() => this.visibleBlocks().length);
 
+  /** "3 reservations this week." */
+  protected readonly countText = computed(() => {
+    const n = this.reservationCount();
+    if (this.mode() === 'month') {
+      return n === 1
+        ? $localize`:@@calendar.countMonthOne:1 reservation this month.`
+        : $localize`:@@calendar.countMonth:${n}:count: reservations this month.`;
+    }
+    return n === 1
+      ? $localize`:@@calendar.countWeekOne:1 reservation this week.`
+      : $localize`:@@calendar.countWeek:${n}:count: reservations this week.`;
+  });
+
+  protected readonly blocksText = computed(() => {
+    const n = this.blockCount();
+    return n === 1
+      ? $localize`:@@calendar.blocksOne:1 blocked window.`
+      : $localize`:@@calendar.blocks:${n}:count: blocked windows.`;
+  });
+
+  /** The toolbar's buttons: back, the current week or month, and on. */
+  protected readonly navLabels = computed(() =>
+    this.mode() === 'month'
+      ? {
+          previous: $localize`:@@calendar.previousMonth:Previous month`,
+          current: $localize`:@@calendar.thisMonth:This month`,
+          next: $localize`:@@calendar.nextMonth:Next month`,
+        }
+      : {
+          previous: $localize`:@@calendar.previousWeek:Previous week`,
+          current: $localize`:@@calendar.thisWeek:This week`,
+          next: $localize`:@@calendar.nextWeek:Next week`,
+        },
+  );
+
   constructor() {
     this.resourceService
       .getResourceTypes()
@@ -426,7 +461,9 @@ export class Calendar {
     const start = new Date(reservation.startDateTime);
     const end = new Date(reservation.endDateTime);
     const mine = reservation.userId === this.authService.currentUser()?.id;
-    const who = mine ? 'You' : (reservation.userDisplayName ?? 'Someone');
+    const who = mine
+      ? $localize`:@@common.you:You`
+      : (reservation.userDisplayName ?? $localize`:@@common.someone:Someone`);
     const note = reservation.note ? ` - ${reservation.note}` : '';
     return {
       reservation,
@@ -443,7 +480,7 @@ export class Calendar {
     return {
       block,
       time: this.timeInDay(start, end, day),
-      title: `${block.resourceName} is blocked ${this.fullRange(start, end)}: ${block.reason}`,
+      title: $localize`:@@calendar.blockTitle:${block.resourceName}:resource: is blocked ${this.fullRange(start, end)}:range:: ${block.reason}:reason:`,
     };
   }
 
@@ -452,15 +489,20 @@ export class Calendar {
     const time = (date: Date) => formatDate(date, 'HH:mm', this.locale);
     const startsBefore = start < day.start;
     const endsAfter = end > day.end;
-    if (startsBefore && endsAfter) return 'All day';
-    if (startsBefore) return `until ${time(end)}`;
-    if (endsAfter) return `from ${time(start)}`;
+    if (startsBefore && endsAfter) return $localize`:@@calendar.allDay:All day`;
+    if (startsBefore) return $localize`:@@calendar.until:until ${time(end)}:time:`;
+    if (endsAfter) return $localize`:@@calendar.from:from ${time(start)}:time:`;
     return `${time(start)}-${time(end)}`;
   }
 
   private fullRange(start: Date, end: Date): string {
     const full = (date: Date) => formatDate(date, 'EEE d MMM, HH:mm', this.locale);
-    return `${full(start)} to ${full(end)}`;
+    return $localize`:@@common.rangeTo:${full(start)}:start: to ${full(end)}:end:`;
+  }
+
+  protected weekOfLabel(day: Date): string {
+    const date = formatDate(day, 'EEE d MMM', this.locale);
+    return $localize`:@@calendar.weekOf:Week of ${date}:date:`;
   }
 
   /** Book at 09:00 on a future day, or at the next half hour today. */
@@ -485,7 +527,7 @@ export class Calendar {
         start: start.toISOString(),
         end: addMinutes(start, DEFAULT_BOOKING_MINUTES).toISOString(),
       },
-      label: `Book ${resource.name} on ${formatDate(day.start, 'EEE d MMM', this.locale)}`,
+      label: $localize`:@@calendar.bookOn:Book ${resource.name}:resource: on ${formatDate(day.start, 'EEE d MMM', this.locale)}:date:`,
     };
   }
 }

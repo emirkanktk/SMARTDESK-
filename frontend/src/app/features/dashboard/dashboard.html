@@ -1,19 +1,28 @@
 <div class="page-header">
   <div>
-    <h1>Welcome, {{ displayName() }}</h1>
+    <h1 i18n="@@dashboard.welcome">Welcome, {{ displayName() }}</h1>
     @if (data(); as d) {
       <p class="text-muted today-date">{{ d.todayStart | date: 'EEEE d MMMM' }}</p>
     }
   </div>
-  <a class="btn btn-primary" routerLink="/availability">Find a free resource</a>
+  <a class="btn btn-primary" routerLink="/availability" i18n="@@dashboard.findFree"
+    >Find a free resource</a
+  >
 </div>
 
 @if (loading()) {
-  <p class="text-muted" role="status">Loading today's overview…</p>
+  <p class="text-muted" role="status" i18n="@@dashboard.loading">Loading today's overview…</p>
 } @else if (loadFailed()) {
   <div class="alert-error load-error" role="alert">
-    <span>Today's overview could not be loaded.</span>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
+    <span i18n="@@dashboard.loadFailed">Today's overview could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="retry()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
   </div>
 } @else {
   <ul class="tiles">
@@ -34,9 +43,9 @@
 
   <div class="columns">
     <section class="card panel today" aria-labelledby="today-heading">
-      <h2 id="today-heading">Today</h2>
+      <h2 id="today-heading" i18n="@@dashboard.today">Today</h2>
       @if (today().length === 0) {
-        <p class="text-muted empty">No reservations today.</p>
+        <p class="text-muted empty" i18n="@@dashboard.noneToday">No reservations today.</p>
       } @else {
         <ul class="rows">
           @for (row of today(); track row.reservation.id) {
@@ -52,7 +61,7 @@
               </span>
               <span class="who">
                 @if (row.runningNow) {
-                  <span class="pill now">Now</span>
+                  <span class="pill now" i18n="@@dashboard.now">Now</span>
                 }
                 {{ row.who }}
               </span>
@@ -64,9 +73,11 @@
 
     <div class="side">
       <section class="card panel" aria-labelledby="in-use-heading">
-        <h2 id="in-use-heading">In use now</h2>
+        <h2 id="in-use-heading" i18n="@@dashboard.inUseNow">In use now</h2>
         @if (inUseNow().length === 0) {
-          <p class="text-muted empty">Nothing is in use right now.</p>
+          <p class="text-muted empty" i18n="@@dashboard.nothingInUse">
+            Nothing is in use right now.
+          </p>
         } @else {
           <ul class="rows">
             @for (row of inUseNow(); track row.reservation.id) {
@@ -75,7 +86,7 @@
                   <strong>{{ row.reservation.resourceName }}</strong>
                   <span class="text-muted">{{ row.who }}</span>
                 </span>
-                <span class="text-muted until">
+                <span class="text-muted until" i18n="@@dashboard.until">
                   until {{ row.reservation.endDateTime | date: row.endFormat }}
                 </span>
               </li>
@@ -85,9 +96,9 @@
       </section>
 
       <section class="card panel" aria-labelledby="upcoming-heading">
-        <h2 id="upcoming-heading">Your next reservations</h2>
+        <h2 id="upcoming-heading" i18n="@@dashboard.yourNext">Your next reservations</h2>
         @if (myUpcoming().length === 0) {
-          <p class="text-muted empty">
+          <p class="text-muted empty" i18n="@@dashboard.noUpcoming">
             You have no upcoming reservations.
             <a routerLink="/availability">Find a free resource</a>
           </p>
@@ -104,15 +115,20 @@
                 <a
                   class="btn btn-secondary btn-sm"
                   [routerLink]="['/reservations', row.reservation.id, 'edit']"
+                  i18n="@@dashboard.change"
                   >Change</a
                 >
               </li>
             }
           </ul>
           @if (moreUpcoming() > 0) {
-            <a class="see-all" routerLink="/reservations/mine">See {{ moreUpcoming() }} more</a>
+            <a class="see-all" routerLink="/reservations/mine" i18n="@@dashboard.seeMore"
+              >See {{ moreUpcoming() }} more</a
+            >
           } @else {
-            <a class="see-all" routerLink="/reservations/mine">My reservations</a>
+            <a class="see-all" routerLink="/reservations/mine" i18n="@@nav.myReservations"
+              >My reservations</a
+            >
           }
         }
       </section>

@@ -1,11 +1,6 @@
 import { Component, computed, input } from '@angular/core';
+import { accountStatusLabel } from '../../../core/i18n/labels';
 import { AccountStatus } from '../../../core/models/account.model';
-
-const LABELS: Record<AccountStatus, string> = {
-  Active: 'Active',
-  PendingApproval: 'Waiting for approval',
-  Disabled: 'Disabled',
-};
 
 /** Colored pill for an account's status (ADR-0020). */
 @Component({
@@ -36,5 +31,5 @@ const LABELS: Record<AccountStatus, string> = {
 })
 export class AccountStatusBadge {
   readonly status = input.required<AccountStatus>();
-  protected readonly label = computed(() => LABELS[this.status()]);
+  protected readonly label = computed(() => accountStatusLabel(this.status()));
 }

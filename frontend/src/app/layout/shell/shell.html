@@ -1,7 +1,7 @@
 <header class="topbar">
   <a class="brand" routerLink="/dashboard">SmartDesk</a>
 
-  <nav class="nav" aria-label="Main">
+  <nav class="nav" aria-label="Main" i18n-aria-label="@@nav.label">
     @for (item of visibleNavItems(); track item.path) {
       <a
         class="nav-link"
@@ -19,8 +19,13 @@
     @if (roleBadge(); as role) {
       <span class="badge">{{ role }}</span>
     }
-    <a class="btn btn-secondary btn-sm" routerLink="/change-password">Password</a>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="logout()">Sign out</button>
+    <app-language-switch />
+    <a class="btn btn-secondary btn-sm" routerLink="/change-password" i18n="@@nav.password"
+      >Password</a
+    >
+    <button type="button" class="btn btn-secondary btn-sm" (click)="logout()" i18n="@@nav.signOut">
+      Sign out
+    </button>
   </div>
 </header>
 

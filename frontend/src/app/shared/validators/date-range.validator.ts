@@ -1,6 +1,14 @@
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { fromDateTimeLocal } from '../utils/date-time';
 
+/** The messages the start/end forms share. */
+export const RANGE_MESSAGES = {
+  chooseStart: () => $localize`:@@range.chooseStart:Choose a start date and time.`,
+  chooseEnd: () => $localize`:@@range.chooseEnd:Choose an end date and time.`,
+  startInPast: () => $localize`:@@range.startInPast:The start time is in the past.`,
+  endAfterStart: () => $localize`:@@range.endAfterStart:The end must be after the start.`,
+};
+
 export interface DateRangeOptions {
   /** Names of the two datetime-local controls in the group. */
   startKey: string;

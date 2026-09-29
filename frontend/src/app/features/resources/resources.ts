@@ -15,6 +15,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { canManageResource, teamLabel } from '../../shared/utils/resource-access';
+import { resourceStatusLabel } from '../../core/i18n/labels';
 
 /** Resource list for everyone; admins also get create, edit and activate/deactivate. */
 @Component({
@@ -32,6 +33,7 @@ export class Resources {
   protected readonly canCreate = computed(() => this.auth.isAdmin() || this.auth.isManager());
   protected readonly teamLabel = teamLabel;
   protected readonly statuses = RESOURCE_STATUSES;
+  protected readonly statusLabel = resourceStatusLabel;
 
   protected readonly filters = inject(NonNullableFormBuilder).group({
     search: [''],
@@ -112,8 +114,11 @@ export class Resources {
 
   protected toggleActive(resource: Resource): void {
     const next: ResourceStatus = resource.status === 'Active' ? 'Inactive' : 'Active';
-    const verb = next === 'Active' ? 'Activate' : 'Deactivate';
-    if (!confirm(`${verb} "${resource.name}"?`)) {
+    const question =
+      next === 'Active'
+        ? $localize`:@@resources.confirmActivate:Activate "${resource.name}:name:"?`
+        : $localize`:@@resources.confirmDeactivate:Deactivate "${resource.name}:name:"?`;
+    if (!confirm(question)) {
       return;
     }
 
@@ -130,7 +135,11 @@ export class Resources {
               ? list.filter((r) => r.id !== updated.id)
               : list.map((r) => (r.id === updated.id ? updated : r)),
           );
-          this.notifications.success(`"${updated.name}" is now ${updated.status.toLowerCase()}.`);
+          this.notifications.success(
+            updated.status === 'Active'
+              ? $localize`:@@resources.nowActive:"${updated.name}:name:" is now active.`
+              : $localize`:@@resources.nowInactive:"${updated.name}:name:" is now inactive.`,
+          );
         },
         // 403/404/5xx already raise a toast in the error interceptor; a 409 (bookings still to
         // come, issue #41) is this screen's to explain.

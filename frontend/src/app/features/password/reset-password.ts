@@ -9,6 +9,8 @@ import {
   PASSWORD_HINT,
   matchingPasswordsValidator,
   passwordValidator,
+  PASSWORD_MESSAGES,
+  missingRulesMessage,
 } from '../../shared/validators/password.validator';
 
 /**
@@ -85,21 +87,21 @@ export class ResetPassword {
   protected passwordErrors(): readonly string[] {
     const control = this.form.controls.newPassword;
     if (!control.touched) return [];
-    if (control.hasError('required')) return ['Choose a new password.'];
+    if (control.hasError('required')) return [PASSWORD_MESSAGES.chooseNew()];
     const missing = control.getError('password') as string[] | null;
-    return missing ? [`Add ${missing.join(', ')}.`] : this.serverPasswordErrors();
+    return missing ? [missingRulesMessage(missing)] : this.serverPasswordErrors();
   }
 
   protected confirmError(): string | null {
     const control = this.form.controls.confirm;
     if (!control.touched) return null;
-    if (control.hasError('required')) return 'Type the new password again.';
-    return this.form.hasError('passwordsDiffer') ? 'The two passwords are different.' : null;
+    if (control.hasError('required')) return PASSWORD_MESSAGES.repeatNew();
+    return this.form.hasError('passwordsDiffer') ? PASSWORD_MESSAGES.mismatch() : null;
   }
 
   private handleError(error: unknown): void {
     if (!(error instanceof ApiError)) {
-      this.errorMessage.set('Something went wrong. Please try again.');
+      this.errorMessage.set($localize`:@@error.generic:Something went wrong. Please try again.`);
       return;
     }
     if (error.status === 400) {
@@ -117,10 +119,10 @@ export class ResetPassword {
     }
     this.errorMessage.set(
       error.status === 429
-        ? 'Too many attempts. Please wait a minute and try again.'
+        ? $localize`:@@error.tooManyAttempts:Too many attempts. Please wait a minute and try again.`
         : error.status === 0
           ? error.title
-          : 'Something went wrong. Please try again.',
+          : $localize`:@@error.generic:Something went wrong. Please try again.`,
     );
   }
 }

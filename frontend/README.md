@@ -42,6 +42,7 @@ npx ng build
 npm run test:time-zones                        # all unit tests, once per time zone
 npx tsc -p tsconfig.spec.json --noEmit         # type-checks the specs too
 npx prettier --check --end-of-line auto src    # formatting
+npm run i18n:check                             # every text has its Turkish version
 ```
 
 - **`test:time-zones`** runs the whole suite in six zones: Istanbul, New York, Berlin, Tokyo,
@@ -77,6 +78,34 @@ npx prettier --check --end-of-line auto src    # formatting
 | `/team` | Manager | Your team: approve or reject requests to join, add members with a temporary password, set temporary passwords, disable, enable, remove |
 
 The guards only hide screens. The API checks the role on every request.
+
+## Languages
+
+The UI is in Turkish and English, Turkish unless the user picks English with **TR | EN** (top
+bar, front page, sign-in). The choice is kept per browser, and switching reloads the page
+(ADR-0025). Dates and numbers follow the language, and so do the API's messages, since
+`languageInterceptor` sends the app's `LOCALE_ID` as `Accept-Language`.
+
+- **English is written in the code, Turkish in `public/i18n/tr.json`.** Mark template text
+  with `i18n="@@screen.key"`, and attributes with `i18n-placeholder` / `i18n-aria-label`.
+  In code, use `$localize`, with a name for each placeholder:
+  `` $localize`:@@team.removed:${member.displayName}:name: is no longer in your team.` ``.
+- **After adding or changing a text**, run `npm run i18n:extract`. It updates
+  `src/locale/messages.json` and lists every id that `tr.json` lacks or no longer needs; add
+  those. `npm run i18n:check` changes nothing and fails if the two are out of step, and so
+  does a unit spec. Give a text a new id when its meaning changes, so the old Turkish doesn't
+  stay.
+- **Write whole sentences, one per case.** Don't build them from pieces ("a"/"an", "X's",
+  `count === 1 ? 'block' : 'blocks'`): Turkish orders the words differently. Put the choice
+  in code, and give each case its own message.
+- **In Turkish, never put a suffix on a placeholder** ("{$name}'in" depends on the name):
+  "{$name} adlı kişinin …", "{$manager} ekibi", "bitiş {$time}".
+- **Words:** the same as the API's (ADR-0023): parola, kaynak, rezervasyon, kapatma (blocked
+  window), ekip, ekip yöneticisi (Manager), sistem yöneticisi (Admin), çalışan (Employee).
+- **Values the API sends as data** (a status, a role) go through `core/i18n/labels.ts`.
+- **Format dates with `DatePipe` or `formatDate(…, this.locale)`**, never
+  `toLocaleString()` without a locale.
+- Unit tests run in English, the language of the code.
 
 ## Writing tests
 

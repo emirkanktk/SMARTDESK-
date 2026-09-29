@@ -586,3 +586,43 @@ new tables.
 - **Trade-offs:** there's still no cap on how many bookings one person holds; it's easy to add
   if it ever becomes a problem. Taking a resource out of service now takes a step more when it
   has bookings, but that step is where the owners find out.
+
+## ADR-0025: The UI in Turkish and English, from one build, Turkish by default
+
+**Decision** (issue #58):
+- **One build, translations loaded at start.** `@angular/localize` with runtime translations.
+  The English texts are written in the code: `i18n="@@screen.key"` in templates and
+  `$localize` in code, each with a custom id. The Turkish ones are in
+  `public/i18n/tr.json`. `main.ts` reads the stored choice (Turkish by default), and for
+  Turkish it fetches `tr.json`, calls `loadTranslations()` and registers the `tr` locale data.
+  Only then does it import the app and bootstrap it with `LOCALE_ID` `tr` or `en-US`, so
+  dates, numbers and percentages follow the language too. It also sets `<html lang>`.
+- **The switch stores and reloads.** TR | EN in the top bar, on the front page and on sign-in.
+  The choice is kept per browser (`localStorage`).
+- **The API follows.** `languageInterceptor` sends `LOCALE_ID` as `Accept-Language`
+  (ADR-0023), so the API's messages come back in the language on screen. The values the API
+  sends as data (a resource's status, a role) are turned into words in `core/i18n/labels.ts`.
+- **Kept in step:** `npm run i18n:extract` writes the English texts to
+  `src/locale/messages.json` and lists what `tr.json` still lacks. `npm run i18n:check` and
+  a unit spec fail when a text has no Turkish version, or a Turkish version has different
+  placeholders.
+
+**Why:**
+- Angular's build-time localization makes one build per language. That means a path per
+  language (`/tr/`, `/en/`) and server rewrites to serve them. Loading the translations at
+  start keeps one build, one address and no server or Docker change. The cost is 69 kB more
+  JavaScript (25 kB gzipped), plus the 31 kB `tr.json`, which only a Turkish session fetches.
+- Translations apply when code runs: a compiled template, or a `$localize` string when its
+  module loads. Switching without a reload would mean making every text reactive, for
+  something a user does once. So the app loads the translations first and imports itself
+  after, which is also what makes module-level texts such as route titles work.
+- Turkish is the office's language and what the product owner asked for. English stays one
+  click away, and it's the language the code and the tests are written in.
+- Sentences are whole messages with named placeholders, one per case. The English ones used
+  to be assembled from pieces ("a"/"an", "Zeynep Kaya's", "reservation(s)"), and Turkish puts
+  the words in another order and adds suffixes that depend on the word. So the Turkish texts
+  never hang a suffix on a name ("Zeynep Kaya ekibi", "… adlı kişinin …").
+- **Trade-offs:** a Turkish session starts with one more small request. Unit tests run in
+  English, apart from one spec that loads the Turkish texts. Custom ids keep a translation
+  when the English wording is polished, but a text whose meaning changes needs a new id.
+  Names and reasons that people type stay as typed.

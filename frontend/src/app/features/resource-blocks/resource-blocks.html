@@ -1,16 +1,16 @@
 <div class="page-header">
-  <h1>Blocked windows</h1>
-  <a class="btn btn-secondary" routerLink="/admin">Back to admin</a>
+  <h1 i18n="@@admin.blocks">Blocked windows</h1>
+  <a class="btn btn-secondary" routerLink="/admin" i18n="@@report.backToAdmin">Back to admin</a>
 </div>
 
-<p class="text-muted intro">
+<p class="text-muted intro" i18n="@@blocks.intro">
   A block takes a resource out of booking for one window - maintenance, an event, a car at the
   service - without changing its status. Reservations already in that window stay: cancel or move
   them first.
 </p>
 
 <section aria-labelledby="new-block-heading">
-  <h2 id="new-block-heading" class="section-title">Block a resource</h2>
+  <h2 id="new-block-heading" class="section-title" i18n="@@blocks.newTitle">Block a resource</h2>
   <form class="card form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     @if (formError(); as message) {
       <div class="alert-error" role="alert">{{ message }}</div>
@@ -19,23 +19,27 @@
       <div class="alert-error conflict" role="alert">
         <span>{{ c.message }}</span>
         @if (c.reservations; as params) {
-          <a routerLink="/admin" [queryParams]="params">See the reservations then</a>
+          <a routerLink="/admin" [queryParams]="params" i18n="@@blocks.seeReservations"
+            >See the reservations then</a
+          >
         }
       </div>
     }
     @if (resourcesFailed()) {
-      <div class="alert-error" role="alert">The list of resources could not be loaded.</div>
+      <div class="alert-error" role="alert" i18n="@@blocks.resourcesFailed">
+        The list of resources could not be loaded.
+      </div>
     }
 
     <div class="field">
-      <label for="block-resource">Resource</label>
+      <label for="block-resource" i18n="@@field.resource">Resource</label>
       <select
         id="block-resource"
         class="input"
         formControlName="resourceId"
         [class.invalid]="resourceError()"
       >
-        <option value="" disabled>Select a resource</option>
+        <option value="" disabled i18n="@@reservationForm.selectResource">Select a resource</option>
         @for (group of resourceGroups(); track group.typeName) {
           <optgroup [label]="group.typeName">
             @for (option of group.resources; track option.id) {
@@ -53,7 +57,7 @@
 
     <div class="row">
       <div class="field">
-        <label for="block-start">From</label>
+        <label for="block-start" i18n="@@field.from">From</label>
         <input
           id="block-start"
           class="input"
@@ -69,7 +73,7 @@
       </div>
 
       <div class="field">
-        <label for="block-end">To</label>
+        <label for="block-end" i18n="@@field.to">To</label>
         <input
           id="block-end"
           class="input"
@@ -88,7 +92,7 @@
     </div>
 
     <div class="field">
-      <label for="block-reason">Reason</label>
+      <label for="block-reason" i18n="@@blocks.reason">Reason</label>
       <input
         id="block-reason"
         class="input"
@@ -97,11 +101,12 @@
         [maxlength]="limits.reasonMaxLength"
         [class.invalid]="reasonError()"
         placeholder="Projector replacement"
+        i18n-placeholder="@@blocks.reasonPlaceholder"
       />
       @if (reasonError(); as error) {
         <span class="field-error">{{ error }}</span>
       } @else {
-        <span class="text-muted hint"
+        <span class="text-muted hint" i18n="@@blocks.reasonHint"
           >Shown to anyone who tries to book it then. {{ reasonLength() }} /
           {{ limits.reasonMaxLength }}</span
         >
@@ -110,18 +115,22 @@
 
     <div class="form-actions">
       <button type="submit" class="btn btn-primary" [disabled]="saving()">
-        {{ saving() ? 'Blocking…' : 'Block' }}
+        @if (saving()) {
+          <ng-container i18n="@@blocks.blocking">Blocking…</ng-container>
+        } @else {
+          <ng-container i18n="@@blocks.block">Block</ng-container>
+        }
       </button>
     </div>
   </form>
 </section>
 
 <section aria-labelledby="blocks-heading">
-  <h2 id="blocks-heading" class="section-title">Blocks</h2>
+  <h2 id="blocks-heading" class="section-title" i18n="@@blocks.listTitle">Blocks</h2>
 
   <div class="card filters">
     <div class="field">
-      <label for="from">From</label>
+      <label for="from" i18n="@@field.from">From</label>
       <input
         id="from"
         class="input"
@@ -131,7 +140,7 @@
       />
     </div>
     <div class="field">
-      <label for="to">To</label>
+      <label for="to" i18n="@@field.to">To</label>
       <input
         id="to"
         class="input"
@@ -141,9 +150,11 @@
       />
     </div>
     <div class="field">
-      <label for="resource">Resource</label>
+      <label for="resource" i18n="@@field.resource">Resource</label>
       <select id="resource" class="input" (change)="selectResource($event)">
-        <option value="" [selected]="!resource()">All resources</option>
+        <option value="" [selected]="!resource()" i18n="@@blocks.allResources">
+          All resources
+        </option>
         @for (group of resourceGroups(); track group.typeName) {
           <optgroup [label]="group.typeName">
             @for (option of group.resources; track option.id) {
@@ -160,29 +171,35 @@
   @if (rangeError(); as error) {
     <div class="alert-error" role="alert">{{ error }}</div>
   } @else if (loading()) {
-    <p class="text-muted" role="status">Loading blocks…</p>
+    <p class="text-muted" role="status" i18n="@@blocks.loading">Loading blocks…</p>
   } @else if (loadFailed()) {
     <div class="alert-error load-error" role="alert">
-      <span>Blocks could not be loaded.</span>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
+      <span i18n="@@blocks.loadFailed">Blocks could not be loaded.</span>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        (click)="retry()"
+        i18n="@@common.tryAgain"
+      >
+        Try again
+      </button>
     </div>
   } @else {
-    <p class="text-muted summary">
-      {{ rows().length }} {{ rows().length === 1 ? 'block' : 'blocks' }} from
-      {{ range().start | date: 'EEE d MMM' }} to {{ range().last | date: 'EEE d MMM' }}.
-    </p>
+    <p class="text-muted summary">{{ summary() }}</p>
 
     @if (rows().length === 0) {
-      <p class="card text-muted empty">No blocks in this range.</p>
+      <p class="card text-muted empty" i18n="@@blocks.none">No blocks in this range.</p>
     } @else {
       <div class="table-wrap card">
         <table class="table">
           <thead>
             <tr>
-              <th scope="col">When</th>
-              <th scope="col">Resource</th>
-              <th scope="col">Reason</th>
-              <th scope="col"><span class="visually-hidden">Actions</span></th>
+              <th scope="col" i18n="@@reservationForm.when">When</th>
+              <th scope="col" i18n="@@field.resource">Resource</th>
+              <th scope="col" i18n="@@blocks.reason">Reason</th>
+              <th scope="col">
+                <span class="visually-hidden" i18n="@@common.actions">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -192,7 +209,7 @@
                   {{ row.when }}
                   <span class="text-muted duration">{{ row.duration }}</span>
                   @if (row.inProgress) {
-                    <span class="pill in-progress">In progress</span>
+                    <span class="pill in-progress" i18n="@@mine.inProgress">In progress</span>
                   }
                 </td>
                 <td>
@@ -210,7 +227,11 @@
                       [disabled]="removingId() === row.block.id"
                       (click)="remove(row)"
                     >
-                      {{ removingId() === row.block.id ? 'Removing…' : 'Remove' }}
+                      @if (removingId() === row.block.id) {
+                        <ng-container i18n="@@blocks.removing">Removing…</ng-container>
+                      } @else {
+                        <ng-container i18n="@@blocks.remove">Remove</ng-container>
+                      }
                     </button>
                   }
                 </td>
