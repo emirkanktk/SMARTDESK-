@@ -107,6 +107,34 @@ bar, front page, sign-in). The choice is kept per browser, and switching reloads
   `toLocaleString()` without a locale.
 - Unit tests run in English, the language of the code.
 
+## Browser tests
+
+`e2e/` holds [Playwright](https://playwright.dev/) tests that drive the real app in a browser:
+sign-in and the language, booking with a conflict, a booking reaching another window's calendar
+live, a blocked window, and a manager's team resource. They need the whole app running with
+the Development seed:
+
+```bash
+dotnet run --project src/SmartDesk.API --launch-profile https   # from the repo root
+npx ng serve                                                    # from frontend/
+npm run e2e                                                     # about 20 seconds
+```
+
+- **Browser:** the Edge installed on the machine, so there's nothing to download. Set
+  `E2E_CHANNEL=` (empty) to use Playwright's own Chromium instead, after
+  `npx playwright install chromium`.
+- **Other addresses:** `E2E_BASE_URL` (default `http://localhost:4200`), `E2E_API_URL`
+  (`https://localhost:7065/api`) and `E2E_PASSWORD` (the seed's).
+- **Data:** each test makes its own resource through the API. At the end it cancels that
+  resource's bookings and deactivates it, since resources can't be deleted. A local database
+  collects inactive "E2E …" resources over time; they don't affect anything else.
+- **A failure** keeps a trace in `test-results/`: `npx playwright show-trace <file>` replays it
+  step by step.
+- **Writing one:** use the fixtures in `e2e/support.ts`: `open('ayse')` for a signed-in window,
+  `resource` for a fresh resource, and `admin` for the API. Wait on what the user sees
+  (`expect(...).toBeVisible()`), never on a timeout. Type-check with
+  `npx tsc -p e2e/tsconfig.json`.
+
 ## Writing tests
 
 Specs sit next to the code (`*.spec.ts`) and run on [Vitest](https://vitest.dev/) through
