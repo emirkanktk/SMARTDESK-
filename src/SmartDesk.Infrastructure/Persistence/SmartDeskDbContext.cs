@@ -61,8 +61,6 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // ADR-0022. The team id is a Manager's account id, with no foreign key across the
-        // Identity boundary; indexed for "which resources does this team have".
         // Sign-in sessions (ADR-0026): looked up by the hash of the refresh token presented,
         // which may be the current one or, for a few seconds, the one before.
         builder.Entity<UserSession>(entity =>
@@ -80,6 +78,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // ADR-0022. The team id is a Manager's account id, with no foreign key across the
+        // Identity boundary; indexed for "which resources does this team have".
         builder.Entity<ResourceTeam>(entity =>
         {
             entity.HasKey(e => new { e.ResourceId, e.TeamId });
