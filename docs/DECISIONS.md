@@ -626,3 +626,47 @@ new tables.
   English, apart from one spec that loads the Turkish texts. Custom ids keep a translation
   when the English wording is polished, but a text whose meaning changes needs a new id.
   Names and reasons that people type stay as typed.
+
+## ADR-0026: Short access tokens, renewed from a session in an HttpOnly cookie
+
+**Decision:**
+- **Two tokens.** Signing in starts a session. The API returns a 15-minute access token in the
+  body, and puts the session's refresh token in the `smartdesk_session` cookie: `HttpOnly`,
+  `Secure`, `SameSite=Strict`, `Path=/api/auth`.
+- **In memory only.** The app keeps the access token in memory, never in `localStorage`. It
+  renews it with `POST /api/auth/refresh` at start-up, a minute before it expires, and when
+  the API refuses one.
+- **Rotation, with theft detection.** Each renewal replaces the refresh token. The replaced one
+  still works for 30 seconds, for two tabs renewing at once; used later, it can only be a
+  copy, and the whole session ends. Tabs take turns renewing (Web Locks) and tell each other
+  about signing in and out (`BroadcastChannel`).
+- **Ending a session.** A session ends after 14 days without a renewal, after 30 days in any
+  case, on sign-out, and when the password changes or the account is switched off. Each access
+  token names its session (`sess`), and the per-request check (ADR-0020) refuses a token whose
+  session has ended, so signing out ends it on the server at once.
+- **Storage.** `UserSessions` keeps a SHA-256 hash of the current and the previous refresh
+  token, never the tokens themselves.
+- **Same origin in development.** `ng serve` proxies `/api` and `/hubs` to the API, as a
+  reverse proxy does in production, so the cookie is a same-site cookie everywhere and needs
+  no CORS credentials setup.
+
+**Why:**
+- Before this, a 60-minute token in `localStorage` meant two problems. An active user was
+  signed out every hour, losing whatever they were typing. And any script that got onto the
+  page could read the token and use it for up to an hour. Signing out only forgot the token
+  in the browser; the token itself kept working.
+- An HttpOnly cookie can't be read by script. `SameSite=Strict` and the narrow path keep it
+  out of requests other sites start, which rules out cross-site request forgery on renew and
+  sign-out. A 15-minute access token caps what a stolen one is worth.
+- Rotating the refresh token turns a stolen copy into a detectable event: whichever side uses
+  a replaced token ends the session for both.
+- The per-request session check rides on the per-user lookup that already checks the
+  account's status, roles and stamp. That lookup is cached for 30 seconds and gains one small
+  indexed query, so most requests cost nothing extra.
+- **Trade-offs:**
+  - Each tab renews every quarter of an hour: one small request, not rate limited, since
+    guessing a 256-bit token isn't an option.
+  - The proxy is one more piece of the dev setup. In return, development behaves like
+    production.
+  - An access token already issued stays usable until its session's end reaches the cache,
+    at most 30 seconds on another API instance.

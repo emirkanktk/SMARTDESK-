@@ -17,6 +17,26 @@
 | Language | string? (max 8) | `en` or `tr`: the language the user last signed in with, which their emails are written in. Null for an account that hasn't signed in since the column was added (ADR-0023). |
 | (roles) | — | assigned via `AspNetUserRoles`, one of `Roles.Admin` / `Roles.Manager` / `Roles.Employee` |
 
+### UserSession (`SmartDesk.Infrastructure.Identity`, ADR-0026)
+
+A sign-in session. The refresh token itself is never stored.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | the session id, in every access token issued under it (`sess`) |
+| UserId | Guid | FK → `ApplicationUser.Id` (cascade delete) |
+| TokenHash | string (64) | SHA-256 of the current refresh token, hex; unique |
+| PreviousTokenHash | string? (64) | the one the last renewal replaced, accepted for `Sessions:ReuseGraceSeconds` after `RotatedAt` |
+| RotatedAt | DateTime? (UTC) | when the refresh token was last replaced |
+| SessionStamp | string (32) | the account's security-stamp digest when the session began; a password change ends it |
+| CreatedAt | DateTime (UTC) | |
+| ExpiresAt | DateTime (UTC) | moves forward with every renewal (`Sessions:IdleDays`), up to `AbsoluteExpiresAt` |
+| AbsoluteExpiresAt | DateTime (UTC) | `CreatedAt` + `Sessions:MaxDays` |
+| RevokedAt | DateTime? (UTC) | set on sign-out, on a password change, or when a replaced token is used again |
+
+A user's sessions that ended or expired more than `Sessions:MaxDays` ago are deleted when
+they next sign in.
+
 ### ResourceType
 
 | Field | Type | Notes |
@@ -106,6 +126,8 @@ Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
 ## Indexes
 
 - `AspNetUsers(ManagerId)` - a Manager's team.
+- `UserSessions(TokenHash)` - unique; `UserSessions(PreviousTokenHash)`, `UserSessions(UserId)` -
+  finding the session a refresh token belongs to, and a user's open sessions.
 - `ResourceTypes(Name)` - unique.
 - `ResourceBlocks(ResourceId, StartDateTime, EndDateTime)` - the "is this resource blocked for
   `[start, end)`?" check on every booking, and the calendar's range query.

@@ -138,7 +138,9 @@ sign-in does the same password-hashing work whether or not the email exists or t
 is locked, so response times don't reveal which emails have accounts. The API validates the
 token per request with the JWT bearer handler, using the rules in
 `SmartDesk.API/Authentication/JwtBearerSetup.cs`: issuer, audience and key, HS256 only,
-and at most 30 seconds of clock skew on the expiry. Every
+and at most 30 seconds of clock skew on the expiry. The token must also name a sign-in
+session that's still open (ADR-0026): the access token lasts 15 minutes, and the app renews it
+from a refresh token that lives only in an HttpOnly cookie. Every
 endpoint requires an authenticated user unless it opts out with `[AllowAnonymous]`
 (ADR-0008). The signing key is never committed - see
 `docs/DECISIONS.md` (ADR-0005) and the README's setup steps for `dotnet user-secrets`.
@@ -156,7 +158,8 @@ cannot turn a saved reservation into an HTTP error. `NullReservationNotifier` is
 registered with `TryAdd` and only applies if the SignalR notifier is not registered.
 
 The Angular app opens the connection when a session exists and closes it on logout.
-Negotiate does not send cookies (`withCredentials: false`); the hub uses the bearer token.
+Negotiate does not send cookies (`withCredentials: false`); the hub uses the bearer token,
+renewed first if it's about to expire, on every (re)connect.
 A failed start and a dropped connection both retry forever, at 0s, 2s, 5s, 10s, then
 every 30s. Logout cancels a pending retry. Screens subscribe to `created$`, `updated$`,
 `cancelled$` and `reconnected$` on `ReservationHubService` rather than the raw connection.
@@ -213,11 +216,17 @@ reservation form also follows the update rules: once a reservation has started o
 and note can change, and an unchanged time is sent back as the API returned it, since the
 picker drops seconds and any difference would count as a change.
 
-- **Session.** `AuthService` keeps the access token in memory, mirrored to `localStorage`
-  so a reload stays signed in. The current user (id, name, email, roles) is read from the
-  token's claims, so guards and the top bar work without an extra request. An expired token
-  counts as signed out, both when the app loads and on every guarded navigation. The claims
-  only drive the UI: the API re-checks the token and roles on every request.
+- **Session (ADR-0026).** `AuthService` keeps the access token in memory only; nothing a
+  script could steal is stored. The session itself is an HttpOnly cookie that only
+  `/api/auth/refresh` and `/api/auth/logout` see.
+  - At start-up, an app initializer calls `restoreSession()`, so a reload stays signed in.
+  - A minute before the token expires, the service renews it. A token that expired anyway (the
+    laptop slept) is renewed on the next request or guarded navigation.
+  - Only one tab renews at a time (the Web Locks API), since each renewal replaces the shared
+    cookie. Tabs tell each other about signing in and out over a `BroadcastChannel`.
+  - The current user (id, name, email, roles) is read from the token's claims, so guards and
+    the top bar work without an extra request. The claims only drive the UI: the API
+    re-checks the token, its session and the roles on every request.
 - **Routing.** The public front page (`/`) and `/login` are guarded by `guestGuard`, which
   sends a signed-in user to `/dashboard`; an unknown address goes to `/`. Every other screen
   is a child of the `Shell` route, which is guarded by `authGuard` (`canActivate` +
@@ -237,10 +246,11 @@ picker drops seconds and any difference would count as a change.
   attaches `Authorization: Bearer` to requests for our own API
   only. `errorInterceptor` then turns every failure into an `ApiError` (status, title,
   detail, field errors from `ProblemDetails`).
-  - A 401 from our API ends the session and redirects to login, whether or not a token was
-    sent: a token that expired while a screen was open is dropped before the request goes
-    out, and that request's 401 still has to end the session. The only exception is a
-    request marked `ANONYMOUS_REQUEST` (login), whose 401 just means a wrong password.
+  - A 401 from our API first renews the session once and retries with the new token: the
+    session may well go on, e.g. after another tab changed the password. If it can't be
+    renewed, the session ends and the user goes to login. The only exception is a request
+    marked `ANONYMOUS_REQUEST` (login, renew), whose 401 just means a wrong password or no
+    session.
   - Several requests failing together produce one redirect and one toast.
   - 0, 403, 404 and 5xx show a toast. 400 and 409 are left to the calling screen, because
     they carry form- or rule-specific messages. A caller that shows its own message sets

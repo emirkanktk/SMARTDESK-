@@ -14,10 +14,12 @@ examples below are the English ones.
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt, passwordChangeRequired }`. 400 if a field is missing/malformed, 401 on wrong credentials. With the right password, 403 for an account that isn't active yet or any more (see below). `passwordChangeRequired: true` means the password was set by someone else and must be changed first (ADR-0021). |
+| POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt, passwordChangeRequired }`, and a new **session** in the `smartdesk_session` cookie (see Sessions below). 400 if a field is missing/malformed, 401 on wrong credentials. With the right password, 403 for an account that isn't active yet or any more (see below). `passwordChangeRequired: true` means the password was set by someone else and must be changed first (ADR-0021). |
+| POST | `/api/auth/refresh` | none (the session cookie) | `RefreshSessionCommand` | no body → the same answer as login, for the session in the cookie, whose refresh token is replaced. 401 `"Your session has ended. Sign in again."`, and the cookie deleted, when there's no cookie, or its session ended, expired, or was used from a copy (see Sessions). Not rate limited. |
+| POST | `/api/auth/logout` | none (the session cookie) | `LogoutCommand` | no body → 204. Ends the cookie's session on the server, so its access tokens stop working too, and deletes the cookie. Fine without a session, and fine twice. |
 | POST | `/api/auth/register` | none | `RegisterCommand` | body: `{ firstName, lastName, email, password, managerEmail? }` → **202** for valid input, whether or not the email already has an account. Without `managerEmail`: a **Manager** who waits for an Admin's approval (ADR-0020). With it: an **Employee** asking to join that manager's team, who waits for that manager's approval (ADR-0021). 400 for missing/malformed fields (`managerEmail` must be a valid address and not the applicant's own), or with `Password`: Identity's reasons for refusing it. |
 | GET | `/api/auth/me` | any authenticated user | `GetCurrentUserQuery` | → `{ id, firstName, lastName, email, roles: string[] }`. Also answers while a password change is required. |
-| POST | `/api/auth/change-password` | any authenticated user | `ChangePasswordCommand` | body: `{ currentPassword, newPassword }` → 200 `{ accessToken, expiresAt, passwordChangeRequired: false }` - a **new token**, because every other session of the account ends (ADR-0021). 400 with `CurrentPassword`: "The current password is wrong.", or with `NewPassword`: Identity's reasons, or "Choose a password different from the current one.". Answers while a password change is required. Shares the sign-in rate limit. |
+| POST | `/api/auth/change-password` | any authenticated user | `ChangePasswordCommand` | body: `{ currentPassword, newPassword }` → 200 `{ accessToken, expiresAt, passwordChangeRequired: false }` - a **new token and a new session cookie**: every session of the account ends, this one included, and a new one starts for this browser (ADR-0021, ADR-0026). 400 with `CurrentPassword`: "The current password is wrong.", or with `NewPassword`: Identity's reasons, or "Choose a password different from the current one.". Answers while a password change is required. Shares the sign-in rate limit. |
 | POST | `/api/auth/forgot-password` | none | `ForgotPasswordCommand` | body: `{ email }` → **202** always, whether or not an account has this email. For one that does, a reset link is emailed. 400 for a malformed email. |
 | POST | `/api/auth/reset-password` | none | `ResetPasswordCommand` | body: `{ email, token, newPassword }` (email and token come from the emailed link) → 204. 400 with `Token`: "This reset link is invalid or has expired. Ask for a new one." (wrong, used, expired, or another email's token), or with `NewPassword`: Identity's reasons for refusing the password. |
 
@@ -29,11 +31,28 @@ examples below are the English ones.
   **429** with a `Retry-After` header (seconds) and a ProblemDetails body: `"Too many
   sign-in attempts. Please wait a minute and try again."`. The lockout protects one
   account; this limit protects against one client trying many accounts.
-- The access token is valid for `Jwt:AccessTokenLifetimeMinutes` (60 by default); there is no
-  refresh token yet - on a 401 the frontend sends the user back to login.
+- **Sessions (ADR-0026).** Signing in starts a session that outlives the short access
+  tokens issued under it:
+  - The access token lasts `Jwt:AccessTokenLifetimeMinutes` (15 by default). The app keeps it
+    in memory only, and renews it with `POST /api/auth/refresh` shortly before it expires.
+  - The session is identified by a refresh token that only ever travels in the
+    `smartdesk_session` cookie: `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/auth`. No
+    script can read it, and it goes nowhere but the renew and sign-out calls. Responses that
+    carry tokens are `Cache-Control: no-store`.
+  - Each renewal replaces the refresh token. The one it replaced still works for
+    `Sessions:ReuseGraceSeconds` (30), so two tabs renewing at once both get through. Used
+    after that, it can only be a copy, and the whole session ends.
+  - A session ends after `Sessions:IdleDays` (14) without a renewal, after `Sessions:MaxDays`
+    (30) in any case, on sign-out, and when the password changes or the account is switched
+    off.
+  - Every access token names its session (`sess`), and the API refuses a token whose
+    session has ended, so signing out takes effect on the server at once, not when the token
+    expires.
+  - The server keeps only a SHA-256 hash of the refresh token.
 - Token claims: `sub` (user id), `email`, `given_name`, `family_name`, one `role` claim per
-  role (`Admin` / `Manager` / `Employee`), and `sst` - a digest of the account's security
-  stamp when the token was issued (ADR-0021). The user's team and a pending password change
+  role (`Admin` / `Manager` / `Employee`), `sst` - a digest of the account's security
+  stamp when the token was issued (ADR-0021) - and `sess`, the session it was issued under
+  (ADR-0026). The user's team and a pending password change
   are never read from the token; the server looks them up on each request.
 - **Account status (ADR-0020).** Signing in with the right password to an account that can't
   be used answers 403 with a message to show as-is: `"Your account is waiting for approval.
