@@ -11,18 +11,28 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 
 ## What it does
 
-- **Front page and sign-in** - visitors land on a public page that explains SmartDesk and
-  leads to sign-in (email and password, JWT). Signed-in users go straight to their dashboard.
-  Two roles: `Employee` and `Admin`.
+- **Front page, sign-in and sign-up** - visitors land on a public page that explains
+  SmartDesk and leads to sign-in (email and password, JWT) or sign-up. Signed-in users go
+  straight to their dashboard. Three roles: `Employee`, `Manager` (runs a team) and `Admin`.
+- **Accounts and teams** - a Manager signs up and an Admin approves them. An Employee signs up
+  with their manager's email, and that manager approves them into the team. Managers and
+  Admins can also add people with a temporary password, which is changed at the first sign-in.
+  Admins change roles, move people between teams and disable accounts
+  ([ADR-0020](docs/DECISIONS.md), [ADR-0021](docs/DECISIONS.md)).
 - **Resources** - meeting rooms, desks, company cars, projectors, cameras - with type,
   capacity, location, features and a status (`Active` / `Inactive` / `Maintenance`).
-  Admins create and edit them; everyone can browse and filter.
+  A resource belongs to one or more teams, whose members can see and book it, or it is shared
+  by everyone ([ADR-0022](docs/DECISIONS.md)). Admins manage every resource; a Manager adds
+  and edits the ones that belong to their team alone. Everyone can browse and filter what
+  they can use.
 - **Availability search** - which resources are free for a time range, by type and capacity.
 - **Blocked windows** - Admins can take a resource out of booking for a specific window
   (maintenance, an event) with a reason that booking attempts then show.
-- **Reservations** - book, change, and cancel. The backend refuses overlapping bookings,
-  bookings in the past, and bookings of resources that aren't active, and it holds under
-  concurrent requests. The owner or an Admin can change or cancel.
+- **Reservations** - book, change, and cancel, up to 180 days ahead. The backend refuses
+  overlapping bookings, bookings in the past, and bookings of resources that aren't active,
+  and it holds under concurrent requests. The owner or an Admin can change or cancel. A
+  resource with bookings still to come can't be put into maintenance or switched off until
+  they're cancelled or moved ([ADR-0024](docs/DECISIONS.md)).
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.
