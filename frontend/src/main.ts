@@ -11,7 +11,12 @@ async function start(): Promise<void> {
   let language: Language = storedLanguage();
   if (language === 'tr') {
     try {
-      const response = await fetch('i18n/tr.json');
+      // Checked with the server on every start (a 304 when unchanged): the file's name has no
+      // hash, and a release that adds texts must not meet last release's copy in the cache.
+      const response = await fetch('i18n/tr.json', { cache: 'no-cache' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const file = (await response.json()) as { translations: Record<string, string> };
       loadTranslations(file.translations);
       registerLocaleData(localeTr);
