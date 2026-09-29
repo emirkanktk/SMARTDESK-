@@ -23,7 +23,9 @@ browser, with two windows side by side so the audience sees changes arrive live.
    (`employee1@smartdesk.local`) and a private one for **Mehmet** (`employee2@smartdesk.local`).
    All passwords are `SmartDesk123!`. Both open on the front page. In Mehmet's window, **Sign
    in** and open **Calendar**.
-4. Pick a working day in the current week as `DAY` (or next week, then press **›** in the
+4. The app opens in Turkish. The steps below name the English labels, so press **EN** on the
+   front page in both windows, or follow along in Turkish. Step 10 shows the switch.
+5. Pick a working day in the current week as `DAY` (or next week, then press **›** in the
    Calendar). Times below are local; 13:00 in Istanbul is DEMO.md's 10:00Z.
 
 ## Walkthrough
@@ -156,6 +158,16 @@ browser, with two windows side by side so the audience sees changes arrive live.
   After a reload Ayşe's **Resources** lists it and it can be booked; its row reads "Okan Yıldız,
   Zeynep Kaya". Okan's **Edit** is gone: a resource that other teams use too is the admins' to
   change.
+
+### 10. Turkish and English
+
+- In Ayşe's window, press **TR** in the top bar. The page reloads in Turkish: the navigation
+  ("Panel", "Kaynaklar", "Rezervasyonlarım"), the dashboard date (e.g. "Salı 29 Eylül") and
+  the durations ("1 sa 30 dk").
+- **Yeni rezervasyon** → pick a time that overlaps one of Mehmet's bookings. The conflict
+  comes back in Turkish too: the app asks the API in the language on screen. Mehmet's window
+  is still in English, because the choice is kept per browser.
+- **EN** switches Ayşe back. The choice stays after signing out.
 
 ## Talking points
 

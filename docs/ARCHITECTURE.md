@@ -179,6 +179,7 @@ gate `Admin`-only routes (e.g. resource management).
 frontend/src/app/
   core/
     constants/       Roles (mirrors SmartDesk.Domain.Constants.Roles)
+    i18n/            the language (Turkish by default), words for the API's statuses and roles
     guards/          authGuard, guestGuard, sessionGuard, roleGuard(...roles) / adminGuard,
                      managerGuard, resourceEditorGuard
     interceptors/    languageInterceptor, jwtInterceptor, errorInterceptor, ANONYMOUS_REQUEST,
@@ -190,7 +191,7 @@ frontend/src/app/
     shell/           top bar + navigation around every signed-in screen
     notification-host/  toast messages
   shared/
-    components/      small reusable UI pieces (e.g. StatusBadge)
+    components/      small reusable UI pieces (e.g. StatusBadge, LanguageSwitch)
     utils/           form helpers (applyServerErrors: API 400 messages -> form controls,
                      keepDurationWhenStartMoves), datetime-local <-> Date conversion
     validators/      dateRangeValidator (end after start, max length, start not in the
@@ -244,6 +245,11 @@ picker drops seconds and any difference would count as a change.
   - 0, 403, 404 and 5xx show a toast. 400 and 409 are left to the calling screen, because
     they carry form- or rule-specific messages. A caller that shows its own message sets
     `SKIP_ERROR_NOTIFICATION` on the request.
+- **Languages.** Turkish and English from one build, Turkish by default (ADR-0025).
+  `main.ts` loads the stored language's translations (`public/i18n/tr.json`) and locale data,
+  then imports the app and bootstraps it with a matching `LOCALE_ID`. The **TR | EN** switch
+  stores the choice and reloads. Texts are marked with `i18n` in templates and `$localize` in
+  code; `npm run i18n:extract` lists what still needs a Turkish version.
 - **Styling.** Plain SCSS. Design tokens (colors, spacing, radius) and shared building blocks
   (`.btn`, `.field`, `.input`, `.card`, `.alert-error`) live in `src/styles.scss`. Component
   styles use those variables instead of hardcoded values.
