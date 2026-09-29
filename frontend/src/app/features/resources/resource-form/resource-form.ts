@@ -1,28 +1,47 @@
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import {
+  AbstractControl,
   FormControl,
   NonNullableFormBuilder,
   ReactiveFormsModule,
+  ValidationErrors,
   Validators,
 } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, of, switchMap, tap } from 'rxjs';
+import { Roles } from '../../../core/constants/roles';
 import { ApiError } from '../../../core/models/api-error.model';
 import {
   RESOURCE_LIMITS,
   RESOURCE_STATUSES,
   Resource,
   ResourceStatus,
+  ResourceTeam,
   ResourceType,
 } from '../../../core/models/resource.model';
+import { AccountService } from '../../../core/services/account.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ResourceService } from '../../../core/services/resource.service';
+import { canManageResource } from '../../../shared/utils/resource-access';
 import { applyServerErrors } from '../../../shared/utils/server-errors';
 import { integerValidator } from '../../../shared/validators/integer.validator';
 
 const L = RESOURCE_LIMITS;
 
-/** Create (`/resources/new`) and edit (`/resources/:id/edit`) form for admins. */
+/** A team an admin can give the resource to: its manager's id and name. */
+interface TeamOption {
+  id: string;
+  name: string;
+  /** Still on the resource, but no longer an active manager's team: can only be unticked. */
+  inactive: boolean;
+}
+
+/**
+ * Create (`/resources/new`) and edit (`/resources/:id/edit`) form. Admins pick the teams that
+ * may use the resource (none: shared by everyone); a manager's resource always belongs to their
+ * own team, and they can only edit one that belongs to their team alone (ADR-0022).
+ */
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
   selector: 'app-resource-form',
@@ -31,12 +50,15 @@ const L = RESOURCE_LIMITS;
 })
 export class ResourceForm implements OnInit {
   private readonly resourceService = inject(ResourceService);
+  private readonly accountService = inject(AccountService);
+  private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
   private readonly router = inject(Router);
 
   /** Route parameter; absent when creating. */
   readonly id = input<string>();
   protected readonly isEdit = computed(() => !!this.id());
+  protected readonly isAdmin = this.auth.isAdmin;
 
   protected readonly limits = L;
   protected readonly statuses = RESOURCE_STATUSES;
@@ -57,6 +79,7 @@ export class ResourceForm implements OnInit {
     description: ['', Validators.maxLength(L.descriptionMaxLength)],
     status: ['Active' as ResourceStatus],
     features: [[] as string[]],
+    teamIds: new FormControl<string[]>([], { nonNullable: true, validators: teamListValidator }),
   });
 
   /** Text box for the next feature; not part of the submitted form. */
@@ -68,12 +91,37 @@ export class ResourceForm implements OnInit {
   protected readonly loadFailed = signal(false);
   protected readonly saving = signal(false);
   protected readonly formError = signal<string | null>(null);
+  /** A resource a manager may see but not change: shared, or used by other teams too. */
+  protected readonly readOnly = signal(false);
+
+  /** Active managers, for an admin's team picker; null until they arrive. */
+  private readonly managers = signal<TeamOption[] | null>(null);
+  protected readonly managersFailed = signal(false);
+  /** The teams the resource had when loaded, so an unchanged list isn't sent again. */
+  private readonly loadedTeams = signal<ResourceTeam[]>([]);
+  protected readonly teamOptions = computed<TeamOption[]>(() => {
+    const active = this.managers();
+    const others = this.loadedTeams()
+      .filter((team) => !active?.some((m) => m.id === team.id))
+      .map((team) => ({ id: team.id, name: team.managerName, inactive: active !== null }));
+    return [...(active ?? []), ...others].sort((a, b) => a.name.localeCompare(b.name));
+  });
 
   ngOnInit(): void {
     this.resourceService.getResourceTypes().subscribe({
       next: (types) => this.types.set(types),
       error: () => this.formError.set('Resource types could not be loaded.'),
     });
+
+    if (this.isAdmin()) {
+      this.accountService.getAccounts({ role: Roles.Manager, status: 'Active' }).subscribe({
+        next: (managers) =>
+          this.managers.set(
+            managers.map((m) => ({ id: m.id, name: m.displayName, inactive: false })),
+          ),
+        error: () => this.managersFailed.set(true),
+      });
+    }
 
     const id = this.id();
     if (id) {
@@ -116,6 +164,26 @@ export class ResourceForm implements OnInit {
     this.featureError.set(null);
   }
 
+  protected isTeamSelected(id: string): boolean {
+    return this.form.controls.teamIds.value.includes(id);
+  }
+
+  protected toggleTeam(id: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const control = this.form.controls.teamIds;
+    const others = control.value.filter((t) => t !== id);
+    control.setValue(checked ? [...others, id] : others);
+    control.markAsDirty();
+    control.markAsTouched();
+  }
+
+  protected teamError(): string | null {
+    const errors = this.form.controls.teamIds.errors;
+    if (errors?.['server']) return errors['server'] as string;
+    if (errors?.['maxTeams']) return `A resource can belong to at most ${L.maxTeams} teams.`;
+    return null;
+  }
+
   protected submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -133,9 +201,18 @@ export class ResourceForm implements OnInit {
     };
 
     const id = this.id();
+    // Changed teams make an edit two calls: the details can be saved while the teams fail.
+    let detailsSaved = false;
     const request = id
-      ? this.resourceService.update(id, { ...body, status: value.status })
-      : this.resourceService.create(body);
+      ? this.resourceService.update(id, { ...body, status: value.status }).pipe(
+          tap(() => (detailsSaved = true)),
+          switchMap((saved) =>
+            this.teamsChanged(value.teamIds)
+              ? this.resourceService.setTeams(id, value.teamIds)
+              : of(saved),
+          ),
+        )
+      : this.resourceService.create(this.isAdmin() ? { ...body, teamIds: value.teamIds } : body);
 
     this.saving.set(true);
     this.formError.set(null);
@@ -144,7 +221,7 @@ export class ResourceForm implements OnInit {
         this.notifications.success(`"${saved.name}" was ${id ? 'updated' : 'created'}.`);
         void this.router.navigateByUrl('/resources');
       },
-      error: (error: unknown) => this.handleSaveError(error),
+      error: (error: unknown) => this.handleSaveError(error, detailsSaved),
     });
   }
 
@@ -167,6 +244,15 @@ export class ResourceForm implements OnInit {
   }
 
   private fill(resource: Resource): void {
+    const user = this.auth.currentUser();
+    this.readOnly.set(
+      !canManageResource(resource, {
+        id: user?.id ?? '',
+        isAdmin: this.isAdmin(),
+        isManager: this.auth.isManager(),
+      }),
+    );
+    this.loadedTeams.set(resource.teams);
     this.form.setValue({
       name: resource.name,
       resourceTypeId: resource.resourceTypeId,
@@ -175,18 +261,35 @@ export class ResourceForm implements OnInit {
       description: resource.description ?? '',
       status: resource.status,
       features: [...resource.features],
+      teamIds: resource.teams.map((team) => team.id),
     });
   }
 
-  private handleSaveError(error: unknown): void {
+  /** Only an admin changes teams, and only a list that differs from the loaded one is sent. */
+  private teamsChanged(teamIds: string[]): boolean {
+    const loaded = this.loadedTeams().map((team) => team.id);
+    return (
+      this.isAdmin() &&
+      (teamIds.length !== loaded.length || teamIds.some((id) => !loaded.includes(id)))
+    );
+  }
+
+  private handleSaveError(error: unknown, detailsSaved: boolean): void {
+    const partly = detailsSaved ? 'Your other changes were saved, but the teams were not.' : null;
     if (error instanceof ApiError && error.status === 400) {
       const unmatched = applyServerErrors(this.form, error);
-      this.formError.set(unmatched.length ? unmatched.join(' ') : null);
+      const message = [partly, ...unmatched].filter(Boolean).join(' ');
+      this.formError.set(message || null);
       return;
     }
     // Other failures already raised a toast; keep a note on the form as well.
-    this.formError.set('The resource could not be saved.');
+    this.formError.set(partly ?? 'The resource could not be saved.');
   }
+}
+
+// Mirrors the API's limit on how many teams one resource can belong to.
+function teamListValidator(control: AbstractControl<string[]>): ValidationErrors | null {
+  return control.value.length > L.maxTeams ? { maxTeams: true } : null;
 }
 
 // Mirrors the API's feature rules: at most 20, 1-100 characters, no duplicates ignoring case.

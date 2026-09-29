@@ -69,6 +69,18 @@ describe('ResourceService', () => {
     update.flush(fakeResource());
   });
 
+  it('sets the teams with PATCH, an empty list meaning shared', () => {
+    service.setTeams('res/1', ['u-zeynep']).subscribe();
+    const give = http.expectOne({ method: 'PATCH', url: `${base}/res%2F1/teams` });
+    expect(give.request.body).toEqual({ teamIds: ['u-zeynep'] });
+    give.flush(fakeResource());
+
+    service.setTeams('res-1', []).subscribe();
+    const share = http.expectOne({ method: 'PATCH', url: `${base}/res-1/teams` });
+    expect(share.request.body).toEqual({ teamIds: [] });
+    share.flush(fakeResource());
+  });
+
   it('changes only the status with PATCH', () => {
     service.changeStatus('res/1', 'Maintenance').subscribe();
 

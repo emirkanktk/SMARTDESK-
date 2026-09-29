@@ -57,3 +57,6 @@ export function roleGuard(...roles: Role[]): CanActivateFn {
 export const adminGuard: CanActivateFn = roleGuard(Roles.Admin);
 
 export const managerGuard: CanActivateFn = roleGuard(Roles.Manager);
+
+/** The resource forms: admins, and managers for their own team's resources (ADR-0022). */
+export const resourceEditorGuard: CanActivateFn = roleGuard(Roles.Admin, Roles.Manager);

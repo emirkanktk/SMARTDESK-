@@ -61,7 +61,17 @@ export class ResourceService {
     return this.http.put<Resource>(`${this.baseUrl}/${encodeURIComponent(id)}`, request);
   }
 
-  /** Changes only the status, so it can't overwrite another admin's edit. Admin only. */
+  /** Which teams may use it; an empty list makes it shared by everyone. Admin only. */
+  setTeams(id: string, teamIds: string[]): Observable<Resource> {
+    return this.http.patch<Resource>(`${this.baseUrl}/${encodeURIComponent(id)}/teams`, {
+      teamIds,
+    });
+  }
+
+  /**
+   * Changes only the status, so it can't overwrite someone else's edit. Admins, or a manager for
+   * a resource that belongs to their team alone (ADR-0022).
+   */
   changeStatus(id: string, status: ResourceStatus): Observable<Resource> {
     return this.http.patch<Resource>(`${this.baseUrl}/${encodeURIComponent(id)}/status`, {
       status,

@@ -8,6 +8,12 @@ export interface ResourceType {
   name: string;
 }
 
+/** A team a resource belongs to: the team's manager (ADR-0022). */
+export interface ResourceTeam {
+  id: string;
+  managerName: string;
+}
+
 export interface Resource {
   id: string;
   name: string;
@@ -18,6 +24,8 @@ export interface Resource {
   status: ResourceStatus;
   description: string | null;
   features: string[];
+  /** Empty: shared by everyone. Otherwise only these teams (and admins) can use it. */
+  teams: ResourceTeam[];
 }
 
 export interface ResourceFilter {
@@ -36,7 +44,7 @@ export interface AvailabilityQuery {
 /** Longest window `GET /api/resources/available` accepts. */
 export const AVAILABILITY_MAX_DAYS = 31;
 
-export interface CreateResourceRequest {
+interface ResourceFields {
   name: string;
   resourceTypeId: string;
   capacity: number;
@@ -45,8 +53,16 @@ export interface CreateResourceRequest {
   features: string[];
 }
 
-/** Full replace: every field is sent, omitted features are removed. */
-export interface UpdateResourceRequest extends CreateResourceRequest {
+/**
+ * `teamIds`: an admin's choice, none meaning shared by everyone. A manager's new resource always
+ * belongs to their own team, so they leave it out (ADR-0022).
+ */
+export interface CreateResourceRequest extends ResourceFields {
+  teamIds?: string[];
+}
+
+/** Full replace: every field is sent, omitted features are removed. Teams don't change here. */
+export interface UpdateResourceRequest extends ResourceFields {
   status: ResourceStatus;
 }
 
@@ -59,4 +75,5 @@ export const RESOURCE_LIMITS = {
   capacityMax: 1000,
   maxFeatures: 20,
   featureMaxLength: 100,
+  maxTeams: 20,
 } as const;
