@@ -82,7 +82,7 @@ public class ResourceValidatorTests : IDisposable
     [InlineData(-60)] // end before start
     public void Available_EndNotAfterStart_Fails(int endOffsetMinutes)
     {
-        var result = new GetAvailableResourcesQueryValidator()
+        var result = new GetAvailableResourcesQueryValidator(TimeProvider.System)
             .Validate(new GetAvailableResourcesQuery(Start, Start.AddMinutes(endOffsetMinutes)));
 
         result.Errors.Should().ContainSingle(e => e.PropertyName == nameof(GetAvailableResourcesQuery.EndDateTime));
@@ -91,7 +91,7 @@ public class ResourceValidatorTests : IDisposable
     [Fact]
     public void Available_WindowLongerThan31Days_Fails()
     {
-        var result = new GetAvailableResourcesQueryValidator()
+        var result = new GetAvailableResourcesQueryValidator(TimeProvider.System)
             .Validate(new GetAvailableResourcesQuery(Start, Start.AddDays(32)));
 
         result.Errors.Should().ContainSingle(e => e.PropertyName == nameof(GetAvailableResourcesQuery.EndDateTime));
@@ -100,7 +100,7 @@ public class ResourceValidatorTests : IDisposable
     [Fact]
     public void Available_NonPositiveMinCapacity_Fails()
     {
-        var result = new GetAvailableResourcesQueryValidator()
+        var result = new GetAvailableResourcesQueryValidator(TimeProvider.System)
             .Validate(new GetAvailableResourcesQuery(Start, Start.AddHours(1), MinCapacity: 0));
 
         result.Errors.Should().ContainSingle(e => e.PropertyName == nameof(GetAvailableResourcesQuery.MinCapacity));

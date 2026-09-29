@@ -1,5 +1,6 @@
 using FluentValidation;
 using SmartDesk.Application.Common.Extensions;
+using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Resources.Queries.GetAvailableResources;
@@ -10,9 +11,14 @@ public sealed class GetAvailableResourcesQueryValidator : AbstractValidator<GetA
     // "available" mean "free for a whole month", which nobody asks for.
     public static readonly TimeSpan MaxWindow = TimeSpan.FromDays(31);
 
-    public GetAvailableResourcesQueryValidator()
+    public GetAvailableResourcesQueryValidator(TimeProvider timeProvider)
     {
-        RuleFor(x => x.StartDateTime).NotEmpty();
+        // What can't be booked isn't worth finding: the same horizon as a booking (issue #41).
+        RuleFor(x => x.StartDateTime)
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty()
+            .Must(start => start.AsUtc() <= timeProvider.GetUtcNow().UtcDateTime + ReservationRules.MaxAdvance)
+            .WithMessage(_ => string.Format(Messages.Resources_SearchTooFarAhead, ReservationRules.MaxAdvanceDays));
 
         // Compared as UTC: DateTime comparison ignores Kind, so a Local and a Utc value would
         // otherwise be compared by their raw clock readings.

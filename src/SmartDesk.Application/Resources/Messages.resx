@@ -402,11 +402,17 @@
   <data name="Reservations_Started" xml:space="preserve">
     <value>This reservation has already started; only its end time and note can be changed.</value>
   </data>
+  <data name="Reservations_TooFarAhead" xml:space="preserve">
+    <value>A reservation can start at most {0} days ahead.</value>
+  </data>
   <data name="Resources_DuplicateFeatures" xml:space="preserve">
     <value>Features must not contain duplicates.</value>
   </data>
   <data name="Resources_EmptyTeamId" xml:space="preserve">
     <value>Team ids can't be empty.</value>
+  </data>
+  <data name="Resources_HasUpcomingReservations" xml:space="preserve">
+    <value>{0} confirmed reservation(s) on {1} from now on. Cancel or move them first.</value>
   </data>
   <data name="Resources_MaxFeatures" xml:space="preserve">
     <value>A resource can have at most {0} features.</value>
@@ -422,6 +428,9 @@
   </data>
   <data name="Resources_OwnTeamOnly" xml:space="preserve">
     <value>Managers add resources to their own team only.</value>
+  </data>
+  <data name="Resources_SearchTooFarAhead" xml:space="preserve">
+    <value>The search can start at most {0} days ahead.</value>
   </data>
   <data name="Resources_TeamsMustBeActive" xml:space="preserve">
     <value>Every team must be an active manager's.</value>

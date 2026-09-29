@@ -20,6 +20,11 @@ public static class ReservationRules
     public const int MaxCalendarDays = 42;
     public static readonly TimeSpan MaxCalendarRange = TimeSpan.FromDays(MaxCalendarDays) + TimeSpan.FromHours(1);
 
+    // How far ahead a booking may start (issue #41): generous for any team's planning, but it
+    // stops one person holding a room for years. Applies when a booking is moved, too.
+    public const int MaxAdvanceDays = 180;
+    public static readonly TimeSpan MaxAdvance = TimeSpan.FromDays(MaxAdvanceDays);
+
     public const int MaxNoteLength = 500;
 
     // The reminder choices offered to the owner, in minutes before the start (ADR-0018).

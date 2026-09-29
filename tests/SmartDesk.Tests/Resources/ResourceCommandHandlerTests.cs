@@ -43,7 +43,7 @@ public class ResourceCommandHandlerTests : IDisposable
         { Id = Guid.NewGuid() };
 
         await using var context = _database.CreateContext();
-        var act = () => new UpdateResourceCommandHandler(context, TestAccess.Admin, TestAccess.Reader()).Handle(command, CancellationToken.None);
+        var act = () => new UpdateResourceCommandHandler(context, TestAccess.Admin, TestAccess.Reader(), TimeProvider.System).Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
@@ -64,7 +64,7 @@ public class ResourceCommandHandlerTests : IDisposable
         { Id = resource.Id };
 
         await using var context = _database.CreateContext();
-        var dto = await new UpdateResourceCommandHandler(context, TestAccess.Admin, TestAccess.Reader()).Handle(command, CancellationToken.None);
+        var dto = await new UpdateResourceCommandHandler(context, TestAccess.Admin, TestAccess.Reader(), TimeProvider.System).Handle(command, CancellationToken.None);
 
         dto.Name.Should().Be("Meeting Room A (renovated)");
         dto.Capacity.Should().Be(10);

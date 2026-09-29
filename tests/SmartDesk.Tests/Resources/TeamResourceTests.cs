@@ -297,14 +297,14 @@ public sealed class TeamResourceTests : IDisposable
         async Task Edit(Resource resource)
         {
             await using var context = _database.CreateContext();
-            await new UpdateResourceCommandHandler(context, ZeynepManager, TestAccess.Reader())
+            await new UpdateResourceCommandHandler(context, ZeynepManager, TestAccess.Reader(), TimeProvider.System)
                 .Handle(new UpdateResourceCommand("Renamed", resource.ResourceTypeId, 4, "2nd Floor", null, null, ResourceStatus.Active) { Id = resource.Id }, CancellationToken.None);
         }
 
         async Task SwitchOff(Resource resource)
         {
             await using var context = _database.CreateContext();
-            await new ChangeResourceStatusCommandHandler(context, ZeynepManager, TestAccess.Reader())
+            await new ChangeResourceStatusCommandHandler(context, ZeynepManager, TestAccess.Reader(), TimeProvider.System)
                 .Handle(new ChangeResourceStatusCommand(ResourceStatus.Inactive) { Id = resource.Id }, CancellationToken.None);
         }
 
