@@ -4,12 +4,16 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SmartDesk.API.Authentication;
 using SmartDesk.API.RateLimiting;
+using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Features.Accounts.Commands.Register;
 using SmartDesk.Application.Features.Auth.Commands.ChangePassword;
 using SmartDesk.Application.Features.Auth.Commands.ForgotPassword;
 using SmartDesk.Application.Features.Auth.Commands.Login;
+using SmartDesk.Application.Features.Auth.Commands.Logout;
+using SmartDesk.Application.Features.Auth.Commands.RefreshSession;
 using SmartDesk.Application.Features.Auth.Commands.ResetPassword;
 using SmartDesk.Application.Features.Auth.Queries.GetCurrentUser;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.API.Controllers;
 
@@ -26,8 +30,48 @@ public sealed class AuthController(ISender sender) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
-    public Task<LoginResponse> Login(LoginCommand command, CancellationToken cancellationToken) =>
-        sender.Send(command, cancellationToken);
+    public async Task<LoginResponse> Login(LoginCommand command, CancellationToken cancellationToken)
+    {
+        var signedIn = await sender.Send(command, cancellationToken);
+        SessionCookie.Write(Response, signedIn);
+        return signedIn.Response;
+    }
+
+    // A new access token from the session cookie (ADR-0026), which is replaced on the way. The
+    // app calls it when it starts and shortly before its token expires. Not rate limited: the
+    // refresh token has 256 random bits, and each tab renews every few minutes.
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<LoginResponse>> Refresh(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var signedIn = await sender.Send(new RefreshSessionCommand(SessionCookie.Read(Request)), cancellationToken);
+            SessionCookie.Write(Response, signedIn);
+            return signedIn.Response;
+        }
+        catch (UnauthorizedException ended)
+        {
+            // Answered here rather than by the exception handler, which would drop the header
+            // that deletes the dead cookie.
+            SessionCookie.Clear(Response);
+            return Problem(statusCode: StatusCodes.Status401Unauthorized, title: Messages.Problem_Unauthorized, detail: ended.Message);
+        }
+    }
+
+    // Ends the session on the server and deletes its cookie (ADR-0026). Anonymous, so signing
+    // out still works once the access token has expired; doing it twice is fine.
+    [HttpPost("logout")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        await sender.Send(new LogoutCommand(SessionCookie.Read(Request)), cancellationToken);
+        SessionCookie.Clear(Response);
+        return NoContent();
+    }
 
     // Signs up a Manager, who can sign in once an Admin approves (ADR-0020). Always 202 for
     // valid input, whether or not the email already has an account - its owner is emailed.
@@ -70,7 +114,8 @@ public sealed class AuthController(ISender sender) : ControllerBase
     }
 
     // The user's own password change (ADR-0021): the only thing an account whose password was
-    // set by someone else can do, besides /me. Every other session ends; this one gets a new token.
+    // set by someone else can do, besides /me. Every session ends, and this browser gets a new
+    // one (ADR-0026).
     [HttpPost("change-password")]
     [AllowWhilePasswordChangeRequired]
     [EnableRateLimiting(RateLimitingSetup.LoginPolicy)]
@@ -78,8 +123,12 @@ public sealed class AuthController(ISender sender) : ControllerBase
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
-    public Task<LoginResponse> ChangePassword(ChangePasswordCommand command, CancellationToken cancellationToken) =>
-        sender.Send(command, cancellationToken);
+    public async Task<LoginResponse> ChangePassword(ChangePasswordCommand command, CancellationToken cancellationToken)
+    {
+        var signedIn = await sender.Send(command, cancellationToken);
+        SessionCookie.Write(Response, signedIn);
+        return signedIn.Response;
+    }
 
     [HttpGet("me")]
     [AllowWhilePasswordChangeRequired]

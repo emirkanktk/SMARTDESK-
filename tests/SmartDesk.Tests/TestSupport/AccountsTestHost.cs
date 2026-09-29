@@ -48,6 +48,8 @@ public sealed class AccountsTestHost : IDisposable
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IUserAccessChecker, UserAccessChecker>();
+        services.AddScoped<IUserSessions, UserSessions>();
+        services.AddSingleton(Options.Create(new SessionOptions()));
         services.AddScoped<UserAccessCache>();
         services.AddSingleton<IRealtimeSessions>(RealtimeSessions);
         services.AddSingleton<ICurrentUserService>(_currentUser);

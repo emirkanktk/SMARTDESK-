@@ -22,6 +22,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<ResourceBlock> ResourceBlocks => Set<ResourceBlock>();
     public DbSet<ResourceTeam> ResourceTeams => Set<ResourceTeam>();
 
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -61,6 +63,23 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
 
         // ADR-0022. The team id is a Manager's account id, with no foreign key across the
         // Identity boundary; indexed for "which resources does this team have".
+        // Sign-in sessions (ADR-0026): looked up by the hash of the refresh token presented,
+        // which may be the current one or, for a few seconds, the one before.
+        builder.Entity<UserSession>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.PreviousTokenHash).HasMaxLength(64);
+            entity.Property(e => e.SessionStamp).IsRequired().HasMaxLength(32);
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => e.PreviousTokenHash);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         builder.Entity<ResourceTeam>(entity =>
         {
             entity.HasKey(e => new { e.ResourceId, e.TeamId });

@@ -1,9 +1,10 @@
-using FluentValidation;
 using FluentValidation.Results;
+using FluentValidation;
 using MediatR;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Auth.Commands.Login;
+using SmartDesk.Application.Features.Auth.Common;
 using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Auth.Commands.ChangePassword;
@@ -11,11 +12,12 @@ namespace SmartDesk.Application.Features.Auth.Commands.ChangePassword;
 public sealed class ChangePasswordCommandHandler(
     ICurrentUserService currentUser,
     IIdentityService identityService,
-    IJwtTokenGenerator tokenGenerator) : IRequestHandler<ChangePasswordCommand, LoginResponse>
+    IJwtTokenGenerator tokenGenerator,
+    IUserSessions sessions) : IRequestHandler<ChangePasswordCommand, SignedIn>
 {
     public static string WrongCurrentPasswordMessage => Messages.Auth_WrongCurrentPassword;
 
-    public async Task<LoginResponse> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
+    public async Task<SignedIn> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId ?? throw new UnauthorizedException();
 
@@ -30,7 +32,9 @@ public sealed class ChangePasswordCommandHandler(
             throw new ValidationException(result.PasswordErrors.Select(error => new ValidationFailure(nameof(request.NewPassword), error)));
         }
 
-        var token = tokenGenerator.Generate(result.User!);
-        return new LoginResponse(token.Token, token.ExpiresAtUtc, PasswordChangeRequired: false);
+        // Every session ends, this one included; the answer starts a new one here (ADR-0026).
+        await sessions.EndAllAsync(userId, cancellationToken);
+        var session = await sessions.StartAsync(userId, result.User!.SessionStamp, cancellationToken);
+        return SessionIssuer.Answer(tokenGenerator, result.User, session);
     }
 }
