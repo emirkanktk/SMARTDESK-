@@ -4,6 +4,7 @@ import {
   authGuard,
   guestGuard,
   managerGuard,
+  resourceEditorGuard,
   sessionGuard,
 } from './core/guards/auth.guard';
 import { Shell } from './layout/shell/shell';
@@ -70,14 +71,14 @@ export const routes: Routes = [
       {
         path: 'resources/new',
         title: 'New resource · SmartDesk',
-        canActivate: [adminGuard],
+        canActivate: [resourceEditorGuard],
         loadComponent: () =>
           import('./features/resources/resource-form/resource-form').then((m) => m.ResourceForm),
       },
       {
         path: 'resources/:id/edit',
         title: 'Edit resource · SmartDesk',
-        canActivate: [adminGuard],
+        canActivate: [resourceEditorGuard],
         loadComponent: () =>
           import('./features/resources/resource-form/resource-form').then((m) => m.ResourceForm),
       },

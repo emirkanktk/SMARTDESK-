@@ -13,6 +13,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
+import { canManageResource, teamLabel } from '../../shared/utils/resource-access';
 
 /** Resource list for everyone; admins also get create, edit and activate/deactivate. */
 @Component({
@@ -25,7 +26,10 @@ export class Resources {
   private readonly resourceService = inject(ResourceService);
   private readonly notifications = inject(NotificationService);
 
-  protected readonly isAdmin = inject(AuthService).isAdmin;
+  private readonly auth = inject(AuthService);
+  /** Admins add any resource; a manager adds one to their own team (ADR-0022). */
+  protected readonly canCreate = computed(() => this.auth.isAdmin() || this.auth.isManager());
+  protected readonly teamLabel = teamLabel;
   protected readonly statuses = RESOURCE_STATUSES;
 
   protected readonly filters = inject(NonNullableFormBuilder).group({
@@ -90,6 +94,15 @@ export class Resources {
         this.resources.set(resources);
         this.loading.set(false);
       });
+  }
+
+  /** Edit and activate/deactivate: an admin for any resource, a manager for their team's own. */
+  protected canManage(resource: Resource): boolean {
+    return canManageResource(resource, {
+      id: this.auth.currentUser()?.id ?? '',
+      isAdmin: this.auth.isAdmin(),
+      isManager: this.auth.isManager(),
+    });
   }
 
   protected clearFilters(): void {

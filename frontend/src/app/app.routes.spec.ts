@@ -10,9 +10,11 @@ import { AuthService } from './core/services/auth.service';
 // The app's real routes and guards, with only the session faked: where does each visitor land?
 describe('app routes', () => {
   let signedIn: boolean;
+  let roles: string[];
 
   beforeEach(() => {
     signedIn = false;
+    roles = [];
     TestBed.configureTestingModule({
       providers: [
         provideRouter(routes),
@@ -22,7 +24,7 @@ describe('app routes', () => {
           provide: AuthService,
           useValue: {
             hasValidSession: () => signedIn,
-            hasRole: () => false,
+            hasRole: (role: string) => roles.includes(role),
             getToken: () => (signedIn ? 'token' : null),
             isAuthenticated: signal(false),
             isAdmin: signal(false),
@@ -95,6 +97,23 @@ describe('app routes', () => {
     signedIn = true;
 
     expect((await visit('/team')).path).toBe('/dashboard');
+  });
+
+  it('opens the new-resource form to a manager, for their own team', async () => {
+    signedIn = true;
+    roles = ['Manager'];
+
+    const { path, page } = await visit('/resources/new');
+
+    expect(path).toBe('/resources/new');
+    expect(page.querySelector('h1')!.textContent).toContain('New resource');
+  });
+
+  it('keeps the resource forms from employees', async () => {
+    signedIn = true;
+    roles = ['Employee'];
+
+    expect((await visit('/resources/new')).path).toBe('/dashboard');
   });
 
   it('still asks a visitor to sign in before a screen, and remembers it', async () => {

@@ -139,6 +139,24 @@ browser, with two windows side by side so the audience sees changes arrive live.
   employee a manager; the team select moves employees between teams. A manager with members
   can't be demoted until the team is moved.
 
+### 9. Team resources
+
+- As the admin, **Resources**: the **Team** column says Meeting Room B and Projector P-1 are
+  "Zeynep Kaya's team", and the rest "Shared". Point out: a resource belongs to one or more
+  teams, and no team means everyone's (ADR-0022).
+- **Users** → add a second manager, Okan Yıldız, with a temporary password. Sign in as Okan in
+  the private window and choose a new password. Okan's **Resources** list has no Meeting Room B
+  or Projector P-1, and neither Availability nor the booking form offers them.
+- As Okan, **New resource**: there are no team boxes, just a note that it will belong to Okan's
+  team. Create "Van" → the row says "Okan Yıldız's team", with **Edit** and **Deactivate**.
+  Shared rows have no buttons, and opening one's edit address explains that only an admin can
+  change it.
+- In Ayşe's window, **Resources** doesn't list the Van: Ayşe is in Zeynep's team.
+- As the admin, **Edit** the Van and tick **Zeynep Kaya's team** as well → **Save changes**.
+  After a reload Ayşe's **Resources** lists it and it can be booked; its row reads "Okan Yıldız,
+  Zeynep Kaya". Okan's **Edit** is gone: a resource that other teams use too is the admins' to
+  change.
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in
@@ -152,7 +170,7 @@ browser, with two windows side by side so the audience sees changes arrive live.
   reconnect. Reminders come over the same connection, addressed to the owner only.
 - **Times:** picked in local time, sent as UTC, shown back in local time. An unchanged time is
   sent back exactly as the API gave it, since the pickers drop seconds.
-- **Tests:** about 290 unit tests, also run in six time zones (`npm run test:time-zones`) - that
+- **Tests:** over 400 unit tests, also run in six time zones (`npm run test:time-zones`) - that
   is how a UTC+05:45 half-hour bug was found.
 - **Accessibility:** every screen passes an axe-core WCAG 2.1 AA scan. Text colours keep 4.5:1
   contrast on their backgrounds, and the signed-out pages have a main landmark.

@@ -64,7 +64,8 @@ npx prettier --check --end-of-line auto src    # formatting
 | `/register` | visitors | Sign-up: a team member gives their manager's email and waits for that manager; a manager waits for an admin |
 | `/change-password` | signed in | Change your password. Forced, before anything else, after signing in with a temporary password |
 | `/dashboard` | signed in | Today's reservations, what's in use now, your next bookings |
-| `/resources` | signed in | Every resource. Admins also create, edit, activate and deactivate them (`/resources/new`, `/resources/:id/edit`) |
+| `/resources` | signed in | Your team's resources and the shared ones; admins see every resource. Each row says whose team it belongs to, or "Shared" |
+| `/resources/new`, `/resources/:id/edit` | Admin, Manager | Admins create and edit any resource and pick the teams that may use it (none: shared by everyone). A manager adds resources to their own team, and edits, activates and deactivates only the ones that belong to their team alone (ADR-0022) |
 | `/availability` | signed in | What's free for a time range, by type and capacity |
 | `/calendar` | signed in | The shared office calendar: who booked what |
 | `/reservations/new`, `/reservations/:id/edit` | signed in | Book, change or cancel. Read-only for anyone but the owner or an admin |

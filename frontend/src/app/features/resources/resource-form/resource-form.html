@@ -7,6 +7,11 @@
   <p class="text-muted" role="status">Loading resource…</p>
 } @else if (loadFailed()) {
   <div class="alert-error" role="alert">This resource could not be loaded.</div>
+} @else if (readOnly()) {
+  <div class="read-only" role="status">
+    Only an administrator can change this resource: it's shared by everyone, or other teams use it
+    too.
+  </div>
 } @else {
   <form class="card form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     @if (formError(); as message) {
@@ -146,6 +151,46 @@
         </div>
       }
     </div>
+
+    @if (isAdmin()) {
+      <fieldset class="field teams" aria-describedby="teams-hint">
+        <legend>Teams <span class="text-muted">(optional)</span></legend>
+        <span id="teams-hint" class="text-muted hint">
+          Leave every team unticked to share it with everyone. Otherwise only the ticked teams and
+          admins can see and book it.
+        </span>
+        @if (managersFailed()) {
+          <span class="field-error">The teams could not be loaded.</span>
+        } @else if (teamOptions().length === 0) {
+          <span class="text-muted hint">There are no active managers yet, so no teams.</span>
+        }
+        <div class="team-options">
+          @for (team of teamOptions(); track team.id) {
+            <label class="team-option">
+              <input
+                type="checkbox"
+                [checked]="isTeamSelected(team.id)"
+                (change)="toggleTeam(team.id, $event)"
+              />
+              <span>
+                {{ team.name }}'s team
+                @if (team.inactive) {
+                  <span class="text-muted">(no longer an active manager)</span>
+                }
+              </span>
+            </label>
+          }
+        </div>
+        @if (teamError(); as error) {
+          <span class="field-error">{{ error }}</span>
+        }
+      </fieldset>
+    } @else {
+      <p class="team-note">
+        {{ isEdit() ? 'It belongs to your team' : 'It will belong to your team' }}: only your team
+        and administrators can see and book it. An administrator can share it with other teams.
+      </p>
+    }
 
     <div class="form-actions">
       <a class="btn btn-secondary" routerLink="/resources">Cancel</a>
