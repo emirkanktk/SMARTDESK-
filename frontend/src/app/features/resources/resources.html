@@ -1,6 +1,6 @@
 <div class="page-header">
   <h1>Resources</h1>
-  @if (isAdmin()) {
+  @if (canCreate()) {
     <a class="btn btn-primary" routerLink="/resources/new">New resource</a>
   }
 </div>
@@ -55,8 +55,9 @@
           <th scope="col" class="num">Capacity</th>
           <th scope="col">Location</th>
           <th scope="col">Features</th>
+          <th scope="col">Team</th>
           <th scope="col">Status</th>
-          @if (isAdmin()) {
+          @if (canCreate()) {
             <th scope="col"><span class="visually-hidden">Actions</span></th>
           }
         </tr>
@@ -82,22 +83,27 @@
                 }
               </div>
             </td>
+            <td [class.text-muted]="resource.teams.length === 0" class="team">
+              {{ teamLabel(resource) }}
+            </td>
             <td><app-status-badge [status]="resource.status" /></td>
-            @if (isAdmin()) {
+            @if (canCreate()) {
               <td class="actions">
-                <a
-                  class="btn btn-secondary btn-sm"
-                  [routerLink]="['/resources', resource.id, 'edit']"
-                  >Edit</a
-                >
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm"
-                  [disabled]="busyId() === resource.id"
-                  (click)="toggleActive(resource)"
-                >
-                  {{ resource.status === 'Active' ? 'Deactivate' : 'Activate' }}
-                </button>
+                @if (canManage(resource)) {
+                  <a
+                    class="btn btn-secondary btn-sm"
+                    [routerLink]="['/resources', resource.id, 'edit']"
+                    >Edit</a
+                  >
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    [disabled]="busyId() === resource.id"
+                    (click)="toggleActive(resource)"
+                  >
+                    {{ resource.status === 'Active' ? 'Deactivate' : 'Activate' }}
+                  </button>
+                }
               </td>
             }
           </tr>

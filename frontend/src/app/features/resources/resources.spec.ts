@@ -11,6 +11,10 @@ import { Resources } from './resources';
 
 describe('Resources', () => {
   const isAdmin = signal(false);
+  const isManager = signal(false);
+  const currentUser = signal<{ id: string } | null>({ id: 'u-ayse' });
+  const zeynep = { id: 'u-zeynep', managerName: 'Zeynep Kaya' };
+  const okan = { id: 'u-okan', managerName: 'Okan Yıldız' };
   const room = fakeResource();
   const desk = fakeResource({
     id: 'res-2',
@@ -30,6 +34,8 @@ describe('Resources', () => {
 
   beforeEach(async () => {
     isAdmin.set(false);
+    isManager.set(false);
+    currentUser.set({ id: 'u-ayse' });
     getResources = vi.fn(() => of([room, desk]));
     changeStatus = vi.fn((id: string, status: string) =>
       of({ ...[room, desk].find((r) => r.id === id)!, status }),
@@ -39,7 +45,7 @@ describe('Resources', () => {
       imports: [Resources],
       providers: [
         provideRouter([]),
-        { provide: AuthService, useValue: { isAdmin } },
+        { provide: AuthService, useValue: { isAdmin, isManager, currentUser } },
         {
           provide: ResourceService,
           useValue: {
@@ -130,6 +136,64 @@ describe('Resources', () => {
 
     expect(element.textContent).not.toContain('New resource');
     expect(element.querySelector('.actions')).toBeNull();
+  });
+
+  function rowFor(name: string): HTMLTableRowElement {
+    return Array.from(element.querySelectorAll<HTMLTableRowElement>('tbody tr')).find(
+      (row) => row.querySelector('.name')!.textContent!.trim() === name,
+    )!;
+  }
+
+  it("shows whose team each resource belongs to, or that it's shared", async () => {
+    getResources.mockReturnValue(
+      of([
+        fakeResource({ teams: [zeynep] }),
+        fakeResource({ id: 'res-2', name: 'Projector P-1', teams: [zeynep, okan] }),
+        desk,
+      ]),
+    );
+    await render();
+
+    expect(rowFor('Meeting Room A').querySelector('.team')!.textContent!.trim()).toBe(
+      "Zeynep Kaya's team",
+    );
+    expect(rowFor('Projector P-1').querySelector('.team')!.textContent!.trim()).toBe(
+      'Zeynep Kaya, Okan Yıldız',
+    );
+    expect(rowFor('Desk 12').querySelector('.team')!.textContent!.trim()).toBe('Shared');
+  });
+
+  it("lets a manager add resources and change only their own team's", async () => {
+    isManager.set(true);
+    currentUser.set({ id: zeynep.id });
+    getResources.mockReturnValue(
+      of([
+        fakeResource({ teams: [zeynep] }),
+        fakeResource({ id: 'res-2', name: 'Projector P-1', teams: [zeynep, okan] }),
+        fakeResource({ id: 'res-3', name: 'Van', teams: [okan] }),
+        desk,
+      ]),
+    );
+    await render();
+
+    expect(element.querySelector('a[href="/resources/new"]')).not.toBeNull();
+    expect(
+      rowFor('Meeting Room A').querySelector('a[href="/resources/res-1/edit"]'),
+    ).not.toBeNull();
+    expect(rowFor('Meeting Room A').querySelector('.actions button')).not.toBeNull();
+    for (const name of ['Projector P-1', 'Van', 'Desk 12']) {
+      expect(rowFor(name).querySelector('.actions')!.children.length).toBe(0);
+    }
+  });
+
+  it('lets an admin change every resource, whoever it belongs to', async () => {
+    isAdmin.set(true);
+    currentUser.set({ id: 'u-admin' });
+    getResources.mockReturnValue(of([fakeResource({ teams: [zeynep, okan] }), desk]));
+    await render();
+
+    expect(element.querySelectorAll('.actions a').length).toBe(2);
+    expect(element.querySelectorAll('.actions button').length).toBe(2);
   });
 
   function actionButton(label: string): HTMLButtonElement {

@@ -43,6 +43,56 @@ textarea.input {
   }
 }
 
+.teams {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
+
+  legend {
+    margin-bottom: var(--space-1);
+    padding: 0;
+    font-weight: 500;
+  }
+}
+
+.team-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-1) var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.team-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-weight: 400;
+  cursor: pointer;
+
+  input {
+    margin-top: 0.3rem;
+  }
+}
+
+.team-note,
+.read-only {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+.team-note {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.read-only {
+  max-width: 720px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
