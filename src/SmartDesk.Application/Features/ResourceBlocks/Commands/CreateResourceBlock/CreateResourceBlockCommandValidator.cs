@@ -1,7 +1,8 @@
 using FluentValidation;
 using SmartDesk.Application.Common.Extensions;
-using SmartDesk.Application.Features.ResourceBlocks.Common;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Application.Features.ResourceBlocks.Common;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.ResourceBlocks.Commands.CreateResourceBlock;
 
@@ -16,15 +17,15 @@ public sealed class CreateResourceBlockCommandValidator : AbstractValidator<Crea
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must(start => start.AsUtc() >= timeProvider.GetUtcNow().UtcDateTime - ReservationRules.PastStartGrace)
-            .WithMessage("A block can't start in the past.");
+            .WithMessage(_ => Messages.Blocks_StartInPast);
 
         RuleFor(x => x.EndDateTime)
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must((command, end) => end.AsUtc() > command.StartDateTime.AsUtc())
-            .WithMessage("'End Date Time' must be after 'Start Date Time'.")
+            .WithMessage(_ => Messages.Validation_EndAfterStart)
             .Must((command, end) => end.AsUtc() - command.StartDateTime.AsUtc() <= ResourceBlockRules.MaxDuration)
-            .WithMessage($"A block can last at most {ResourceBlockRules.MaxDuration.TotalDays} days.");
+            .WithMessage(_ => string.Format(Messages.Blocks_MaxDuration, ResourceBlockRules.MaxDuration.TotalDays));
 
         RuleFor(x => x.Reason).NotEmpty().MaximumLength(ResourceBlockRules.MaxReasonLength);
     }

@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Localization;
 using SmartDesk.Application.Features.Resources.Common;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Domain.Rules;
@@ -36,7 +38,10 @@ public static class BookingGuard
         // Business rule 3.
         if (resource.Status != ResourceStatus.Active)
         {
-            throw new ConflictException($"{resource.Name} can't be reserved right now (status: {resource.Status}).");
+            throw new ConflictException(string.Format(Messages.Booking_NotBookable, resource.Name, Languages.Describe(resource.Status)))
+            {
+                Code = ConflictCodes.ResourceUnavailable,
+            };
         }
 
         // Business rule 7: blocked windows (ADR-0015).
@@ -48,7 +53,10 @@ public static class BookingGuard
             .FirstOrDefaultAsync(cancellationToken);
         if (blockReason is not null)
         {
-            throw new ConflictException($"{resource.Name} is blocked for part of that time: {blockReason}");
+            throw new ConflictException(string.Format(Messages.Booking_Blocked, resource.Name, blockReason))
+            {
+                Code = ConflictCodes.ResourceBlocked,
+            };
         }
 
         // Business rule 1.
@@ -57,7 +65,10 @@ public static class BookingGuard
             .AnyAsync(ReservationOverlap.ConfirmedOverlapping(start, end), cancellationToken);
         if (overlaps)
         {
-            throw new ConflictException($"{resource.Name} is already reserved for part of that time.");
+            throw new ConflictException(string.Format(Messages.Booking_Taken, resource.Name))
+            {
+                Code = ConflictCodes.ReservationOverlaps,
+            };
         }
 
         return resource.Name;

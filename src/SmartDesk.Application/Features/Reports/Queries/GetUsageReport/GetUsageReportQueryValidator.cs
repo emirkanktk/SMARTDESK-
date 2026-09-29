@@ -1,5 +1,6 @@
 using FluentValidation;
 using SmartDesk.Application.Features.Reports.Common;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Reports.Queries.GetUsageReport;
 
@@ -13,13 +14,13 @@ public sealed class GetUsageReportQueryValidator : AbstractValidator<GetUsageRep
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must((query, to) => to >= query.From)
-            .WithMessage("'To' must be on or after 'From'.")
+            .WithMessage(_ => Messages.Reports_ToOnOrAfterFrom)
             .Must((query, to) => to.DayNumber - query.From.DayNumber + 1 <= ReportRules.MaxRangeDays)
-            .WithMessage($"The report can cover at most {ReportRules.MaxRangeDays} days.");
+            .WithMessage(_ => string.Format(Messages.Reports_MaxRange, ReportRules.MaxRangeDays));
 
         RuleFor(x => x.TimeZone)
             .Must(id => TimeZoneInfo.TryFindSystemTimeZoneById(id!, out _))
             .When(x => !string.IsNullOrWhiteSpace(x.TimeZone))
-            .WithMessage("Unknown time zone. Use an IANA id such as 'Europe/Istanbul'.");
+            .WithMessage(_ => Messages.Validation_UnknownTimeZone);
     }
 }

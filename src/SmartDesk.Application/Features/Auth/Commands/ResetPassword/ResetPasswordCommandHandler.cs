@@ -2,13 +2,14 @@ using FluentValidation;
 using FluentValidation.Results;
 using MediatR;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Auth.Commands.ResetPassword;
 
 public sealed class ResetPasswordCommandHandler(IIdentityService identityService)
     : IRequestHandler<ResetPasswordCommand>
 {
-    public const string InvalidLinkMessage = "This reset link is invalid or has expired. Ask for a new one.";
+    public static string InvalidLinkMessage => Messages.Auth_InvalidResetLink;
 
     public async Task Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {

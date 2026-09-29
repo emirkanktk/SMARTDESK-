@@ -1,0 +1,21 @@
+namespace SmartDesk.Application.Common.Exceptions;
+
+// The `code` of a 409 a client may need to act on (ADR-0023). Part of the API contract: renaming
+// one breaks the screens that check it.
+public static class ConflictCodes
+{
+    // The resource is Inactive or in Maintenance.
+    public const string ResourceUnavailable = "resource-unavailable";
+
+    // A blocked window covers part of the requested time.
+    public const string ResourceBlocked = "resource-blocked";
+
+    // Another Confirmed reservation covers part of the requested time.
+    public const string ReservationOverlaps = "reservation-overlaps";
+
+    // A new blocked window would overlap another one on the same resource.
+    public const string BlockOverlapsBlock = "block-overlaps-block";
+
+    // A new blocked window would cover Confirmed reservations, which have to go first.
+    public const string BlockOverlapsReservations = "block-overlaps-reservations";
+}

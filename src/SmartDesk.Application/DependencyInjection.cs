@@ -1,9 +1,9 @@
-using System.Globalization;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using SmartDesk.Application.Common.Behaviors;
 using SmartDesk.Application.Features.Accounts.Common;
 using SmartDesk.Application.Features.Resources.Common;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application;
 
@@ -21,10 +21,13 @@ public static class DependencyInjection
         services.AddScoped<AccountCreation>();
         services.AddScoped<ResourceReader>();
 
-        // FluentValidation localizes its default messages to the machine's UI culture, so the
-        // same API would answer in Turkish on one developer's machine and English on another.
-        // Pin it: the API contract is English, the frontend owns any translation.
-        ValidatorOptions.Global.LanguageManager.Culture = CultureInfo.GetCultureInfo("en-US");
+        // FluentValidation's own messages ("'Name' must not be empty.") follow the UI culture,
+        // which the API sets for every request from Accept-Language (ADR-0023). Field names in
+        // them come from Messages too; the English ones are what FluentValidation would show
+        // anyway ("Start Date Time"), so English messages read as they always have.
+        ValidatorOptions.Global.LanguageManager.Culture = null;
+        ValidatorOptions.Global.DisplayNameResolver = (_, member, _) =>
+            member is null ? null : Messages.ResourceManager.GetString($"Property_{member.Name}");
 
         return services;
     }

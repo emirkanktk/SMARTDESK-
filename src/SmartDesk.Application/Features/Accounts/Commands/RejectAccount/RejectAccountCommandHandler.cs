@@ -1,8 +1,10 @@
 using MediatR;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Localization;
 using SmartDesk.Application.Features.Accounts.Common;
 using SmartDesk.Application.Features.Auth.Common;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Enums;
 
 namespace SmartDesk.Application.Features.Accounts.Commands.RejectAccount;
@@ -18,10 +20,10 @@ public sealed class RejectAccountCommandHandler(IUserAccounts accounts, ICurrent
         // account that has been used is disabled instead, which keeps its history.
         if (account.Status != AccountStatus.PendingApproval)
         {
-            throw new ConflictException("Only a sign-up that's waiting for approval can be rejected. Disable the account instead.");
+            throw new ConflictException(Messages.Accounts_OnlyPendingCanBeRejected);
         }
 
         await accounts.DeleteAsync(account.Id, cancellationToken);
-        emails.Queue(AccountEmails.Rejected(account.Email, account.FirstName));
+        emails.Queue(AccountEmails.Rejected(Languages.CultureFor(account.Language), account.Email, account.FirstName));
     }
 }

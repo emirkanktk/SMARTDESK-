@@ -40,6 +40,7 @@ public sealed class AccountsTestHost : IDisposable
         services
             .AddIdentityCore<ApplicationUser>(options => options.User.RequireUniqueEmail = true)
             .AddRoles<IdentityRole<Guid>>()
+            .AddErrorDescriber<LocalizedIdentityErrorDescriber>()
             .AddEntityFrameworkStores<SmartDeskDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
@@ -85,7 +86,8 @@ public sealed class AccountsTestHost : IDisposable
         string firstName = "Test",
         string lastName = "User",
         string? password = Password,
-        bool mustChangePassword = false)
+        bool mustChangePassword = false,
+        string? language = null)
     {
         await using var scope = _services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -98,6 +100,7 @@ public sealed class AccountsTestHost : IDisposable
             Status = status,
             ManagerId = managerId,
             MustChangePassword = mustChangePassword,
+            Language = language,
         };
         var created = password is null ? await users.CreateAsync(user) : await users.CreateAsync(user, password);
         Succeeded(created, $"create {email}");

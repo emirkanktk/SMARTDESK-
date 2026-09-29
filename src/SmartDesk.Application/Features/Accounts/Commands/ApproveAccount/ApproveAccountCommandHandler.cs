@@ -1,9 +1,11 @@
 using MediatR;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Localization;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Accounts.Common;
 using SmartDesk.Application.Features.Auth.Common;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
 
@@ -20,7 +22,7 @@ public sealed class ApproveAccountCommandHandler(
         var account = await AccountAccess.RequireManageableAsync(accounts, currentUser, request.Id, cancellationToken);
         if (account.Status != AccountStatus.PendingApproval)
         {
-            throw new ConflictException("Only a sign-up that's waiting for approval can be approved.");
+            throw new ConflictException(Messages.Accounts_OnlyPendingCanBeApproved);
         }
 
         if (request.ManagerId is { } managerId && managerId != account.ManagerId)
@@ -28,12 +30,12 @@ public sealed class ApproveAccountCommandHandler(
             // A Manager approves into their own team only; moving people is an Admin's call.
             if (!currentUser.IsInRole(Roles.Admin))
             {
-                throw new ForbiddenAccessException("Only an administrator can put someone into another team.");
+                throw new ForbiddenAccessException(Messages.Accounts_OnlyAdminMovesTeams);
             }
 
             if (account.Role != Roles.Employee)
             {
-                throw new ConflictException("Only employees belong to a team; managers and admins don't.");
+                throw new ConflictException(Messages.Accounts_OnlyEmployeesInTeams);
             }
 
             await AccountRules.RequireActiveManagerAsync(accounts, managerId, nameof(request.ManagerId), cancellationToken);
@@ -41,7 +43,7 @@ public sealed class ApproveAccountCommandHandler(
         }
 
         await accounts.SetStatusAsync(account.Id, AccountStatus.Active, cancellationToken);
-        emails.Queue(AccountEmails.Approved(account.Email, account.FirstName, links.SignIn()));
+        emails.Queue(AccountEmails.Approved(Languages.CultureFor(account.Language), account.Email, account.FirstName, links.SignIn()));
 
         return (await accounts.FindAsync(account.Id, cancellationToken))!;
     }

@@ -1,3 +1,5 @@
+using SmartDesk.Application.Resources;
+
 namespace SmartDesk.Application.Features.Reservations.Common;
 
 public static class ReservationRules
@@ -27,5 +29,5 @@ public static class ReservationRules
 
     public static bool IsValidReminder(int? minutes) => minutes is null || ReminderOptions.Contains(minutes.Value);
 
-    public const string ReminderMessage = "Reminder must be 5, 15, 30 or 60 minutes before the start, or none.";
+    public static string ReminderMessage => Messages.Reservations_Reminder;
 }

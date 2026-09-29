@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SmartDesk.Application.Common.Security;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.API.Authentication;
 
@@ -15,7 +16,7 @@ public sealed class AllowWhilePasswordChangeRequiredAttribute : Attribute;
 public static class PasswordChangeGate
 {
     public const string Code = "password-change-required";
-    public const string Detail = "Choose a new password before you continue.";
+    public static string Detail => Messages.Error_PasswordChangeRequired;
 
     public static IApplicationBuilder UsePasswordChangeGate(this IApplicationBuilder app) =>
         app.Use(async (context, next) =>
@@ -27,7 +28,7 @@ public static class PasswordChangeGate
                 var problem = new ProblemDetails
                 {
                     Status = StatusCodes.Status403Forbidden,
-                    Title = "Password change required",
+                    Title = Messages.Problem_PasswordChangeRequired,
                     Detail = Detail,
                     Extensions = { ["code"] = Code },
                 };

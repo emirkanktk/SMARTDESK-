@@ -41,6 +41,7 @@ public static class DependencyInjection
                 options.User.RequireUniqueEmail = true;
             })
             .AddRoles<IdentityRole<Guid>>()
+            .AddErrorDescriber<LocalizedIdentityErrorDescriber>()
             .AddEntityFrameworkStores<SmartDeskDbContext>()
             .AddSignInManager()
             .AddDefaultTokenProviders();

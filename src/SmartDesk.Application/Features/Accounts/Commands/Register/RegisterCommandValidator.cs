@@ -1,5 +1,6 @@
 using FluentValidation;
 using SmartDesk.Application.Features.Accounts.Common;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Accounts.Commands.Register;
 
@@ -17,7 +18,7 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
             .EmailAddress()
             .MaximumLength(AccountRules.MaxEmailLength)
             .Must((command, managerEmail) => !string.Equals(managerEmail.Trim(), command.Email.Trim(), StringComparison.OrdinalIgnoreCase))
-            .WithMessage("Your manager's email must be someone else's.")
+            .WithMessage(_ => Messages.Accounts_ManagerEmailNotOwn)
             .When(x => !string.IsNullOrWhiteSpace(x.ManagerEmail));
     }
 }

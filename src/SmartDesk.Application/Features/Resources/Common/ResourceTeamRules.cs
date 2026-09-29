@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.Results;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
 
@@ -22,7 +23,7 @@ public static class ResourceTeamRules
             var manager = await accounts.FindAsync(teamId, cancellationToken);
             if (manager is not { Role: Roles.Manager, Status: AccountStatus.Active })
             {
-                throw new ValidationException([new ValidationFailure("TeamIds", "Every team must be an active manager's.")]);
+                throw new ValidationException([new ValidationFailure("TeamIds", Messages.Resources_TeamsMustBeActive)]);
             }
         }
 
@@ -31,7 +32,7 @@ public static class ResourceTeamRules
 
     public static IRuleBuilderOptions<T, IReadOnlyList<Guid>?> TeamList<T>(this IRuleBuilder<T, IReadOnlyList<Guid>?> rule) =>
         rule.Must(ids => ids is null || ids.Count <= MaxTeams)
-            .WithMessage($"A resource can belong to at most {MaxTeams} teams.")
+            .WithMessage(_ => string.Format(Messages.Resources_MaxTeams, MaxTeams))
             .Must(ids => ids is null || ids.All(id => id != Guid.Empty))
-            .WithMessage("Team ids can't be empty.");
+            .WithMessage(_ => Messages.Resources_EmptyTeamId);
 }

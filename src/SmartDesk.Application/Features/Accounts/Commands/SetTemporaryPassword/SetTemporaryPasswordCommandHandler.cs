@@ -3,9 +3,11 @@ using FluentValidation.Results;
 using MediatR;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Localization;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Accounts.Common;
 using SmartDesk.Application.Features.Auth.Common;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Enums;
 
 namespace SmartDesk.Application.Features.Accounts.Commands.SetTemporaryPassword;
@@ -21,12 +23,12 @@ public sealed class SetTemporaryPasswordCommandHandler(
 
         if (account.Id == currentUser.UserId)
         {
-            throw new ConflictException("Change your own password from your account instead.");
+            throw new ConflictException(Messages.Accounts_OwnPasswordFromAccount);
         }
 
         if (account.Status == AccountStatus.PendingApproval)
         {
-            throw new ConflictException("This sign-up is waiting for approval. Approve or reject it instead.");
+            throw new ConflictException(Messages.Accounts_PendingDecideInstead);
         }
 
         var errors = await accounts.SetTemporaryPasswordAsync(account.Id, request.Password, cancellationToken);
@@ -36,7 +38,7 @@ public sealed class SetTemporaryPasswordCommandHandler(
         }
 
         var caller = await accounts.FindAsync(currentUser.UserId!.Value, cancellationToken);
-        emails.Queue(AccountEmails.TemporaryPasswordSet(account.Email, account.FirstName, caller?.DisplayName ?? "An administrator"));
+        emails.Queue(AccountEmails.TemporaryPasswordSet(Languages.CultureFor(account.Language), account.Email, account.FirstName, caller?.DisplayName));
 
         return (await accounts.FindAsync(account.Id, cancellationToken))!;
     }

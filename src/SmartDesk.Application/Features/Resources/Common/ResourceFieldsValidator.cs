@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Resources.Common;
 
@@ -23,13 +24,13 @@ public abstract class ResourceFieldsValidator<T> : AbstractValidator<T>
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .MustAsync((id, ct) => db.ResourceTypes.AnyAsync(t => t.Id == id, ct))
-            .WithMessage("Resource type does not exist.");
+            .WithMessage(_ => Messages.Resources_UnknownType);
 
         RuleFor(x => x.Features)
             .Must(f => f is null || f.Count <= MaxFeatures)
-            .WithMessage($"A resource can have at most {MaxFeatures} features.")
+            .WithMessage(_ => string.Format(Messages.Resources_MaxFeatures, MaxFeatures))
             .Must(f => f is null || ResourceFeatureNames.HasNoDuplicates(f))
-            .WithMessage("Features must not contain duplicates.");
+            .WithMessage(_ => Messages.Resources_DuplicateFeatures);
 
         RuleForEach(x => x.Features).NotEmpty().MaximumLength(100);
     }

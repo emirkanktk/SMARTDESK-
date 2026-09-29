@@ -18,4 +18,8 @@ public class ApplicationUser : IdentityUser<Guid>
     // The password was chosen by someone else (an Admin or Manager who added the account or
     // set a temporary one); the owner must replace it before doing anything else (ADR-0021).
     public bool MustChangePassword { get; set; }
+
+    // "en" or "tr": the language the user last signed in with, which their emails are written
+    // in (ADR-0023). Null for an account that hasn't signed in since this was added.
+    public string? Language { get; set; }
 }

@@ -3,8 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
-using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Application.Features.ResourceBlocks.Common;
+using SmartDesk.Application.Features.Resources.Common;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Rules;
 
@@ -41,7 +42,10 @@ public sealed class CreateResourceBlockCommandHandler(IApplicationDbContext db, 
                 .AnyAsync(ResourceBlockOverlap.Overlapping(start, end), cancellationToken);
             if (alreadyBlocked)
             {
-                throw new ConflictException($"{resourceName} is already blocked for part of that time.");
+                throw new ConflictException(string.Format(Messages.Blocks_OverlapsBlock, resourceName))
+                {
+                    Code = ConflictCodes.BlockOverlapsBlock,
+                };
             }
 
             // Existing bookings are not cancelled behind anyone's back: the admin decides what
@@ -51,8 +55,10 @@ public sealed class CreateResourceBlockCommandHandler(IApplicationDbContext db, 
                 .CountAsync(ReservationOverlap.ConfirmedOverlapping(start, end), cancellationToken);
             if (clashing > 0)
             {
-                throw new ConflictException(
-                    $"{clashing} confirmed reservation(s) on {resourceName} overlap this window. Cancel or move them first.");
+                throw new ConflictException(string.Format(Messages.Blocks_OverlapsReservations, clashing, resourceName))
+                {
+                    Code = ConflictCodes.BlockOverlapsReservations,
+                };
             }
 
             db.ResourceBlocks.Add(new ResourceBlock

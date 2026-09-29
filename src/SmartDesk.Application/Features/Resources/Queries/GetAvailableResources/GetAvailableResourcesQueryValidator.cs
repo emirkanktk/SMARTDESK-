@@ -1,5 +1,6 @@
 using FluentValidation;
 using SmartDesk.Application.Common.Extensions;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Resources.Queries.GetAvailableResources;
 
@@ -19,9 +20,9 @@ public sealed class GetAvailableResourcesQueryValidator : AbstractValidator<GetA
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must((query, end) => end.AsUtc() > query.StartDateTime.AsUtc())
-            .WithMessage("'End Date Time' must be after 'Start Date Time'.")
+            .WithMessage(_ => Messages.Validation_EndAfterStart)
             .Must((query, end) => end.AsUtc() - query.StartDateTime.AsUtc() <= MaxWindow)
-            .WithMessage($"The search window can be at most {MaxWindow.TotalDays} days.");
+            .WithMessage(_ => string.Format(Messages.Resources_MaxSearchWindow, MaxWindow.TotalDays));
 
         RuleFor(x => x.MinCapacity).GreaterThan(0).When(x => x.MinCapacity.HasValue);
     }

@@ -10,6 +10,10 @@ public interface IIdentityService
 
     Task<UserProfile?> FindByIdAsync(Guid userId, CancellationToken cancellationToken);
 
+    // Saves the language the user signed in with, for the emails they get later (ADR-0023).
+    // Nothing else about the account changes, and their sessions go on.
+    Task RememberLanguageAsync(Guid userId, string language, CancellationToken cancellationToken);
+
     // "First Last" (or the email when both are blank) for each id that exists, in one query.
     // Unknown ids are simply missing from the result.
     Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(
