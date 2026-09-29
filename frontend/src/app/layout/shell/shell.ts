@@ -4,6 +4,7 @@ import { Role, Roles } from '../../core/constants/roles';
 import { roleLabel } from '../../core/i18n/labels';
 import { AuthService } from '../../core/services/auth.service';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
+import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
 
 interface NavItem {
   path: string;
@@ -14,7 +15,7 @@ interface NavItem {
 
 /** Frame around every signed-in screen: top bar with navigation, user and sign-out. */
 @Component({
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, LanguageSwitch],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, LanguageSwitch, ThemeSwitch],
   selector: 'app-shell',
   styleUrl: './shell.scss',
   templateUrl: './shell.html',

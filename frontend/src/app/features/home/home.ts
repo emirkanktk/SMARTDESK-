@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
+import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
 import { environment } from '../../../environments/environment';
 
 interface Feature {
@@ -13,7 +14,7 @@ interface Feature {
  * never see it - guestGuard sends them straight to their dashboard.
  */
 @Component({
-  imports: [RouterLink, LanguageSwitch],
+  imports: [RouterLink, LanguageSwitch, ThemeSwitch],
   selector: 'app-home',
   styleUrl: './home.scss',
   templateUrl: './home.html',
