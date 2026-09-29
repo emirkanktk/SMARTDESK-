@@ -111,13 +111,15 @@ bar, front page, sign-in). The choice is kept per browser, and switching reloads
 
 `e2e/` holds [Playwright](https://playwright.dev/) tests that drive the real app in a browser:
 sign-in and the language, booking with a conflict, a booking reaching another window's calendar
-live, a blocked window, and a manager's team resource. They need the whole app running with
-the Development seed:
+live, a blocked window, and a manager's team resource. `screens.spec.ts` also opens every
+screen in Turkish, runs [axe](https://github.com/dequelabs/axe-core) on it (WCAG 2.1 AA and best
+practices), and checks that nothing is wider than a 390px phone. They need the whole app
+running with the Development seed:
 
 ```bash
 dotnet run --project src/SmartDesk.API --launch-profile https   # from the repo root
 npx ng serve                                                    # from frontend/
-npm run e2e                                                     # about 20 seconds
+npm run e2e                                                     # about a minute
 ```
 
 - **Browser:** the Edge installed on the machine, so there's nothing to download. Set
