@@ -208,6 +208,15 @@ describe('ReservationForm', () => {
       expect(create).not.toHaveBeenCalled();
     });
 
+    it('rejects a start more than 180 days ahead, like the API', async () => {
+      await render({ resourceId: room.id });
+      await set('#start', '2027-04-05T10:00');
+      await submit();
+
+      expect(element.textContent).toContain('Bookings can start at most 180 days ahead.');
+      expect(create).not.toHaveBeenCalled();
+    });
+
     it('shows a conflict as the API words it, with a search for that time', async () => {
       create.mockReturnValue(
         throwError(

@@ -148,6 +148,16 @@ describe('Availability', () => {
     expect(getAvailable).not.toHaveBeenCalled();
   });
 
+  it("doesn't search beyond the booking horizon", async () => {
+    await render();
+    await set('#start', '2027-04-05T10:00');
+    await set('#end', '2027-04-05T11:00');
+    await submit();
+
+    expect(element.textContent).toContain('Search at most 180 days ahead');
+    expect(getAvailable).not.toHaveBeenCalled();
+  });
+
   it('rejects a range longer than 31 days', async () => {
     await render();
     await set('#end', '2026-11-10T10:00');

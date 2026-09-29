@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { DESK_TYPE, MEETING_ROOM_TYPE, fakeResource } from '../../../testing/resource-fixtures';
 import { simulateTurkishBrowser } from '../../../testing/turkish-locale';
@@ -137,6 +138,22 @@ describe('Resources', () => {
       b.textContent!.includes(label),
     )!;
   }
+
+  it("says why a resource with bookings still to come can't be switched off", async () => {
+    isAdmin.set(true);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const message =
+      '2 confirmed reservation(s) on Meeting Room A from now on. Cancel or move them first.';
+    changeStatus.mockReturnValue(throwError(() => new ApiError(409, 'Conflict', message)));
+    const error = vi.spyOn(TestBed.inject(NotificationService), 'error');
+    await render();
+
+    actionButton('Deactivate').click();
+    await fixture.whenStable();
+
+    expect(error).toHaveBeenCalledWith(message);
+    expect(element.querySelector('tbody tr')?.textContent).toContain('Active');
+  });
 
   it('deactivates with a status-only change, so edits made since the list loaded are kept', async () => {
     isAdmin.set(true);

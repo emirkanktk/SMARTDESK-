@@ -3,6 +3,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { catchError, finalize, merge, of, startWith, switchMap, tap } from 'rxjs';
+import { ApiError } from '../../core/models/api-error.model';
 import {
   RESOURCE_STATUSES,
   Resource,
@@ -118,8 +119,13 @@ export class Resources {
           );
           this.notifications.success(`"${updated.name}" is now ${updated.status.toLowerCase()}.`);
         },
-        // 403/404/5xx already raise a toast in the error interceptor.
-        error: () => undefined,
+        // 403/404/5xx already raise a toast in the error interceptor; a 409 (bookings still to
+        // come, issue #41) is this screen's to explain.
+        error: (error: unknown) => {
+          if (error instanceof ApiError && error.status === 409) {
+            this.notifications.error(error.detail ?? error.title);
+          }
+        },
       });
   }
 }

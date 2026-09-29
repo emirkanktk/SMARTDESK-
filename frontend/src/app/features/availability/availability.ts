@@ -11,6 +11,7 @@ import {
   Resource,
   ResourceType,
 } from '../../core/models/resource.model';
+import { RESERVATION_LIMITS } from '../../core/models/reservation.model';
 import { ResourceService } from '../../core/services/resource.service';
 import {
   addMinutes,
@@ -66,6 +67,7 @@ export class Availability implements OnInit {
         endKey: 'endDateTime',
         maxDays: AVAILABILITY_MAX_DAYS,
         futureOnly: true,
+        maxAdvanceDays: RESERVATION_LIMITS.maxAdvanceDays,
       }),
     },
   );
@@ -184,6 +186,9 @@ export class Availability implements OnInit {
     if (control.hasError('required')) return 'Choose a start date and time.';
     if (control.hasError('server')) return control.getError('server') as string;
     if (this.form.hasError('startInPast')) return 'The start time is in the past.';
+    if (this.form.hasError('startTooFarAhead')) {
+      return `Search at most ${RESERVATION_LIMITS.maxAdvanceDays} days ahead - bookings can't start later.`;
+    }
     return null;
   }
 
