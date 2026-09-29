@@ -93,7 +93,9 @@ export async function retire(admin: APIRequestContext, resourceId: string): Prom
 }
 
 interface Fixtures {
-  /** A signed-in window of its own (separate storage), in English unless asked. */
+  /** A signed-out window of its own (separate storage), in English unless asked. */
+  visit: (language?: Language) => Promise<Page>;
+  /** The same, signed in as a demo user. */
   open: (user: User, language?: Language) => Promise<Page>;
   /** The API as the admin. */
   admin: APIRequestContext;
@@ -102,9 +104,9 @@ interface Fixtures {
 }
 
 export const test = base.extend<Fixtures>({
-  open: async ({ browser }, use) => {
+  visit: async ({ browser }, use) => {
     const contexts: BrowserContext[] = [];
-    await use(async (user, language = 'en') => {
+    await use(async (language = 'en') => {
       const context = await browser.newContext();
       contexts.push(context);
       // Only a first visit gets it, so switching language in the test sticks.
@@ -113,11 +115,17 @@ export const test = base.extend<Fixtures>({
           localStorage.setItem('smartdesk_language', lang);
         }
       }, language);
-      const page = await context.newPage();
+      return context.newPage();
+    });
+    await Promise.all(contexts.map((context) => context.close()));
+  },
+
+  open: async ({ visit }, use) => {
+    await use(async (user, language = 'en') => {
+      const page = await visit(language);
       await signIn(page, user);
       return page;
     });
-    await Promise.all(contexts.map((context) => context.close()));
   },
 
   // Playwright requires a destructuring pattern for the fixtures argument, even an empty one.
@@ -150,13 +158,18 @@ export const test = base.extend<Fixtures>({
 
 export { expect };
 
-/** Signs in on the sign-in page, whatever its language, and waits for the dashboard. */
+/** Signs in as a demo user, whatever the page's language, and waits for the dashboard. */
 export async function signIn(page: Page, user: User): Promise<void> {
-  await page.goto('/login');
-  await page.locator('#email').fill(USERS[user]);
-  await page.locator('#password').fill(PASSWORD);
-  await page.locator('button[type=submit]').click();
+  await submitSignIn(page, USERS[user], PASSWORD);
   await page.waitForURL('**/dashboard');
+}
+
+/** Fills in and sends the sign-in form; where it leads is up to the caller. */
+export async function submitSignIn(page: Page, email: string, password: string): Promise<void> {
+  await page.goto('/login');
+  await page.locator('#email').fill(email);
+  await page.locator('#password').fill(password);
+  await page.locator('button[type=submit]').click();
 }
 
 /** Accepts the next confirm() the page shows. */

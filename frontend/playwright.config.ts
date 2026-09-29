@@ -16,6 +16,10 @@ export default defineConfig({
   use: {
     baseURL: process.env['E2E_BASE_URL'] ?? 'http://localhost:4200',
     trace: 'retain-on-failure',
+    // Well inside the test's minute, so a wait that fails still leaves time for the cleanup
+    // in a test's `finally`.
+    actionTimeout: 15_000,
+    navigationTimeout: 15_000,
   },
   projects: [
     {
