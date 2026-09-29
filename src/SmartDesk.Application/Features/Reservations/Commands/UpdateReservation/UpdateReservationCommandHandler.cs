@@ -6,6 +6,7 @@ using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
@@ -39,18 +40,18 @@ public sealed class UpdateReservationCommandHandler(
             // Business rule 4: the owner, or an Admin managing reservations.
             if (reservation.UserId != userId && !currentUser.IsInRole(Roles.Admin))
             {
-                throw new ForbiddenAccessException("You can only change your own reservations.");
+                throw new ForbiddenAccessException(Messages.Reservations_ChangeOwnOnly);
             }
 
             if (reservation.Status == ReservationStatus.Cancelled)
             {
-                throw new ConflictException("A cancelled reservation can't be changed.");
+                throw new ConflictException(Messages.Reservations_CancelledCantChange);
             }
 
             var now = timeProvider.GetUtcNow().UtcDateTime;
             if (reservation.EndDateTime <= now)
             {
-                throw new ConflictException("This reservation has already ended and can't be changed.");
+                throw new ConflictException(Messages.Reservations_EndedCantChange);
             }
 
             var resourceChanged = request.ResourceId != reservation.ResourceId;
@@ -70,20 +71,19 @@ public sealed class UpdateReservationCommandHandler(
                 // In progress: the start is history and the resource is in use.
                 if (resourceChanged || start != reservation.StartDateTime)
                 {
-                    throw new ConflictException(
-                        "This reservation has already started; only its end time and note can be changed.");
+                    throw new ConflictException(Messages.Reservations_Started);
                 }
 
                 if (end <= now)
                 {
-                    throw new ConflictException("The end time can't be moved into the past.");
+                    throw new ConflictException(Messages.Reservations_EndInPast);
                 }
             }
             else if (timeChanged && start < now - ReservationRules.PastStartGrace)
             {
                 // Business rule 6, as on create - a 400 like the create validator's.
                 throw new ValidationException(
-                    [new ValidationFailure(nameof(UpdateReservationCommand.StartDateTime), "A reservation can't start in the past.")]);
+                    [new ValidationFailure(nameof(UpdateReservationCommand.StartDateTime), Messages.Reservations_StartInPast)]);
             }
 
             if (!staysWithinItsSlot)

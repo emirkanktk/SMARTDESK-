@@ -6,6 +6,7 @@ using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Auth.Commands.Login;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
+using SmartDesk.Tests.TestSupport;
 
 namespace SmartDesk.Tests.Auth;
 
@@ -48,10 +49,11 @@ public class LoginCommandHandlerTests
     }
 
     [Theory]
-    [InlineData(AccountStatus.PendingApproval, LoginCommandHandler.PendingApprovalMessage)]
-    [InlineData(AccountStatus.Disabled, LoginCommandHandler.DisabledMessage)]
-    public async Task Handle_AccountThatIsntActive_ThrowsForbiddenAndIssuesNoToken(AccountStatus status, string message)
+    [InlineData(AccountStatus.PendingApproval)]
+    [InlineData(AccountStatus.Disabled)]
+    public async Task Handle_AccountThatIsntActive_ThrowsForbiddenAndIssuesNoToken(AccountStatus status)
     {
+        var message = status == AccountStatus.Disabled ? LoginCommandHandler.DisabledMessage : LoginCommandHandler.PendingApprovalMessage;
         var user = new UserProfile(Guid.NewGuid(), "Zeynep", "Kaya", "zeynep@smartdesk.local", [Roles.Manager]) { Status = status };
         _identityService
             .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -74,5 +76,49 @@ public class LoginCommandHandlerTests
 
         await act.Should().ThrowAsync<UnauthorizedException>().WithMessage("Invalid email or password.");
         _tokenGenerator.Verify(g => g.Generate(It.IsAny<UserProfile>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_RemembersTheLanguageTheUserSignedInWith()
+    {
+        var user = new UserProfile(Guid.NewGuid(), "Ayşe", "Yılmaz", "ayse@smartdesk.local", [Roles.Employee]) { Language = "en" };
+        _identityService
+            .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _tokenGenerator.Setup(g => g.Generate(user)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddHours(1)));
+
+        using (UiCulture.Use("tr-TR"))
+        {
+            await CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "Secret123!"), CancellationToken.None);
+        }
+
+        _identityService.Verify(s => s.RememberLanguageAsync(user.Id, "tr", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_LeavesAnUnchangedLanguageAlone()
+    {
+        var user = new UserProfile(Guid.NewGuid(), "Ayşe", "Yılmaz", "ayse@smartdesk.local", [Roles.Employee]) { Language = "en" };
+        _identityService
+            .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _tokenGenerator.Setup(g => g.Generate(user)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddHours(1)));
+
+        await CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "Secret123!"), CancellationToken.None);
+
+        _identityService.Verify(s => s.RememberLanguageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_RefusesInTheRequestsLanguage()
+    {
+        _identityService
+            .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserProfile?)null);
+        using var turkish = UiCulture.Use("tr");
+
+        var act = () => CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "wrong"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedException>().WithMessage("E-posta veya parola hatalı.");
     }
 }

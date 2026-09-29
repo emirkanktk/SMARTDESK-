@@ -513,3 +513,53 @@ new tables.
   their old team's resources. They can still see and cancel them, but can't make new ones there.
   Group membership is set when a connection opens, so a change made without SmartDesk (directly
   in the database) reaches open connections only on their next reconnect.
+
+## ADR-0023: The API answers in Turkish or English; emails in the recipient's language
+
+**Decision:**
+- **Where the language comes from:** each request's `Accept-Language`, through ASP.NET Core's
+  request localization, which runs first in the pipeline so error responses are covered too.
+  Turkish or English; no header, or any other language, is English, so tools, tests and
+  scripts keep today's messages. The frontend sends its own `LOCALE_ID`, not the browser's
+  language.
+- **Only the UI culture follows it.** Messages are looked up in the UI culture; the formatting
+  culture stays English. A Turkish request can't change how the code parses numbers and dates
+  or compares text, which rules out the Turkish dotted and dotless "i" problems.
+- **Where the texts live:** `Messages.resx` (English, the neutral culture) and
+  `Messages.tr.resx` in the Application project. The build generates the `Messages` class, so
+  a handler throws `new ConflictException(string.Format(Messages.Booking_Taken, name))` and
+  gets the request's language. The English texts are the ones the API has always sent, word
+  for word. Validator messages are lambdas (`WithMessage(_ => …)`), looked up when a rule fails,
+  since validators outlive a request.
+- **FluentValidation and Identity:** FluentValidation's built-in messages follow the UI
+  culture, with field names from `Messages` (`Property_Name`: "Ad"). The English field names
+  are what FluentValidation shows anyway. Identity's password rules come through a
+  `LocalizedIdentityErrorDescriber` whose English is Identity's own wording.
+- **Codes for conflicts a screen acts on:** `ConflictException.Code` becomes the problem's
+  `code` (`resource-unavailable`, `resource-blocked`, `reservation-overlaps`,
+  `block-overlaps-block`, `block-overlaps-reservations`), so a client never has to match on
+  wording.
+- **Emails:** written in the recipient's language, not the sender's. `AspNetUsers.Language`
+  holds the language the user last signed in with. A new account starts with the language of
+  the request that made it: the applicant's own on a sign-up, the Admin's or Manager's when
+  they add someone. For an account without one yet, the current request's language is used.
+
+**Why:**
+- SmartDesk is used in Turkish and English, Turkish by default (issue #58). The frontend
+  translates its screens, but part of what a user reads comes from the API: a 409's detail,
+  the validation message next to a field, Identity's password rules, every email. The screen,
+  its errors and its emails should be in one language. Taking it from the app, not
+  the browser, keeps a user who picked English in a Turkish browser in English.
+- A request header needs no endpoint and no stored state per request, and it's what HTTP
+  clients already send. English as the fallback keeps every existing client and test working
+  unchanged.
+- Resource files are the platform's own mechanism: satellite assemblies, culture fallback
+  (`tr-TR` → `tr`), and a generated class that makes a missing key a compile error. One test
+  checks that every key has a Turkish text with the same placeholders.
+- An email arrives later, often from someone else's action, such as an approval, so the
+  sender's language is the wrong one. The sign-in language is the best signal of what the
+  recipient reads, and it updates by itself when they switch.
+- **Trade-offs:** messages from ASP.NET Core itself (an unparseable body's "The input was not
+  valid.") stay English; the screens never show them. A user's email language changes only
+  when they sign in, not the moment they switch languages on screen. A resource or reason
+  typed by a person stays as it was typed.

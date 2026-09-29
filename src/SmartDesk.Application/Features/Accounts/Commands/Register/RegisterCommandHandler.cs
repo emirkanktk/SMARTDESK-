@@ -2,6 +2,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using MediatR;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Localization;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Auth.Common;
 using SmartDesk.Domain.Constants;
@@ -39,7 +40,9 @@ public sealed class RegisterCommandHandler(
         {
             // Same answer as a new sign-up; the owner hears about it.
             accounts.HashDecoyPassword(request.Password);
-            emails.Queue(AccountEmails.AlreadyRegistered(email, firstName, links.SignIn(), links.ForgotPassword()));
+            var existing = await accounts.FindByEmailAsync(email, cancellationToken);
+            emails.Queue(AccountEmails.AlreadyRegistered(
+                Languages.CultureFor(existing?.Language), email, firstName, links.SignIn(), links.ForgotPassword()));
         }
         else if (managerEmail is null)
         {
@@ -61,11 +64,12 @@ public sealed class RegisterCommandHandler(
         string firstName, string lastName, string email, string password, CancellationToken cancellationToken)
     {
         await CreatePendingAsync(firstName, lastName, email, password, Roles.Manager, null, cancellationToken);
-        emails.Queue(AccountEmails.SignUpReceived(email, firstName));
+        emails.Queue(AccountEmails.SignUpReceived(Languages.CultureFor(null), email, firstName));
 
         foreach (var admin in await ActiveAdminsAsync(cancellationToken))
         {
-            emails.Queue(AccountEmails.NewSignUpForAdmin(admin.Email, admin.FirstName, $"{firstName} {lastName}", email, links.Users()));
+            emails.Queue(AccountEmails.NewSignUpForAdmin(
+                Languages.CultureFor(admin.Language), admin.Email, admin.FirstName, $"{firstName} {lastName}", email, links.Users()));
         }
     }
 
@@ -78,18 +82,20 @@ public sealed class RegisterCommandHandler(
         var team = manager is { Role: Roles.Manager, Status: AccountStatus.Active } ? manager : null;
 
         await CreatePendingAsync(firstName, lastName, email, password, Roles.Employee, team?.Id, cancellationToken);
-        emails.Queue(AccountEmails.JoinRequestReceived(email, firstName));
+        emails.Queue(AccountEmails.JoinRequestReceived(Languages.CultureFor(null), email, firstName));
 
         var applicant = $"{firstName} {lastName}";
         if (team is not null)
         {
-            emails.Queue(AccountEmails.JoinRequestForManager(team.Email, team.FirstName, applicant, email, links.Team()));
+            emails.Queue(AccountEmails.JoinRequestForManager(
+                Languages.CultureFor(team.Language), team.Email, team.FirstName, applicant, email, links.Team()));
             return;
         }
 
         foreach (var admin in await ActiveAdminsAsync(cancellationToken))
         {
-            emails.Queue(AccountEmails.JoinRequestForAdmin(admin.Email, admin.FirstName, applicant, email, managerEmail, links.Users()));
+            emails.Queue(AccountEmails.JoinRequestForAdmin(
+                Languages.CultureFor(admin.Language), admin.Email, admin.FirstName, applicant, email, managerEmail, links.Users()));
         }
     }
 
@@ -97,7 +103,7 @@ public sealed class RegisterCommandHandler(
         string firstName, string lastName, string email, string password, string role, Guid? managerId, CancellationToken cancellationToken)
     {
         var created = await accounts.CreateAsync(
-            new NewAccount(firstName, lastName, email, role, AccountStatus.PendingApproval, managerId, password),
+            new NewAccount(firstName, lastName, email, role, AccountStatus.PendingApproval, managerId, password, Language: Languages.Current),
             cancellationToken);
         if (!created.Succeeded)
         {

@@ -1,6 +1,7 @@
 using FluentValidation;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Reservations.Commands.UpdateReservation;
 
@@ -17,14 +18,14 @@ public sealed class UpdateReservationCommandValidator : AbstractValidator<Update
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must((command, end) => end.AsUtc() > command.StartDateTime.AsUtc())
-            .WithMessage("'End Date Time' must be after 'Start Date Time'.")
+            .WithMessage(_ => Messages.Validation_EndAfterStart)
             .Must((command, end) => end.AsUtc() - command.StartDateTime.AsUtc() <= ReservationRules.MaxDuration)
-            .WithMessage($"A reservation can last at most {ReservationRules.MaxDuration.TotalDays} days.");
+            .WithMessage(_ => string.Format(Messages.Reservations_MaxDuration, ReservationRules.MaxDuration.TotalDays));
 
         RuleFor(x => x.Note).MaximumLength(ReservationRules.MaxNoteLength);
 
         RuleFor(x => x.ReminderMinutes)
             .Must(ReservationRules.IsValidReminder)
-            .WithMessage(ReservationRules.ReminderMessage);
+            .WithMessage(_ => ReservationRules.ReminderMessage);
     }
 }

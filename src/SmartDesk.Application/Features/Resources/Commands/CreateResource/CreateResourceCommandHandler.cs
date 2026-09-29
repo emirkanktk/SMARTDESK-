@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Resources.Common;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
@@ -50,7 +51,7 @@ public sealed class CreateResourceCommandHandler(
         var managerId = currentUser.UserId ?? throw new UnauthorizedException();
         if (requested is { Count: > 0 } && requested.Any(id => id != managerId))
         {
-            throw new ForbiddenAccessException("Managers add resources to their own team only.");
+            throw new ForbiddenAccessException(Messages.Resources_OwnTeamOnly);
         }
 
         return [managerId];

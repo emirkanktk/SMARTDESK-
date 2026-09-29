@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Accounts_CantDisableSelf" xml:space="preserve">
+    <value>Kendi hesabınızı devre dışı bırakamazsınız.</value>
+  </data>
+  <data name="Accounts_ChooseActiveManager" xml:space="preserve">
+    <value>Etkin bir ekip yöneticisi seçin.</value>
+  </data>
+  <data name="Accounts_EmailTaken" xml:space="preserve">
+    <value>Bu e-postayla kayıtlı bir kullanıcı zaten var.</value>
+  </data>
+  <data name="Accounts_JoinRequestPending" xml:space="preserve">
+    <value>Bu katılma isteği onayınızı bekliyor. Bunun yerine onaylayın ya da reddedin.</value>
+  </data>
+  <data name="Accounts_LastAdmin" xml:space="preserve">
+    <value>Bu, etkin olan son sistem yöneticisi; birinin bu rolde kalması gerekiyor.</value>
+  </data>
+  <data name="Accounts_ManagerEmailNotOwn" xml:space="preserve">
+    <value>Ekip yöneticinizin e-postası sizinkinden farklı olmalı.</value>
+  </data>
+  <data name="Accounts_ManagerHasMembers" xml:space="preserve">
+    <value>{0} adlı ekip yöneticisinin ekibinde hâlâ {1} kişi var. Önce onları başka bir ekip yöneticisine taşıyın ya da ekipten çıkarın.</value>
+  </data>
+  <data name="Accounts_ManagerHasResources" xml:space="preserve">
+    <value>{0} adlı ekip yöneticisinin ekibinin hâlâ {1} kaynağı var. Önce bunları ortak yapın ya da başka bir ekibe verin.</value>
+  </data>
+  <data name="Accounts_ManagerOnlyForEmployees" xml:space="preserve">
+    <value>Yalnızca çalışanlar bir ekipte yer alır; bu rol için ekip yöneticisini boş bırakın.</value>
+  </data>
+  <data name="Accounts_OnlyAdminMovesTeams" xml:space="preserve">
+    <value>Birini başka bir ekibe yalnızca sistem yöneticisi alabilir.</value>
+  </data>
+  <data name="Accounts_OnlyEmployeesInTeams" xml:space="preserve">
+    <value>Yalnızca çalışanlar bir ekipte yer alır; ekip yöneticileri ve sistem yöneticileri yer almaz.</value>
+  </data>
+  <data name="Accounts_OnlyPendingCanBeApproved" xml:space="preserve">
+    <value>Yalnızca onay bekleyen bir kayıt onaylanabilir.</value>
+  </data>
+  <data name="Accounts_OnlyPendingCanBeRejected" xml:space="preserve">
+    <value>Yalnızca onay bekleyen bir kayıt reddedilebilir. Bunun yerine hesabı devre dışı bırakın.</value>
+  </data>
+  <data name="Accounts_OwnPasswordFromAccount" xml:space="preserve">
+    <value>Kendi parolanızı hesabınızdan değiştirin.</value>
+  </data>
+  <data name="Accounts_OwnRole" xml:space="preserve">
+    <value>Kendi rolünüzü değiştiremezsiniz. Başka bir sistem yöneticisinden isteyin.</value>
+  </data>
+  <data name="Accounts_PendingDecideFirst" xml:space="preserve">
+    <value>Bu kayıt onay bekliyor. Önce onaylayın ya da reddedin.</value>
+  </data>
+  <data name="Accounts_PendingDecideInstead" xml:space="preserve">
+    <value>Bu kayıt onay bekliyor. Bunun yerine onaylayın ya da reddedin.</value>
+  </data>
+  <data name="Accounts_UnknownRole" xml:space="preserve">
+    <value>Rol şunlardan biri olmalı: {0}.</value>
+  </data>
+  <data name="Auth_Disabled" xml:space="preserve">
+    <value>Hesabınız devre dışı bırakıldı. Sistem yöneticinize başvurun.</value>
+  </data>
+  <data name="Auth_InvalidCredentials" xml:space="preserve">
+    <value>E-posta veya parola hatalı.</value>
+  </data>
+  <data name="Auth_InvalidResetLink" xml:space="preserve">
+    <value>Bu sıfırlama bağlantısı geçersiz ya da süresi dolmuş. Yeni bir bağlantı isteyin.</value>
+  </data>
+  <data name="Auth_PendingApproval" xml:space="preserve">
+    <value>Hesabınız onay bekliyor. Hazır olduğunda size e-posta göndereceğiz.</value>
+  </data>
+  <data name="Auth_SamePassword" xml:space="preserve">
+    <value>Mevcut parolanızdan farklı bir parola seçin.</value>
+  </data>
+  <data name="Auth_WrongCurrentPassword" xml:space="preserve">
+    <value>Mevcut parola yanlış.</value>
+  </data>
+  <data name="Blocks_MaxDuration" xml:space="preserve">
+    <value>Bir kapatma en fazla {0} gün sürebilir.</value>
+  </data>
+  <data name="Blocks_OverlapsBlock" xml:space="preserve">
+    <value>{0} bu sürenin bir kısmında zaten kapalı.</value>
+  </data>
+  <data name="Blocks_OverlapsReservations" xml:space="preserve">
+    <value>{1} için {0} onaylı rezervasyon bu aralıkla çakışıyor. Önce onları iptal edin ya da taşıyın.</value>
+  </data>
+  <data name="Blocks_StartInPast" xml:space="preserve">
+    <value>Kapatma geçmişte başlayamaz.</value>
+  </data>
+  <data name="Booking_Blocked" xml:space="preserve">
+    <value>{0} bu sürenin bir kısmında kapalı: {1}</value>
+  </data>
+  <data name="Booking_NotBookable" xml:space="preserve">
+    <value>{0} şu anda rezerve edilemez (durum: {1}).</value>
+  </data>
+  <data name="Booking_Taken" xml:space="preserve">
+    <value>{0} bu sürenin bir kısmında zaten rezerve edilmiş.</value>
+  </data>
+  <data name="Booking_TakenResource" xml:space="preserve">
+    <value>Kaynak bu sürenin bir kısmında zaten rezerve edilmiş.</value>
+  </data>
+  <data name="Email_AccountCreated_Body" xml:space="preserve">
+    <value>{0} sizin için toplantı odası, masa ve ekipman ayırabileceğiniz bir SmartDesk hesabı oluşturdu. Size geçici bir parola verilecek; ilk girişinizde kendi parolanızı belirleyeceksiniz.</value>
+  </data>
+  <data name="Email_AccountCreated_Subject" xml:space="preserve">
+    <value>SmartDesk'e eklendiniz</value>
+  </data>
+  <data name="Email_AlreadyRegistered_Body" xml:space="preserve">
+    <value>Az önce biri bu e-posta adresiyle SmartDesk'e kaydolmaya çalıştı, ancak bu adresin zaten bir hesabı var. Bu siz idiyseniz giriş yapın:</value>
+  </data>
+  <data name="Email_AlreadyRegistered_Forgot" xml:space="preserve">
+    <value>Parolanızı mı unuttunuz? Yeni bir parola belirleyin:</value>
+  </data>
+  <data name="Email_AlreadyRegistered_NotYou" xml:space="preserve">
+    <value>Bu siz değilseniz bu e-postayı dikkate almayabilirsiniz.</value>
+  </data>
+  <data name="Email_AlreadyRegistered_Subject" xml:space="preserve">
+    <value>Zaten bir SmartDesk hesabınız var</value>
+  </data>
+  <data name="Email_AnAdministrator" xml:space="preserve">
+    <value>Bir sistem yöneticisi</value>
+  </data>
+  <data name="Email_Approved_Body" xml:space="preserve">
+    <value>Kaydınız onaylandı. Artık giriş yapabilirsiniz.</value>
+  </data>
+  <data name="Email_Approved_Subject" xml:space="preserve">
+    <value>SmartDesk hesabınız hazır</value>
+  </data>
+  <data name="Email_ForgotPassword" xml:space="preserve">
+    <value>Parolamı unuttum</value>
+  </data>
+  <data name="Email_Greeting" xml:space="preserve">
+    <value>Merhaba {0},</value>
+  </data>
+  <data name="Email_GreetingNoName" xml:space="preserve">
+    <value>Merhaba,</value>
+  </data>
+  <data name="Email_Hours" xml:space="preserve">
+    <value>{0} saat</value>
+  </data>
+  <data name="Email_JoinRequestForAdmin_Body" xml:space="preserve">
+    <value>{0} ({1}) kaydoldu ve ekip yöneticisi olarak {2} adresini verdi, ancak bu adres etkin bir ekip yöneticisine ait değil. Kişiyi bir ekibe alarak onaylayın ya da kaydı reddedin.</value>
+  </data>
+  <data name="Email_JoinRequestForAdmin_Subject" xml:space="preserve">
+    <value>Yeni kayıt: {0}</value>
+  </data>
+  <data name="Email_JoinRequestForManager_Body" xml:space="preserve">
+    <value>{0} ({1}) SmartDesk'e kaydoldu ve ekibinize katılmak istiyor. İsteği Ekibim bölümünden onaylayın ya da reddedin.</value>
+  </data>
+  <data name="Email_JoinRequestForManager_Subject" xml:space="preserve">
+    <value>{0} ekibinize katılmak istiyor</value>
+  </data>
+  <data name="Email_JoinRequestReceived_Body" xml:space="preserve">
+    <value>Kaydolduğunuz için teşekkürler. Ekip yöneticinizin ekibine katılma isteğiniz onay bekliyor; hesabınız kullanıma hazır olur olmaz size e-posta göndereceğiz.</value>
+  </data>
+  <data name="Email_NewSignUpForAdmin_Body" xml:space="preserve">
+    <value>{0} ({1}) ekip yöneticisi olarak kaydoldu ve onay bekliyor.</value>
+  </data>
+  <data name="Email_NewSignUpForAdmin_Subject" xml:space="preserve">
+    <value>Yeni ekip yöneticisi kaydı: {0}</value>
+  </data>
+  <data name="Email_PasswordReset_Body" xml:space="preserve">
+    <value>SmartDesk hesabınızın parolasını sıfırlamak için bir istek yapıldı. Yeni bir parola belirlemek için bu bağlantıyı {0} içinde açın:</value>
+  </data>
+  <data name="Email_PasswordReset_Link" xml:space="preserve">
+    <value>Yeni parola belirle</value>
+  </data>
+  <data name="Email_PasswordReset_NotYou" xml:space="preserve">
+    <value>Bu isteği siz yapmadıysanız bu e-postayı dikkate almayın; parolanız olduğu gibi kalır.</value>
+  </data>
+  <data name="Email_PasswordReset_Subject" xml:space="preserve">
+    <value>SmartDesk parolanızı sıfırlayın</value>
+  </data>
+  <data name="Email_Rejected_Body" xml:space="preserve">
+    <value>Kaydınız incelendi ve onaylanmadı, bu yüzden hesap oluşturulmadı. Bunun bir hata olduğunu düşünüyorsanız ekip yöneticinize ya da ofisinizin SmartDesk sistem yöneticisine başvurun.</value>
+  </data>
+  <data name="Email_Rejected_Subject" xml:space="preserve">
+    <value>SmartDesk kaydınız</value>
+  </data>
+  <data name="Email_ReviewRequest" xml:space="preserve">
+    <value>İsteği incele</value>
+  </data>
+  <data name="Email_ReviewSignUps" xml:space="preserve">
+    <value>Kayıtları incele</value>
+  </data>
+  <data name="Email_SignIn" xml:space="preserve">
+    <value>Giriş yap</value>
+  </data>
+  <data name="Email_SignUpReceived_Body" xml:space="preserve">
+    <value>Ekip yöneticisi olarak kaydolduğunuz için teşekkürler. İsteğinizi bir sistem yöneticisi inceleyecek; hesabınız kullanıma hazır olur olmaz size e-posta göndereceğiz.</value>
+  </data>
+  <data name="Email_SignUpReceived_Subject" xml:space="preserve">
+    <value>SmartDesk kaydınızı aldık</value>
+  </data>
+  <data name="Email_TemporaryPassword_Body" xml:space="preserve">
+    <value>{0}, SmartDesk hesabınız için geçici bir parola belirledi ve tüm oturumlarınız kapatıldı. Geçici parolayı bu kişiden isteyin; bir sonraki girişinizde kendi parolanızı belirleyeceksiniz.</value>
+  </data>
+  <data name="Email_TemporaryPassword_NotExpected" xml:space="preserve">
+    <value>Bunu beklemiyorduysanız ekip yöneticinize ya da ofisinizin SmartDesk sistem yöneticisine haber verin.</value>
+  </data>
+  <data name="Email_TemporaryPassword_Subject" xml:space="preserve">
+    <value>SmartDesk parolanız değiştirildi</value>
+  </data>
+  <data name="Entity_Account" xml:space="preserve">
+    <value>Hesap</value>
+  </data>
+  <data name="Entity_Reservation" xml:space="preserve">
+    <value>Rezervasyon</value>
+  </data>
+  <data name="Entity_Resource" xml:space="preserve">
+    <value>Kaynak</value>
+  </data>
+  <data name="Entity_ResourceBlock" xml:space="preserve">
+    <value>Kapatma</value>
+  </data>
+  <data name="Error_Forbidden" xml:space="preserve">
+    <value>Bu işlemi yapma yetkiniz yok.</value>
+  </data>
+  <data name="Error_NotFound" xml:space="preserve">
+    <value>{0} bulunamadı: '{1}'.</value>
+  </data>
+  <data name="Error_PasswordChangeRequired" xml:space="preserve">
+    <value>Devam etmeden önce yeni bir parola belirleyin.</value>
+  </data>
+  <data name="Error_TooManySignIns" xml:space="preserve">
+    <value>Çok fazla giriş denemesi yapıldı. Lütfen bir dakika bekleyip tekrar deneyin.</value>
+  </data>
+  <data name="Error_Unauthorized" xml:space="preserve">
+    <value>Oturum açmanız gerekiyor.</value>
+  </data>
+  <data name="Identity_PasswordRequiresDigit" xml:space="preserve">
+    <value>Parolada en az bir rakam ('0'-'9') olmalı.</value>
+  </data>
+  <data name="Identity_PasswordRequiresLower" xml:space="preserve">
+    <value>Parolada en az bir küçük harf ('a'-'z') olmalı.</value>
+  </data>
+  <data name="Identity_PasswordRequiresNonAlphanumeric" xml:space="preserve">
+    <value>Parolada harf ve rakam dışında en az bir karakter olmalı.</value>
+  </data>
+  <data name="Identity_PasswordRequiresUniqueChars" xml:space="preserve">
+    <value>Parolada en az {0} farklı karakter kullanılmalı.</value>
+  </data>
+  <data name="Identity_PasswordRequiresUpper" xml:space="preserve">
+    <value>Parolada en az bir büyük harf ('A'-'Z') olmalı.</value>
+  </data>
+  <data name="Identity_PasswordTooShort" xml:space="preserve">
+    <value>Parola en az {0} karakter olmalı.</value>
+  </data>
+  <data name="Problem_Conflict" xml:space="preserve">
+    <value>Çakışma</value>
+  </data>
+  <data name="Problem_Forbidden" xml:space="preserve">
+    <value>Erişim engellendi</value>
+  </data>
+  <data name="Problem_NotFound" xml:space="preserve">
+    <value>Bulunamadı</value>
+  </data>
+  <data name="Problem_PasswordChangeRequired" xml:space="preserve">
+    <value>Parola değişikliği gerekli</value>
+  </data>
+  <data name="Problem_TooManyRequests" xml:space="preserve">
+    <value>Çok fazla istek</value>
+  </data>
+  <data name="Problem_Unauthorized" xml:space="preserve">
+    <value>Oturum gerekli</value>
+  </data>
+  <data name="Problem_Unexpected" xml:space="preserve">
+    <value>Beklenmeyen bir hata oluştu.</value>
+  </data>
+  <data name="Problem_Validation" xml:space="preserve">
+    <value>Bir veya daha fazla doğrulama hatası oluştu.</value>
+  </data>
+  <data name="Property_Capacity" xml:space="preserve">
+    <value>Kapasite</value>
+  </data>
+  <data name="Property_CurrentPassword" xml:space="preserve">
+    <value>Mevcut parola</value>
+  </data>
+  <data name="Property_Description" xml:space="preserve">
+    <value>Açıklama</value>
+  </data>
+  <data name="Property_Email" xml:space="preserve">
+    <value>E-posta</value>
+  </data>
+  <data name="Property_EndDateTime" xml:space="preserve">
+    <value>Bitiş zamanı</value>
+  </data>
+  <data name="Property_Features" xml:space="preserve">
+    <value>Özellikler</value>
+  </data>
+  <data name="Property_FirstName" xml:space="preserve">
+    <value>Ad</value>
+  </data>
+  <data name="Property_From" xml:space="preserve">
+    <value>Başlangıç</value>
+  </data>
+  <data name="Property_LastName" xml:space="preserve">
+    <value>Soyad</value>
+  </data>
+  <data name="Property_Location" xml:space="preserve">
+    <value>Konum</value>
+  </data>
+  <data name="Property_ManagerEmail" xml:space="preserve">
+    <value>Ekip yöneticisinin e-postası</value>
+  </data>
+  <data name="Property_ManagerId" xml:space="preserve">
+    <value>Ekip yöneticisi</value>
+  </data>
+  <data name="Property_MinCapacity" xml:space="preserve">
+    <value>En az kapasite</value>
+  </data>
+  <data name="Property_Name" xml:space="preserve">
+    <value>Ad</value>
+  </data>
+  <data name="Property_NewPassword" xml:space="preserve">
+    <value>Yeni parola</value>
+  </data>
+  <data name="Property_Note" xml:space="preserve">
+    <value>Not</value>
+  </data>
+  <data name="Property_Password" xml:space="preserve">
+    <value>Parola</value>
+  </data>
+  <data name="Property_Reason" xml:space="preserve">
+    <value>Neden</value>
+  </data>
+  <data name="Property_ReminderMinutes" xml:space="preserve">
+    <value>Hatırlatma</value>
+  </data>
+  <data name="Property_ResourceId" xml:space="preserve">
+    <value>Kaynak</value>
+  </data>
+  <data name="Property_ResourceTypeId" xml:space="preserve">
+    <value>Kaynak türü</value>
+  </data>
+  <data name="Property_Role" xml:space="preserve">
+    <value>Rol</value>
+  </data>
+  <data name="Property_Search" xml:space="preserve">
+    <value>Arama</value>
+  </data>
+  <data name="Property_StartDateTime" xml:space="preserve">
+    <value>Başlangıç zamanı</value>
+  </data>
+  <data name="Property_Status" xml:space="preserve">
+    <value>Durum</value>
+  </data>
+  <data name="Property_TeamIds" xml:space="preserve">
+    <value>Ekipler</value>
+  </data>
+  <data name="Property_TimeZone" xml:space="preserve">
+    <value>Saat dilimi</value>
+  </data>
+  <data name="Property_To" xml:space="preserve">
+    <value>Bitiş</value>
+  </data>
+  <data name="Property_Token" xml:space="preserve">
+    <value>Bağlantı</value>
+  </data>
+  <data name="Reports_MaxRange" xml:space="preserve">
+    <value>Rapor en fazla {0} günü kapsayabilir.</value>
+  </data>
+  <data name="Reports_ToOnOrAfterFrom" xml:space="preserve">
+    <value>Bitiş tarihi başlangıç tarihiyle aynı ya da ondan sonra olmalı.</value>
+  </data>
+  <data name="Reservations_CancelOwnOnly" xml:space="preserve">
+    <value>Yalnızca kendi rezervasyonlarınızı iptal edebilirsiniz.</value>
+  </data>
+  <data name="Reservations_CancelledCantChange" xml:space="preserve">
+    <value>İptal edilmiş bir rezervasyon değiştirilemez.</value>
+  </data>
+  <data name="Reservations_ChangeOwnOnly" xml:space="preserve">
+    <value>Yalnızca kendi rezervasyonlarınızı değiştirebilirsiniz.</value>
+  </data>
+  <data name="Reservations_EndInPast" xml:space="preserve">
+    <value>Bitiş zamanı geçmişe alınamaz.</value>
+  </data>
+  <data name="Reservations_EndedCantCancel" xml:space="preserve">
+    <value>Bu rezervasyon sona erdi; iptal edilemez.</value>
+  </data>
+  <data name="Reservations_EndedCantChange" xml:space="preserve">
+    <value>Bu rezervasyon sona erdi; değiştirilemez.</value>
+  </data>
+  <data name="Reservations_MaxDuration" xml:space="preserve">
+    <value>Bir rezervasyon en fazla {0} gün sürebilir.</value>
+  </data>
+  <data name="Reservations_Reminder" xml:space="preserve">
+    <value>Hatırlatma başlangıçtan 5, 15, 30 ya da 60 dakika önce olmalı ya da hiç olmamalı.</value>
+  </data>
+  <data name="Reservations_StartInPast" xml:space="preserve">
+    <value>Rezervasyon geçmişte başlayamaz.</value>
+  </data>
+  <data name="Reservations_Started" xml:space="preserve">
+    <value>Bu rezervasyon başladı; yalnızca bitiş zamanı ve notu değiştirilebilir.</value>
+  </data>
+  <data name="Resources_DuplicateFeatures" xml:space="preserve">
+    <value>Özellikler birbirini tekrar etmemeli.</value>
+  </data>
+  <data name="Resources_EmptyTeamId" xml:space="preserve">
+    <value>Ekip kimlikleri boş olamaz.</value>
+  </data>
+  <data name="Resources_MaxFeatures" xml:space="preserve">
+    <value>Bir kaynağın en fazla {0} özelliği olabilir.</value>
+  </data>
+  <data name="Resources_MaxSearchWindow" xml:space="preserve">
+    <value>Arama aralığı en fazla {0} gün olabilir.</value>
+  </data>
+  <data name="Resources_MaxTeams" xml:space="preserve">
+    <value>Bir kaynak en fazla {0} ekibe ait olabilir.</value>
+  </data>
+  <data name="Resources_NotYours" xml:space="preserve">
+    <value>Ortak olan ya da başka ekiplerin de kullandığı bir kaynağı yalnızca sistem yöneticisi değiştirebilir.</value>
+  </data>
+  <data name="Resources_OwnTeamOnly" xml:space="preserve">
+    <value>Ekip yöneticileri yalnızca kendi ekiplerine kaynak ekleyebilir.</value>
+  </data>
+  <data name="Resources_TeamsMustBeActive" xml:space="preserve">
+    <value>Her ekip etkin bir ekip yöneticisine ait olmalı.</value>
+  </data>
+  <data name="Resources_UnknownType" xml:space="preserve">
+    <value>Böyle bir kaynak türü yok.</value>
+  </data>
+  <data name="Status_Active" xml:space="preserve">
+    <value>Etkin</value>
+  </data>
+  <data name="Status_Inactive" xml:space="preserve">
+    <value>Etkin değil</value>
+  </data>
+  <data name="Status_Maintenance" xml:space="preserve">
+    <value>Bakımda</value>
+  </data>
+  <data name="Validation_EndAfterStart" xml:space="preserve">
+    <value>Bitiş zamanı başlangıç zamanından sonra olmalı.</value>
+  </data>
+  <data name="Validation_NoControlCharacters" xml:space="preserve">
+    <value>'{PropertyName}' satır sonu ya da kontrol karakteri içeremez.</value>
+  </data>
+  <data name="Validation_RangeMaxDays" xml:space="preserve">
+    <value>Aralık en fazla {0} gün olabilir.</value>
+  </data>
+  <data name="Validation_ToAfterFrom" xml:space="preserve">
+    <value>Bitiş, başlangıçtan sonra olmalı.</value>
+  </data>
+  <data name="Validation_UnknownTimeZone" xml:space="preserve">
+    <value>Bilinmeyen saat dilimi. 'Europe/Istanbul' gibi bir IANA kimliği kullanın.</value>
+  </data>
+</root>

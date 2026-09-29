@@ -19,4 +19,8 @@ public sealed record UserProfile(
 
     // Set for an account whose password was chosen by someone else (ADR-0021).
     public bool MustChangePassword { get; init; }
+
+    // The language emails to this user are written in: the one they last signed in with
+    // (ADR-0023). Null until then; the request's language is used instead.
+    public string? Language { get; init; }
 }

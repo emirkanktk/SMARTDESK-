@@ -381,11 +381,12 @@ export class ResourceBlocks {
     }
     if (error instanceof ApiError && error.status === 409) {
       const message = error.detail ?? error.title;
-      // The two 409s are worded in the API contract: another block, or Confirmed
-      // reservations the admin has to cancel or move first.
-      const reservations = /reservation/i.test(message)
-        ? this.reservationsParams(start, end, resourceId)
-        : null;
+      // Two 409s, told apart by their code (the wording depends on the language): another
+      // block, or Confirmed reservations the admin has to cancel or move first.
+      const reservations =
+        error.code === 'block-overlaps-reservations'
+          ? this.reservationsParams(start, end, resourceId)
+          : null;
       this.conflict.set({ message, reservations });
       return;
     }

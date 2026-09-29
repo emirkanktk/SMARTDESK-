@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SmartDesk.API.Authentication;
 using SmartDesk.API.Hubs;
@@ -10,6 +12,7 @@ using SmartDesk.API.RateLimiting;
 using SmartDesk.API.Services;
 using SmartDesk.Application;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Localization;
 using SmartDesk.Infrastructure;
 using SmartDesk.Infrastructure.Identity;
 
@@ -121,6 +124,19 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi().AllowAnonymous();
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "SmartDesk API v1"));
 }
+
+// First, so everything after it - errors included - answers in the request's language
+// (ADR-0023). Accept-Language picks Turkish or English; no header, or any other language, is
+// English. Only the UI culture follows it, which is what messages are looked up in. Formatting
+// stays English, so a Turkish request can't change how the code parses, formats or compares
+// text (the dotted and dotless "i").
+app.UseRequestLocalization(options =>
+{
+    options.DefaultRequestCulture = new RequestCulture(Languages.English);
+    options.SupportedCultures = [CultureInfo.GetCultureInfo(Languages.English)];
+    options.SupportedUICultures = [.. Languages.Supported.Select(CultureInfo.GetCultureInfo)];
+    options.RequestCultureProviders = [new AcceptLanguageHeaderRequestCultureProvider()];
+});
 
 app.UseExceptionHandler();
 

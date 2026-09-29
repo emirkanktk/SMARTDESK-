@@ -6,7 +6,9 @@ change the shape of - it is the source of truth for what the API looks like, not
 controller code.
 
 All endpoints are under `/api`. Authenticated endpoints expect `Authorization: Bearer
-<jwt>`. Error responses use `application/problem+json` (RFC 7807 `ProblemDetails`).
+<jwt>`. Error responses use `application/problem+json` (RFC 7807 `ProblemDetails`). Messages
+are in English or Turkish, as `Accept-Language` asks (see Languages under Conventions); the
+examples below are the English ones.
 
 ## Auth
 
@@ -77,14 +79,16 @@ Every account, for Admins (ADR-0020). An account is returned as:
   "id": "…", "firstName": "Mehmet", "lastName": "Demir", "displayName": "Mehmet Demir",
   "email": "employee2@smartdesk.local", "role": "Employee", "status": "Active",
   "managerId": "…", "managerName": "Zeynep Kaya", "createdAt": "2026-09-28T07:20:00Z", "teamSize": 0,
-  "mustChangePassword": false
+  "mustChangePassword": false, "language": "tr"
 }
 ```
 
 `role` is one of `Admin`, `Manager`, `Employee`; `status` one of `Active`, `PendingApproval`,
 `Disabled`. `managerId`/`managerName` are set only for an Employee in a team; `teamSize` is
 the number of Employees whose manager this account is, requests to join included;
-`mustChangePassword` is true until the owner replaces a temporary password.
+`mustChangePassword` is true until the owner replaces a temporary password. `language` (`"en"`,
+`"tr"` or null) is what the account's emails are written in: the language it last signed in
+with (ADR-0023).
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
@@ -214,7 +218,7 @@ A reservation appears in a calendar range exactly when it would block a booking 
 |---|---|
 | 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past; longer than 31 days; `note` over 500 chars; `reminderMinutes` not one of 5, 15, 30, 60 |
 | 404 | the resource doesn't exist |
-| 409 | the resource isn't `Active` (`"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`"Meeting Room A is already reserved for part of that time."`) |
+| 409 | the resource isn't `Active` (`code: "resource-unavailable"`, `"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`code: "resource-blocked"`, `"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`code: "reservation-overlaps"`, `"Meeting Room A is already reserved for part of that time."`) |
 
 The 409 detail is written to be shown to the user as-is. Overlap uses the same half-open rule as
 the availability search, so back-to-back bookings are allowed. It holds under concurrent
@@ -269,7 +273,7 @@ car at the service - without changing its status. Blocks use the same half-open
 |---|---|
 | 400 | start more than 5 minutes in the past; end not after start; longer than 366 days; `reason` empty or over 200 chars |
 | 404 | the resource doesn't exist |
-| 409 | another block on the resource overlaps (`"Meeting Room A is already blocked for part of that time."`), or `Confirmed` reservations overlap (`"2 confirmed reservation(s) on Meeting Room A overlap this window. Cancel or move them first."`) |
+| 409 | another block on the resource overlaps (`code: "block-overlaps-block"`, `"Meeting Room A is already blocked for part of that time."`), or `Confirmed` reservations overlap (`code: "block-overlaps-reservations"`, `"2 confirmed reservation(s) on Meeting Room A overlap this window. Cancel or move them first."`) |
 
 Existing reservations are never cancelled by a block. The admin cancels or moves them first,
 with the reservation endpoints, and then blocks. While a block exists, booking or moving a
@@ -382,7 +386,23 @@ finds the owner offline isn't queued or repeated.
 - Error status codes: 400 validation (`errors` holds a field → messages map), 401 missing/
   invalid token or failed login, 403 authenticated but not allowed (e.g. non-Admin), 409
   business-rule conflict (e.g. overlapping reservation), 429 too many login attempts, 500
-  unexpected. Validation messages are always English, whatever the server's locale.
+  unexpected.
+- **Languages (ADR-0023).** Every message a person reads - `title`, `detail`, validation
+  messages, Identity's password rules - is in the language `Accept-Language` asks for:
+  Turkish (`tr`, `tr-TR`, …) or English. No header, or any other language, gets English, so
+  tools and scripts see the same messages as always. The frontend sends the app's own
+  language, not the browser's.
+  - Field keys in `errors` (`"EndDateTime"`) and enum values never change with the language;
+    only the text does.
+  - A 409 a screen may need to act on also carries a stable `code`, since its wording depends
+    on the language: `resource-unavailable`, `resource-blocked`, `reservation-overlaps`,
+    `block-overlaps-block`, `block-overlaps-reservations`. The 403 for a pending password
+    change has `code: "password-change-required"` (ADR-0021).
+  - Emails are written in the recipient's language: the one they last signed in with, saved
+    on their account. Until then, the language of the request that sends the email (for a new
+    account, whoever created it; for a sign-up, the applicant's).
+  - Messages that come from ASP.NET Core itself rather than SmartDesk - an unparseable body's
+    `"The input was not valid."`, an empty 401 from the token check - stay in English.
 
 ## Health
 

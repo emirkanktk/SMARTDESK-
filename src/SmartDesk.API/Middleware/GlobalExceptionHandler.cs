@@ -2,11 +2,13 @@ using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using SmartDesk.Application.Common.Exceptions;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.API.Middleware;
 
 // Single place that turns exceptions into RFC 7807 responses. Application-layer exceptions
-// carry no HTTP knowledge; the status code mapping lives here.
+// carry no HTTP knowledge; the status code mapping lives here. Titles are in the request's
+// language, like the messages; a conflict with a code carries it as `code` (ADR-0023).
 public class GlobalExceptionHandler(
     IProblemDetailsService problemDetailsService,
     ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
@@ -24,32 +26,27 @@ public class GlobalExceptionHandler(
                     .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).Distinct().ToArray()))
             {
                 Status = StatusCodes.Status400BadRequest,
-                Title = "One or more validation errors occurred.",
+                Title = Messages.Problem_Validation,
             },
             UnauthorizedException => new ProblemDetails
             {
                 Status = StatusCodes.Status401Unauthorized,
-                Title = "Unauthorized",
+                Title = Messages.Problem_Unauthorized,
                 Detail = exception.Message,
             },
             ForbiddenAccessException => new ProblemDetails
             {
                 Status = StatusCodes.Status403Forbidden,
-                Title = "Forbidden",
+                Title = Messages.Problem_Forbidden,
                 Detail = exception.Message,
             },
             NotFoundException => new ProblemDetails
             {
                 Status = StatusCodes.Status404NotFound,
-                Title = "Not Found",
+                Title = Messages.Problem_NotFound,
                 Detail = exception.Message,
             },
-            ConflictException => new ProblemDetails
-            {
-                Status = StatusCodes.Status409Conflict,
-                Title = "Conflict",
-                Detail = exception.Message,
-            },
+            ConflictException conflict => ConflictProblem(conflict),
             _ => null,
         };
 
@@ -60,7 +57,7 @@ public class GlobalExceptionHandler(
             problemDetails = new ProblemDetails
             {
                 Status = StatusCodes.Status500InternalServerError,
-                Title = "An unexpected error occurred.",
+                Title = Messages.Problem_Unexpected,
             };
         }
 
@@ -75,5 +72,21 @@ public class GlobalExceptionHandler(
         });
 
         return true;
+    }
+
+    private static ProblemDetails ConflictProblem(ConflictException conflict)
+    {
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status409Conflict,
+            Title = Messages.Problem_Conflict,
+            Detail = conflict.Message,
+        };
+        if (conflict.Code is not null)
+        {
+            problem.Extensions["code"] = conflict.Code;
+        }
+
+        return problem;
     }
 }

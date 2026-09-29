@@ -181,7 +181,7 @@ frontend/src/app/
     constants/       Roles (mirrors SmartDesk.Domain.Constants.Roles)
     guards/          authGuard, guestGuard, sessionGuard, roleGuard(...roles) / adminGuard,
                      managerGuard, resourceEditorGuard
-    interceptors/    jwtInterceptor, errorInterceptor, ANONYMOUS_REQUEST,
+    interceptors/    languageInterceptor, jwtInterceptor, errorInterceptor, ANONYMOUS_REQUEST,
                      SKIP_ERROR_NOTIFICATION
     models/          request/response types, ApiError
     services/        AuthService, NotificationService, ReservationHubService
@@ -231,7 +231,9 @@ picker drops seconds and any difference would count as a change.
   `/change-password` by `authGuard` (and by the error interceptor on the API's
   `password-change-required` 403); that page needs only a session (`sessionGuard`), and the
   hub stays disconnected until the password is changed (ADR-0021).
-- **HTTP.** `jwtInterceptor` attaches `Authorization: Bearer` to requests for our own API
+- **HTTP.** `languageInterceptor` sends the app's `LOCALE_ID` as `Accept-Language`, so the
+  API answers in the language on screen, not the browser's (ADR-0023). `jwtInterceptor`
+  attaches `Authorization: Bearer` to requests for our own API
   only. `errorInterceptor` then turns every failure into an `ApiError` (status, title,
   detail, field errors from `ProblemDetails`).
   - A 401 from our API ends the session and redirects to login, whether or not a token was

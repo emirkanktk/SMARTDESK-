@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.API.RateLimiting;
 
@@ -48,8 +49,8 @@ public static class RateLimitingSetup
                         ProblemDetails = new ProblemDetails
                         {
                             Status = StatusCodes.Status429TooManyRequests,
-                            Title = "Too Many Requests",
-                            Detail = "Too many sign-in attempts. Please wait a minute and try again.",
+                            Title = Messages.Problem_TooManyRequests,
+                            Detail = Messages.Error_TooManySignIns,
                         },
                     });
             };

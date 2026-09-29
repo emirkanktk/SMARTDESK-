@@ -1,5 +1,6 @@
 using MediatR;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Localization;
 using SmartDesk.Application.Features.Auth.Common;
 
 namespace SmartDesk.Application.Features.Auth.Commands.ForgotPassword;
@@ -17,7 +18,7 @@ public sealed class ForgotPasswordCommandHandler(
         // email is only queued, so sending it doesn't make this path slower.
         if (reset is not null)
         {
-            emailSender.Queue(AccountEmails.PasswordReset(reset.User, links.ResetPassword(reset.User.Email, reset.Token)));
+            emailSender.Queue(AccountEmails.PasswordReset(Languages.CultureFor(reset.User.Language), reset.User, links.ResetPassword(reset.User.Email, reset.Token)));
         }
     }
 }

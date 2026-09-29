@@ -4,6 +4,7 @@ using MediatR;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Auth.Commands.Login;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Auth.Commands.ChangePassword;
 
@@ -12,7 +13,7 @@ public sealed class ChangePasswordCommandHandler(
     IIdentityService identityService,
     IJwtTokenGenerator tokenGenerator) : IRequestHandler<ChangePasswordCommand, LoginResponse>
 {
-    public const string WrongCurrentPasswordMessage = "The current password is wrong.";
+    public static string WrongCurrentPasswordMessage => Messages.Auth_WrongCurrentPassword;
 
     public async Task<LoginResponse> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
     {

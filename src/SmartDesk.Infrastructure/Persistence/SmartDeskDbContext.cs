@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence.Seed;
@@ -29,6 +30,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
         {
             // Existing accounts get "now" as their creation time (and Status 0, Active).
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.Language).HasMaxLength(8);
 
             // A team is the users pointing at the same Manager. Restrict: a Manager with members
             // can't be deleted out from under them (only unapproved sign-ups are ever deleted).
@@ -169,7 +171,10 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
         {
             // Two requests for the same slot raced past the handler's own overlap check; the
             // database let exactly one of them in. Report it to the loser the same way.
-            throw new ConflictException("The resource is already reserved for part of that time.", ex);
+            throw new ConflictException(Messages.Booking_TakenResource, ex)
+            {
+                Code = ConflictCodes.ReservationOverlaps,
+            };
         }
     }
 }

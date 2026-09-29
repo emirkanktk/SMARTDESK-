@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
@@ -32,7 +33,7 @@ public sealed class CancelReservationCommandHandler(
             // Business rule 4: the owner, or an Admin managing reservations.
             if (reservation.UserId != userId && !currentUser.IsInRole(Roles.Admin))
             {
-                throw new ForbiddenAccessException("You can only cancel your own reservations.");
+                throw new ForbiddenAccessException(Messages.Reservations_CancelOwnOnly);
             }
 
             // Idempotent: a retried or double-clicked cancel succeeds without changing anything
@@ -42,7 +43,7 @@ public sealed class CancelReservationCommandHandler(
             {
                 if (reservation.EndDateTime <= timeProvider.GetUtcNow().UtcDateTime)
                 {
-                    throw new ConflictException("This reservation has already ended and can't be cancelled.");
+                    throw new ConflictException(Messages.Reservations_EndedCantCancel);
                 }
 
                 reservation.Status = ReservationStatus.Cancelled;

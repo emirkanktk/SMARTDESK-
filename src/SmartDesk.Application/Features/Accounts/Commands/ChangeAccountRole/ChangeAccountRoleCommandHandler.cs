@@ -4,6 +4,7 @@ using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Accounts.Common;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
 
@@ -20,12 +21,12 @@ public sealed class ChangeAccountRoleCommandHandler(IUserAccounts accounts, ICur
 
         if (account.Id == callerId)
         {
-            throw new ConflictException("You can't change your own role. Ask another admin.");
+            throw new ConflictException(Messages.Accounts_OwnRole);
         }
 
         if (account.Status == AccountStatus.PendingApproval)
         {
-            throw new ConflictException("This sign-up is waiting for approval. Approve or reject it first.");
+            throw new ConflictException(Messages.Accounts_PendingDecideFirst);
         }
 
         if (account.Role == request.Role)
@@ -37,7 +38,7 @@ public sealed class ChangeAccountRoleCommandHandler(IUserAccounts accounts, ICur
         if (account is { Role: Roles.Manager, TeamSize: > 0 })
         {
             throw new ConflictException(
-                $"{account.DisplayName} still has {account.TeamSize} team member(s). Move them to another manager or remove them from the team first.");
+                string.Format(Messages.Accounts_ManagerHasMembers, account.DisplayName, account.TeamSize));
         }
 
         // Their team's resources would belong to nobody (ADR-0022).
@@ -47,7 +48,7 @@ public sealed class ChangeAccountRoleCommandHandler(IUserAccounts accounts, ICur
             if (teamResources > 0)
             {
                 throw new ConflictException(
-                    $"{account.DisplayName}'s team still has {teamResources} resource(s). Make them shared or give them to another team first.");
+                    string.Format(Messages.Accounts_ManagerHasResources, account.DisplayName, teamResources));
             }
         }
 

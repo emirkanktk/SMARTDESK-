@@ -1,6 +1,7 @@
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
 
@@ -12,7 +13,7 @@ namespace SmartDesk.Application.Features.Accounts.Common;
 // undoes their own change, so at least one Admin always remains.
 public static class LastAdminGuard
 {
-    public const string Message = "This is the last active admin; someone has to stay one.";
+    public static string Message => Messages.Accounts_LastAdmin;
 
     public static async Task ChangeAsync(
         IUserAccounts accounts,

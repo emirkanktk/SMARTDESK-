@@ -1,6 +1,7 @@
 using FluentValidation;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Reservations.Queries.GetReservations;
 
@@ -15,8 +16,8 @@ public sealed class GetReservationsQueryValidator : AbstractValidator<GetReserva
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must((query, to) => to.AsUtc() > query.From.AsUtc())
-            .WithMessage("'To' must be after 'From'.")
+            .WithMessage(_ => Messages.Validation_ToAfterFrom)
             .Must((query, to) => to.AsUtc() - query.From.AsUtc() <= ReservationRules.MaxCalendarRange)
-            .WithMessage($"The range can be at most {ReservationRules.MaxCalendarDays} days.");
+            .WithMessage(_ => string.Format(Messages.Validation_RangeMaxDays, ReservationRules.MaxCalendarDays));
     }
 }

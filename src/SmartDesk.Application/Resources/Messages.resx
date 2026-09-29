@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Accounts_CantDisableSelf" xml:space="preserve">
+    <value>You can't switch off your own account.</value>
+  </data>
+  <data name="Accounts_ChooseActiveManager" xml:space="preserve">
+    <value>Choose an active manager.</value>
+  </data>
+  <data name="Accounts_EmailTaken" xml:space="preserve">
+    <value>A user with this email already exists.</value>
+  </data>
+  <data name="Accounts_JoinRequestPending" xml:space="preserve">
+    <value>This request to join is waiting for your approval. Approve or reject it instead.</value>
+  </data>
+  <data name="Accounts_LastAdmin" xml:space="preserve">
+    <value>This is the last active admin; someone has to stay one.</value>
+  </data>
+  <data name="Accounts_ManagerEmailNotOwn" xml:space="preserve">
+    <value>Your manager's email must be someone else's.</value>
+  </data>
+  <data name="Accounts_ManagerHasMembers" xml:space="preserve">
+    <value>{0} still has {1} team member(s). Move them to another manager or remove them from the team first.</value>
+  </data>
+  <data name="Accounts_ManagerHasResources" xml:space="preserve">
+    <value>{0}'s team still has {1} resource(s). Make them shared or give them to another team first.</value>
+  </data>
+  <data name="Accounts_ManagerOnlyForEmployees" xml:space="preserve">
+    <value>Only employees belong to a team; leave the manager empty for this role.</value>
+  </data>
+  <data name="Accounts_OnlyAdminMovesTeams" xml:space="preserve">
+    <value>Only an administrator can put someone into another team.</value>
+  </data>
+  <data name="Accounts_OnlyEmployeesInTeams" xml:space="preserve">
+    <value>Only employees belong to a team; managers and admins don't.</value>
+  </data>
+  <data name="Accounts_OnlyPendingCanBeApproved" xml:space="preserve">
+    <value>Only a sign-up that's waiting for approval can be approved.</value>
+  </data>
+  <data name="Accounts_OnlyPendingCanBeRejected" xml:space="preserve">
+    <value>Only a sign-up that's waiting for approval can be rejected. Disable the account instead.</value>
+  </data>
+  <data name="Accounts_OwnPasswordFromAccount" xml:space="preserve">
+    <value>Change your own password from your account instead.</value>
+  </data>
+  <data name="Accounts_OwnRole" xml:space="preserve">
+    <value>You can't change your own role. Ask another admin.</value>
+  </data>
+  <data name="Accounts_PendingDecideFirst" xml:space="preserve">
+    <value>This sign-up is waiting for approval. Approve or reject it first.</value>
+  </data>
+  <data name="Accounts_PendingDecideInstead" xml:space="preserve">
+    <value>This sign-up is waiting for approval. Approve or reject it instead.</value>
+  </data>
+  <data name="Accounts_UnknownRole" xml:space="preserve">
+    <value>Role must be one of: {0}.</value>
+  </data>
+  <data name="Auth_Disabled" xml:space="preserve">
+    <value>Your account has been disabled. Contact your administrator.</value>
+  </data>
+  <data name="Auth_InvalidCredentials" xml:space="preserve">
+    <value>Invalid email or password.</value>
+  </data>
+  <data name="Auth_InvalidResetLink" xml:space="preserve">
+    <value>This reset link is invalid or has expired. Ask for a new one.</value>
+  </data>
+  <data name="Auth_PendingApproval" xml:space="preserve">
+    <value>Your account is waiting for approval. We'll email you when it's ready.</value>
+  </data>
+  <data name="Auth_SamePassword" xml:space="preserve">
+    <value>Choose a password different from the current one.</value>
+  </data>
+  <data name="Auth_WrongCurrentPassword" xml:space="preserve">
+    <value>The current password is wrong.</value>
+  </data>
+  <data name="Blocks_MaxDuration" xml:space="preserve">
+    <value>A block can last at most {0} days.</value>
+  </data>
+  <data name="Blocks_OverlapsBlock" xml:space="preserve">
+    <value>{0} is already blocked for part of that time.</value>
+  </data>
+  <data name="Blocks_OverlapsReservations" xml:space="preserve">
+    <value>{0} confirmed reservation(s) on {1} overlap this window. Cancel or move them first.</value>
+  </data>
+  <data name="Blocks_StartInPast" xml:space="preserve">
+    <value>A block can't start in the past.</value>
+  </data>
+  <data name="Booking_Blocked" xml:space="preserve">
+    <value>{0} is blocked for part of that time: {1}</value>
+  </data>
+  <data name="Booking_NotBookable" xml:space="preserve">
+    <value>{0} can't be reserved right now (status: {1}).</value>
+  </data>
+  <data name="Booking_Taken" xml:space="preserve">
+    <value>{0} is already reserved for part of that time.</value>
+  </data>
+  <data name="Booking_TakenResource" xml:space="preserve">
+    <value>The resource is already reserved for part of that time.</value>
+  </data>
+  <data name="Email_AccountCreated_Body" xml:space="preserve">
+    <value>{0} created a SmartDesk account for you, to book meeting rooms, desks and equipment. {0} will give you a temporary password; when you first sign in, you'll choose your own.</value>
+  </data>
+  <data name="Email_AccountCreated_Subject" xml:space="preserve">
+    <value>You've been added to SmartDesk</value>
+  </data>
+  <data name="Email_AlreadyRegistered_Body" xml:space="preserve">
+    <value>Someone just tried to sign up for SmartDesk with this email address, but it already has an account. If it was you, sign in:</value>
+  </data>
+  <data name="Email_AlreadyRegistered_Forgot" xml:space="preserve">
+    <value>Forgotten the password? Choose a new one:</value>
+  </data>
+  <data name="Email_AlreadyRegistered_NotYou" xml:space="preserve">
+    <value>If it wasn't you, you can ignore this email.</value>
+  </data>
+  <data name="Email_AlreadyRegistered_Subject" xml:space="preserve">
+    <value>You already have a SmartDesk account</value>
+  </data>
+  <data name="Email_AnAdministrator" xml:space="preserve">
+    <value>An administrator</value>
+  </data>
+  <data name="Email_Approved_Body" xml:space="preserve">
+    <value>Your sign-up was approved. You can sign in now.</value>
+  </data>
+  <data name="Email_Approved_Subject" xml:space="preserve">
+    <value>Your SmartDesk account is ready</value>
+  </data>
+  <data name="Email_ForgotPassword" xml:space="preserve">
+    <value>Forgot password</value>
+  </data>
+  <data name="Email_Greeting" xml:space="preserve">
+    <value>Hello {0},</value>
+  </data>
+  <data name="Email_GreetingNoName" xml:space="preserve">
+    <value>Hello,</value>
+  </data>
+  <data name="Email_Hours" xml:space="preserve">
+    <value>{0} hours</value>
+  </data>
+  <data name="Email_JoinRequestForAdmin_Body" xml:space="preserve">
+    <value>{0} ({1}) signed up and gave {2} as their manager, but that isn't an active manager's email. Approve them into a team, or reject the sign-up.</value>
+  </data>
+  <data name="Email_JoinRequestForAdmin_Subject" xml:space="preserve">
+    <value>New sign-up: {0}</value>
+  </data>
+  <data name="Email_JoinRequestForManager_Body" xml:space="preserve">
+    <value>{0} ({1}) signed up for SmartDesk and asked to join your team. Approve or reject the request under My team.</value>
+  </data>
+  <data name="Email_JoinRequestForManager_Subject" xml:space="preserve">
+    <value>{0} wants to join your team</value>
+  </data>
+  <data name="Email_JoinRequestReceived_Body" xml:space="preserve">
+    <value>Thanks for signing up. Your request to join your manager's team is waiting for approval, and we'll email you as soon as your account is ready to use.</value>
+  </data>
+  <data name="Email_NewSignUpForAdmin_Body" xml:space="preserve">
+    <value>{0} ({1}) signed up as a manager and is waiting for approval.</value>
+  </data>
+  <data name="Email_NewSignUpForAdmin_Subject" xml:space="preserve">
+    <value>New manager sign-up: {0}</value>
+  </data>
+  <data name="Email_PasswordReset_Body" xml:space="preserve">
+    <value>Someone asked to reset the password for your SmartDesk account. To choose a new password, open this link within {0}:</value>
+  </data>
+  <data name="Email_PasswordReset_Link" xml:space="preserve">
+    <value>Choose a new password</value>
+  </data>
+  <data name="Email_PasswordReset_NotYou" xml:space="preserve">
+    <value>If it wasn't you, ignore this email - your password stays as it is.</value>
+  </data>
+  <data name="Email_PasswordReset_Subject" xml:space="preserve">
+    <value>Reset your SmartDesk password</value>
+  </data>
+  <data name="Email_Rejected_Body" xml:space="preserve">
+    <value>Your sign-up was reviewed and not approved, so no account was created. If you think this is a mistake, contact your manager or your office's SmartDesk administrator.</value>
+  </data>
+  <data name="Email_Rejected_Subject" xml:space="preserve">
+    <value>Your SmartDesk sign-up</value>
+  </data>
+  <data name="Email_ReviewRequest" xml:space="preserve">
+    <value>Review the request</value>
+  </data>
+  <data name="Email_ReviewSignUps" xml:space="preserve">
+    <value>Review sign-ups</value>
+  </data>
+  <data name="Email_SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="Email_SignUpReceived_Body" xml:space="preserve">
+    <value>Thanks for signing up as a manager. An administrator will review your request, and we'll email you as soon as your account is ready to use.</value>
+  </data>
+  <data name="Email_SignUpReceived_Subject" xml:space="preserve">
+    <value>We've received your SmartDesk sign-up</value>
+  </data>
+  <data name="Email_TemporaryPassword_Body" xml:space="preserve">
+    <value>{0} set a temporary password for your SmartDesk account, and you've been signed out everywhere. Ask {0} for it; when you next sign in, you'll choose your own.</value>
+  </data>
+  <data name="Email_TemporaryPassword_NotExpected" xml:space="preserve">
+    <value>If you didn't expect this, tell your manager or your office's SmartDesk administrator.</value>
+  </data>
+  <data name="Email_TemporaryPassword_Subject" xml:space="preserve">
+    <value>Your SmartDesk password was changed</value>
+  </data>
+  <data name="Entity_Account" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="Entity_Reservation" xml:space="preserve">
+    <value>Reservation</value>
+  </data>
+  <data name="Entity_Resource" xml:space="preserve">
+    <value>Resource</value>
+  </data>
+  <data name="Entity_ResourceBlock" xml:space="preserve">
+    <value>ResourceBlock</value>
+  </data>
+  <data name="Error_Forbidden" xml:space="preserve">
+    <value>You are not allowed to perform this action.</value>
+  </data>
+  <data name="Error_NotFound" xml:space="preserve">
+    <value>{0} '{1}' was not found.</value>
+  </data>
+  <data name="Error_PasswordChangeRequired" xml:space="preserve">
+    <value>Choose a new password before you continue.</value>
+  </data>
+  <data name="Error_TooManySignIns" xml:space="preserve">
+    <value>Too many sign-in attempts. Please wait a minute and try again.</value>
+  </data>
+  <data name="Error_Unauthorized" xml:space="preserve">
+    <value>Authentication is required.</value>
+  </data>
+  <data name="Identity_PasswordRequiresDigit" xml:space="preserve">
+    <value>Passwords must have at least one digit ('0'-'9').</value>
+  </data>
+  <data name="Identity_PasswordRequiresLower" xml:space="preserve">
+    <value>Passwords must have at least one lowercase ('a'-'z').</value>
+  </data>
+  <data name="Identity_PasswordRequiresNonAlphanumeric" xml:space="preserve">
+    <value>Passwords must have at least one non alphanumeric character.</value>
+  </data>
+  <data name="Identity_PasswordRequiresUniqueChars" xml:space="preserve">
+    <value>Passwords must use at least {0} different characters.</value>
+  </data>
+  <data name="Identity_PasswordRequiresUpper" xml:space="preserve">
+    <value>Passwords must have at least one uppercase ('A'-'Z').</value>
+  </data>
+  <data name="Identity_PasswordTooShort" xml:space="preserve">
+    <value>Passwords must be at least {0} characters.</value>
+  </data>
+  <data name="Problem_Conflict" xml:space="preserve">
+    <value>Conflict</value>
+  </data>
+  <data name="Problem_Forbidden" xml:space="preserve">
+    <value>Forbidden</value>
+  </data>
+  <data name="Problem_NotFound" xml:space="preserve">
+    <value>Not Found</value>
+  </data>
+  <data name="Problem_PasswordChangeRequired" xml:space="preserve">
+    <value>Password change required</value>
+  </data>
+  <data name="Problem_TooManyRequests" xml:space="preserve">
+    <value>Too Many Requests</value>
+  </data>
+  <data name="Problem_Unauthorized" xml:space="preserve">
+    <value>Unauthorized</value>
+  </data>
+  <data name="Problem_Unexpected" xml:space="preserve">
+    <value>An unexpected error occurred.</value>
+  </data>
+  <data name="Problem_Validation" xml:space="preserve">
+    <value>One or more validation errors occurred.</value>
+  </data>
+  <data name="Property_Capacity" xml:space="preserve">
+    <value>Capacity</value>
+  </data>
+  <data name="Property_CurrentPassword" xml:space="preserve">
+    <value>Current Password</value>
+  </data>
+  <data name="Property_Description" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="Property_Email" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="Property_EndDateTime" xml:space="preserve">
+    <value>End Date Time</value>
+  </data>
+  <data name="Property_Features" xml:space="preserve">
+    <value>Features</value>
+  </data>
+  <data name="Property_FirstName" xml:space="preserve">
+    <value>First Name</value>
+  </data>
+  <data name="Property_From" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="Property_LastName" xml:space="preserve">
+    <value>Last Name</value>
+  </data>
+  <data name="Property_Location" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="Property_ManagerEmail" xml:space="preserve">
+    <value>Manager Email</value>
+  </data>
+  <data name="Property_ManagerId" xml:space="preserve">
+    <value>Manager Id</value>
+  </data>
+  <data name="Property_MinCapacity" xml:space="preserve">
+    <value>Min Capacity</value>
+  </data>
+  <data name="Property_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Property_NewPassword" xml:space="preserve">
+    <value>New Password</value>
+  </data>
+  <data name="Property_Note" xml:space="preserve">
+    <value>Note</value>
+  </data>
+  <data name="Property_Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Property_Reason" xml:space="preserve">
+    <value>Reason</value>
+  </data>
+  <data name="Property_ReminderMinutes" xml:space="preserve">
+    <value>Reminder Minutes</value>
+  </data>
+  <data name="Property_ResourceId" xml:space="preserve">
+    <value>Resource Id</value>
+  </data>
+  <data name="Property_ResourceTypeId" xml:space="preserve">
+    <value>Resource Type Id</value>
+  </data>
+  <data name="Property_Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Property_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Property_StartDateTime" xml:space="preserve">
+    <value>Start Date Time</value>
+  </data>
+  <data name="Property_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Property_TeamIds" xml:space="preserve">
+    <value>Team Ids</value>
+  </data>
+  <data name="Property_TimeZone" xml:space="preserve">
+    <value>Time Zone</value>
+  </data>
+  <data name="Property_To" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Property_Token" xml:space="preserve">
+    <value>Token</value>
+  </data>
+  <data name="Reports_MaxRange" xml:space="preserve">
+    <value>The report can cover at most {0} days.</value>
+  </data>
+  <data name="Reports_ToOnOrAfterFrom" xml:space="preserve">
+    <value>'To' must be on or after 'From'.</value>
+  </data>
+  <data name="Reservations_CancelOwnOnly" xml:space="preserve">
+    <value>You can only cancel your own reservations.</value>
+  </data>
+  <data name="Reservations_CancelledCantChange" xml:space="preserve">
+    <value>A cancelled reservation can't be changed.</value>
+  </data>
+  <data name="Reservations_ChangeOwnOnly" xml:space="preserve">
+    <value>You can only change your own reservations.</value>
+  </data>
+  <data name="Reservations_EndInPast" xml:space="preserve">
+    <value>The end time can't be moved into the past.</value>
+  </data>
+  <data name="Reservations_EndedCantCancel" xml:space="preserve">
+    <value>This reservation has already ended and can't be cancelled.</value>
+  </data>
+  <data name="Reservations_EndedCantChange" xml:space="preserve">
+    <value>This reservation has already ended and can't be changed.</value>
+  </data>
+  <data name="Reservations_MaxDuration" xml:space="preserve">
+    <value>A reservation can last at most {0} days.</value>
+  </data>
+  <data name="Reservations_Reminder" xml:space="preserve">
+    <value>Reminder must be 5, 15, 30 or 60 minutes before the start, or none.</value>
+  </data>
+  <data name="Reservations_StartInPast" xml:space="preserve">
+    <value>A reservation can't start in the past.</value>
+  </data>
+  <data name="Reservations_Started" xml:space="preserve">
+    <value>This reservation has already started; only its end time and note can be changed.</value>
+  </data>
+  <data name="Resources_DuplicateFeatures" xml:space="preserve">
+    <value>Features must not contain duplicates.</value>
+  </data>
+  <data name="Resources_EmptyTeamId" xml:space="preserve">
+    <value>Team ids can't be empty.</value>
+  </data>
+  <data name="Resources_MaxFeatures" xml:space="preserve">
+    <value>A resource can have at most {0} features.</value>
+  </data>
+  <data name="Resources_MaxSearchWindow" xml:space="preserve">
+    <value>The search window can be at most {0} days.</value>
+  </data>
+  <data name="Resources_MaxTeams" xml:space="preserve">
+    <value>A resource can belong to at most {0} teams.</value>
+  </data>
+  <data name="Resources_NotYours" xml:space="preserve">
+    <value>Only an administrator can change a resource that's shared, or that other teams use too.</value>
+  </data>
+  <data name="Resources_OwnTeamOnly" xml:space="preserve">
+    <value>Managers add resources to their own team only.</value>
+  </data>
+  <data name="Resources_TeamsMustBeActive" xml:space="preserve">
+    <value>Every team must be an active manager's.</value>
+  </data>
+  <data name="Resources_UnknownType" xml:space="preserve">
+    <value>Resource type does not exist.</value>
+  </data>
+  <data name="Status_Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Status_Inactive" xml:space="preserve">
+    <value>Inactive</value>
+  </data>
+  <data name="Status_Maintenance" xml:space="preserve">
+    <value>Maintenance</value>
+  </data>
+  <data name="Validation_EndAfterStart" xml:space="preserve">
+    <value>'End Date Time' must be after 'Start Date Time'.</value>
+  </data>
+  <data name="Validation_NoControlCharacters" xml:space="preserve">
+    <value>'{PropertyName}' can't contain line breaks or control characters.</value>
+  </data>
+  <data name="Validation_RangeMaxDays" xml:space="preserve">
+    <value>The range can be at most {0} days.</value>
+  </data>
+  <data name="Validation_ToAfterFrom" xml:space="preserve">
+    <value>'To' must be after 'From'.</value>
+  </data>
+  <data name="Validation_UnknownTimeZone" xml:space="preserve">
+    <value>Unknown time zone. Use an IANA id such as 'Europe/Istanbul'.</value>
+  </data>
+</root>

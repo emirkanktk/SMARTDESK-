@@ -1,4 +1,5 @@
 using FluentValidation;
+using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Auth.Commands.ChangePassword;
 
@@ -13,6 +14,6 @@ public sealed class ChangePasswordCommandValidator : AbstractValidator<ChangePas
             .MaximumLength(256)
             // Otherwise a temporary password could be "changed" into itself and kept.
             .Must((command, newPassword) => newPassword != command.CurrentPassword)
-            .WithMessage("Choose a password different from the current one.");
+            .WithMessage(_ => Messages.Auth_SamePassword);
     }
 }

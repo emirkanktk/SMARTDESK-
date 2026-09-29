@@ -140,6 +140,13 @@ public sealed class IdentityService(
         return user is null ? null : await ToProfileAsync(user);
     }
 
+    // Written straight to the column: going through UserManager.UpdateAsync would also
+    // re-save everything else on the account, racing a concurrent change made by an Admin.
+    public async Task RememberLanguageAsync(Guid userId, string language, CancellationToken cancellationToken) =>
+        await userManager.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(set => set.SetProperty(u => u.Language, language), cancellationToken);
+
     public async Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
     {
@@ -168,6 +175,7 @@ public sealed class IdentityService(
             ManagerId = user.ManagerId,
             SessionStamp = UserAccessChecker.SessionStampOf(user.SecurityStamp),
             MustChangePassword = user.MustChangePassword,
+            Language = user.Language,
         };
     }
 }

@@ -11,6 +11,18 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
   </ItemGroup>
 
+  <!-- API messages and emails in English (neutral) and Turkish (ADR-0023). The Messages class is
+       generated from Messages.resx at build time. -->
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\Messages.resx">
+      <StronglyTypedFileName>$(IntermediateOutputPath)Messages.Designer.cs</StronglyTypedFileName>
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>SmartDesk.Application.Resources</StronglyTypedNamespace>
+      <StronglyTypedClassName>Messages</StronglyTypedClassName>
+      <PublicClass>true</PublicClass>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

@@ -1,8 +1,14 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using SmartDesk.Application.Common.Exceptions;
+using SmartDesk.Domain.Entities;
 using SmartDesk.Infrastructure.Identity;
+using SmartDesk.Infrastructure.Persistence;
 
 namespace SmartDesk.IntegrationTests;
 
@@ -33,6 +39,14 @@ public sealed class ReservationOverlapTests(PostgresApiFixture fixture)
 
         responses.Count(r => r.StatusCode == HttpStatusCode.Created).Should().Be(1);
         responses.Count(r => r.StatusCode == HttpStatusCode.Conflict).Should().Be(parallel - 1);
+
+        // Whether a loser was stopped by the handler's check or by the database constraint,
+        // the client can tell it's an overlap (ADR-0023).
+        foreach (var conflict in responses.Where(r => r.StatusCode == HttpStatusCode.Conflict))
+        {
+            using var problem = JsonDocument.Parse(await conflict.Content.ReadAsStringAsync());
+            problem.RootElement.GetProperty("code").GetString().Should().Be("reservation-overlaps");
+        }
     }
 
     [Fact]
@@ -60,6 +74,25 @@ public sealed class ReservationOverlapTests(PostgresApiFixture fixture)
 
         first.StatusCode.Should().Be(HttpStatusCode.Created);
         second.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task An_overlap_only_the_database_catches_is_still_a_coded_conflict()
+    {
+        // Straight to the database, past the handler's check and its lock, as two requests
+        // racing past the check would be: the constraint's error becomes the same 409.
+        using var scope = fixture.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SmartDeskDbContext>();
+        var desk = await db.Resources.SingleAsync(r => r.Name == "Desk 3-02");
+        var owner = await db.Users.SingleAsync(u => u.Email == "employee1@smartdesk.local");
+        var start = DateTime.UtcNow.Date.AddDays(92).AddHours(10);
+        db.Reservations.Add(new Reservation { Id = Guid.CreateVersion7(), ResourceId = desk.Id, UserId = owner.Id, StartDateTime = start, EndDateTime = start.AddHours(1) });
+        await db.SaveChangesAsync();
+        db.Reservations.Add(new Reservation { Id = Guid.CreateVersion7(), ResourceId = desk.Id, UserId = owner.Id, StartDateTime = start.AddMinutes(30), EndDateTime = start.AddHours(2) });
+
+        var act = () => db.SaveChangesAsync();
+
+        (await act.Should().ThrowAsync<ConflictException>()).Which.Code.Should().Be("reservation-overlaps");
     }
 
     private static async Task<string> LoginAsync(HttpClient client)

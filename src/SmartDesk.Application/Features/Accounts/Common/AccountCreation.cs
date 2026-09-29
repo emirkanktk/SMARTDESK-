@@ -2,6 +2,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Localization;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Auth.Common;
 using SmartDesk.Domain.Enums;
@@ -40,7 +41,8 @@ public sealed class AccountCreation(
         var created = await accounts.CreateAsync(
             new NewAccount(
                 firstName.Trim(), lastName.Trim(), email, role, AccountStatus.Active, managerId, temporaryPassword,
-                MustChangePassword: true),
+                MustChangePassword: true,
+                Language: Languages.Current),
             cancellationToken);
         if (!created.Succeeded)
         {
@@ -49,7 +51,7 @@ public sealed class AccountCreation(
 
         var account = (await accounts.FindAsync(created.Id!.Value, cancellationToken))!;
         var creator = await accounts.FindAsync(callerId, cancellationToken);
-        emails.Queue(AccountEmails.AccountCreated(account.Email, account.FirstName, creator?.DisplayName ?? "An administrator", links.SignIn()));
+        emails.Queue(AccountEmails.AccountCreated(Languages.CultureFor(account.Language), account.Email, account.FirstName, creator?.DisplayName, links.SignIn()));
 
         return account;
     }

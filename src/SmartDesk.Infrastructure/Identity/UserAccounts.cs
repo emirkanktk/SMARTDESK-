@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
+using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure.Persistence;
@@ -72,6 +73,7 @@ public sealed class UserAccounts(
             ManagerId = account.ManagerId,
             CreatedAt = DateTime.UtcNow,
             MustChangePassword = account.MustChangePassword,
+            Language = account.Language,
         };
 
         var result = await userManager.CreateAsync(user, account.Password);
@@ -80,7 +82,7 @@ public sealed class UserAccounts(
             // Checked by the handlers first; this is two requests racing for the same email.
             if (result.Errors.Any(e => e.Code is nameof(IdentityErrorDescriber.DuplicateEmail) or nameof(IdentityErrorDescriber.DuplicateUserName)))
             {
-                throw new ConflictException("A user with this email already exists.");
+                throw new ConflictException(Messages.Accounts_EmailTaken);
             }
 
             var passwordErrors = result.Errors.Where(e => e.Code.StartsWith("Password", StringComparison.Ordinal)).ToList();
@@ -182,7 +184,7 @@ public sealed class UserAccounts(
     {
         var rows = await users
             .AsNoTracking()
-            .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.Status, u.ManagerId, u.CreatedAt, u.MustChangePassword })
+            .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.Status, u.ManagerId, u.CreatedAt, u.MustChangePassword, u.Language })
             .ToListAsync(cancellationToken);
         var ids = rows.Select(r => r.Id).ToList();
 
@@ -223,7 +225,10 @@ public sealed class UserAccounts(
                     : null,
                 r.CreatedAt,
                 teamSizes.GetValueOrDefault(r.Id),
-                r.MustChangePassword))
+                r.MustChangePassword)
+            {
+                Language = r.Language,
+            })
             .ToList();
     }
 }

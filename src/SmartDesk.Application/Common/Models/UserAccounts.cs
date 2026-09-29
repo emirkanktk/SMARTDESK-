@@ -17,6 +17,9 @@ public sealed record UserAccount(
     bool MustChangePassword = false)
 {
     public string DisplayName => $"{FirstName} {LastName}".Trim() is { Length: > 0 } name ? name : Email;
+
+    // The language emails to them are written in (ADR-0023); null until they first sign in.
+    public string? Language { get; init; }
 }
 
 public sealed record UserFilter(
@@ -26,7 +29,8 @@ public sealed record UserFilter(
     string? Search = null);
 
 // MustChangePassword: the password was chosen by someone else - an Admin or Manager adding the
-// account - so its owner has to replace it at their first sign-in (ADR-0021).
+// account - so its owner has to replace it at their first sign-in (ADR-0021). Language: what
+// their emails are written in until they sign in themselves (ADR-0023).
 public sealed record NewAccount(
     string FirstName,
     string LastName,
@@ -35,7 +39,8 @@ public sealed record NewAccount(
     AccountStatus Status,
     Guid? ManagerId,
     string Password,
-    bool MustChangePassword = false);
+    bool MustChangePassword = false,
+    string? Language = null);
 
 public sealed record CreateAccountResult(Guid? Id, IReadOnlyList<string> PasswordErrors)
 {
