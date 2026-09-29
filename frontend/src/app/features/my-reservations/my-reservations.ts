@@ -89,7 +89,7 @@ export class MyReservations implements OnInit {
         inProgress:
           reservation.status === 'Confirmed' && start.getTime() <= now && end.getTime() > now,
         reminder:
-          minutes !== null && reservation.status === 'Confirmed' && start.getTime() > now
+          minutes != null && reservation.status === 'Confirmed' && start.getTime() > now
             ? `Reminder ${minutes} min before`
             : null,
       };

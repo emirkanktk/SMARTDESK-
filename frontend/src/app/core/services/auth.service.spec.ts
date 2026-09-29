@@ -175,4 +175,72 @@ describe('AuthService', () => {
     expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull();
     expect(localStorage.getItem(PASSWORD_CHANGE_STORAGE_KEY)).toBeNull();
   });
+
+  describe('with other tabs', () => {
+    const mehmet = () =>
+      fakeJwt({
+        sub: '22222222-2222-2222-2222-222222222222',
+        email: 'employee2@smartdesk.local',
+        given_name: 'Mehmet',
+        family_name: 'Demir',
+      });
+
+    /** What the browser does in this tab when another tab writes the stored token. */
+    function anotherTabStores(token: string | null): void {
+      if (token === null) {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+      } else {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      }
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: TOKEN_STORAGE_KEY, newValue: token }),
+      );
+    }
+
+    it("leaves the newer token another tab stored when this tab's session ends", () => {
+      localStorage.setItem(TOKEN_STORAGE_KEY, fakeJwt());
+      const { service } = createService();
+      // Another tab changed the password; this tab hasn't heard yet.
+      const newer = mehmet();
+      localStorage.setItem(TOKEN_STORAGE_KEY, newer);
+
+      service.logout();
+
+      expect(service.isAuthenticated()).toBe(false);
+      expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBe(newer);
+    });
+
+    it('takes over the session another tab stores', () => {
+      localStorage.setItem(TOKEN_STORAGE_KEY, fakeJwt());
+      const { service } = createService();
+      const newer = mehmet();
+
+      anotherTabStores(newer);
+
+      expect(service.getToken()).toBe(newer);
+      expect(service.displayName()).toBe('Mehmet Demir');
+    });
+
+    it('keeps its own session when another tab stores an expired token or signs out', () => {
+      const own = fakeJwt();
+      localStorage.setItem(TOKEN_STORAGE_KEY, own);
+      const { service } = createService();
+
+      anotherTabStores(expiredJwt());
+      expect(service.getToken()).toBe(own);
+
+      anotherTabStores(null);
+      expect(service.getToken()).toBe(own);
+    });
+
+    it('stops listening once destroyed', () => {
+      localStorage.setItem(TOKEN_STORAGE_KEY, fakeJwt());
+      const { service } = createService();
+      TestBed.resetTestingModule();
+
+      anotherTabStores(mehmet());
+
+      expect(service.displayName()).toBe('Ayşe Yılmaz');
+    });
+  });
 });
