@@ -180,6 +180,7 @@ frontend/src/app/
   core/
     constants/       Roles (mirrors SmartDesk.Domain.Constants.Roles)
     i18n/            the language (Turkish by default), words for the API's statuses and roles
+    theme/           ThemeService: light or dark, the system's setting until the user picks
     guards/          authGuard, guestGuard, sessionGuard, roleGuard(...roles) / adminGuard,
                      managerGuard, resourceEditorGuard
     interceptors/    languageInterceptor, jwtInterceptor, errorInterceptor, ANONYMOUS_REQUEST,
@@ -191,7 +192,7 @@ frontend/src/app/
     shell/           top bar + navigation around every signed-in screen
     notification-host/  toast messages
   shared/
-    components/      small reusable UI pieces (e.g. StatusBadge, LanguageSwitch)
+    components/      small reusable UI pieces (e.g. StatusBadge, LanguageSwitch, ThemeSwitch)
     utils/           form helpers (applyServerErrors: API 400 messages -> form controls,
                      keepDurationWhenStartMoves), datetime-local <-> Date conversion
     validators/      dateRangeValidator (end after start, max length, start not in the
@@ -252,7 +253,9 @@ picker drops seconds and any difference would count as a change.
   code; `npm run i18n:extract` lists what still needs a Turkish version.
 - **Styling.** Plain SCSS. Design tokens (colors, spacing, radius) and shared building blocks
   (`.btn`, `.field`, `.input`, `.card`, `.alert-error`) live in `src/styles.scss`. Component
-  styles use those variables instead of hardcoded values.
+  styles use those variables instead of hardcoded values. The dark theme redefines the colour
+  tokens under `:root[data-theme='dark']`, which a script in `index.html` sets before the first
+  paint: the stored choice, or the system's setting.
 
 ## 8. Team ownership boundaries
 

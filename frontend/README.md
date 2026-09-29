@@ -107,14 +107,30 @@ bar, front page, sign-in). The choice is kept per browser, and switching reloads
   `toLocaleString()` without a locale.
 - Unit tests run in English, the language of the code.
 
+## Light and dark
+
+The moon/sun button next to **TR | EN** switches between a light and a dark theme. Until a
+user picks one, the app follows the system's setting, live. The pick is remembered per
+browser, and other open tabs follow it.
+
+- **Colours are tokens.** `src/styles.scss` defines them on `:root` and again, for dark, on
+  `:root[data-theme='dark']`. Use `var(--color-…)`, never a colour value, and a new token
+  needs a dark value too. Text on a primary background uses `--color-on-primary`, because the
+  dark theme's primary blue is light.
+- **Contrast:** every text colour keeps at least 4.5:1 on the backgrounds it sits on, in both
+  themes. `e2e/screens.spec.ts` runs axe on every screen in each theme.
+- **No flash of the wrong theme:** a small script in `index.html` sets `data-theme` before
+  anything is drawn. `ThemeService` (`core/theme`) takes over from there.
+
 ## Browser tests
 
 `e2e/` holds [Playwright](https://playwright.dev/) tests that drive the real app in a browser:
 sign-in and the language, booking with a conflict, a booking reaching another window's calendar
 live, a blocked window, a manager's team resource, joining a team through the manager, and a
 temporary password that has to be replaced. `screens.spec.ts` also opens every
-screen in Turkish, runs [axe](https://github.com/dequelabs/axe-core) on it (WCAG 2.1 AA and best
-practices), and checks that nothing is wider than a 390px phone. They need the whole app
+screen in Turkish, in the light and the dark theme, runs
+[axe](https://github.com/dequelabs/axe-core) on it (WCAG 2.1 AA and best practices), and checks
+that nothing is wider than a 390px phone. They need the whole app
 running with the Development seed:
 
 ```bash
