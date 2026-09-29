@@ -179,7 +179,8 @@ gate `Admin`-only routes (e.g. resource management).
 frontend/src/app/
   core/
     constants/       Roles (mirrors SmartDesk.Domain.Constants.Roles)
-    guards/          authGuard, guestGuard, sessionGuard, roleGuard(...roles) / adminGuard, managerGuard
+    guards/          authGuard, guestGuard, sessionGuard, roleGuard(...roles) / adminGuard,
+                     managerGuard, resourceEditorGuard
     interceptors/    jwtInterceptor, errorInterceptor, ANONYMOUS_REQUEST,
                      SKIP_ERROR_NOTIFICATION
     models/          request/response types, ApiError
@@ -222,7 +223,10 @@ picker drops seconds and any difference would count as a change.
   `canActivateChild`). An unauthenticated visit is redirected to `/login?returnUrl=...` and
   sent back after sign-in, and only in-app paths are followed. `adminGuard`
   (`roleGuard(Roles.Admin)`) protects `/admin` and its sub-screens (`/admin/reports`, `/admin/users`,
-  `/admin/blocks`), and the resource forms. `managerGuard` protects `/team`. `/register` is
+  `/admin/blocks`). `managerGuard` protects `/team`. `resourceEditorGuard` lets admins and
+  managers open the resource forms; the form itself mirrors the API's rule
+  (`canManageResource` in `shared/utils/resource-access.ts`) and shows a manager a note instead
+  of a form for a resource that isn't their team's alone (ADR-0022). `/register` is
   guest-only too. A session whose password was set by someone else is sent to
   `/change-password` by `authGuard` (and by the error interceptor on the API's
   `password-change-required` 403); that page needs only a session (`sessionGuard`), and the
