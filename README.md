@@ -35,6 +35,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Live updates** - after a reservation is created, changed, or cancelled, every connected
   screen receives `ReservationCreated`, `ReservationUpdated`, or `ReservationCancelled`
   ([ADR-0014](docs/DECISIONS.md)).
+- **Turkish and English** - the whole app, in Turkish unless the user picks English. The
+  API's messages follow the language on screen, and emails go out in the recipient's
+  language ([ADR-0023](docs/DECISIONS.md), [ADR-0025](docs/DECISIONS.md)).
 
 | Layer | Stack |
 |---|---|
