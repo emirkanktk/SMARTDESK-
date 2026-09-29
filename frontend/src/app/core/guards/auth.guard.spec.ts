@@ -9,6 +9,7 @@ import {
   UrlTree,
   provideRouter,
 } from '@angular/router';
+import { firstValueFrom, isObservable, of } from 'rxjs';
 import { Roles } from '../constants/roles';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
@@ -16,11 +17,14 @@ import { adminGuard, authGuard, guestGuard, managerGuard, sessionGuard } from '.
 
 describe('route guards', () => {
   let signedIn: boolean;
+  /** Whether the session can still give a new token when the current one has expired. */
+  let renewable: boolean;
   let mustChangePassword: boolean;
   let roles: string[];
 
   beforeEach(() => {
     signedIn = false;
+    renewable = false;
     mustChangePassword = false;
     roles = [];
     TestBed.configureTestingModule({
@@ -30,6 +34,7 @@ describe('route guards', () => {
           provide: AuthService,
           useValue: {
             hasValidSession: () => signedIn,
+            validToken: () => of(renewable ? 'renewed-token' : null),
             passwordChangeRequired: () => mustChangePassword,
             hasRole: (role: string) => roles.includes(role),
           },
@@ -44,7 +49,12 @@ describe('route guards', () => {
     );
   }
 
-  function serialize(result: MaybeAsync<GuardResult>): string {
+  /** The guard's answer, waited for when it had to renew the session first. */
+  async function settle(result: MaybeAsync<GuardResult>): Promise<GuardResult> {
+    return isObservable(result) ? firstValueFrom(result) : result;
+  }
+
+  function serialize(result: GuardResult | MaybeAsync<GuardResult>): string {
     return TestBed.inject(Router).serializeUrl(result as UrlTree);
   }
 
@@ -54,10 +64,15 @@ describe('route guards', () => {
       expect(run(authGuard)).toBe(true);
     });
 
-    it('redirects to login and remembers the requested url', () => {
-      expect(serialize(run(authGuard, '/reservations/mine'))).toBe(
+    it('redirects to login and remembers the requested url', async () => {
+      expect(serialize(await settle(run(authGuard, '/reservations/mine')))).toBe(
         '/login?returnUrl=%2Freservations%2Fmine',
       );
+    });
+
+    it('lets a user in whose token expired but whose session goes on', async () => {
+      renewable = true;
+      expect(await settle(run(authGuard))).toBe(true);
     });
 
     it('sends a user with a temporary password to change it first', () => {
@@ -74,8 +89,13 @@ describe('route guards', () => {
       expect(run(sessionGuard)).toBe(true);
     });
 
-    it('sends a signed-out visitor to sign in', () => {
-      expect(serialize(run(sessionGuard))).toBe('/login');
+    it('sends a signed-out visitor to sign in', async () => {
+      expect(serialize(await settle(run(sessionGuard)))).toBe('/login');
+    });
+
+    it('renews an expired token before deciding', async () => {
+      renewable = true;
+      expect(await settle(run(sessionGuard))).toBe(true);
     });
   });
 

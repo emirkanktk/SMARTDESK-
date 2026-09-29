@@ -3,6 +3,7 @@ import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@a
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiError } from '../models/api-error.model';
 import { AuthService } from '../services/auth.service';
@@ -21,12 +22,13 @@ describe('errorInterceptor', () => {
   let router: Router;
   let logout: ReturnType<typeof vi.fn>;
   let markPasswordChangeRequired: ReturnType<typeof vi.fn>;
-  let getToken: ReturnType<typeof vi.fn>;
+  let renew: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     logout = vi.fn();
     markPasswordChangeRequired = vi.fn();
-    getToken = vi.fn(() => null);
+    // By default the session is over: renewing gives no token.
+    renew = vi.fn(() => of(null));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -35,7 +37,7 @@ describe('errorInterceptor', () => {
         ]),
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: { logout, markPasswordChangeRequired, getToken } },
+        { provide: AuthService, useValue: { logout, markPasswordChangeRequired, renew } },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -76,13 +78,14 @@ describe('errorInterceptor', () => {
     expect(notifications.notifications()).toEqual([]);
   });
 
-  it('ends the session on a 401 from the API, even when no token was sent', async () => {
+  it('ends the session on a 401 from the API when the session cannot be renewed', async () => {
     await router.navigateByUrl('/resources');
     const navigate = vi.spyOn(router, 'navigate');
 
     request();
     flush401();
 
+    expect(renew).toHaveBeenCalledTimes(1);
     expect(logout).toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith(['/login'], {
       queryParams: { returnUrl: '/resources' },
@@ -90,9 +93,10 @@ describe('errorInterceptor', () => {
     expect(notifications.notifications()[0]?.message).toContain('session has expired');
   });
 
-  it('retries once with the current token when the 401 came from one this tab has replaced', () => {
-    // Another tab signed in again, or changed the password, and this tab took over its token.
-    getToken.mockReturnValue('new-token');
+  it('renews the session once and retries with the new token', () => {
+    // The token expired while the laptop slept, or another tab changed the password and
+    // started a new session: the session goes on, so the call does too.
+    renew.mockReturnValue(of('new-token'));
     let body: unknown;
     http.get(url, { headers: { Authorization: 'Bearer old-token' } }).subscribe((b) => (body = b));
 
@@ -106,7 +110,7 @@ describe('errorInterceptor', () => {
   });
 
   it('handles a failed retry like any other failure: a conflict reaches the caller as an ApiError', () => {
-    getToken.mockReturnValue('new-token');
+    renew.mockReturnValue(of('new-token'));
     let error: unknown;
     http
       .get(url, { headers: { Authorization: 'Bearer old-token' } })
@@ -127,9 +131,8 @@ describe('errorInterceptor', () => {
     expect(logout).not.toHaveBeenCalled();
   });
 
-  it('ends the session when the retry is refused too, without retrying again', () => {
-    // The stored token changes again while the retry is in flight: still only one retry.
-    getToken.mockReturnValueOnce('new-token').mockReturnValue('newer-token');
+  it('ends the session when the retry is refused too, without renewing again', () => {
+    renew.mockReturnValue(of('new-token'));
     http
       .get(url, { headers: { Authorization: 'Bearer old-token' } })
       .subscribe({ error: () => undefined });
@@ -137,18 +140,8 @@ describe('errorInterceptor', () => {
     backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
     backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
 
+    expect(renew).toHaveBeenCalledTimes(1);
     expect(logout).toHaveBeenCalledTimes(1);
-  });
-
-  it('ends the session when the current token itself is refused', () => {
-    getToken.mockReturnValue('same-token');
-    http
-      .get(url, { headers: { Authorization: 'Bearer same-token' } })
-      .subscribe({ error: () => undefined });
-
-    backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
-
-    expect(logout).toHaveBeenCalled();
   });
 
   it('does not end the session on a 401 for an anonymous request (failed login)', () => {
@@ -157,6 +150,7 @@ describe('errorInterceptor', () => {
     const result = request({ context: new HttpContext().set(ANONYMOUS_REQUEST, true) });
     flush401();
 
+    expect(renew).not.toHaveBeenCalled();
     expect(logout).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
     expect((result.error() as ApiError).status).toBe(401);
@@ -166,6 +160,7 @@ describe('errorInterceptor', () => {
     request({ url: 'https://example.com/data' });
     flush401('https://example.com/data');
 
+    expect(renew).not.toHaveBeenCalled();
     expect(logout).not.toHaveBeenCalled();
   });
 

@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { OperatorFunction, catchError, throwError } from 'rxjs';
+import { OperatorFunction, catchError, switchMap, throwError } from 'rxjs';
 import { ApiError } from '../models/api-error.model';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
@@ -22,7 +22,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notifications = inject(NotificationService);
   const router = inject(Router);
 
-  // `retried`: the request was already sent again with a newer token, which happens at most
+  // `retried`: the request was already sent again with a renewed token, which happens at most
   // once. The retry goes through this same handling, so its failure is treated like any other.
   const handle = (
     request: HttpRequest<unknown>,
@@ -35,20 +35,27 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
       const apiError = ApiError.fromHttpError(error);
 
-      // A 401 from the API means the session is over - expired, revoked, or the token was
-      // already dropped as expired before the request went out. Only anonymous calls
-      // (login) get a 401 for another reason: a wrong password.
+      // A 401 from the API means the token is no longer good. Only anonymous calls (login)
+      // get a 401 for another reason: a wrong password.
       if (
         apiError.status === 401 &&
         isApiUrl(request.url) &&
         !request.context.get(ANONYMOUS_REQUEST)
       ) {
-        // Sent with a token this tab has since replaced - another tab signed in again or
-        // changed the password: the session goes on, so try once more with the current one.
-        const current = authService.getToken();
-        if (!retried && current && bearerToken(request.headers.get('Authorization')) !== current) {
-          const retry = request.clone({ setHeaders: { Authorization: `Bearer ${current}` } });
-          return next(retry).pipe(handle(retry, true));
+        // The session may well go on - the token expired while the laptop slept, or another
+        // tab changed the password and started a new session (ADR-0026) - so renew once and
+        // try again. If the session itself is over, sign out.
+        if (!retried) {
+          return authService.renew().pipe(
+            switchMap((token) => {
+              if (!token) {
+                endSession(authService, notifications, router);
+                return throwError(() => apiError);
+              }
+              const retry = request.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+              return next(retry).pipe(handle(retry, true));
+            }),
+          );
         }
         endSession(authService, notifications, router);
       } else if (apiError.status === 403 && apiError.code === PASSWORD_CHANGE_REQUIRED) {
@@ -109,8 +116,4 @@ function messageFor(error: ApiError): string | null {
     default:
       return null;
   }
-}
-
-function bearerToken(header: string | null): string | null {
-  return header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
 }

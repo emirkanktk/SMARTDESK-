@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Reservation } from '../models/reservation.model';
 import { AuthService } from './auth.service';
@@ -41,7 +41,8 @@ export class ReservationHubService {
 
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(`${environment.apiUrl.replace(/\/api$/, '')}/hubs/reservations`, {
-        accessTokenFactory: () => this.authService.getToken() ?? '',
+        // A fresh token for every (re)connect, renewed first if it's about to expire (ADR-0026).
+        accessTokenFactory: async () => (await firstValueFrom(this.authService.validToken())) ?? '',
         withCredentials: false,
       })
       .withAutomaticReconnect({
