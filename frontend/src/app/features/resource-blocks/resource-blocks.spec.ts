@@ -354,7 +354,9 @@ describe('ResourceBlocks', () => {
 
     it('shows an overlapping block as the API words it', async () => {
       const message = 'Meeting Room A is already blocked for part of that time.';
-      create.mockReturnValue(throwError(() => new ApiError(409, 'Conflict', message)));
+      create.mockReturnValue(
+        throwError(() => new ApiError(409, 'Conflict', message, {}, 'block-overlaps-block')),
+      );
       await render();
       await fillValidBlock();
       await submit();
@@ -367,7 +369,9 @@ describe('ResourceBlocks', () => {
     it('links to the reservations that stand in the way', async () => {
       const message =
         '2 confirmed reservation(s) on Meeting Room A overlap this window. Cancel or move them first.';
-      create.mockReturnValue(throwError(() => new ApiError(409, 'Conflict', message)));
+      create.mockReturnValue(
+        throwError(() => new ApiError(409, 'Conflict', message, {}, 'block-overlaps-reservations')),
+      );
       await render();
       await fillValidBlock();
       await submit();
@@ -378,6 +382,21 @@ describe('ResourceBlocks', () => {
       expect(href).toBe('/admin?from=2026-10-06&to=2026-10-06&type=type-room');
     });
 
+    it('tells the two conflicts apart by code, whatever language the message is in', async () => {
+      const message =
+        'Meeting Room A için 2 onaylı rezervasyon bu aralıkla çakışıyor. Önce onları iptal edin ya da taşıyın.';
+      create.mockReturnValue(
+        throwError(() => new ApiError(409, 'Çakışma', message, {}, 'block-overlaps-reservations')),
+      );
+      await render();
+      await fillValidBlock();
+      await submit();
+
+      const alert = field('.conflict');
+      expect(text(alert)).toContain(message);
+      expect(alert.querySelector('a')).not.toBeNull();
+    });
+
     it('opens a long window on its first six weeks in the admin overview', async () => {
       create.mockReturnValue(
         throwError(
@@ -386,6 +405,8 @@ describe('ResourceBlocks', () => {
               409,
               'Conflict',
               '1 confirmed reservation(s) on Desk 12 overlap this window.',
+              {},
+              'block-overlaps-reservations',
             ),
         ),
       );
