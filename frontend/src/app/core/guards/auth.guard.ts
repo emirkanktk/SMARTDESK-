@@ -49,7 +49,9 @@ export function roleGuard(...roles: Role[]): CanActivateFn {
       return true;
     }
 
-    inject(NotificationService).error('You do not have permission to open that page.');
+    inject(NotificationService).error(
+      $localize`:@@error.pageForbidden:You do not have permission to open that page.`,
+    );
     return router.parseUrl('/dashboard');
   };
 }

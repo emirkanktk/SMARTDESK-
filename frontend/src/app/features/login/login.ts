@@ -4,11 +4,12 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
+import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
 
 const DEFAULT_REDIRECT = '/dashboard';
 
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, LanguageSwitch],
   selector: 'app-login',
   // The page's main landmark: it renders outside the shell, which provides one elsewhere.
   host: { role: 'main' },
@@ -56,26 +57,31 @@ export class Login {
   }
 }
 
+const SIGN_IN_FAILED = () => $localize`:@@login.failed:Sign-in failed. Please try again.`;
+
 function loginErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) {
-    return 'Sign-in failed. Please try again.';
+    return SIGN_IN_FAILED();
   }
 
   switch (error.status) {
     case 0:
       return error.title;
     case 400:
-      return Object.values(error.fieldErrors).flat()[0] ?? 'Please check the email and password.';
+      return (
+        Object.values(error.fieldErrors).flat()[0] ??
+        $localize`:@@login.checkFields:Please check the email and password.`
+      );
     case 401:
-      return 'Invalid email or password.';
+      return $localize`:@@login.invalidCredentials:Invalid email or password.`;
     case 403:
       // The right password, but the account is waiting for approval or was switched off; the
       // API says which, and what to do.
-      return error.detail ?? "This account can't sign in right now.";
+      return error.detail ?? $localize`:@@login.cannotSignIn:This account can't sign in right now.`;
     case 429:
-      return 'Too many attempts. Please wait a minute and try again.';
+      return $localize`:@@error.tooManyAttempts:Too many attempts. Please wait a minute and try again.`;
     default:
-      return 'Sign-in failed. Please try again.';
+      return SIGN_IN_FAILED();
   }
 }
 

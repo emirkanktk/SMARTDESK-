@@ -24,7 +24,7 @@ import {
 } from '../../shared/utils/date-time';
 import { keepDurationWhenStartMoves } from '../../shared/utils/keep-duration';
 import { applyServerErrors } from '../../shared/utils/server-errors';
-import { dateRangeValidator } from '../../shared/validators/date-range.validator';
+import { RANGE_MESSAGES, dateRangeValidator } from '../../shared/validators/date-range.validator';
 import { integerValidator } from '../../shared/validators/integer.validator';
 
 const DEFAULT_DURATION_MIN = 60;
@@ -183,11 +183,11 @@ export class Availability implements OnInit {
   protected startError(): string | null {
     const control = this.form.controls.startDateTime;
     if (!this.rangeTouched()) return null;
-    if (control.hasError('required')) return 'Choose a start date and time.';
+    if (control.hasError('required')) return RANGE_MESSAGES.chooseStart();
     if (control.hasError('server')) return control.getError('server') as string;
-    if (this.form.hasError('startInPast')) return 'The start time is in the past.';
+    if (this.form.hasError('startInPast')) return RANGE_MESSAGES.startInPast();
     if (this.form.hasError('startTooFarAhead')) {
-      return `Search at most ${RESERVATION_LIMITS.maxAdvanceDays} days ahead - bookings can't start later.`;
+      return $localize`:@@availability.tooFarAhead:Search at most ${RESERVATION_LIMITS.maxAdvanceDays}:days: days ahead - bookings can't start later.`;
     }
     return null;
   }
@@ -195,11 +195,11 @@ export class Availability implements OnInit {
   protected endError(): string | null {
     const control = this.form.controls.endDateTime;
     if (!this.rangeTouched()) return null;
-    if (control.hasError('required')) return 'Choose an end date and time.';
+    if (control.hasError('required')) return RANGE_MESSAGES.chooseEnd();
     if (control.hasError('server')) return control.getError('server') as string;
-    if (this.form.hasError('rangeOrder')) return 'The end must be after the start.';
+    if (this.form.hasError('rangeOrder')) return RANGE_MESSAGES.endAfterStart();
     if (this.form.hasError('rangeTooLong')) {
-      return `Search at most ${AVAILABILITY_MAX_DAYS} days at a time.`;
+      return $localize`:@@availability.tooLong:Search at most ${AVAILABILITY_MAX_DAYS}:days: days at a time.`;
     }
     return null;
   }
@@ -208,7 +208,7 @@ export class Availability implements OnInit {
     const control = this.form.controls.minCapacity;
     if (!control.touched || !control.errors) return null;
     if (control.hasError('server')) return control.getError('server') as string;
-    return 'Enter a whole number of at least 1.';
+    return $localize`:@@availability.capacityInvalid:Enter a whole number of at least 1.`;
   }
 
   private rangeTouched(): boolean {
@@ -242,6 +242,8 @@ export class Availability implements OnInit {
       return;
     }
     // 0 / 5xx already raised a toast; say it here too, next to where the results would be.
-    this.searchError.set('The search could not be completed. Please try again.');
+    this.searchError.set(
+      $localize`:@@availability.searchFailed:The search could not be completed. Please try again.`,
+    );
   }
 }

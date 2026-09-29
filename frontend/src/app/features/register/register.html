@@ -1,23 +1,31 @@
-<a class="back" routerLink="/">← Back to home</a>
+<a class="back" routerLink="/" i18n="@@login.backHome">← Back to home</a>
 
 <div class="card auth-card">
   @if (sent(); as done) {
-    <h1>Check your email</h1>
+    <h1 i18n="@@register.checkEmail">Check your email</h1>
     <div class="notice" role="status">
-      We've sent a message to <strong>{{ done.email }}</strong
-      >.
+      <ng-container i18n="@@register.sentTo"
+        >We've sent a message to <strong>{{ done.email }}</strong
+        >.</ng-container
+      >
       @if (done.type === 'member') {
-        Your request to join your manager's team is waiting for approval, and we'll email you again
-        as soon as your account is ready.
+        <ng-container i18n="@@register.sentMember"
+          >Your request to join your manager's team is waiting for approval, and we'll email you
+          again as soon as your account is ready.</ng-container
+        >
       } @else {
-        An administrator will review your sign-up, and we'll email you again as soon as your account
-        is ready.
+        <ng-container i18n="@@register.sentManager"
+          >An administrator will review your sign-up, and we'll email you again as soon as your
+          account is ready.</ng-container
+        >
       }
     </div>
-    <p class="links"><a routerLink="/login">Back to sign in</a></p>
+    <p class="links">
+      <a routerLink="/login" i18n="@@register.backToSignIn">Back to sign in</a>
+    </p>
   } @else {
-    <h1>Create an account</h1>
-    <p class="text-muted subtitle">
+    <h1 i18n="@@register.title">Create an account</h1>
+    <p class="text-muted subtitle" i18n="@@register.subtitle">
       Join your team to book meeting rooms, desks and equipment. Accounts are approved before they
       can be used.
     </p>
@@ -28,26 +36,30 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <fieldset class="field account-type">
-        <legend>I'm…</legend>
+        <legend i18n="@@register.iAm">I'm…</legend>
         <label class="choice">
           <input type="radio" formControlName="accountType" value="member" />
           <span>
-            <strong>Joining my team</strong>
-            <span class="text-muted">My manager approves my request.</span>
+            <strong i18n="@@register.member">Joining my team</strong>
+            <span class="text-muted" i18n="@@register.memberHint"
+              >My manager approves my request.</span
+            >
           </span>
         </label>
         <label class="choice">
           <input type="radio" formControlName="accountType" value="manager" />
           <span>
-            <strong>A manager</strong>
-            <span class="text-muted">An administrator approves me; then I add my team.</span>
+            <strong i18n="@@register.manager">A manager</strong>
+            <span class="text-muted" i18n="@@register.managerHint"
+              >An administrator approves me; then I add my team.</span
+            >
           </span>
         </label>
       </fieldset>
 
       <div class="name-row">
         <div class="field">
-          <label for="first-name">First name</label>
+          <label for="first-name" i18n="@@field.firstName">First name</label>
           <input
             id="first-name"
             class="input"
@@ -64,7 +76,7 @@
         </div>
 
         <div class="field">
-          <label for="last-name">Last name</label>
+          <label for="last-name" i18n="@@field.lastName">Last name</label>
           <input
             id="last-name"
             class="input"
@@ -82,7 +94,7 @@
       </div>
 
       <div class="field">
-        <label for="email">Work email</label>
+        <label for="email" i18n="@@field.workEmail">Work email</label>
         <input
           id="email"
           type="email"
@@ -100,7 +112,9 @@
 
       @if (accountType() === 'member') {
         <div class="field">
-          <label for="manager-email">Your manager's work email</label>
+          <label for="manager-email" i18n="@@register.managerEmail"
+            >Your manager's work email</label
+          >
           <input
             id="manager-email"
             type="email"
@@ -114,14 +128,16 @@
             @if (fieldError('managerEmail'); as message) {
               <span class="field-error">{{ message }}</span>
             } @else {
-              <span class="text-muted password-hint">We'll ask them to approve your request.</span>
+              <span class="text-muted password-hint" i18n="@@register.managerEmailHint"
+                >We'll ask them to approve your request.</span
+              >
             }
           </span>
         </div>
       }
 
       <div class="field">
-        <label for="password">Password</label>
+        <label for="password" i18n="@@field.password">Password</label>
         <input
           id="password"
           type="password"
@@ -142,7 +158,7 @@
       </div>
 
       <div class="field">
-        <label for="confirm">Repeat the password</label>
+        <label for="confirm" i18n="@@field.repeatPassword">Repeat the password</label>
         <input
           id="confirm"
           type="password"
@@ -159,10 +175,16 @@
       </div>
 
       <button type="submit" class="btn btn-primary btn-block" [disabled]="submitting()">
-        {{ submitting() ? 'Sending…' : 'Sign up' }}
+        @if (submitting()) {
+          <ng-container i18n="@@register.sending">Sending…</ng-container>
+        } @else {
+          <ng-container i18n="@@register.submit">Sign up</ng-container>
+        }
       </button>
     </form>
 
-    <p class="links">Already have an account? <a routerLink="/login">Sign in</a></p>
+    <p class="links" i18n="@@register.haveAccount">
+      Already have an account? <a routerLink="/login">Sign in</a>
+    </p>
   }
 </div>

@@ -74,8 +74,12 @@ export class UsageReport {
   protected readonly rangeError = computed(() => {
     const { first, last } = this.range();
     const days = daysBetween(first, last) + 1;
-    if (days < 1) return 'The last day is before the first day.';
-    if (days > REPORT_MAX_DAYS) return `Show at most ${REPORT_MAX_DAYS} days at a time.`;
+    if (days < 1) {
+      return $localize`:@@admin.lastBeforeFirst:The last day is before the first day.`;
+    }
+    if (days > REPORT_MAX_DAYS) {
+      return $localize`:@@admin.tooLong:Show at most ${REPORT_MAX_DAYS}:days: days at a time.`;
+    }
     return null;
   });
 
@@ -156,7 +160,8 @@ export class UsageReport {
   }
 
   protected hours(value: number): string {
-    return `${formatNumber(value, this.locale, '1.0-1')} h`;
+    const hours = formatNumber(value, this.locale, '1.0-1');
+    return $localize`:@@duration.hours:${hours}:hours: h`;
   }
 
   /** Width of a utilization bar: two decimals, and capped so a rounding quirk can't overflow it. */

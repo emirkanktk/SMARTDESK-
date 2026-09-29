@@ -1,5 +1,5 @@
 <div class="page-header">
-  <h1>Usage report</h1>
+  <h1 i18n="@@admin.report">Usage report</h1>
   <div class="header-actions">
     <button
       type="button"
@@ -7,15 +7,19 @@
       [disabled]="loading() || !!rangeError()"
       (click)="reload()"
     >
-      {{ loading() ? 'Loading…' : 'Refresh' }}
+      @if (loading()) {
+        <ng-container i18n="@@common.loading">Loading…</ng-container>
+      } @else {
+        <ng-container i18n="@@report.refresh">Refresh</ng-container>
+      }
     </button>
-    <a class="btn btn-secondary" routerLink="/admin">Back to admin</a>
+    <a class="btn btn-secondary" routerLink="/admin" i18n="@@report.backToAdmin">Back to admin</a>
   </div>
 </div>
 
 <div class="card filters">
   <div class="field">
-    <label for="from">From</label>
+    <label for="from" i18n="@@field.from">From</label>
     <input
       id="from"
       class="input"
@@ -25,7 +29,7 @@
     />
   </div>
   <div class="field">
-    <label for="to">To</label>
+    <label for="to" i18n="@@field.to">To</label>
     <input
       id="to"
       class="input"
@@ -35,25 +39,45 @@
     />
   </div>
   <div class="field">
-    <label for="type">Type</label>
+    <label for="type" i18n="@@field.type">Type</label>
     <select id="type" class="input" (change)="selectType($event)">
-      <option value="" [selected]="!type()">All types</option>
+      <option value="" [selected]="!type()" i18n="@@field.allTypes">All types</option>
       @for (t of types(); track t.id) {
         <option [value]="t.id" [selected]="t.id === type()">{{ t.name }}</option>
       }
     </select>
   </div>
-  <div class="presets" role="group" aria-label="Quick ranges">
-    <button type="button" class="btn btn-secondary btn-sm" (click)="applyPreset('last7')">
+  <div class="presets" role="group" aria-label="Quick ranges" i18n-aria-label="@@report.presets">
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="applyPreset('last7')"
+      i18n="@@report.last7"
+    >
       Last 7 days
     </button>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="applyPreset('last30')">
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="applyPreset('last30')"
+      i18n="@@report.last30"
+    >
       Last 30 days
     </button>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="applyPreset('thisMonth')">
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="applyPreset('thisMonth')"
+      i18n="@@report.thisMonth"
+    >
       This month
     </button>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="applyPreset('lastMonth')">
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="applyPreset('lastMonth')"
+      i18n="@@report.lastMonth"
+    >
       Last month
     </button>
   </div>
@@ -63,53 +87,66 @@
   <p class="alert-error" role="alert">{{ error }}</p>
 } @else if (loadFailed()) {
   <div class="alert-error load-error" role="alert">
-    <span>The report could not be loaded.</span>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">Try again</button>
+    <span i18n="@@report.loadFailed">The report could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="reload()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
   </div>
 } @else if (report(); as r) {
   <div [attr.aria-busy]="loading()">
     <ul class="tiles">
       <li class="card tile">
         <span class="value">{{ percent(r.totals.utilization) }}</span>
-        <span class="label">of office hours booked</span>
+        <span class="label" i18n="@@report.tile.utilization">of office hours booked</span>
       </li>
       <li class="card tile">
         <span class="value">{{ hours(r.totals.bookedHours) }}</span>
-        <span class="label">booked in total</span>
+        <span class="label" i18n="@@report.tile.booked">booked in total</span>
       </li>
       <li class="card tile">
         <span class="value">{{ r.totals.reservations }}</span>
-        <span class="label">{{
-          r.totals.reservations === 1 ? 'reservation' : 'reservations'
-        }}</span>
+        <span class="label">
+          @if (r.totals.reservations === 1) {
+            <ng-container i18n="@@report.tile.reservation">reservation</ng-container>
+          } @else {
+            <ng-container i18n="@@report.tile.reservations">reservations</ng-container>
+          }
+        </span>
       </li>
       <li class="card tile">
         <span class="value">{{ r.totals.cancelled }}</span>
-        <span class="label">cancelled</span>
+        <span class="label" i18n="@@report.tile.cancelled">cancelled</span>
       </li>
     </ul>
 
-    <p class="text-muted note">
+    <p class="text-muted note" i18n="@@report.note">
       Office hours are {{ r.workingHours }} in {{ r.timeZone }}:
       {{ hours(r.workingHoursPerResource) }} per resource from {{ r.from }} to {{ r.to }}. Booked
       hours also count nights and weekends.
     </p>
 
     @if (r.resources.length === 0) {
-      <p class="text-muted empty" role="status">No resources to report on for this range.</p>
+      <p class="text-muted empty" role="status" i18n="@@report.noResources">
+        No resources to report on for this range.
+      </p>
     } @else {
       <section aria-labelledby="by-resource">
-        <h2 id="by-resource" class="section-title">By resource</h2>
+        <h2 id="by-resource" class="section-title" i18n="@@report.byResource">By resource</h2>
         <div class="card table-wrap">
           <table class="table resources">
             <thead>
               <tr>
-                <th scope="col">Resource</th>
-                <th scope="col">Utilization</th>
-                <th scope="col" class="num">Booked</th>
-                <th scope="col" class="num">Office hours</th>
-                <th scope="col" class="num">Reservations</th>
-                <th scope="col" class="num">Cancelled</th>
+                <th scope="col" i18n="@@field.resource">Resource</th>
+                <th scope="col" i18n="@@report.utilization">Utilization</th>
+                <th scope="col" class="num" i18n="@@report.booked">Booked</th>
+                <th scope="col" class="num" i18n="@@report.officeHours">Office hours</th>
+                <th scope="col" class="num" i18n="@@admin.reservations">Reservations</th>
+                <th scope="col" class="num" i18n="@@status.reservation.cancelled">Cancelled</th>
               </tr>
             </thead>
             <tbody>
@@ -142,16 +179,16 @@
       </section>
 
       <section aria-labelledby="by-type">
-        <h2 id="by-type" class="section-title">By type</h2>
+        <h2 id="by-type" class="section-title" i18n="@@report.byType">By type</h2>
         <div class="card table-wrap">
           <table class="table types">
             <thead>
               <tr>
-                <th scope="col">Type</th>
-                <th scope="col">Utilization</th>
-                <th scope="col" class="num">Booked</th>
-                <th scope="col" class="num">Resources</th>
-                <th scope="col" class="num">Reservations</th>
+                <th scope="col" i18n="@@field.type">Type</th>
+                <th scope="col" i18n="@@report.utilization">Utilization</th>
+                <th scope="col" class="num" i18n="@@report.booked">Booked</th>
+                <th scope="col" class="num" i18n="@@nav.resources">Resources</th>
+                <th scope="col" class="num" i18n="@@admin.reservations">Reservations</th>
               </tr>
             </thead>
             <tbody>
@@ -178,17 +215,29 @@
     }
 
     <section aria-labelledby="top-users">
-      <h2 id="top-users" class="section-title">Most booked by</h2>
+      <h2 id="top-users" class="section-title" i18n="@@report.topUsers">Most booked by</h2>
       @if (r.topUsers.length === 0) {
-        <p class="text-muted empty">Nobody booked anything in this range.</p>
+        <p class="text-muted empty" i18n="@@report.nobody">Nobody booked anything in this range.</p>
       } @else {
         <ol class="card people">
           @for (u of r.topUsers; track u.userId) {
             <li>
-              <span class="name">{{ u.displayName ?? 'Unknown user' }}</span>
+              <span class="name">
+                @if (u.displayName) {
+                  {{ u.displayName }}
+                } @else {
+                  <ng-container i18n="@@common.unknownUser">Unknown user</ng-container>
+                }
+              </span>
               <span class="text-muted">
-                {{ hours(u.bookedHours) }} · {{ u.reservations }}
-                {{ u.reservations === 1 ? 'reservation' : 'reservations' }}
+                {{ hours(u.bookedHours) }} ·
+                @if (u.reservations === 1) {
+                  <ng-container i18n="@@report.oneReservation">1 reservation</ng-container>
+                } @else {
+                  <ng-container i18n="@@report.reservations"
+                    >{{ u.reservations }} reservations</ng-container
+                  >
+                }
               </span>
             </li>
           }
@@ -197,5 +246,5 @@
     </section>
   </div>
 } @else {
-  <p class="text-muted" role="status">Loading the report…</p>
+  <p class="text-muted" role="status" i18n="@@report.loading">Loading the report…</p>
 }

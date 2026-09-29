@@ -8,9 +8,16 @@
   padding: var(--space-4);
 }
 
-.back {
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   width: 100%;
   max-width: 400px;
+}
+
+.back {
   color: var(--color-text-muted);
   text-decoration: none;
 

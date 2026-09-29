@@ -10,6 +10,8 @@ import {
   PASSWORD_HINT,
   matchingPasswordsValidator,
   passwordValidator,
+  PASSWORD_MESSAGES,
+  missingRulesMessage,
 } from '../../shared/validators/password.validator';
 
 /** The API's limit on names (AccountRules.MaxNameLength). */
@@ -102,21 +104,23 @@ export class Register {
     if (c.hasError('server')) return c.getError('server') as string;
     if (c.hasError('required')) {
       return control === 'email'
-        ? 'Email is required.'
+        ? $localize`:@@field.emailRequired:Email is required.`
         : control === 'managerEmail'
-          ? "Enter your manager's work email."
-          : 'This field is required.';
+          ? $localize`:@@register.managerEmailRequired:Enter your manager's work email.`
+          : $localize`:@@field.required:This field is required.`;
     }
-    if (c.hasError('maxlength')) return `Use at most ${MAX_NAME_LENGTH} characters.`;
-    return 'Enter a valid email address.';
+    if (c.hasError('maxlength')) {
+      return $localize`:@@field.maxLength:Use at most ${MAX_NAME_LENGTH}:max: characters.`;
+    }
+    return $localize`:@@field.emailInvalid:Enter a valid email address.`;
   }
 
   protected passwordErrors(): readonly string[] {
     const control = this.form.controls.password;
     if (!control.touched) return [];
-    if (control.hasError('required')) return ['Choose a password.'];
+    if (control.hasError('required')) return [PASSWORD_MESSAGES.choose()];
     const missing = control.getError('password') as string[] | null;
-    if (missing) return [`Add ${missing.join(', ')}.`];
+    if (missing) return [missingRulesMessage(missing)];
     const server = control.getError('server') as string | null;
     return server ? [server] : [];
   }
@@ -124,13 +128,13 @@ export class Register {
   protected confirmError(): string | null {
     const control = this.form.controls.confirm;
     if (!control.touched) return null;
-    if (control.hasError('required')) return 'Type the password again.';
-    return this.form.hasError('passwordsDiffer') ? 'The two passwords are different.' : null;
+    if (control.hasError('required')) return PASSWORD_MESSAGES.repeat();
+    return this.form.hasError('passwordsDiffer') ? PASSWORD_MESSAGES.mismatch() : null;
   }
 
   private handleError(error: unknown): void {
     if (!(error instanceof ApiError)) {
-      this.errorMessage.set('Something went wrong. Please try again.');
+      this.errorMessage.set($localize`:@@error.generic:Something went wrong. Please try again.`);
       return;
     }
     if (error.status === 400) {
@@ -140,10 +144,10 @@ export class Register {
     }
     this.errorMessage.set(
       error.status === 429
-        ? 'Too many attempts. Please wait a minute and try again.'
+        ? $localize`:@@error.tooManyAttempts:Too many attempts. Please wait a minute and try again.`
         : error.status === 0
           ? error.title
-          : 'Something went wrong. Please try again.',
+          : $localize`:@@error.generic:Something went wrong. Please try again.`,
     );
   }
 }

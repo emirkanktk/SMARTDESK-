@@ -1,14 +1,18 @@
 <div class="page-header">
-  <h1>Admin</h1>
+  <h1 i18n="@@nav.admin">Admin</h1>
   <div class="header-actions">
-    <a class="btn btn-secondary" routerLink="/admin/reports">Usage report</a>
-    <a class="btn btn-secondary" routerLink="/admin/blocks">Blocked windows</a>
-    <a class="btn btn-secondary" routerLink="/resources">Manage resources</a>
+    <a class="btn btn-secondary" routerLink="/admin/reports" i18n="@@admin.report">Usage report</a>
+    <a class="btn btn-secondary" routerLink="/admin/blocks" i18n="@@admin.blocks"
+      >Blocked windows</a
+    >
+    <a class="btn btn-secondary" routerLink="/resources" i18n="@@admin.manageResources"
+      >Manage resources</a
+    >
   </div>
 </div>
 
 <section aria-labelledby="resources-heading">
-  <h2 id="resources-heading" class="section-title">Resources</h2>
+  <h2 id="resources-heading" class="section-title" i18n="@@nav.resources">Resources</h2>
   @if (statusCounts(); as counts) {
     <ul class="tiles">
       @for (item of counts; track item.status) {
@@ -19,18 +23,22 @@
       }
     </ul>
   } @else if (resourcesFailed()) {
-    <p class="text-muted counts-note" role="status">The resources could not be counted.</p>
+    <p class="text-muted counts-note" role="status" i18n="@@admin.countFailed">
+      The resources could not be counted.
+    </p>
   } @else {
-    <p class="text-muted counts-note" role="status">Counting resources…</p>
+    <p class="text-muted counts-note" role="status" i18n="@@admin.counting">Counting resources…</p>
   }
 </section>
 
 <section aria-labelledby="reservations-heading">
-  <h2 id="reservations-heading" class="section-title">Reservations</h2>
+  <h2 id="reservations-heading" class="section-title" i18n="@@admin.reservationsTitle">
+    Reservations
+  </h2>
 
   <div class="card filters">
     <div class="field">
-      <label for="from">From</label>
+      <label for="from" i18n="@@field.from">From</label>
       <input
         id="from"
         class="input"
@@ -40,7 +48,7 @@
       />
     </div>
     <div class="field">
-      <label for="to">To</label>
+      <label for="to" i18n="@@field.to">To</label>
       <input
         id="to"
         class="input"
@@ -50,21 +58,22 @@
       />
     </div>
     <div class="field">
-      <label for="type">Type</label>
+      <label for="type" i18n="@@field.type">Type</label>
       <select id="type" class="input" (change)="selectType($event)">
-        <option value="" [selected]="!type()">All types</option>
+        <option value="" [selected]="!type()" i18n="@@field.allTypes">All types</option>
         @for (t of types(); track t.id) {
           <option [value]="t.id" [selected]="t.id === type()">{{ t.name }}</option>
         }
       </select>
     </div>
     <div class="field search">
-      <label for="search">Search</label>
+      <label for="search" i18n="@@resources.search">Search</label>
       <input
         id="search"
         class="input"
         type="search"
         placeholder="Person, resource or note"
+        i18n-placeholder="@@admin.searchPlaceholder"
         [value]="search()"
         (input)="setSearch($event)"
       />
@@ -74,37 +83,42 @@
   @if (rangeError(); as error) {
     <div class="alert-error" role="alert">{{ error }}</div>
   } @else if (loading()) {
-    <p class="text-muted" role="status">Loading reservations…</p>
+    <p class="text-muted" role="status" i18n="@@admin.loading">Loading reservations…</p>
   } @else if (loadFailed()) {
     <div class="alert-error load-error" role="alert">
-      <span>Reservations could not be loaded.</span>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
+      <span i18n="@@admin.loadFailed">Reservations could not be loaded.</span>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        (click)="retry()"
+        i18n="@@common.tryAgain"
+      >
+        Try again
+      </button>
     </div>
   } @else {
-    <p class="text-muted summary">
-      @if (search().trim()) {
-        {{ rows().length }} of {{ total() }}
-      } @else {
-        {{ total() }}
-      }
-      confirmed {{ total() === 1 ? 'reservation' : 'reservations' }} from
-      {{ range().start | date: 'EEE d MMM' }} to {{ range().last | date: 'EEE d MMM' }}.
-    </p>
+    <p class="text-muted summary">{{ summary() }}</p>
 
     @if (rows().length === 0) {
       <p class="card text-muted empty">
-        {{ search().trim() ? 'Nothing matches the search.' : 'No reservations in this range.' }}
+        @if (search().trim()) {
+          <ng-container i18n="@@admin.noMatch">Nothing matches the search.</ng-container>
+        } @else {
+          <ng-container i18n="@@admin.noneInRange">No reservations in this range.</ng-container>
+        }
       </p>
     } @else {
       <div class="table-wrap card">
         <table class="table">
           <thead>
             <tr>
-              <th scope="col">When</th>
-              <th scope="col">Resource</th>
-              <th scope="col">Booked by</th>
-              <th scope="col">Note</th>
-              <th scope="col"><span class="visually-hidden">Actions</span></th>
+              <th scope="col" i18n="@@reservationForm.when">When</th>
+              <th scope="col" i18n="@@field.resource">Resource</th>
+              <th scope="col" i18n="@@reservationForm.bookedByLabel">Booked by</th>
+              <th scope="col" i18n="@@field.note">Note</th>
+              <th scope="col">
+                <span class="visually-hidden" i18n="@@common.actions">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -114,7 +128,7 @@
                   {{ row.when }}
                   <span class="text-muted duration">{{ row.duration }}</span>
                   @if (row.inProgress) {
-                    <span class="pill in-progress">In progress</span>
+                    <span class="pill in-progress" i18n="@@mine.inProgress">In progress</span>
                   }
                 </td>
                 <td>
@@ -130,6 +144,7 @@
                     <a
                       class="btn btn-secondary btn-sm"
                       [routerLink]="['/reservations', row.reservation.id, 'edit']"
+                      i18n="@@dashboard.change"
                       >Change</a
                     >
                     <button
@@ -138,7 +153,11 @@
                       [disabled]="cancellingId() === row.reservation.id"
                       (click)="cancel(row)"
                     >
-                      {{ cancellingId() === row.reservation.id ? 'Cancelling…' : 'Cancel' }}
+                      @if (cancellingId() === row.reservation.id) {
+                        <ng-container i18n="@@reservationForm.cancelling">Cancelling…</ng-container>
+                      } @else {
+                        <ng-container i18n="@@common.cancel">Cancel</ng-container>
+                      }
                     </button>
                   }
                 </td>

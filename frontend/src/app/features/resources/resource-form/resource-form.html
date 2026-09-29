@@ -1,14 +1,24 @@
 <div class="page-header">
-  <h1>{{ isEdit() ? 'Edit resource' : 'New resource' }}</h1>
-  <a class="btn btn-secondary" routerLink="/resources">Back to resources</a>
+  <h1>
+    @if (isEdit()) {
+      <ng-container i18n="@@resourceForm.editTitle">Edit resource</ng-container>
+    } @else {
+      <ng-container i18n="@@resources.new">New resource</ng-container>
+    }
+  </h1>
+  <a class="btn btn-secondary" routerLink="/resources" i18n="@@resourceForm.back"
+    >Back to resources</a
+  >
 </div>
 
 @if (loading()) {
-  <p class="text-muted" role="status">Loading resource…</p>
+  <p class="text-muted" role="status" i18n="@@resourceForm.loading">Loading resource…</p>
 } @else if (loadFailed()) {
-  <div class="alert-error" role="alert">This resource could not be loaded.</div>
+  <div class="alert-error" role="alert" i18n="@@resourceForm.loadFailed">
+    This resource could not be loaded.
+  </div>
 } @else if (readOnly()) {
-  <div class="read-only" role="status">
+  <div class="read-only" role="status" i18n="@@resourceForm.readOnly">
     Only an administrator can change this resource: it's shared by everyone, or other teams use it
     too.
   </div>
@@ -19,7 +29,7 @@
     }
 
     <div class="field">
-      <label for="name">Name</label>
+      <label for="name" i18n="@@field.name">Name</label>
       <input
         id="name"
         class="input"
@@ -27,6 +37,7 @@
         [maxlength]="limits.nameMaxLength"
         [class.invalid]="errorFor('name')"
         placeholder="Meeting Room A"
+        i18n-placeholder="@@resourceForm.namePlaceholder"
       />
       @if (errorFor('name'); as error) {
         <span class="field-error">{{ error }}</span>
@@ -35,14 +46,14 @@
 
     <div class="row">
       <div class="field">
-        <label for="type">Type</label>
+        <label for="type" i18n="@@field.type">Type</label>
         <select
           id="type"
           class="input"
           formControlName="resourceTypeId"
           [class.invalid]="errorFor('resourceTypeId')"
         >
-          <option value="" disabled>Select a type</option>
+          <option value="" disabled i18n="@@field.selectType">Select a type</option>
           @for (type of types(); track type.id) {
             <option [value]="type.id">{{ type.name }}</option>
           }
@@ -53,7 +64,7 @@
       </div>
 
       <div class="field">
-        <label for="capacity">Capacity</label>
+        <label for="capacity" i18n="@@field.capacity">Capacity</label>
         <input
           id="capacity"
           class="input"
@@ -72,7 +83,7 @@
 
     <div class="row">
       <div class="field">
-        <label for="location">Location</label>
+        <label for="location" i18n="@@field.location">Location</label>
         <input
           id="location"
           class="input"
@@ -80,6 +91,7 @@
           [maxlength]="limits.locationMaxLength"
           [class.invalid]="errorFor('location')"
           placeholder="2nd Floor"
+          i18n-placeholder="@@resourceForm.locationPlaceholder"
         />
         @if (errorFor('location'); as error) {
           <span class="field-error">{{ error }}</span>
@@ -88,19 +100,23 @@
 
       @if (isEdit()) {
         <div class="field">
-          <label for="status">Status</label>
+          <label for="status" i18n="@@field.status">Status</label>
           <select id="status" class="input" formControlName="status">
             @for (status of statuses; track status) {
-              <option [value]="status">{{ status }}</option>
+              <option [value]="status">{{ statusLabel(status) }}</option>
             }
           </select>
-          <span class="text-muted hint">Inactive and maintenance resources can't be booked.</span>
+          <span class="text-muted hint" i18n="@@resourceForm.statusHint"
+            >Inactive and maintenance resources can't be booked.</span
+          >
         </div>
       }
     </div>
 
     <div class="field">
-      <label for="description">Description <span class="text-muted">(optional)</span></label>
+      <label for="description" i18n="@@resourceForm.description"
+        >Description <span class="text-muted">(optional)</span></label
+      >
       <textarea
         id="description"
         class="input"
@@ -115,7 +131,9 @@
     </div>
 
     <div class="field">
-      <label for="feature">Features <span class="text-muted">(optional)</span></label>
+      <label for="feature" i18n="@@resourceForm.features"
+        >Features <span class="text-muted">(optional)</span></label
+      >
       <div class="feature-input">
         <input
           id="feature"
@@ -123,9 +141,12 @@
           [formControl]="newFeature"
           [maxlength]="limits.featureMaxLength"
           placeholder="e.g. TV, Video Conference"
+          i18n-placeholder="@@resourceForm.featurePlaceholder"
           (keydown.enter)="addFeature($event)"
         />
-        <button type="button" class="btn btn-secondary" (click)="addFeature()">Add</button>
+        <button type="button" class="btn btn-secondary" (click)="addFeature()" i18n="@@common.add">
+          Add
+        </button>
       </div>
       @if (featureError(); as error) {
         <span class="field-error">{{ error }}</span>
@@ -141,7 +162,7 @@
               <button
                 type="button"
                 class="chip-remove"
-                [attr.aria-label]="'Remove ' + feature"
+                [attr.aria-label]="removeLabel(feature)"
                 (click)="removeFeature(feature)"
               >
                 &times;
@@ -154,15 +175,21 @@
 
     @if (isAdmin()) {
       <fieldset class="field teams" aria-describedby="teams-hint">
-        <legend>Teams <span class="text-muted">(optional)</span></legend>
-        <span id="teams-hint" class="text-muted hint">
+        <legend i18n="@@resourceForm.teams">
+          Teams <span class="text-muted">(optional)</span>
+        </legend>
+        <span id="teams-hint" class="text-muted hint" i18n="@@resourceForm.teamsHint">
           Leave every team unticked to share it with everyone. Otherwise only the ticked teams and
           admins can see and book it.
         </span>
         @if (managersFailed()) {
-          <span class="field-error">The teams could not be loaded.</span>
+          <span class="field-error" i18n="@@resourceForm.teamsFailed"
+            >The teams could not be loaded.</span
+          >
         } @else if (teamOptions().length === 0) {
-          <span class="text-muted hint">There are no active managers yet, so no teams.</span>
+          <span class="text-muted hint" i18n="@@resourceForm.noTeams"
+            >There are no active managers yet, so no teams.</span
+          >
         }
         <div class="team-options">
           @for (team of teamOptions(); track team.id) {
@@ -173,9 +200,11 @@
                 (change)="toggleTeam(team.id, $event)"
               />
               <span>
-                {{ team.name }}'s team
+                {{ teamName(team.name) }}
                 @if (team.inactive) {
-                  <span class="text-muted">(no longer an active manager)</span>
+                  <span class="text-muted" i18n="@@resourceForm.inactiveManager"
+                    >(no longer an active manager)</span
+                  >
                 }
               </span>
             </label>
@@ -187,15 +216,30 @@
       </fieldset>
     } @else {
       <p class="team-note">
-        {{ isEdit() ? 'It belongs to your team' : 'It will belong to your team' }}: only your team
-        and administrators can see and book it. An administrator can share it with other teams.
+        @if (isEdit()) {
+          <ng-container i18n="@@resourceForm.teamNoteEdit"
+            >It belongs to your team: only your team and administrators can see and book it. An
+            administrator can share it with other teams.</ng-container
+          >
+        } @else {
+          <ng-container i18n="@@resourceForm.teamNoteNew"
+            >It will belong to your team: only your team and administrators can see and book it. An
+            administrator can share it with other teams.</ng-container
+          >
+        }
       </p>
     }
 
     <div class="form-actions">
-      <a class="btn btn-secondary" routerLink="/resources">Cancel</a>
+      <a class="btn btn-secondary" routerLink="/resources" i18n="@@common.cancel">Cancel</a>
       <button type="submit" class="btn btn-primary" [disabled]="saving()">
-        {{ saving() ? 'Saving…' : isEdit() ? 'Save changes' : 'Create resource' }}
+        @if (saving()) {
+          <ng-container i18n="@@common.saving">Saving…</ng-container>
+        } @else if (isEdit()) {
+          <ng-container i18n="@@common.saveChanges">Save changes</ng-container>
+        } @else {
+          <ng-container i18n="@@resourceForm.create">Create resource</ng-container>
+        }
       </button>
     </div>
   </form>

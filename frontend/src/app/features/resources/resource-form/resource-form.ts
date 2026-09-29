@@ -23,7 +23,8 @@ import { AccountService } from '../../../core/services/account.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ResourceService } from '../../../core/services/resource.service';
-import { canManageResource } from '../../../shared/utils/resource-access';
+import { resourceStatusLabel } from '../../../core/i18n/labels';
+import { canManageResource, teamName } from '../../../shared/utils/resource-access';
 import { applyServerErrors } from '../../../shared/utils/server-errors';
 import { integerValidator } from '../../../shared/validators/integer.validator';
 
@@ -62,6 +63,8 @@ export class ResourceForm implements OnInit {
 
   protected readonly limits = L;
   protected readonly statuses = RESOURCE_STATUSES;
+  protected readonly statusLabel = resourceStatusLabel;
+  protected readonly teamName = teamName;
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(L.nameMaxLength)]],
@@ -110,7 +113,10 @@ export class ResourceForm implements OnInit {
   ngOnInit(): void {
     this.resourceService.getResourceTypes().subscribe({
       next: (types) => this.types.set(types),
-      error: () => this.formError.set('Resource types could not be loaded.'),
+      error: () =>
+        this.formError.set(
+          $localize`:@@resourceForm.typesFailed:Resource types could not be loaded.`,
+        ),
     });
 
     if (this.isAdmin()) {
@@ -158,6 +164,10 @@ export class ResourceForm implements OnInit {
     this.newFeature.reset();
   }
 
+  protected removeLabel(feature: string): string {
+    return $localize`:@@resourceForm.removeFeature:Remove ${feature}:feature:`;
+  }
+
   protected removeFeature(feature: string): void {
     this.form.controls.features.setValue(this.features.filter((f) => f !== feature));
     this.form.controls.features.markAsDirty();
@@ -180,7 +190,9 @@ export class ResourceForm implements OnInit {
   protected teamError(): string | null {
     const errors = this.form.controls.teamIds.errors;
     if (errors?.['server']) return errors['server'] as string;
-    if (errors?.['maxTeams']) return `A resource can belong to at most ${L.maxTeams} teams.`;
+    if (errors?.['maxTeams']) {
+      return $localize`:@@resourceForm.maxTeams:A resource can belong to at most ${L.maxTeams}:max: teams.`;
+    }
     return null;
   }
 
@@ -218,7 +230,11 @@ export class ResourceForm implements OnInit {
     this.formError.set(null);
     request.pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (saved) => {
-        this.notifications.success(`"${saved.name}" was ${id ? 'updated' : 'created'}.`);
+        this.notifications.success(
+          id
+            ? $localize`:@@resourceForm.updated:"${saved.name}:name:" was updated.`
+            : $localize`:@@resourceForm.created:"${saved.name}:name:" was created.`,
+        );
         void this.router.navigateByUrl('/resources');
       },
       error: (error: unknown) => this.handleSaveError(error, detailsSaved),
@@ -235,12 +251,15 @@ export class ResourceForm implements OnInit {
     }
     const e = control.errors;
     if (e['server']) return e['server'] as string;
-    if (e['required']) return 'This field is required.';
-    if (e['maxlength']) return `Use at most ${e['maxlength'].requiredLength} characters.`;
-    if (e['min'] || e['max'])
-      return `Enter a number between ${L.capacityMin} and ${L.capacityMax}.`;
-    if (e['integer']) return 'Enter a whole number.';
-    return 'This value is not valid.';
+    if (e['required']) return $localize`:@@field.required:This field is required.`;
+    if (e['maxlength']) {
+      return $localize`:@@field.maxLength:Use at most ${e['maxlength'].requiredLength}:max: characters.`;
+    }
+    if (e['min'] || e['max']) {
+      return $localize`:@@field.numberBetween:Enter a number between ${L.capacityMin}:min: and ${L.capacityMax}:max:.`;
+    }
+    if (e['integer']) return $localize`:@@field.wholeNumber:Enter a whole number.`;
+    return $localize`:@@field.invalid:This value is not valid.`;
   }
 
   private fill(resource: Resource): void {
@@ -275,7 +294,9 @@ export class ResourceForm implements OnInit {
   }
 
   private handleSaveError(error: unknown, detailsSaved: boolean): void {
-    const partly = detailsSaved ? 'Your other changes were saved, but the teams were not.' : null;
+    const partly = detailsSaved
+      ? $localize`:@@resourceForm.teamsNotSaved:Your other changes were saved, but the teams were not.`
+      : null;
     if (error instanceof ApiError && error.status === 400) {
       const unmatched = applyServerErrors(this.form, error);
       const message = [partly, ...unmatched].filter(Boolean).join(' ');
@@ -288,7 +309,9 @@ export class ResourceForm implements OnInit {
       return;
     }
     // Other failures already raised a toast; keep a note on the form as well.
-    this.formError.set(partly ?? 'The resource could not be saved.');
+    this.formError.set(
+      partly ?? $localize`:@@resourceForm.saveFailed:The resource could not be saved.`,
+    );
   }
 }
 
@@ -303,13 +326,13 @@ function teamListValidator(control: AbstractControl<string[]>): ValidationErrors
 // through ("wıfı").
 function featureProblem(feature: string, existing: string[]): string | null {
   if (feature.length > L.featureMaxLength) {
-    return `A feature can be at most ${L.featureMaxLength} characters.`;
+    return $localize`:@@resourceForm.featureTooLong:A feature can be at most ${L.featureMaxLength}:max: characters.`;
   }
   if (existing.some((f) => f.toLowerCase() === feature.toLowerCase())) {
-    return `"${feature}" is already in the list.`;
+    return $localize`:@@resourceForm.featureDuplicate:"${feature}:feature:" is already in the list.`;
   }
   if (existing.length >= L.maxFeatures) {
-    return `A resource can have at most ${L.maxFeatures} features.`;
+    return $localize`:@@resourceForm.tooManyFeatures:A resource can have at most ${L.maxFeatures}:max: features.`;
   }
   return null;
 }

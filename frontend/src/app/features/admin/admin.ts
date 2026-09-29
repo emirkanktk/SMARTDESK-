@@ -1,4 +1,4 @@
-import { DatePipe, formatDate } from '@angular/common';
+import { formatDate } from '@angular/common';
 import { Component, LOCALE_ID, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -50,8 +50,8 @@ interface Row {
   when: string;
   duration: string;
   bookedBy: string;
-  /** For sentences: "your" or "Mehmet Demir's". */
-  owner: string;
+  /** Whose it is, for sentences: null when it's the user's own. */
+  owner: string | null;
   inProgress: boolean;
   ended: boolean;
 }
@@ -62,7 +62,7 @@ interface Row {
  * query string; the search stays on the page. Kept current by the reservation hub.
  */
 @Component({
-  imports: [RouterLink, DatePipe, StatusBadge],
+  imports: [RouterLink, StatusBadge],
   selector: 'app-admin',
   styleUrl: './admin.scss',
   templateUrl: './admin.html',
@@ -113,9 +113,11 @@ export class Admin {
   );
   protected readonly rangeError = computed(() => {
     const { start, last, end } = this.range();
-    if (last < start) return 'The last day is before the first day.';
+    if (last < start) {
+      return $localize`:@@admin.lastBeforeFirst:The last day is before the first day.`;
+    }
     if (end.getTime() - start.getTime() > CALENDAR_MAX_RANGE_MS) {
-      return `Show at most ${CALENDAR_MAX_DAYS} days at a time.`;
+      return $localize`:@@admin.tooLong:Show at most ${CALENDAR_MAX_DAYS}:days: days at a time.`;
     }
     return null;
   });
@@ -147,13 +149,13 @@ export class Admin {
         const start = new Date(reservation.startDateTime);
         const end = new Date(reservation.endDateTime);
         const mine = reservation.userId === userId;
-        const name = reservation.userDisplayName ?? 'Unknown user';
+        const name = reservation.userDisplayName ?? $localize`:@@common.unknownUser:Unknown user`;
         return {
           reservation,
           when: this.when(start, end),
           duration: formatDuration(start, end),
-          bookedBy: mine ? 'You' : name,
-          owner: mine ? 'your' : `${name}'s`,
+          bookedBy: mine ? $localize`:@@common.you:You` : name,
+          owner: mine ? null : name,
           inProgress: start.getTime() <= now && end.getTime() > now,
           ended: end.getTime() <= now,
         };
@@ -161,6 +163,22 @@ export class Admin {
   });
 
   protected readonly total = computed(() => this.reservations().length);
+
+  /** "12 confirmed reservations from Mon 5 Oct to Sun 11 Oct.", or "3 of 12 ..." when searching. */
+  protected readonly summary = computed(() => {
+    const total = this.total();
+    const shown = this.rows().length;
+    const from = formatDate(this.range().start, 'EEE d MMM', this.locale);
+    const to = formatDate(this.range().last, 'EEE d MMM', this.locale);
+    if (this.search().trim()) {
+      return total === 1
+        ? $localize`:@@admin.summaryFilteredOne:${shown}:shown: of 1 confirmed reservation from ${from}:from: to ${to}:to:.`
+        : $localize`:@@admin.summaryFiltered:${shown}:shown: of ${total}:total: confirmed reservations from ${from}:from: to ${to}:to:.`;
+    }
+    return total === 1
+      ? $localize`:@@admin.summaryOne:1 confirmed reservation from ${from}:from: to ${to}:to:.`
+      : $localize`:@@admin.summary:${total}:total: confirmed reservations from ${from}:from: to ${to}:to:.`;
+  });
 
   constructor() {
     this.resourceService
@@ -253,7 +271,13 @@ export class Admin {
 
   protected cancel(row: Row): void {
     const { reservation } = row;
-    if (!confirm(`Cancel ${row.owner} ${reservation.resourceName} reservation for ${row.when}?`)) {
+    const resource = reservation.resourceName;
+    const owner = row.owner;
+    const when = row.when;
+    const question = owner
+      ? $localize`:@@reservationForm.confirmCancelOther:Cancel ${owner}:owner:'s ${resource}:resource: reservation for ${when}:when:?`
+      : $localize`:@@reservationForm.confirmCancel:Cancel your ${resource}:resource: reservation for ${when}:when:?`;
+    if (!confirm(question)) {
       return;
     }
 
@@ -264,9 +288,11 @@ export class Admin {
       .subscribe({
         next: (cancelled) => {
           this.remove(cancelled.id);
-          const owner = row.owner.charAt(0).toUpperCase() + row.owner.slice(1);
+          const name = cancelled.resourceName;
           this.notifications.success(
-            `${owner} ${cancelled.resourceName} reservation for ${row.when} was cancelled.`,
+            owner
+              ? $localize`:@@reservationForm.cancelledOther:${owner}:owner:'s ${name}:resource: reservation for ${when}:when: was cancelled.`
+              : $localize`:@@reservationForm.cancelled:Your ${name}:resource: reservation for ${when}:when: was cancelled.`,
           );
         },
         error: (error: unknown) => {
@@ -321,6 +347,6 @@ export class Admin {
     const sameDay = start.toDateString() === end.toDateString();
     const from = formatDate(start, 'EEE d MMM, HH:mm', this.locale);
     const to = formatDate(end, sameDay ? 'HH:mm' : 'EEE d MMM, HH:mm', this.locale);
-    return sameDay ? `${from}-${to}` : `${from} to ${to}`;
+    return sameDay ? `${from}-${to}` : $localize`:@@common.rangeTo:${from}:start: to ${to}:end:`;
   }
 }

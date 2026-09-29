@@ -88,7 +88,8 @@ describe('Shell', () => {
     const navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const element = await render();
 
-    element.querySelector<HTMLButtonElement>('button')!.click();
+    const buttons = Array.from(element.querySelectorAll<HTMLButtonElement>('button'));
+    buttons.find((b) => b.textContent!.trim() === 'Sign out')!.click();
 
     expect(logout).toHaveBeenCalled();
     expect(navigateByUrl).toHaveBeenCalledWith('/');

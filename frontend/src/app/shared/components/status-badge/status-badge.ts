@@ -1,11 +1,6 @@
 import { Component, computed, input } from '@angular/core';
+import { resourceStatusLabel } from '../../../core/i18n/labels';
 import { ResourceStatus } from '../../../core/models/resource.model';
-
-const LABELS: Record<ResourceStatus, string> = {
-  Active: 'Active',
-  Inactive: 'Inactive',
-  Maintenance: 'Maintenance',
-};
 
 /** Colored pill for a resource's status. */
 @Component({
@@ -36,5 +31,5 @@ const LABELS: Record<ResourceStatus, string> = {
 })
 export class StatusBadge {
   readonly status = input.required<ResourceStatus>();
-  protected readonly label = computed(() => LABELS[this.status()]);
+  protected readonly label = computed(() => resourceStatusLabel(this.status()));
 }

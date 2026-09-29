@@ -1,4 +1,4 @@
-import { DatePipe, formatDate } from '@angular/common';
+import { formatDate } from '@angular/common';
 import { Component, DestroyRef, LOCALE_ID, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -40,7 +40,8 @@ import {
 } from '../../shared/utils/date-time';
 import { keepDurationWhenStartMoves } from '../../shared/utils/keep-duration';
 import { applyServerErrors } from '../../shared/utils/server-errors';
-import { dateRangeValidator } from '../../shared/validators/date-range.validator';
+import { RANGE_MESSAGES, dateRangeValidator } from '../../shared/validators/date-range.validator';
+import { resourceStatusLabel } from '../../core/i18n/labels';
 
 const L = RESOURCE_BLOCK_LIMITS;
 const DEFAULT_DAYS = 28;
@@ -76,7 +77,7 @@ interface ResourceGroup {
  * reservation; this screen shows why, and links to those reservations.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, DatePipe],
+  imports: [ReactiveFormsModule, RouterLink],
   selector: 'app-resource-blocks',
   styleUrl: './resource-blocks.scss',
   templateUrl: './resource-blocks.html',
@@ -127,9 +128,11 @@ export class ResourceBlocks {
   );
   protected readonly rangeError = computed(() => {
     const { start, last, end } = this.range();
-    if (last < start) return 'The last day is before the first day.';
+    if (last < start) {
+      return $localize`:@@admin.lastBeforeFirst:The last day is before the first day.`;
+    }
     if (end.getTime() - start.getTime() > CALENDAR_MAX_RANGE_MS) {
-      return `Show at most ${CALENDAR_MAX_DAYS} days at a time.`;
+      return $localize`:@@admin.tooLong:Show at most ${CALENDAR_MAX_DAYS}:days: days at a time.`;
     }
     return null;
   });
@@ -152,6 +155,16 @@ export class ResourceBlocks {
           ended: end.getTime() <= now,
         };
       });
+  });
+
+  /** "3 blocks from Mon 5 Oct to Sun 11 Oct." */
+  protected readonly summary = computed(() => {
+    const n = this.rows().length;
+    const from = formatDate(this.range().start, 'EEE d MMM', this.locale);
+    const to = formatDate(this.range().last, 'EEE d MMM', this.locale);
+    return n === 1
+      ? $localize`:@@blocks.summaryOne:1 block from ${from}:from: to ${to}:to:.`
+      : $localize`:@@blocks.summary:${n}:count: blocks from ${from}:from: to ${to}:to:.`;
   });
 
   protected readonly form = inject(NonNullableFormBuilder).group(
@@ -286,7 +299,7 @@ export class ResourceBlocks {
       .subscribe({
         next: (block) => {
           this.notifications.success(
-            `${block.resourceName} is blocked for ${this.when(new Date(block.startDateTime), new Date(block.endDateTime))}.`,
+            $localize`:@@blocks.created:${block.resourceName}:resource: is blocked for ${this.when(new Date(block.startDateTime), new Date(block.endDateTime))}:when:.`,
           );
           if (this.isInView(block)) {
             this.blocks.update((list) => [...list, block]);
@@ -301,7 +314,7 @@ export class ResourceBlocks {
     const { block } = row;
     if (
       !confirm(
-        `Remove the block on ${block.resourceName} for ${row.when}? It can then be booked in that window.`,
+        $localize`:@@blocks.confirmRemove:Remove the block on ${block.resourceName}:resource: for ${row.when}:when:? It can then be booked in that window.`,
       )
     ) {
       return;
@@ -315,7 +328,7 @@ export class ResourceBlocks {
         next: () => {
           this.blocks.update((list) => list.filter((b) => b.id !== block.id));
           this.notifications.success(
-            `The block on ${block.resourceName} for ${row.when} was removed.`,
+            $localize`:@@blocks.removed:The block on ${block.resourceName}:resource: for ${row.when}:when: was removed.`,
           );
         },
         // 404: someone removed it already. 403/404/5xx already raised a toast; show the list
@@ -328,25 +341,27 @@ export class ResourceBlocks {
     const control = this.form.controls.resourceId;
     if (!control.touched || !control.errors) return null;
     if (control.hasError('server')) return control.getError('server') as string;
-    return 'Choose a resource.';
+    return $localize`:@@reservationForm.chooseResource:Choose a resource.`;
   }
 
   protected startError(): string | null {
     const control = this.form.controls.startDateTime;
     if (!this.rangeTouched()) return null;
-    if (control.hasError('required')) return 'Choose a start date and time.';
+    if (control.hasError('required')) return RANGE_MESSAGES.chooseStart();
     if (control.hasError('server')) return control.getError('server') as string;
-    if (this.form.hasError('startInPast')) return 'The start time is in the past.';
+    if (this.form.hasError('startInPast')) return RANGE_MESSAGES.startInPast();
     return null;
   }
 
   protected endError(): string | null {
     const control = this.form.controls.endDateTime;
     if (!this.rangeTouched()) return null;
-    if (control.hasError('required')) return 'Choose an end date and time.';
+    if (control.hasError('required')) return RANGE_MESSAGES.chooseEnd();
     if (control.hasError('server')) return control.getError('server') as string;
-    if (this.form.hasError('rangeOrder')) return 'The end must be after the start.';
-    if (this.form.hasError('rangeTooLong')) return `A block can last at most ${L.maxDays} days.`;
+    if (this.form.hasError('rangeOrder')) return RANGE_MESSAGES.endAfterStart();
+    if (this.form.hasError('rangeTooLong')) {
+      return $localize`:@@blocks.tooLong:A block can last at most ${L.maxDays}:days: days.`;
+    }
     return null;
   }
 
@@ -354,8 +369,10 @@ export class ResourceBlocks {
     const control = this.form.controls.reason;
     if (!control.touched || !control.errors) return null;
     if (control.hasError('server')) return control.getError('server') as string;
-    if (control.hasError('maxlength')) return `Use at most ${L.reasonMaxLength} characters.`;
-    return 'Say why the resource is blocked.';
+    if (control.hasError('maxlength')) {
+      return $localize`:@@field.maxLength:Use at most ${L.reasonMaxLength}:max: characters.`;
+    }
+    return $localize`:@@blocks.reasonRequired:Say why the resource is blocked.`;
   }
 
   private rangeTouched(): boolean {
@@ -391,7 +408,7 @@ export class ResourceBlocks {
       return;
     }
     // Other failures already raised a toast; keep a note on the form as well.
-    this.formError.set('The block could not be saved.');
+    this.formError.set($localize`:@@blocks.saveFailed:The block could not be saved.`);
   }
 
   /**
@@ -431,14 +448,14 @@ export class ResourceBlocks {
     const sameDay = start.toDateString() === end.toDateString();
     const from = formatDate(start, 'EEE d MMM, HH:mm', this.locale);
     const to = formatDate(end, sameDay ? 'HH:mm' : 'EEE d MMM, HH:mm', this.locale);
-    return sameDay ? `${from}-${to}` : `${from} to ${to}`;
+    return sameDay ? `${from}-${to}` : $localize`:@@common.rangeTo:${from}:start: to ${to}:end:`;
   }
 }
 
 function groupByType(resources: Resource[]): ResourceGroup[] {
   const groups = new Map<string, ResourceGroup['resources']>();
   for (const r of [...resources].sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
-    const label = r.status === 'Active' ? r.name : `${r.name} (${r.status})`;
+    const label = r.status === 'Active' ? r.name : `${r.name} (${resourceStatusLabel(r.status)})`;
     groups.set(r.resourceTypeName, [
       ...(groups.get(r.resourceTypeName) ?? []),
       { id: r.id, label },

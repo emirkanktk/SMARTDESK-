@@ -14,6 +14,7 @@ import { NotificationService } from '../../core/services/notification.service';
             type="button"
             class="close"
             aria-label="Dismiss"
+            i18n-aria-label="@@toast.dismiss"
             (click)="dismiss(notification.id)"
           >
             &times;

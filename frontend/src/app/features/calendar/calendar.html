@@ -1,17 +1,20 @@
 <div class="page-header">
-  <h1>Calendar</h1>
-  <a class="btn btn-primary" routerLink="/availability">Find a free resource</a>
+  <h1 i18n="@@nav.calendar">Calendar</h1>
+  <a class="btn btn-primary" routerLink="/availability" i18n="@@dashboard.findFree"
+    >Find a free resource</a
+  >
 </div>
 
 <div class="card toolbar">
   <div class="week-nav">
-    <div class="view-switch" role="group" aria-label="View">
+    <div class="view-switch" role="group" aria-label="View" i18n-aria-label="@@calendar.view">
       <button
         type="button"
         class="btn btn-secondary btn-sm"
         [class.active]="mode() === 'week'"
         [attr.aria-pressed]="mode() === 'week'"
         (click)="showView('week')"
+        i18n="@@calendar.week"
       >
         Week
       </button>
@@ -21,6 +24,7 @@
         [class.active]="mode() === 'month'"
         [attr.aria-pressed]="mode() === 'month'"
         (click)="showView('month')"
+        i18n="@@calendar.month"
       >
         Month
       </button>
@@ -28,7 +32,7 @@
     <button
       type="button"
       class="btn btn-secondary btn-sm"
-      [attr.aria-label]="'Previous ' + mode()"
+      [attr.aria-label]="navLabels().previous"
       (click)="go(-1)"
     >
       ‹
@@ -39,12 +43,12 @@
       [disabled]="isCurrent()"
       (click)="goToCurrent()"
     >
-      This {{ mode() }}
+      {{ navLabels().current }}
     </button>
     <button
       type="button"
       class="btn btn-secondary btn-sm"
-      [attr.aria-label]="'Next ' + mode()"
+      [attr.aria-label]="navLabels().next"
       (click)="go(1)"
     >
       ›
@@ -53,9 +57,9 @@
   </div>
 
   <div class="type-filter">
-    <label for="type">Type</label>
+    <label for="type" i18n="@@field.type">Type</label>
     <select id="type" class="input" (change)="selectType($event)">
-      <option value="" [selected]="!type()">All types</option>
+      <option value="" [selected]="!type()" i18n="@@field.allTypes">All types</option>
       @for (t of types(); track t.id) {
         <option [value]="t.id" [selected]="t.id === type()">{{ t.name }}</option>
       }
@@ -64,26 +68,34 @@
 </div>
 
 @if (loading()) {
-  <p class="text-muted" role="status">Loading the calendar…</p>
+  <p class="text-muted" role="status" i18n="@@calendar.loading">Loading the calendar…</p>
 } @else if (loadFailed()) {
   <div class="alert-error load-error" role="alert">
-    <span>The calendar could not be loaded.</span>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
+    <span i18n="@@calendar.loadFailed">The calendar could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="retry()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
   </div>
 } @else if (!hasResources()) {
-  <p class="card text-muted empty">No resources of this type.</p>
+  <p class="card text-muted empty" i18n="@@calendar.noResources">No resources of this type.</p>
 } @else {
   <p class="text-muted summary">
-    {{ reservationCount() }} {{ reservationCount() === 1 ? 'reservation' : 'reservations' }} this
-    {{ mode() }}.
+    {{ countText() }}
     @if (blockCount() > 0) {
-      {{ blockCount() }} blocked {{ blockCount() === 1 ? 'window' : 'windows' }}.
+      {{ blocksText() }}
     }
     @if (reservationCount() > 0) {
-      Select one to open it.
+      <ng-container i18n="@@calendar.selectOne">Select one to open it.</ng-container>
     }
     @if (blocksFailed()) {
-      <span class="blocks-failed">Blocked windows could not be loaded.</span>
+      <span class="blocks-failed" i18n="@@calendar.blocksFailed"
+        >Blocked windows could not be loaded.</span
+      >
     }
   </p>
 
@@ -92,7 +104,7 @@
       <table class="grid">
         <thead>
           <tr>
-            <th scope="col" class="resource-col">Resource</th>
+            <th scope="col" class="resource-col" i18n="@@field.resource">Resource</th>
             @for (day of days(); track day.key) {
               <th scope="col" [class.today]="day.isToday" [class.past]="day.isPast">
                 <span class="dow">{{ day.start | date: 'EEE' }}</span>
@@ -116,7 +128,9 @@
                   @for (b of cell.blocks; track b.block.id) {
                     <span class="entry blocked" [title]="b.title">
                       <span class="entry-time">{{ b.time }}</span>
-                      <span class="entry-who">Blocked: {{ b.block.reason }}</span>
+                      <span class="entry-who" i18n="@@calendar.blockedReason"
+                        >Blocked: {{ b.block.reason }}</span
+                      >
                     </span>
                   }
                   @for (entry of cell.entries; track entry.reservation.id) {
@@ -172,7 +186,7 @@
                       routerLink="."
                       [queryParams]="d.weekParams"
                       queryParamsHandling="merge"
-                      [attr.aria-label]="'Week of ' + (d.day.start | date: 'EEE d MMM')"
+                      [attr.aria-label]="weekOfLabel(d.day.start)"
                       >{{ d.day.start | date: 'd' }}</a
                     >
                     @for (item of d.items; track item.key) {
@@ -189,7 +203,9 @@
                       } @else if (item.block; as b) {
                         <span class="entry blocked" [title]="b.title">
                           <span class="entry-time">{{ b.time }}</span>
-                          <span class="entry-who">{{ item.resourceName }} · Blocked</span>
+                          <span class="entry-who" i18n="@@calendar.resourceBlocked"
+                            >{{ item.resourceName }} · Blocked</span
+                          >
                         </span>
                       }
                     }
@@ -199,6 +215,7 @@
                         routerLink="."
                         [queryParams]="d.weekParams"
                         queryParamsHandling="merge"
+                        i18n="@@calendar.more"
                         >+{{ d.more }} more</a
                       >
                     }

@@ -1,6 +1,6 @@
 import { Component, effect, input, output } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { passwordValidator } from '../../validators/password.validator';
+import { missingRulesMessage, passwordValidator } from '../../validators/password.validator';
 import { generateTemporaryPassword } from '../../utils/temporary-password';
 
 let nextId = 0;
@@ -60,8 +60,10 @@ export class TemporaryPasswordForm {
   protected error(): string | null {
     if (!this.password.touched || this.password.valid) return null;
     if (this.password.hasError('server')) return this.password.getError('server') as string;
-    if (this.password.hasError('required')) return 'Type or generate a password.';
+    if (this.password.hasError('required')) {
+      return $localize`:@@accounts.passwordRequired:Type or generate a password.`;
+    }
     const missing = this.password.getError('password') as string[];
-    return `Add ${missing.join(', ')}.`;
+    return missingRulesMessage(missing);
   }
 }

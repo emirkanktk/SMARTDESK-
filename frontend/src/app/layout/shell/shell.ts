@@ -1,7 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Role, Roles } from '../../core/constants/roles';
+import { roleLabel } from '../../core/i18n/labels';
 import { AuthService } from '../../core/services/auth.service';
+import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
 
 interface NavItem {
   path: string;
@@ -12,7 +14,7 @@ interface NavItem {
 
 /** Frame around every signed-in screen: top bar with navigation, user and sign-out. */
 @Component({
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, LanguageSwitch],
   selector: 'app-shell',
   styleUrl: './shell.scss',
   templateUrl: './shell.html',
@@ -24,15 +26,15 @@ export class Shell {
   protected readonly displayName = this.authService.displayName;
 
   private readonly navItems: readonly NavItem[] = [
-    { path: '/dashboard', label: 'Dashboard' },
-    { path: '/resources', label: 'Resources' },
-    { path: '/availability', label: 'Availability' },
-    { path: '/calendar', label: 'Calendar' },
-    { path: '/reservations/new', label: 'New reservation' },
-    { path: '/reservations/mine', label: 'My reservations' },
-    { path: '/team', label: 'My team', roles: [Roles.Manager] },
-    { path: '/admin', label: 'Admin', roles: [Roles.Admin] },
-    { path: '/admin/users', label: 'Users', roles: [Roles.Admin] },
+    { path: '/dashboard', label: $localize`:@@nav.dashboard:Dashboard` },
+    { path: '/resources', label: $localize`:@@nav.resources:Resources` },
+    { path: '/availability', label: $localize`:@@nav.availability:Availability` },
+    { path: '/calendar', label: $localize`:@@nav.calendar:Calendar` },
+    { path: '/reservations/new', label: $localize`:@@nav.newReservation:New reservation` },
+    { path: '/reservations/mine', label: $localize`:@@nav.myReservations:My reservations` },
+    { path: '/team', label: $localize`:@@nav.team:My team`, roles: [Roles.Manager] },
+    { path: '/admin', label: $localize`:@@nav.admin:Admin`, roles: [Roles.Admin] },
+    { path: '/admin/users', label: $localize`:@@nav.users:Users`, roles: [Roles.Admin] },
   ];
 
   /** What this user's roles may open. The routes' guards and the API check again. */
@@ -46,7 +48,11 @@ export class Shell {
 
   /** "Admin" or "Manager" next to the name; nothing for an Employee. */
   protected readonly roleBadge = computed(() =>
-    this.authService.isAdmin() ? Roles.Admin : this.authService.isManager() ? Roles.Manager : null,
+    this.authService.isAdmin()
+      ? roleLabel(Roles.Admin)
+      : this.authService.isManager()
+        ? roleLabel(Roles.Manager)
+        : null,
   );
 
   protected logout(): void {

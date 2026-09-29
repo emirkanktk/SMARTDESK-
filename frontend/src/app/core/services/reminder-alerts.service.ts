@@ -52,14 +52,14 @@ export class ReminderAlertsService {
     const at = formatDate(start, 'HH:mm', this.locale);
     const message =
       minutes > 0
-        ? `${reservation.resourceName} starts in ${minutes} min, at ${at}.`
-        : `${reservation.resourceName} starts now, at ${at}.`;
+        ? $localize`:@@reminder.startsIn:${reservation.resourceName}:resource: starts in ${minutes}:minutes: min, at ${at}:time:.`
+        : $localize`:@@reminder.startsNow:${reservation.resourceName}:resource: starts now, at ${at}:time:.`;
 
     this.notifications.info(message, REMINDER_TOAST_MS);
 
     if (this.permission() === 'granted') {
       // The tag makes several open tabs show one notification, not one each.
-      const desktop = new Notification('Reservation starting soon', {
+      const desktop = new Notification($localize`:@@reminder.title:Reservation starting soon`, {
         body: message,
         tag: `reminder-${reservation.id}`,
       });

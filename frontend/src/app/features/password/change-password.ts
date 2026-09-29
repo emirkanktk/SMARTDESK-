@@ -10,6 +10,8 @@ import {
   PASSWORD_HINT,
   matchingPasswordsValidator,
   passwordValidator,
+  PASSWORD_MESSAGES,
+  missingRulesMessage,
 } from '../../shared/validators/password.validator';
 
 /**
@@ -70,7 +72,7 @@ export class ChangePassword {
       .subscribe({
         next: () => {
           this.notifications.success(
-            'Your password has been changed. Other devices were signed out.',
+            $localize`:@@change.done:Your password has been changed. Other devices were signed out.`,
           );
           void this.router.navigateByUrl('/dashboard');
         },
@@ -86,27 +88,29 @@ export class ChangePassword {
   protected currentError(): string | null {
     const control = this.form.controls.currentPassword;
     if (this.serverErrors().current) return this.serverErrors().current!;
-    return control.touched && control.hasError('required') ? 'Enter your current password.' : null;
+    return control.touched && control.hasError('required')
+      ? $localize`:@@change.currentRequired:Enter your current password.`
+      : null;
   }
 
   protected newPasswordErrors(): readonly string[] {
     const control = this.form.controls.newPassword;
     if (!control.touched) return this.serverErrors().new ?? [];
-    if (control.hasError('required')) return ['Choose a new password.'];
+    if (control.hasError('required')) return [PASSWORD_MESSAGES.chooseNew()];
     const missing = control.getError('password') as string[] | null;
-    return missing ? [`Add ${missing.join(', ')}.`] : (this.serverErrors().new ?? []);
+    return missing ? [missingRulesMessage(missing)] : (this.serverErrors().new ?? []);
   }
 
   protected confirmError(): string | null {
     const control = this.form.controls.confirm;
     if (!control.touched) return null;
-    if (control.hasError('required')) return 'Type the new password again.';
-    return this.form.hasError('passwordsDiffer') ? 'The two passwords are different.' : null;
+    if (control.hasError('required')) return PASSWORD_MESSAGES.repeatNew();
+    return this.form.hasError('passwordsDiffer') ? PASSWORD_MESSAGES.mismatch() : null;
   }
 
   private handleError(error: unknown): void {
     if (!(error instanceof ApiError)) {
-      this.errorMessage.set('Something went wrong. Please try again.');
+      this.errorMessage.set($localize`:@@error.generic:Something went wrong. Please try again.`);
       return;
     }
     if (error.status === 400) {
@@ -124,10 +128,10 @@ export class ChangePassword {
     }
     this.errorMessage.set(
       error.status === 429
-        ? 'Too many attempts. Please wait a minute and try again.'
+        ? $localize`:@@error.tooManyAttempts:Too many attempts. Please wait a minute and try again.`
         : error.status === 0
           ? error.title
-          : 'Something went wrong. Please try again.',
+          : $localize`:@@error.generic:Something went wrong. Please try again.`,
     );
   }
 }
