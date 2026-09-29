@@ -453,6 +453,7 @@
     "users.noMatch": "No accounts match these filters.",
     "accounts.you": "(you)",
     "accounts.since": "Since {$INTERPOLATION}",
+    "users.noTeamRow": " No team ",
     "users.managerNotActive": " {$INTERPOLATION} (not active) ",
     "users.roleOf": "Role of {$name}",
     "users.teamOf": "Team of {$name}",
