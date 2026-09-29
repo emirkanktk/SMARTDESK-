@@ -64,6 +64,14 @@
   box-sizing: border-box;
 }
 
+// Switching themes (theme-switch.ts): the new theme is uncovered in a growing circle over the
+// old one, instead of the browser's default cross-fade.
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 html,
 body {
   margin: 0;
