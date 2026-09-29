@@ -563,3 +563,26 @@ new tables.
   valid.") stay English; the screens never show them. A user's email language changes only
   when they sign in, not the moment they switch languages on screen. A resource or reason
   typed by a person stays as it was typed.
+
+## ADR-0024: A resource leaves service only when no bookings are waiting; bookings start at most 180 days ahead
+
+**Decision** (issue #41, options A2 and B1):
+- **Status:** switching a resource to `Maintenance` or `Inactive`, by `PATCH /api/resources/{id}/status`
+  or the full `PUT`, is refused with 409 (`resource-has-reservations`) while `Confirmed`
+  reservations on it are still to start. The message counts them, and the admin cancels or moves
+  them first, as for a blocked window (ADR-0015). Past and running reservations don't count, and
+  going back to `Active` is always allowed. The count and the change run in one transaction that
+  holds the resource's booking lock (ADR-0011), so a booking can't land in between.
+- **Horizon:** a reservation can start at most 180 days ahead (`ReservationRules.MaxAdvance`).
+  The same applies when an upcoming reservation is moved, and to the availability search, since
+  finding what can't be booked helps nobody. The forms mirror it.
+
+**Why:**
+- Until now the status changed and every future booking stayed, pointing at a room under
+  maintenance, and nobody was told. Blocks already refuse in the same situation. Using the same
+  rule means one behaviour to learn, and each cancellation reaches its owner live.
+- Without a horizon, a booking could start in 2099, and one person could hold a room for years.
+  Most teams plan within a quarter or two, so 180 days is generous.
+- **Trade-offs:** there's still no cap on how many bookings one person holds; it's easy to add
+  if it ever becomes a problem. Taking a resource out of service now takes a step more when it
+  has bookings, but that step is where the owners find out.

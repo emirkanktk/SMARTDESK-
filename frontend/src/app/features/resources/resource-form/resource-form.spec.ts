@@ -259,6 +259,18 @@ describe('ResourceForm', () => {
     });
   });
 
+  it('explains a refused switch-off instead of a generic failure', async () => {
+    const message =
+      '1 confirmed reservation(s) on Meeting Room A from now on. Cancel or move them first.';
+    update.mockReturnValue(throwError(() => new ApiError(409, 'Conflict', message)));
+    await render('res-1');
+    await type('#status', 'Inactive');
+    await submit();
+
+    expect(element.querySelector('[role="alert"]')!.textContent!.trim()).toBe(message);
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
   it('shows an error when the resource to edit cannot be loaded', async () => {
     getResource.mockReturnValue(throwError(() => new ApiError(404, 'Not found')));
     await render('missing');

@@ -144,8 +144,8 @@ first come, first served, under the usual overlap rule.
 | GET | `/api/resources/{id}` | any authenticated user | `GetResourceByIdQuery` | 404 if it doesn't exist or belongs to other teams. For the edit form. |
 | GET | `/api/resources/available` | any authenticated user | `GetAvailableResourcesQuery` | query params: `startDateTime`, `endDateTime`, optional `resourceTypeId`, `minCapacity`. Rules below. |
 | POST | `/api/resources` | Admin or Manager | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[], teamIds?: guid[] }` → 201 with `Location` header. Always created `Active`. An Admin chooses `teamIds` (none: shared; each must be an active Manager's, 400 otherwise). A Manager's resource always belongs to their own team only; naming another team is 403. |
-| PUT | `/api/resources/{id}` | Admin or Manager | `UpdateResourceCommand` | body: the POST fields (without `teamIds`) plus `status`. Full replace: omitting `features` removes them all. A Manager may edit only a resource that belongs to their team alone; a shared resource, or one other teams share, is 403. Teams don't change here. |
-| PATCH | `/api/resources/{id}/status` | Admin or Manager | `ChangeResourceStatusCommand` | body: `{ "status": "Inactive" }` → 200 with the resource. Changes only the status, so an Activate/Deactivate button can't overwrite another admin's edit the way a full PUT can. Same status again is a no-op. Existing reservations are kept. A Manager, as for PUT. |
+| PUT | `/api/resources/{id}` | Admin or Manager | `UpdateResourceCommand` | body: the POST fields (without `teamIds`) plus `status`. Full replace: omitting `features` removes them all. A Manager may edit only a resource that belongs to their team alone; a shared resource, or one other teams share, is 403. Teams don't change here. A `status` other than `Active` follows the PATCH rule below (409 while bookings are still to come). |
+| PATCH | `/api/resources/{id}/status` | Admin or Manager | `ChangeResourceStatusCommand` | body: `{ "status": "Inactive" }` → 200 with the resource. Changes only the status, so an Activate/Deactivate button can't overwrite another admin's edit the way a full PUT can. Same status again is a no-op. `Maintenance` or `Inactive` is refused with 409 (`code: "resource-has-reservations"`, `"2 confirmed reservation(s) on Camera C-1 from now on. Cancel or move them first."`) while `Confirmed` reservations on it are still to start; past and running ones don't count, and going back to `Active` is always allowed (issue #41, ADR-0024). A Manager, as for PUT. |
 | PATCH | `/api/resources/{id}/teams` | Admin | `SetResourceTeamsCommand` | body: `{ "teamIds": ["…"] }` → 200 with the resource. Replaces its teams; `[]` makes it shared. Each id must be an active Manager's (400 otherwise), at most 20. Existing reservations are kept. |
 
 Every resource endpoint returns the same shape:
@@ -174,6 +174,7 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
   a reservation ending at 11:00 does not block a search starting at 11:00. Cancelled
   reservations never block.
 - `endDateTime` must be after `startDateTime`; the window can be at most 31 days.
+- `startDateTime` can be at most 180 days ahead, as for a booking (400 otherwise).
   `minCapacity`, if given, must be positive. Past windows aren't rejected here (it's a
   read-only search); creating a reservation in the past is rejected by
   `CreateReservationCommand`.
@@ -216,7 +217,7 @@ A reservation appears in a calendar range exactly when it would block a booking 
 
 | Status | When |
 |---|---|
-| 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past; longer than 31 days; `note` over 500 chars; `reminderMinutes` not one of 5, 15, 30, 60 |
+| 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past, or more than 180 days ahead (ADR-0024); longer than 31 days; `note` over 500 chars; `reminderMinutes` not one of 5, 15, 30, 60 |
 | 404 | the resource doesn't exist |
 | 409 | the resource isn't `Active` (`code: "resource-unavailable"`, `"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`code: "resource-blocked"`, `"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`code: "reservation-overlaps"`, `"Meeting Room A is already reserved for part of that time."`) |
 
@@ -232,7 +233,7 @@ reservation doesn't exist; 409 if it has already ended.
 
 | State of the reservation | What can change |
 |---|---|
-| upcoming (not started) | anything - resource, start, end, note. The new start follows the create rule (not in the past, 5-minute grace → 400 otherwise) |
+| upcoming (not started) | anything - resource, start, end, note. A new start follows the create rules (not in the past, with the 5-minute grace, and at most 180 days ahead → 400 otherwise) |
 | in progress (started, not ended) | only `endDateTime` (must stay in the future) and `note`; changing the start or the resource → 409 |
 | ended, or cancelled | nothing → 409 |
 
@@ -396,6 +397,7 @@ finds the owner offline isn't queued or repeated.
     only the text does.
   - A 409 a screen may need to act on also carries a stable `code`, since its wording depends
     on the language: `resource-unavailable`, `resource-blocked`, `reservation-overlaps`,
+    `resource-has-reservations`,
     `block-overlaps-block`, `block-overlaps-reservations`. The 403 for a pending password
     change has `code: "password-change-required"` (ADR-0021).
   - Emails are written in the recipient's language: the one they last signed in with, saved

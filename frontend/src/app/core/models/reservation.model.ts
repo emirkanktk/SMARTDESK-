@@ -69,4 +69,6 @@ export const RESERVATION_LIMITS = {
   maxDays: 31,
   /** How far in the past a new start may be, so "from 14:00" still works at 14:03. */
   pastStartGraceMinutes: 5,
+  /** How far ahead a booking, or a search for one, may start. */
+  maxAdvanceDays: 180,
 } as const;

@@ -249,6 +249,9 @@ export class ReservationForm implements OnInit {
     if (control.hasError('required')) return 'Choose a start date and time.';
     if (control.hasError('server')) return control.getError('server') as string;
     if (this.form.hasError('startInPast')) return 'The start time is in the past.';
+    if (this.form.hasError('startTooFarAhead')) {
+      return `Bookings can start at most ${L.maxAdvanceDays} days ahead.`;
+    }
     return null;
   }
 
@@ -437,7 +440,12 @@ function rangeRules(mode: Mode): DateRangeOptions {
   const common = { startKey: 'startDateTime', endKey: 'endDateTime', maxDays: L.maxDays };
   return mode === 'inProgress'
     ? { ...common, endInFuture: true }
-    : { ...common, futureOnly: mode !== 'readOnly', graceMinutes: L.pastStartGraceMinutes };
+    : {
+        ...common,
+        futureOnly: mode !== 'readOnly',
+        graceMinutes: L.pastStartGraceMinutes,
+        maxAdvanceDays: mode === 'readOnly' ? undefined : L.maxAdvanceDays,
+      };
 }
 
 /**

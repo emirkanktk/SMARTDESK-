@@ -17,7 +17,9 @@ public sealed class CreateReservationCommandValidator : AbstractValidator<Create
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .Must(start => start.AsUtc() >= timeProvider.GetUtcNow().UtcDateTime - ReservationRules.PastStartGrace)
-            .WithMessage(_ => Messages.Reservations_StartInPast);
+            .WithMessage(_ => Messages.Reservations_StartInPast)
+            .Must(start => start.AsUtc() <= timeProvider.GetUtcNow().UtcDateTime + ReservationRules.MaxAdvance)
+            .WithMessage(_ => string.Format(Messages.Reservations_TooFarAhead, ReservationRules.MaxAdvanceDays));
 
         // Compared as UTC: DateTime comparison ignores Kind.
         RuleFor(x => x.EndDateTime)

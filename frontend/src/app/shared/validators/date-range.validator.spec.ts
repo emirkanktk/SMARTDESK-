@@ -33,6 +33,21 @@ describe('dateRangeValidator', () => {
     expect(validate('2026-10-05T11:00', '2026-10-05T13:00')).toEqual({ startInPast: true });
   });
 
+  it('rejects a start beyond the booking horizon, unless it is the one already saved', () => {
+    const options = { maxAdvanceDays: 180 };
+    // now is 5 Oct 2026 12:00, so the horizon ends on 3 Apr 2027 at 12:00.
+    expect(validate('2027-04-03T12:00', '2027-04-03T13:00', options)).toBeNull();
+    expect(validate('2027-04-03T12:01', '2027-04-03T13:00', options)).toEqual({
+      startTooFarAhead: { maxAdvanceDays: 180 },
+    });
+    expect(
+      validate('2027-05-01T10:00', '2027-05-01T11:00', {
+        ...options,
+        originalStart: '2027-05-01T10:00',
+      }),
+    ).toBeNull();
+  });
+
   it('rejects a range longer than maxDays', () => {
     // January-February: no daylight-saving change in any common zone, so 31 calendar days
     // is exactly 31 x 24 h wherever the tests run.

@@ -402,11 +402,17 @@
   <data name="Reservations_Started" xml:space="preserve">
     <value>Bu rezervasyon başladı; yalnızca bitiş zamanı ve notu değiştirilebilir.</value>
   </data>
+  <data name="Reservations_TooFarAhead" xml:space="preserve">
+    <value>Bir rezervasyon en fazla {0} gün sonrası için yapılabilir.</value>
+  </data>
   <data name="Resources_DuplicateFeatures" xml:space="preserve">
     <value>Özellikler birbirini tekrar etmemeli.</value>
   </data>
   <data name="Resources_EmptyTeamId" xml:space="preserve">
     <value>Ekip kimlikleri boş olamaz.</value>
+  </data>
+  <data name="Resources_HasUpcomingReservations" xml:space="preserve">
+    <value>{1} için ileride {0} onaylı rezervasyon var. Önce onları iptal edin ya da taşıyın.</value>
   </data>
   <data name="Resources_MaxFeatures" xml:space="preserve">
     <value>Bir kaynağın en fazla {0} özelliği olabilir.</value>
@@ -422,6 +428,9 @@
   </data>
   <data name="Resources_OwnTeamOnly" xml:space="preserve">
     <value>Ekip yöneticileri yalnızca kendi ekiplerine kaynak ekleyebilir.</value>
+  </data>
+  <data name="Resources_SearchTooFarAhead" xml:space="preserve">
+    <value>Arama en fazla {0} gün sonrası için yapılabilir.</value>
   </data>
   <data name="Resources_TeamsMustBeActive" xml:space="preserve">
     <value>Her ekip etkin bir ekip yöneticisine ait olmalı.</value>

@@ -18,4 +18,8 @@ public static class ConflictCodes
 
     // A new blocked window would cover Confirmed reservations, which have to go first.
     public const string BlockOverlapsReservations = "block-overlaps-reservations";
+
+    // A resource can't go into maintenance or be switched off while Confirmed reservations
+    // on it are still to come (issue #41).
+    public const string ResourceHasReservations = "resource-has-reservations";
 }

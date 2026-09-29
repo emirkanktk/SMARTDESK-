@@ -85,6 +85,14 @@ public sealed class UpdateReservationCommandHandler(
                 throw new ValidationException(
                     [new ValidationFailure(nameof(UpdateReservationCommand.StartDateTime), Messages.Reservations_StartInPast)]);
             }
+            else if (timeChanged && start > now + ReservationRules.MaxAdvance)
+            {
+                // The booking horizon, as on create (issue #41).
+                throw new ValidationException(
+                    [new ValidationFailure(
+                        nameof(UpdateReservationCommand.StartDateTime),
+                        string.Format(Messages.Reservations_TooFarAhead, ReservationRules.MaxAdvanceDays))]);
+            }
 
             if (!staysWithinItsSlot)
             {

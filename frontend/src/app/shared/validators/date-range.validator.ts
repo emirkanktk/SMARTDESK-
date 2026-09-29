@@ -26,6 +26,11 @@ export interface DateRangeOptions {
   originalStart?: string;
   /** Reject an end that is already in the past (a reservation that is in progress). */
   endInFuture?: boolean;
+  /**
+   * Reject a start more than this many days (of 24 hours) from now - the booking horizon. A
+   * start still at `originalStart` is left alone, as the API only checks a changed time.
+   */
+  maxAdvanceDays?: number;
   /** Clock, for tests. */
   now?: () => number;
 }
@@ -33,7 +38,8 @@ export interface DateRangeOptions {
 /**
  * Group validator for a start/end pair of datetime-local controls. Mirrors the API's rules
  * for fast feedback - the API still re-checks everything. Errors are set on the group:
- * `rangeOrder` (end not after start), `rangeTooLong`, `startInPast`, `endInPast`. Missing
+ * `rangeOrder` (end not after start), `rangeTooLong`, `startInPast`, `endInPast`,
+ * `startTooFarAhead`. Missing
  * or malformed values are left to each control's own `required` validator. Disabled
  * controls are read too, so a locked start still counts.
  */
@@ -54,6 +60,13 @@ export function dateRangeValidator(options: DateRangeOptions): ValidatorFn {
       options.originalStart !== undefined && startValue === options.originalStart;
     if (options.futureOnly && !startUnchanged && start.getTime() < now() - graceMs) {
       errors['startInPast'] = true;
+    }
+    if (
+      options.maxAdvanceDays !== undefined &&
+      !startUnchanged &&
+      start.getTime() > now() + options.maxAdvanceDays * 24 * 60 * 60 * 1000
+    ) {
+      errors['startTooFarAhead'] = { maxAdvanceDays: options.maxAdvanceDays };
     }
     if (options.endInFuture && end.getTime() <= now()) {
       errors['endInPast'] = true;

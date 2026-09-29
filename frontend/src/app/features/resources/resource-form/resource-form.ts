@@ -282,6 +282,11 @@ export class ResourceForm implements OnInit {
       this.formError.set(message || null);
       return;
     }
+    if (error instanceof ApiError && error.status === 409) {
+      // E.g. switching it off while bookings are still to come (issue #41).
+      this.formError.set(error.detail ?? error.title);
+      return;
+    }
     // Other failures already raised a toast; keep a note on the form as well.
     this.formError.set(partly ?? 'The resource could not be saved.');
   }
