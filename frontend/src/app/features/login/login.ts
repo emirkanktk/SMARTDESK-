@@ -5,11 +5,12 @@ import { finalize } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
+import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
 
 const DEFAULT_REDIRECT = '/dashboard';
 
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, LanguageSwitch],
+  imports: [ReactiveFormsModule, RouterLink, LanguageSwitch, ThemeSwitch],
   selector: 'app-login',
   // The page's main landmark: it renders outside the shell, which provides one elsewhere.
   host: { role: 'main' },
