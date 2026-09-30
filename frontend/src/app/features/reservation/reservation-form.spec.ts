@@ -11,6 +11,7 @@ import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { DESK_TYPE, fakeResource } from '../../../testing/resource-fixtures';
+import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
 import { ReservationForm } from './reservation-form';
 
 // Local wall-clock time -> the UTC ISO string the API uses, whatever zone the tests run in.
@@ -79,6 +80,7 @@ describe('ReservationForm', () => {
         { provide: AuthService, useValue: { currentUser, isAdmin } },
         { provide: NotificationService, useValue: { success } },
         { provide: ReminderAlertsService, useValue: reminderAlerts },
+        RESOURCE_PHOTO_STUB,
       ],
     }).compileComponents();
 
@@ -138,6 +140,14 @@ describe('ReservationForm', () => {
       expect(element.textContent).toContain('1 h 30 min');
       expect(element.querySelector('.resource-info')?.textContent).toContain('8 people');
       expect(getResources).toHaveBeenCalledWith({ status: 'Active' });
+    });
+
+    it("shows the chosen resource's picture next to its details", async () => {
+      await render({ resourceId: room.id });
+
+      expect(
+        element.querySelector('.resource-preview .preview-photo img')!.getAttribute('src'),
+      ).toBe(`type-picture:${room.resourceTypeName}`);
     });
 
     it('starts at the next half hour for one hour without a link', async () => {

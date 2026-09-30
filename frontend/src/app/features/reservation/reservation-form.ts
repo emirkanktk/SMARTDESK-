@@ -27,6 +27,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
+import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
 import {
   addMinutes,
   floorToQuarterHour,
@@ -63,11 +64,12 @@ interface ResourceOption {
   location: string;
   capacity: number | null;
   features: string[];
+  photoUpdatedAt: string | null;
 }
 
 /** Book a resource (`/reservations/new`) or change a booking (`/reservations/:id/edit`). */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, DatePipe],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, ResourcePhoto],
   selector: 'app-reservation-form',
   styleUrl: './reservation-form.scss',
   templateUrl: './reservation-form.html',
@@ -139,6 +141,7 @@ export class ReservationForm implements OnInit {
         location: reservation.resourceLocation,
         capacity: null,
         features: [],
+        photoUpdatedAt: null,
       },
     ];
   });
@@ -491,6 +494,7 @@ function toOption(resource: Resource): ResourceOption {
     location: resource.location,
     capacity: resource.capacity,
     features: resource.features,
+    photoUpdatedAt: resource.photoUpdatedAt,
   };
 }
 

@@ -68,6 +68,18 @@ export class ResourceService {
     });
   }
 
+  /** Sets or replaces its photo. Whoever may edit the resource may change its photo. */
+  setPhoto(id: string, photo: Blob): Observable<Resource> {
+    const form = new FormData();
+    form.append('photo', photo, `photo.${photo.type.split('/')[1] ?? 'jpg'}`);
+    return this.http.put<Resource>(`${this.baseUrl}/${encodeURIComponent(id)}/photo`, form);
+  }
+
+  /** Removes its photo, so its type's picture shows again. */
+  removePhoto(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${encodeURIComponent(id)}/photo`);
+  }
+
   /**
    * Changes only the status, so it can't overwrite someone else's edit. Admins, or a manager for
    * a resource that belongs to their team alone (ADR-0022).

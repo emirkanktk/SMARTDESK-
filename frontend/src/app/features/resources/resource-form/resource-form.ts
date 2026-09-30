@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormControl,
@@ -8,11 +9,12 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { finalize, of, switchMap, tap } from 'rxjs';
+import { Observable, finalize, map, of, switchMap, tap } from 'rxjs';
 import { Roles } from '../../../core/constants/roles';
 import { ApiError } from '../../../core/models/api-error.model';
 import {
   RESOURCE_LIMITS,
+  RESOURCE_PHOTO,
   RESOURCE_STATUSES,
   Resource,
   ResourceStatus,
@@ -24,6 +26,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ResourceService } from '../../../core/services/resource.service';
 import { resourceStatusLabel } from '../../../core/i18n/labels';
+import { ResourcePhoto } from '../../../shared/components/resource-photo/resource-photo';
+import { preparePhoto } from '../../../shared/utils/photo';
 import { canManageResource, teamName } from '../../../shared/utils/resource-access';
 import { applyServerErrors } from '../../../shared/utils/server-errors';
 import { integerValidator } from '../../../shared/validators/integer.validator';
@@ -38,13 +42,18 @@ interface TeamOption {
   inactive: boolean;
 }
 
+/** What saving does to the photo: nothing, put up the one chosen, or take the current one down. */
+type PhotoChange =
+  { kind: 'none' } | { kind: 'set'; photo: Blob; preview: string } | { kind: 'remove' };
+
 /**
  * Create (`/resources/new`) and edit (`/resources/:id/edit`) form. Admins pick the teams that
  * may use the resource (none: shared by everyone); a manager's resource always belongs to their
- * own team, and they can only edit one that belongs to their team alone (ADR-0022).
+ * own team, and they can only edit one that belongs to their team alone (ADR-0022). A photo
+ * is optional; without one the type's picture shows (ADR-0027).
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ResourcePhoto],
   selector: 'app-resource-form',
   styleUrl: './resource-form.scss',
   templateUrl: './resource-form.html',
@@ -109,6 +118,28 @@ export class ResourceForm implements OnInit {
       .map((team) => ({ id: team.id, name: team.managerName, inactive: active !== null }));
     return [...(active ?? []), ...others].sort((a, b) => a.name.localeCompare(b.name));
   });
+
+  /** When the loaded resource's photo last changed; null without one, or when creating. */
+  protected readonly loadedPhoto = signal<string | null>(null);
+  protected readonly photoChange = signal<PhotoChange>({ kind: 'none' });
+  protected readonly preparingPhoto = signal(false);
+  protected readonly photoError = signal<string | null>(null);
+  /** Whether it will have a photo of its own once saved. */
+  protected readonly hasPhoto = computed(() => {
+    const change = this.photoChange();
+    return change.kind === 'set' || (change.kind === 'none' && this.loadedPhoto() !== null);
+  });
+  private readonly typeId = toSignal(this.form.controls.resourceTypeId.valueChanges, {
+    initialValue: '',
+  });
+  /** The chosen type's name, for the picture shown without a photo. */
+  protected readonly typeName = computed(
+    () => this.types().find((type) => type.id === this.typeId())?.name ?? '',
+  );
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.setPhotoChange({ kind: 'none' }));
+  }
 
   ngOnInit(): void {
     this.resourceService.getResourceTypes().subscribe({
@@ -196,6 +227,48 @@ export class ResourceForm implements OnInit {
     return null;
   }
 
+  /**
+   * Makes the chosen picture ready to upload (smaller, as WebP) and shows it; it goes up when
+   * the form is saved.
+   */
+  protected async choosePhoto(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // So choosing the same file again still counts.
+    if (!file) {
+      return;
+    }
+
+    this.photoError.set(null);
+    this.preparingPhoto.set(true);
+    try {
+      const photo = await preparePhoto(file);
+      if (!photo) {
+        this.photoError.set(
+          $localize`:@@resourceForm.photoUnreadable:This file could not be read as a picture. Choose a JPEG, PNG or WebP photo.`,
+        );
+      } else if (photo.size > RESOURCE_PHOTO.maxBytes) {
+        this.photoError.set(
+          $localize`:@@resourceForm.photoTooLarge:This picture is too large even when made smaller. Choose another one.`,
+        );
+      } else {
+        this.setPhotoChange({ kind: 'set', photo, preview: URL.createObjectURL(photo) });
+      }
+    } finally {
+      this.preparingPhoto.set(false);
+    }
+  }
+
+  protected removePhoto(): void {
+    this.photoError.set(null);
+    this.setPhotoChange(this.loadedPhoto() ? { kind: 'remove' } : { kind: 'none' });
+  }
+
+  protected undoPhoto(): void {
+    this.photoError.set(null);
+    this.setPhotoChange({ kind: 'none' });
+  }
+
   protected submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -213,31 +286,36 @@ export class ResourceForm implements OnInit {
     };
 
     const id = this.id();
-    // Changed teams make an edit two calls: the details can be saved while the teams fail.
-    let detailsSaved = false;
-    const request = id
-      ? this.resourceService.update(id, { ...body, status: value.status }).pipe(
-          tap(() => (detailsSaved = true)),
-          switchMap((saved) =>
-            this.teamsChanged(value.teamIds)
-              ? this.resourceService.setTeams(id, value.teamIds)
-              : of(saved),
-          ),
-        )
+    // Saving can take more than one call: the details, then the teams and the photo when they
+    // changed. The details can be saved while a later call fails.
+    let saved: Resource | null = null;
+    let step: 'teams' | 'photo' = 'teams';
+    const details = id
+      ? this.resourceService.update(id, { ...body, status: value.status })
       : this.resourceService.create(this.isAdmin() ? { ...body, teamIds: value.teamIds } : body);
+    const request = details.pipe(
+      tap((resource) => (saved = resource)),
+      switchMap((resource) =>
+        id && this.teamsChanged(value.teamIds)
+          ? this.resourceService.setTeams(id, value.teamIds)
+          : of(resource),
+      ),
+      tap(() => (step = 'photo')),
+      switchMap((resource) => this.savePhoto(resource)),
+    );
 
     this.saving.set(true);
     this.formError.set(null);
     request.pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (saved) => {
+      next: (resource) => {
         this.notifications.success(
           id
-            ? $localize`:@@resourceForm.updated:"${saved.name}:name:" was updated.`
-            : $localize`:@@resourceForm.created:"${saved.name}:name:" was created.`,
+            ? $localize`:@@resourceForm.updated:"${resource.name}:name:" was updated.`
+            : $localize`:@@resourceForm.created:"${resource.name}:name:" was created.`,
         );
         void this.router.navigateByUrl('/resources');
       },
-      error: (error: unknown) => this.handleSaveError(error, detailsSaved),
+      error: (error: unknown) => this.handleSaveError(error, saved, step),
     });
   }
 
@@ -272,6 +350,7 @@ export class ResourceForm implements OnInit {
       }),
     );
     this.loadedTeams.set(resource.teams);
+    this.loadedPhoto.set(resource.photoUpdatedAt);
     this.form.setValue({
       name: resource.name,
       resourceTypeId: resource.resourceTypeId,
@@ -293,8 +372,36 @@ export class ResourceForm implements OnInit {
     );
   }
 
-  private handleSaveError(error: unknown, detailsSaved: boolean): void {
-    const partly = detailsSaved
+  /** Puts up the chosen photo or takes the current one down; nothing if neither was asked. */
+  private savePhoto(resource: Resource): Observable<Resource> {
+    const change = this.photoChange();
+    switch (change.kind) {
+      case 'set':
+        return this.resourceService.setPhoto(resource.id, change.photo);
+      case 'remove':
+        return this.resourceService
+          .removePhoto(resource.id)
+          .pipe(map(() => ({ ...resource, photoUpdatedAt: null })));
+      default:
+        return of(resource);
+    }
+  }
+
+  private setPhotoChange(change: PhotoChange): void {
+    const previous = this.photoChange();
+    if (previous.kind === 'set') {
+      URL.revokeObjectURL(previous.preview);
+    }
+    this.photoChange.set(change);
+  }
+
+  private handleSaveError(error: unknown, saved: Resource | null, step: 'teams' | 'photo'): void {
+    if (saved && step === 'photo') {
+      this.handlePhotoError(error, saved);
+      return;
+    }
+
+    const partly = saved
       ? $localize`:@@resourceForm.teamsNotSaved:Your other changes were saved, but the teams were not.`
       : null;
     if (error instanceof ApiError && error.status === 400) {
@@ -312,6 +419,29 @@ export class ResourceForm implements OnInit {
     this.formError.set(
       partly ?? $localize`:@@resourceForm.saveFailed:The resource could not be saved.`,
     );
+  }
+
+  /**
+   * Everything else was saved. After an edit the photo can simply be tried again here; a new
+   * resource exists now, so it opens for editing rather than being created a second time.
+   */
+  private handlePhotoError(error: unknown, saved: Resource): void {
+    const reason =
+      error instanceof ApiError && error.status === 400
+        ? (error.fieldErrors['Photo']?.[0] ?? null)
+        : null;
+    if (this.id()) {
+      this.photoError.set(reason);
+      this.formError.set(
+        $localize`:@@resourceForm.photoNotSaved:Your other changes were saved, but the photo was not.`,
+      );
+      return;
+    }
+
+    this.notifications.error(
+      $localize`:@@resourceForm.createdWithoutPhoto:"${saved.name}:name:" was created, but its photo was not saved. You can try again here.`,
+    );
+    void this.router.navigate(['/resources', saved.id, 'edit']);
   }
 }
 

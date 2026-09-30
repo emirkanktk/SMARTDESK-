@@ -5,9 +5,12 @@ import { of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error.model';
 import { AccountService } from '../../../core/services/account.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { ResourceService } from '../../../core/services/resource.service';
 import { account } from '../../../../testing/account-fixtures';
+import { fakeObjectUrls } from '../../../../testing/object-urls';
 import { MEETING_ROOM_TYPE, fakeResource } from '../../../../testing/resource-fixtures';
+import { RESOURCE_PHOTO_STUB } from '../../../../testing/resource-photo-stub';
 import { simulateTurkishBrowser } from '../../../../testing/turkish-locale';
 import { ResourceForm } from './resource-form';
 
@@ -26,6 +29,8 @@ describe('ResourceForm', () => {
   let create: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
   let setTeams: ReturnType<typeof vi.fn>;
+  let setPhoto: ReturnType<typeof vi.fn>;
+  let removePhoto: ReturnType<typeof vi.fn>;
   let getResource: ReturnType<typeof vi.fn>;
   let getAccounts: ReturnType<typeof vi.fn>;
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
@@ -39,6 +44,8 @@ describe('ResourceForm', () => {
     create = vi.fn(() => of(fakeResource()));
     update = vi.fn(() => of(fakeResource()));
     setTeams = vi.fn(() => of(fakeResource()));
+    setPhoto = vi.fn(() => of(fakeResource({ photoUpdatedAt: '2026-10-05T08:00:00Z' })));
+    removePhoto = vi.fn(() => of(undefined));
     getResource = vi.fn(() =>
       of(fakeResource({ description: 'Big screen', status: 'Maintenance' })),
     );
@@ -58,8 +65,11 @@ describe('ResourceForm', () => {
             create,
             update,
             setTeams,
+            setPhoto,
+            removePhoto,
           },
         },
+        RESOURCE_PHOTO_STUB,
       ],
     }).compileComponents();
 
@@ -502,6 +512,182 @@ describe('ResourceForm', () => {
           fixture.destroy();
         }
       });
+    });
+  });
+  describe('photo', () => {
+    // The test DOM can neither decode nor draw pictures, so both are stood in for: every
+    // chosen file "decodes" to 800x600 and is written as WebP, unless a test says otherwise.
+    let urls: ReturnType<typeof fakeObjectUrls>;
+    let decode: ReturnType<typeof vi.fn>;
+    let written: Blob;
+
+    beforeEach(() => {
+      urls = fakeObjectUrls();
+      written = new Blob(['webp'], { type: 'image/webp' });
+      decode = vi.fn(async () => ({ width: 800, height: 600, close: vi.fn() }));
+      vi.stubGlobal('createImageBitmap', decode);
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        drawImage: vi.fn(),
+        fillRect: vi.fn(),
+      } as unknown as CanvasRenderingContext2D);
+      vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback) =>
+        callback(written),
+      );
+    });
+
+    afterEach(() => {
+      urls.restore();
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    async function choose(file = new File(['jpeg'], 'room.jpg', { type: 'image/jpeg' })) {
+      const input = element.querySelector<HTMLInputElement>('.photo input[type="file"]')!;
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      input.dispatchEvent(new Event('change'));
+      // Getting the picture ready is asynchronous work Angular doesn't track.
+      await new Promise((resolve) => setTimeout(resolve));
+      await fixture.whenStable();
+    }
+
+    const preview = () =>
+      element.querySelector<HTMLImageElement>('.photo-preview img, img.photo-preview');
+    const photoText = () => element.querySelector('.photo')!.textContent!.replace(/\s+/g, ' ');
+    const button = (text: string) =>
+      [...element.querySelectorAll<HTMLButtonElement>('.photo button')].find(
+        (b) => b.textContent!.trim() === text,
+      );
+
+    it("shows the type's picture for a new resource, and the chosen one once chosen", async () => {
+      await render();
+      await type('#type', MEETING_ROOM_TYPE.id);
+      expect(preview()!.getAttribute('src')).toBe('type-picture:Meeting Room');
+      expect(photoText()).toContain('Without a photo, the picture for its type is shown.');
+
+      await choose();
+
+      expect(preview()!.getAttribute('src')).toBe('blob:test-1');
+      expect(photoText()).toContain('The photo is uploaded when you save.');
+    });
+
+    it('creates the resource, then puts up its photo', async () => {
+      create.mockReturnValue(of(fakeResource({ id: 'res-new' })));
+      await render();
+      await fillValidForm();
+      await choose();
+      await submit();
+
+      expect(create).toHaveBeenCalled();
+      expect(setPhoto).toHaveBeenCalledWith('res-new', written);
+      expect(navigateByUrl).toHaveBeenCalledWith('/resources');
+    });
+
+    it('saves the details, then the new photo, and lets go of the preview', async () => {
+      await render('res-1');
+      await choose();
+      await submit();
+
+      expect(update).toHaveBeenCalled();
+      expect(setPhoto).toHaveBeenCalledWith('res-1', written);
+      expect(navigateByUrl).toHaveBeenCalledWith('/resources');
+      fixture.destroy();
+      expect(urls.revoked).toEqual(['blob:test-1']);
+    });
+
+    it('sends nothing for the photo when it was left alone', async () => {
+      await render('res-1');
+      await submit();
+
+      expect(update).toHaveBeenCalled();
+      expect(setPhoto).not.toHaveBeenCalled();
+      expect(removePhoto).not.toHaveBeenCalled();
+    });
+
+    it('takes the current photo down on save, or not after Undo', async () => {
+      getResource.mockReturnValue(of(fakeResource({ photoUpdatedAt: '2026-10-01T10:00:00Z' })));
+      await render('res-1');
+      expect(preview()!.getAttribute('src')).toBe('blob:photo-of-res-1');
+
+      button('Remove photo')!.click();
+      await fixture.whenStable();
+      expect(preview()!.getAttribute('src')).toBe('type-picture:Meeting Room');
+      expect(photoText()).toContain('The photo is removed when you save.');
+
+      button('Undo')!.click();
+      await fixture.whenStable();
+      expect(preview()!.getAttribute('src')).toBe('blob:photo-of-res-1');
+      await submit();
+      expect(removePhoto).not.toHaveBeenCalled();
+
+      button('Remove photo')!.click();
+      await fixture.whenStable();
+      await submit();
+      expect(removePhoto).toHaveBeenCalledWith('res-1');
+    });
+
+    it('offers no Remove for a resource without a photo', async () => {
+      await render('res-1');
+
+      expect(button('Remove photo')).toBeUndefined();
+      expect(photoText()).toContain('Choose a photo');
+    });
+
+    it("says so when a file isn't a picture, and uploads nothing", async () => {
+      decode.mockRejectedValue(new DOMException('Cannot decode', 'InvalidStateError'));
+      await render('res-1');
+      await choose(new File(['%PDF'], 'manual.pdf', { type: 'application/pdf' }));
+
+      expect(photoText()).toContain('This file could not be read as a picture.');
+      await submit();
+      expect(setPhoto).not.toHaveBeenCalled();
+    });
+
+    it('says so when a picture is still over 2 MB when made smaller', async () => {
+      written = new Blob([new Uint8Array(2 * 1024 * 1024 + 1)], { type: 'image/webp' });
+      await render('res-1');
+      await choose();
+
+      expect(photoText()).toContain('This picture is too large even when made smaller.');
+      expect(preview()!.getAttribute('src')).toBe('type-picture:Meeting Room');
+    });
+
+    it('says the details were saved when only the photo was refused, and why', async () => {
+      setPhoto.mockReturnValue(
+        throwError(
+          () =>
+            new ApiError(400, 'One or more validation errors occurred.', null, {
+              Photo: ['The photo must be a JPEG, PNG or WebP image.'],
+            }),
+        ),
+      );
+      await render('res-1');
+      await choose();
+      await submit();
+
+      expect(element.querySelector('[role="alert"]')!.textContent!.trim()).toBe(
+        'Your other changes were saved, but the photo was not.',
+      );
+      expect(element.querySelector('.photo .field-error')!.textContent).toContain(
+        'The photo must be a JPEG, PNG or WebP image.',
+      );
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('opens a new resource for editing when its photo then fails, rather than creating it twice', async () => {
+      create.mockReturnValue(of(fakeResource({ id: 'res-new', name: 'Studio' })));
+      setPhoto.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+      const error = vi.spyOn(TestBed.inject(NotificationService), 'error');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await render();
+      await fillValidForm();
+      await choose();
+      await submit();
+
+      expect(error).toHaveBeenCalledWith(
+        '"Studio" was created, but its photo was not saved. You can try again here.',
+      );
+      expect(navigate).toHaveBeenCalledWith(['/resources', 'res-new', 'edit']);
+      expect(navigateByUrl).not.toHaveBeenCalled();
     });
   });
 });

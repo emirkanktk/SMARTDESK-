@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { DESK_TYPE, MEETING_ROOM_TYPE, fakeResource } from '../../../testing/resource-fixtures';
+import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
 import { simulateTurkishBrowser } from '../../../testing/turkish-locale';
 import { Resources } from './resources';
 
@@ -55,6 +56,7 @@ describe('Resources', () => {
             changeStatus,
           },
         },
+        RESOURCE_PHOTO_STUB,
       ],
     }).compileComponents();
   });
@@ -82,6 +84,21 @@ describe('Resources', () => {
     expect(rowNames()).toEqual(['Meeting Room A', 'Desk 12']);
     expect(element.textContent).toContain('Maintenance');
     expect(getResources).toHaveBeenCalledWith({ resourceTypeId: '', status: null });
+  });
+
+  it("shows each resource's photo, or its type's picture when it has none", async () => {
+    getResources.mockReturnValue(
+      of([
+        fakeResource({ id: 'res-1', photoUpdatedAt: '2026-10-05T08:00:00Z' }),
+        fakeResource({ id: 'res-2', name: 'Desk 12', resourceTypeName: 'Desk' }),
+      ]),
+    );
+    await render();
+
+    const pictures = Array.from(element.querySelectorAll('tbody .thumb img')).map((img) =>
+      img.getAttribute('src'),
+    );
+    expect(pictures).toEqual(['blob:photo-of-res-1', 'type-picture:Desk']);
   });
 
   it('reloads from the API when the type or status filter changes', async () => {

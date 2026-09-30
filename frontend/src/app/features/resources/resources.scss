@@ -15,6 +15,18 @@
   }
 }
 
+.resource-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.thumb {
+  flex: none;
+  width: 64px;
+  height: 48px;
+}
+
 .name {
   font-weight: 600;
 }

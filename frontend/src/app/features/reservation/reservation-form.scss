@@ -22,6 +22,19 @@ textarea.input {
   font-size: 0.8125rem;
 }
 
+.resource-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.preview-photo {
+  flex: none;
+  width: 120px;
+  aspect-ratio: 4 / 3;
+}
+
 .notice {
   margin: 0 0 var(--space-4);
   padding: var(--space-3) var(--space-4);

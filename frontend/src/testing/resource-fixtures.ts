@@ -15,6 +15,7 @@ export function fakeResource(overrides: Partial<Resource> = {}): Resource {
     description: null,
     features: ['TV', 'Video Conference'],
     teams: [],
+    photoUpdatedAt: null,
     ...overrides,
   };
 }

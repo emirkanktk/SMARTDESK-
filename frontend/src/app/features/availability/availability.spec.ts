@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { ResourceService } from '../../core/services/resource.service';
 import { DESK_TYPE, MEETING_ROOM_TYPE, fakeResource } from '../../../testing/resource-fixtures';
+import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
 import { Availability } from './availability';
 
 // Local wall-clock time -> the UTC ISO string the API expects, whatever zone the tests run in.
@@ -30,6 +31,7 @@ describe('Availability', () => {
           provide: ResourceService,
           useValue: { getResourceTypes: () => of([DESK_TYPE, MEETING_ROOM_TYPE]), getAvailable },
         },
+        RESOURCE_PHOTO_STUB,
       ],
     }).compileComponents();
 
@@ -119,6 +121,16 @@ describe('Availability', () => {
     expect(params.get('resourceId')).toBe('res-1');
     expect(params.get('start')).toBe(utc('2026-10-05T10:30'));
     expect(params.get('end')).toBe(utc('2026-10-05T11:30'));
+  });
+
+  it("shows each free resource's photo across the top of its card", async () => {
+    getAvailable.mockReturnValue(of([fakeResource({ photoUpdatedAt: '2026-10-05T08:00:00Z' })]));
+    await render();
+    await submit();
+
+    expect(element.querySelector('.card .card-photo img')!.getAttribute('src')).toBe(
+      'blob:photo-of-res-1',
+    );
   });
 
   it('says so when nothing is free', async () => {
