@@ -1,13 +1,14 @@
-<div class="page-header">
+<div class="page-header brand-panel welcome">
   <div>
     <h1 i18n="@@dashboard.welcome">Welcome, {{ displayName() }}</h1>
     @if (data(); as d) {
-      <p class="text-muted today-date">{{ d.todayStart | date: 'EEEE d MMMM' }}</p>
+      <p class="today-date">{{ d.todayStart | date: 'EEEE d MMMM' }}</p>
     }
   </div>
-  <a class="btn btn-primary" routerLink="/availability" i18n="@@dashboard.findFree"
-    >Find a free resource</a
-  >
+  <a class="btn btn-light" routerLink="/availability">
+    <app-icon name="search" />
+    <span i18n="@@dashboard.findFree">Find a free resource</span>
+  </a>
 </div>
 
 @if (loading()) {
@@ -27,25 +28,37 @@
 } @else {
   <ul class="tiles">
     @for (tile of tiles(); track tile.label) {
-      <li class="card tile">
+      <li class="card tile" [attr.data-tone]="tile.tone">
         @if (tile.link) {
-          <a [routerLink]="tile.link">
-            <span class="value">{{ tile.value }}</span>
-            <span class="label">{{ tile.label }}</span>
+          <a class="tile-body" [routerLink]="tile.link">
+            <ng-container *ngTemplateOutlet="tileContent; context: { $implicit: tile }" />
           </a>
         } @else {
-          <span class="value">{{ tile.value }}</span>
-          <span class="label">{{ tile.label }}</span>
+          <div class="tile-body">
+            <ng-container *ngTemplateOutlet="tileContent; context: { $implicit: tile }" />
+          </div>
         }
       </li>
     }
   </ul>
 
+  <ng-template #tileContent let-tile>
+    <span class="tile-icon"><app-icon [name]="tile.icon" /></span>
+    <span class="value">{{ tile.value }}</span>
+    <span class="label">{{ tile.label }}</span>
+  </ng-template>
+
   <div class="columns">
     <section class="card panel today" aria-labelledby="today-heading">
-      <h2 id="today-heading" i18n="@@dashboard.today">Today</h2>
+      <h2 id="today-heading">
+        <app-icon name="calendar" />
+        <span i18n="@@dashboard.today">Today</span>
+      </h2>
       @if (today().length === 0) {
-        <p class="text-muted empty" i18n="@@dashboard.noneToday">No reservations today.</p>
+        <div class="empty">
+          <span class="empty-icon"><app-icon name="calendar-check" /></span>
+          <p class="text-muted" i18n="@@dashboard.noneToday">No reservations today.</p>
+        </div>
       } @else {
         <ul class="rows">
           @for (row of today(); track row.reservation.id) {
@@ -73,11 +86,15 @@
 
     <div class="side">
       <section class="card panel" aria-labelledby="in-use-heading">
-        <h2 id="in-use-heading" i18n="@@dashboard.inUseNow">In use now</h2>
+        <h2 id="in-use-heading">
+          <app-icon name="zap" />
+          <span i18n="@@dashboard.inUseNow">In use now</span>
+        </h2>
         @if (inUseNow().length === 0) {
-          <p class="text-muted empty" i18n="@@dashboard.nothingInUse">
-            Nothing is in use right now.
-          </p>
+          <div class="empty">
+            <span class="empty-icon"><app-icon name="clock" /></span>
+            <p class="text-muted" i18n="@@dashboard.nothingInUse">Nothing is in use right now.</p>
+          </div>
         } @else {
           <ul class="rows">
             @for (row of inUseNow(); track row.reservation.id) {
@@ -96,12 +113,18 @@
       </section>
 
       <section class="card panel" aria-labelledby="upcoming-heading">
-        <h2 id="upcoming-heading" i18n="@@dashboard.yourNext">Your next reservations</h2>
+        <h2 id="upcoming-heading">
+          <app-icon name="clipboard" />
+          <span i18n="@@dashboard.yourNext">Your next reservations</span>
+        </h2>
         @if (myUpcoming().length === 0) {
-          <p class="text-muted empty" i18n="@@dashboard.noUpcoming">
-            You have no upcoming reservations.
-            <a routerLink="/availability">Find a free resource</a>
-          </p>
+          <div class="empty">
+            <span class="empty-icon"><app-icon name="sparkles" /></span>
+            <p class="text-muted" i18n="@@dashboard.noUpcoming">
+              You have no upcoming reservations.
+              <a routerLink="/availability">Find a free resource</a>
+            </p>
+          </div>
         } @else {
           <ul class="rows">
             @for (row of myUpcoming(); track row.reservation.id) {
