@@ -14,8 +14,8 @@ public static class RateLimitingSetup
     // how many sign-in attempts one client can make across all accounts, which is what a
     // password-spraying or credential-stuffing run looks like.
     //
-    // Partitioned by client IP. Behind a reverse proxy that is the proxy's address unless
-    // forwarded headers are configured - revisit when there is a real deployment.
+    // Partitioned by client IP. Behind a reverse proxy, that's the client's own address only when
+    // the proxy is trusted for forwarded headers (ADR-0028); otherwise everyone shares one limit.
     public static IServiceCollection AddSmartDeskRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
         var permitsPerMinute = configuration.GetValue("RateLimiting:LoginPermitsPerMinute", 10);

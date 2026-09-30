@@ -682,3 +682,23 @@ new tables.
     production.
   - An access token already issued stays usable until its session's end reaches the cache,
     at most 30 seconds on another API instance.
+
+## ADR-0028: Behind a reverse proxy, the client's address comes from trusted forwarded headers
+
+**Decision:**
+- The API applies `X-Forwarded-For` and `X-Forwarded-Proto` first thing in the pipeline, so
+  the sign-in rate limit, HSTS and the HTTPS redirect see the client's address and scheme.
+- The headers are believed only from trusted proxies: one on the same machine, or those listed
+  in `ForwardedHeaders:KnownProxies` (addresses) and `ForwardedHeaders:KnownNetworks` (CIDR
+  ranges). From anyone else they're ignored.
+
+**Why:**
+- Behind a proxy, every connection comes from the proxy. The sign-in rate limit (ADR-0008) is
+  per client address, so the whole office would share its 10 attempts a minute. A busy morning
+  would lock people out, and one attacker would lock out everyone.
+- The proxy talks plain HTTP to the API, so without the scheme the API would take every
+  request for HTTP: HSTS would never be sent.
+- Anyone can send these headers. Trusting them from any peer would let a client pick a fresh
+  address for every attempt and walk around the rate limit.
+- **Trade-offs:** a proxy on another machine or container has to be listed, or the API keeps
+  seeing only the proxy. The README says how.

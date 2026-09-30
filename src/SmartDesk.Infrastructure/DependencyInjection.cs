@@ -21,8 +21,13 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        // A query that loads collections sends one statement per collection. In one statement,
+        // two collections come back multiplied: a resource with 20 features and 20 teams would
+        // be 400 rows.
         services.AddDbContext<SmartDeskDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<SmartDeskDbContext>());
 
         // Backs GET /health: "Healthy" only if PostgreSQL answers and the schema is up to date,

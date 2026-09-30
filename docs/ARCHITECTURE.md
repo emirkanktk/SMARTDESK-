@@ -50,7 +50,9 @@ Dependencies point inward only. `Domain` never references EF Core, ASP.NET Core,
 other project - it is plain C#. `Application` depends on `Domain` plus MediatR,
 FluentValidation and EF Core's provider-agnostic abstractions (`DbSet`, LINQ - see ADR-0009).
 `Infrastructure` implements what `Application` needs (persistence, identity) and is the only
-place Npgsql/PostgreSQL-specific code lives. `API` is
+place Npgsql/PostgreSQL-specific code lives. It also sets how queries run: a query that loads
+collections sends one statement per collection (split queries), so a resource's features and
+teams don't come back multiplied by each other. `API` is
 the composition root: it wires everything together in `Program.cs` and exposes it over HTTP.
 
 ### 3.1 Why the `ApplicationUser` identity type lives in Infrastructure, not Domain
