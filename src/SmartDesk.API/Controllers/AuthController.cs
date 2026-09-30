@@ -38,17 +38,26 @@ public sealed class AuthController(ISender sender) : ControllerBase
     }
 
     // A new access token from the session cookie (ADR-0026), which is replaced on the way. The
-    // app calls it when it starts and shortly before its token expires. Not rate limited: the
-    // refresh token has 256 random bits, and each tab renews every few minutes.
+    // app calls it when it starts and shortly before its token expires. Without the cookie
+    // there's nothing to renew: 204, so a guest's visit doesn't show up as a failed request.
+    // A cookie whose session is over is a 401. Not rate limited: the refresh token has 256
+    // random bits, and each tab renews every few minutes.
     [HttpPost("refresh")]
     [AllowAnonymous]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<LoginResponse>> Refresh(CancellationToken cancellationToken)
     {
+        var refreshToken = SessionCookie.Read(Request);
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            return NoContent();
+        }
+
         try
         {
-            var signedIn = await sender.Send(new RefreshSessionCommand(SessionCookie.Read(Request)), cancellationToken);
+            var signedIn = await sender.Send(new RefreshSessionCommand(refreshToken), cancellationToken);
             SessionCookie.Write(Response, signedIn);
             return signedIn.Response;
         }

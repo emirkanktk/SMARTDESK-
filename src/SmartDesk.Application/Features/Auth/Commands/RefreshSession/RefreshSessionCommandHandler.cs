@@ -27,7 +27,8 @@ public sealed class RefreshSessionCommandHandler(
         var user = await identityService.FindByIdAsync(renewal.UserId, cancellationToken);
         if (user is not { Status: AccountStatus.Active } || user.SessionStamp != renewal.SessionStamp)
         {
-            await sessions.EndAsync(renewal.Session.RefreshToken, cancellationToken);
+            // By the token presented: the renewal may have kept the session's current one.
+            await sessions.EndAsync(request.RefreshToken, cancellationToken);
             throw new UnauthorizedException(Messages.Auth_SessionEnded);
         }
 

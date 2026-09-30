@@ -50,16 +50,22 @@ public sealed class SessionTests(PostgresApiFixture fixture)
     }
 
     [Fact]
-    public async Task A_refresh_without_a_good_cookie_is_refused_and_the_cookie_cleared()
+    public async Task A_refresh_with_a_dead_cookie_is_refused_and_the_cookie_cleared()
     {
-        var none = await Anonymous().PostAsync("/api/auth/refresh", null);
         var bogus = await WithCookie("not-a-token").PostAsync("/api/auth/refresh", null);
 
-        foreach (var response in new[] { none, bogus })
-        {
-            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-            SetCookie(response).Should().StartWith($"{CookieName}=;");
-        }
+        bogus.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        SetCookie(bogus).Should().StartWith($"{CookieName}=;");
+    }
+
+    [Fact]
+    public async Task A_guest_without_the_cookie_gets_nothing_to_renew_and_no_error()
+    {
+        // Every visit to a public page asks; a 401 would show up as a failed request each time.
+        var none = await Anonymous().PostAsync("/api/auth/refresh", null);
+
+        none.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        none.Headers.Contains("Set-Cookie").Should().BeFalse();
     }
 
     // The test server speaks plain http, where a client wouldn't send a Secure cookie back, so

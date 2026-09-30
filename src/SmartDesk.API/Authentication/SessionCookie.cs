@@ -18,7 +18,10 @@ public static class SessionCookie
 
     public static void Write(HttpResponse response, SignedIn signedIn)
     {
-        response.Cookies.Append(Name, signedIn.RefreshToken, Options(signedIn.RefreshExpiresAt));
+        if (signedIn.RefreshToken is not null)
+        {
+            response.Cookies.Append(Name, signedIn.RefreshToken, Options(signedIn.RefreshExpiresAt));
+        }
 
         // A response with a token in it is never kept by a browser or proxy cache.
         response.Headers.CacheControl = "no-store";

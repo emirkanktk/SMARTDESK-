@@ -1,4 +1,6 @@
+using System.Data.Common;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -9,8 +11,10 @@ using SmartDesk.Application.Features.Auth.Commands.ChangePassword;
 using SmartDesk.Application.Features.Auth.Commands.Login;
 using SmartDesk.Application.Features.Auth.Commands.Logout;
 using SmartDesk.Application.Features.Auth.Commands.RefreshSession;
+using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Infrastructure.Identity;
+using SmartDesk.Infrastructure.Persistence;
 using SmartDesk.Tests.TestSupport;
 
 namespace SmartDesk.Tests.Auth;
@@ -32,48 +36,103 @@ public sealed class SessionTests : IDisposable
 
     public void Dispose() => _database.Dispose();
 
-    private UserSessions Sessions() => new(
-        _database.CreateContext(),
+    private UserSessions Sessions(SmartDeskDbContext? context = null) => new(
+        context ?? _database.CreateContext(),
         new UserAccessCache(new MemoryCache(new MemoryCacheOptions()), new NoRealtimeSessions()),
         Options.Create(new SessionOptions { IdleDays = 14, MaxDays = 30, ReuseGraceSeconds = 30 }),
         _clock);
+
+    // Sessions whose next write happens only after `first` has run: as if `first` had happened
+    // between reading the session and writing it.
+    private UserSessions SessionsOvertakenBy(Func<Task> first) =>
+        Sessions(_database.CreateContext(new JustBeforeTheUpdate(first)));
+
+    private sealed class JustBeforeTheUpdate(Func<Task> first) : DbCommandInterceptor
+    {
+        private bool _ran;
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (!_ran && command.CommandText.TrimStart().StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase))
+            {
+                _ran = true;
+                await first();
+            }
+
+            return result;
+        }
+    }
+
+    [Fact]
+    public async Task Of_two_renewals_with_one_token_at_the_same_moment_only_one_replaces_it()
+    {
+        var started = await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None);
+        SessionRenewal? first = null;
+        var overtaken = SessionsOvertakenBy(async () =>
+            first = await Sessions().RenewAsync(started.RefreshToken!, CancellationToken.None));
+
+        var second = await overtaken.RenewAsync(started.RefreshToken!, CancellationToken.None);
+
+        first!.Session.RefreshToken.Should().NotBeNull();
+        second.Should().NotBeNull("it's the same browser, signed in either way");
+        second!.Session.SessionId.Should().Be(started.SessionId);
+        second.Session.RefreshToken.Should().BeNull("the first answer brings the new token; a second one could arrive last");
+        await using (var context = _database.CreateContext())
+        {
+            context.UserSessions.Single().TokenHash.Should().Be(UserSessions.Hash(first.Session.RefreshToken!));
+        }
+
+        _clock.Advance(TimeSpan.FromMinutes(15));
+        (await Sessions().RenewAsync(first.Session.RefreshToken!, CancellationToken.None))
+            .Should().NotBeNull("the token the browser keeps is the session's current one");
+    }
+
+    [Fact]
+    public async Task A_renewal_overtaken_by_a_sign_out_gets_nothing()
+    {
+        var started = await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None);
+        var overtaken = SessionsOvertakenBy(() => Sessions().EndAsync(started.RefreshToken!, CancellationToken.None));
+
+        (await overtaken.RenewAsync(started.RefreshToken!, CancellationToken.None)).Should().BeNull();
+    }
 
     [Fact]
     public async Task Each_renewal_replaces_the_refresh_token()
     {
         var started = await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None);
 
-        var renewed = await Sessions().RenewAsync(started.RefreshToken, CancellationToken.None);
+        var renewed = await Sessions().RenewAsync(started.RefreshToken!, CancellationToken.None);
 
         renewed.Should().NotBeNull();
         renewed!.UserId.Should().Be(_userId);
         renewed.SessionStamp.Should().Be("stamp-1");
         renewed.Session.SessionId.Should().Be(started.SessionId, "it's the same session");
         renewed.Session.RefreshToken.Should().NotBe(started.RefreshToken);
-        (await Sessions().RenewAsync(renewed.Session.RefreshToken, CancellationToken.None)).Should().NotBeNull();
+        (await Sessions().RenewAsync(renewed.Session.RefreshToken!, CancellationToken.None)).Should().NotBeNull();
     }
 
     [Fact]
     public async Task Two_tabs_renewing_at_once_both_get_through()
     {
         var started = await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None);
-        await Sessions().RenewAsync(started.RefreshToken, CancellationToken.None);
+        await Sessions().RenewAsync(started.RefreshToken!, CancellationToken.None);
 
         _clock.Advance(TimeSpan.FromSeconds(20));
 
-        (await Sessions().RenewAsync(started.RefreshToken, CancellationToken.None)).Should().NotBeNull("the token it replaced still works for a moment");
+        (await Sessions().RenewAsync(started.RefreshToken!, CancellationToken.None)).Should().NotBeNull("the token it replaced still works for a moment");
     }
 
     [Fact]
     public async Task A_replaced_token_used_later_is_a_copy_and_ends_the_session()
     {
         var started = await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None);
-        var renewed = (await Sessions().RenewAsync(started.RefreshToken, CancellationToken.None))!;
+        var renewed = (await Sessions().RenewAsync(started.RefreshToken!, CancellationToken.None))!;
 
         _clock.Advance(TimeSpan.FromSeconds(31));
 
-        (await Sessions().RenewAsync(started.RefreshToken, CancellationToken.None)).Should().BeNull();
-        (await Sessions().RenewAsync(renewed.Session.RefreshToken, CancellationToken.None)).Should().BeNull("whoever holds the newer token is signed out too");
+        (await Sessions().RenewAsync(started.RefreshToken!, CancellationToken.None)).Should().BeNull();
+        (await Sessions().RenewAsync(renewed.Session.RefreshToken!, CancellationToken.None)).Should().BeNull("whoever holds the newer token is signed out too");
     }
 
     [Fact]
@@ -82,17 +141,17 @@ public sealed class SessionTests : IDisposable
         var started = await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None);
 
         _clock.Advance(TimeSpan.FromDays(13));
-        var renewed = (await Sessions().RenewAsync(started.RefreshToken, CancellationToken.None))!;
+        var renewed = (await Sessions().RenewAsync(started.RefreshToken!, CancellationToken.None))!;
         renewed.Session.ExpiresAt.Should().Be(_clock.GetUtcNow().UtcDateTime.AddDays(14), "using it keeps it going");
 
         _clock.Advance(TimeSpan.FromDays(14));
-        (await Sessions().RenewAsync(renewed.Session.RefreshToken, CancellationToken.None)).Should().BeNull();
+        (await Sessions().RenewAsync(renewed.Session.RefreshToken!, CancellationToken.None)).Should().BeNull();
     }
 
     [Fact]
     public async Task No_session_lasts_more_than_30_days()
     {
-        var token = (await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None)).RefreshToken;
+        var token = (await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None)).RefreshToken!;
 
         for (var day = 0; day < 3; day++)
         {
@@ -100,7 +159,7 @@ public sealed class SessionTests : IDisposable
             var renewed = await Sessions().RenewAsync(token, CancellationToken.None);
             if (day < 2)
             {
-                token = renewed!.Session.RefreshToken;
+                token = renewed!.Session.RefreshToken!;
                 renewed.Session.ExpiresAt.Should().BeOnOrBefore(new DateTime(2026, 11, 4, 9, 0, 0, DateTimeKind.Utc));
             }
             else
@@ -117,8 +176,8 @@ public sealed class SessionTests : IDisposable
 
         await using var context = _database.CreateContext();
         var stored = context.UserSessions.Single();
-        stored.TokenHash.Should().Be(UserSessions.Hash(started.RefreshToken)).And.NotContain(started.RefreshToken);
-        started.RefreshToken.Length.Should().BeGreaterThanOrEqualTo(43, "256 random bits");
+        stored.TokenHash.Should().Be(UserSessions.Hash(started.RefreshToken!)).And.NotContain(started.RefreshToken);
+        started.RefreshToken!.Length.Should().BeGreaterThanOrEqualTo(43, "256 random bits");
     }
 
     [Fact]
@@ -127,10 +186,10 @@ public sealed class SessionTests : IDisposable
         var laptop = await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None);
         var phone = await Sessions().StartAsync(_userId, "stamp-1", CancellationToken.None);
 
-        await Sessions().EndAsync(laptop.RefreshToken, CancellationToken.None);
+        await Sessions().EndAsync(laptop.RefreshToken!, CancellationToken.None);
 
-        (await Sessions().RenewAsync(laptop.RefreshToken, CancellationToken.None)).Should().BeNull();
-        (await Sessions().RenewAsync(phone.RefreshToken, CancellationToken.None)).Should().NotBeNull();
+        (await Sessions().RenewAsync(laptop.RefreshToken!, CancellationToken.None)).Should().BeNull();
+        (await Sessions().RenewAsync(phone.RefreshToken!, CancellationToken.None)).Should().NotBeNull();
     }
 
     [Fact]

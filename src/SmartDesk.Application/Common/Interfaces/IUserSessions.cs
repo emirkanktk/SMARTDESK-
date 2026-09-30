@@ -12,6 +12,8 @@ public interface IUserSessions
 
     // Replaces the refresh token and extends the session. Null when the token is unknown, the
     // session has ended or expired, or the token was already replaced (which ends the session).
+    // A renewal that another with the same token beat by a moment keeps the session's new
+    // token as it is: its Session.RefreshToken is null.
     Task<SessionRenewal?> RenewAsync(string refreshToken, CancellationToken cancellationToken);
 
     // Sign-out: ends the session this refresh token belongs to, if any.
@@ -21,8 +23,9 @@ public interface IUserSessions
     Task EndAllAsync(Guid userId, CancellationToken cancellationToken);
 }
 
-// RefreshToken is shown to the client once and stored only as a hash.
-public sealed record IssuedSession(Guid SessionId, string RefreshToken, DateTime ExpiresAt);
+// RefreshToken is shown to the client once and stored only as a hash; null when the client
+// keeps the one it has (see RenewAsync).
+public sealed record IssuedSession(Guid SessionId, string? RefreshToken, DateTime ExpiresAt);
 
 // SessionStamp: the user's stamp when the session started, to compare with the current one.
 public sealed record SessionRenewal(Guid UserId, string SessionStamp, IssuedSession Session);

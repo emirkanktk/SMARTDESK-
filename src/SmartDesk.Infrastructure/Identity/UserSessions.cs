@@ -50,16 +50,15 @@ public sealed class UserSessions(
 
     public async Task<SessionRenewal?> RenewAsync(string refreshToken, CancellationToken cancellationToken)
     {
-        var hash = Hash(refreshToken);
-        var session = await db.UserSessions
-            .SingleOrDefaultAsync(s => s.TokenHash == hash || s.PreviousTokenHash == hash, cancellationToken);
+        var session = await FindAsync(refreshToken, cancellationToken);
         if (session is null || session.RevokedAt is not null)
         {
             return null;
         }
 
         var now = Now;
-        var replacedLongAgo = session.TokenHash != hash
+        var presentedCurrent = session.TokenHash == Hash(refreshToken);
+        var replacedLongAgo = !presentedCurrent
             && (session.RotatedAt is not { } rotatedAt || now - rotatedAt > TimeSpan.FromSeconds(options.Value.ReuseGraceSeconds));
         if (replacedLongAgo || session.ExpiresAt <= now || session.AbsoluteExpiresAt <= now)
         {
@@ -68,21 +67,40 @@ public sealed class UserSessions(
             return null;
         }
 
+        // Replaced only if nobody has replaced it since it was read. Otherwise two renewals with
+        // the same token would both replace it, and the browser could end up holding the one
+        // the database has already forgotten.
         var token = NewToken();
-        session.PreviousTokenHash = session.TokenHash;
-        session.TokenHash = Hash(token);
-        session.RotatedAt = now;
-        session.ExpiresAt = IdleExpiry(session, now);
-        await db.SaveChangesAsync(cancellationToken);
+        var tokenHash = Hash(token);
+        var expiresAt = IdleExpiry(session, now);
+        var replaced = await db.UserSessions
+            .Where(s => s.Id == session.Id && s.TokenHash == session.TokenHash && s.RevokedAt == null)
+            .ExecuteUpdateAsync(
+                set => set
+                    .SetProperty(s => s.PreviousTokenHash, session.TokenHash)
+                    .SetProperty(s => s.TokenHash, tokenHash)
+                    .SetProperty(s => s.RotatedAt, now)
+                    .SetProperty(s => s.ExpiresAt, expiresAt),
+                cancellationToken);
+        if (replaced == 1)
+        {
+            return new SessionRenewal(session.UserId, session.SessionStamp, new IssuedSession(session.Id, token, expiresAt));
+        }
 
-        return new SessionRenewal(session.UserId, session.SessionStamp, new IssuedSession(session.Id, token, session.ExpiresAt));
+        // The session changed since it was read. If it ended, so does this renewal. If another
+        // renewal with the same token got there a moment earlier - two tabs, or a browser
+        // without Web Locks - its answer takes the new token to the same browser, so this one
+        // hands out an access token and leaves the cookie alone: a second new token could reach
+        // the browser last and leave it holding the replaced one.
+        var latest = await db.UserSessions.AsNoTracking().SingleOrDefaultAsync(s => s.Id == session.Id, cancellationToken);
+        return presentedCurrent && latest is { RevokedAt: null }
+            ? new SessionRenewal(session.UserId, session.SessionStamp, new IssuedSession(session.Id, null, latest.ExpiresAt))
+            : null;
     }
 
     public async Task EndAsync(string refreshToken, CancellationToken cancellationToken)
     {
-        var hash = Hash(refreshToken);
-        var session = await db.UserSessions
-            .SingleOrDefaultAsync(s => s.TokenHash == hash || s.PreviousTokenHash == hash, cancellationToken);
+        var session = await FindAsync(refreshToken, cancellationToken);
         if (session is { RevokedAt: null })
         {
             await EndAsync(session, cancellationToken);
@@ -101,10 +119,22 @@ public sealed class UserSessions(
     public static string Hash(string refreshToken) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken)));
 
+    // The session a refresh token belongs to, as the database has it now: the token may be its
+    // current one, or the one it replaced.
+    private Task<UserSession?> FindAsync(string refreshToken, CancellationToken cancellationToken)
+    {
+        var hash = Hash(refreshToken);
+        return db.UserSessions
+            .AsNoTracking()
+            .SingleOrDefaultAsync(s => s.TokenHash == hash || s.PreviousTokenHash == hash, cancellationToken);
+    }
+
     private async Task EndAsync(UserSession session, CancellationToken cancellationToken)
     {
-        session.RevokedAt = Now;
-        await db.SaveChangesAsync(cancellationToken);
+        var now = Now;
+        await db.UserSessions
+            .Where(s => s.Id == session.Id && s.RevokedAt == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.RevokedAt, now), cancellationToken);
         accessCache.Forget(session.UserId);
     }
 
