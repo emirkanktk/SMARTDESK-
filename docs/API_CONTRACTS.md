@@ -376,6 +376,45 @@ What the numbers mean (ADR-0017):
 - **Which resources appear**: every `Active` resource, plus any other that had reservations in the
   range. Blocked windows are not subtracted from the available hours.
 
+## Assistant
+
+Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/assistant` | any authenticated user | `GetAssistantStatusQuery` | → 200 `{ enabled }`: whether this server has an assistant. The app shows it only then. |
+| POST | `/api/assistant/messages` | any authenticated user | `AskAssistantCommand` | body: `{ messages: [{ role, text }], timeZone? }` → 200 `{ reply, proposals }`. 400, 429 per user, 503 - see below. |
+
+- **`messages`** is the whole conversation so far, oldest first: `role` is `"user"` or
+  `"assistant"`, and the last one is the user's new question. At most 40 messages of up to
+  2,000 characters each. The server keeps nothing between requests.
+- **`timeZone`**: an IANA id, the browser's. "Tomorrow at 10" is worked out in it; omitted → UTC,
+  unknown → 400.
+- **`reply`** is plain text. Lines starting with `- ` are a list, and a blank line ends a
+  paragraph.
+- **`proposals`**: up to 3 cards, and nothing has happened yet. Pressing a card's button is the
+  app's own request:
+
+  ```json
+  { "kind": "book", "resourceId": "…", "reservationId": null, "resourceName": "Meeting Room A",
+    "startDateTime": "2026-10-01T11:00:00Z", "endDateTime": "2026-10-01T12:00:00Z", "note": "Sprint planning" }
+  ```
+
+  - `kind: "book"`: send `POST /api/reservations` with `resourceId`, the times and the note.
+    The proposal checked that the resource was free, but the booking is what decides: it can
+    still get a 409.
+  - `kind: "cancel"`: send `POST /api/reservations/{reservationId}/cancel`. The rest describes
+    the reservation.
+- **Errors**:
+  - 400 when there are no messages, more than 40, the last isn't the user's, one is empty or
+    longer than 2,000 characters, a role is unknown, or the time zone is unknown.
+  - 429 after `RateLimiting:AssistantPermitsPerMinute` questions in a minute from one user
+    (20 by default), with `Retry-After` and "You've asked the assistant a lot in the last
+    minute. Wait a moment and try again.".
+  - 503 "The assistant isn't set up on this server." without a key, and "The assistant can't
+    answer right now. Try again in a moment." when the model can't be reached or refuses the
+    key.
+
 ## Real-time (SignalR)
 
 | Hub | Path | Events |
@@ -418,8 +457,8 @@ finds the owner offline isn't queued or repeated.
   (ADR-0008) - "none" in an Auth column above means `[AllowAnonymous]`.
 - Error status codes: 400 validation (`errors` holds a field → messages map), 401 missing/
   invalid token or failed login, 403 authenticated but not allowed (e.g. non-Admin), 409
-  business-rule conflict (e.g. overlapping reservation), 429 too many login attempts, 500
-  unexpected.
+  business-rule conflict (e.g. overlapping reservation), 429 too many login attempts or
+  questions to the assistant, 500 unexpected, 503 the assistant is off or can't answer.
 - **Languages (ADR-0023).** Every message a person reads - `title`, `detail`, validation
   messages, Identity's password rules - is in the language `Accept-Language` asks for:
   Turkish (`tr`, `tr-TR`, …) or English. No header, or any other language, gets English, so

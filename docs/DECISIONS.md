@@ -740,3 +740,57 @@ new tables.
   address for every attempt and walk around the rate limit.
 - **Trade-offs:** a proxy on another machine or container has to be listed, or the API keeps
   seeing only the proxy. The README says how.
+
+## ADR-0029: An optional booking assistant on Claude that proposes and never books
+
+**Decision:**
+- **Optional, and off without a key.** With `Assistant:ApiKey` set, signed-in users get an
+  assistant: a button in the corner of every screen that opens a conversation. Without a key,
+  `GET /api/assistant` answers `enabled: false`, the app shows no button, and
+  `POST /api/assistant/messages` answers 503. Nothing else changes.
+- **Claude, through Anthropic's official SDK** (the `Anthropic` NuGet package):
+  `claude-opus-5-5` at effort `low`, both settings. The instructions and the tool definitions
+  are the same for every request and are cached. The API's server-side fallback is on, so a
+  question one model declines on policy grounds can still be answered by another.
+- **Its tools are the screens' queries, run as the user.** Free resources for a time, resources
+  by name, place or equipment, the resource types, and the user's own reservations. Each one is
+  a MediatR request like a screen's, with the user's identity: team resources (ADR-0022), blocked
+  windows, validation and the booking horizon all apply. The model sees only what the user may
+  see.
+- **It proposes; the user confirms.** `propose_booking` and `propose_cancellation` only put a
+  card under the answer. They check first that the resource is free, or that the reservation is
+  the user's and still to come. The card's button calls `POST /api/reservations` or
+  `POST /api/reservations/{id}/cancel`, the same endpoints, rules and live updates as the
+  screens; a cancellation asks first, as it does everywhere. The assistant has no way to write.
+- **Local times.** The app sends the browser's time zone with each question. The model reads
+  and writes local times (`2026-10-01T14:00`) and the server converts them. It is told the time
+  now, the user's name and role, and the language to answer in.
+- **The server keeps nothing.** The app sends the whole conversation with each question, at
+  most 40 messages of up to 2,000 characters each. When a card is used, the conversation gets
+  a line saying so ("Booked: Room A, …"), which the model reads as the user's.
+- **Limits.** 20 questions a minute per user (`RateLimiting:AssistantPermitsPerMinute`), at most
+  6 rounds of tool calls per answer (`Assistant:MaxToolRounds`), at most 3 cards per answer. So
+  that the limit can count per user, the rate limiter now runs after authentication.
+
+**Why:**
+- The brief lists an optional LLM assistant. It was Burak's; the team took it over when he left
+  (#83). "A room for 4 tomorrow at 10" is quicker to say than to fill in on two screens.
+- Reusing the queries keeps a single access rule. An assistant with its own data access would
+  be one more place to get teams, blocks and time zones right.
+- A model can misread "next Monday" or pick the wrong room. The card shows exactly what would
+  happen, the booking still goes through every rule, and nothing happens unless the user presses
+  a button.
+- Off without a key, development, CI and the tests never need a key or spend anything. The tests
+  use a scripted model, and the Claude adapter is tested against a stand-in for the API.
+- A conversation kept in the browser needs no table and nothing to clean up, and it is gone at
+  sign-out.
+- **Trade-offs:**
+  - Each question costs tokens: Opus 5.5 with cached instructions, often two or three rounds.
+    The two limits cap it, and the log records the tokens each answer used.
+  - The questions and what the tools return go to Anthropic's API: resource names and places,
+    and the user's name and bookings. That is fine for this project. An organization would check
+    its data policy before setting a key.
+  - The model can still be wrong in what it says. Its cards are the only way it acts, and the
+    panel says to check them.
+  - A request that carries a token is now authenticated before it is counted. Sign-in requests
+    carry none, so the sign-in limit costs what it did.

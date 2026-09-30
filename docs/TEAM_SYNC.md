@@ -8,8 +8,8 @@
 | Lütfi | Frontend | Angular architecture, screens, forms, API integration |
 
 Burak (integration) left the team on 2026-09-28. His area moved to Emirkan: SignalR (#17),
-Docker (#18) and the integration tests (#21) are done; the optional LLM assistant wasn't
-started.
+Docker (#18) and the integration tests (#21) are done. Lütfi built the optional LLM
+assistant, agreed in #83 and reviewed by Emirkan (ADR-0029).
 
 One person leans backend, one leans frontend; authentication and SignalR are handled
 together since both sides need to agree on the contract.
