@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
+import { Backdrop } from '../../shared/components/backdrop/backdrop';
 import { NotificationService } from '../../core/services/notification.service';
 import {
   PASSWORD_HINT,
@@ -20,7 +21,7 @@ import {
  * answers nothing else until it's replaced. Every other session ends; this one gets a new token.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Backdrop],
   selector: 'app-change-password',
   host: { role: 'main' },
   styleUrl: './password-pages.scss',

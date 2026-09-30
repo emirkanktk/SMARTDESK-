@@ -1,5 +1,7 @@
+<app-backdrop />
+
 <header class="topbar">
-  <a class="brand" routerLink="/">SmartDesk</a>
+  <a class="brand" routerLink="/"><app-logo /></a>
   <div class="topbar-actions">
     <app-language-switch />
     <app-theme-switch />
@@ -8,71 +10,19 @@
 </header>
 
 <main>
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="hero-text">
-      <p class="eyebrow" i18n="@@home.eyebrow">Office resources &amp; reservations</p>
-      <h1 id="hero-title" i18n="@@home.headline">
-        Book meeting rooms, desks and equipment in seconds.
-      </h1>
-      <p class="lead" i18n="@@home.lead">
-        See what’s free, reserve it, and watch the office calendar update live. SmartDesk makes sure
-        no two people ever get the same slot.
-      </p>
-      <div class="actions">
-        <a class="btn btn-primary btn-lg" routerLink="/login" i18n="@@home.signIn">Sign in</a>
-        <a class="btn btn-secondary btn-lg" href="#how-it-works" i18n="@@home.howItWorksLink"
-          >How it works</a
-        >
-      </div>
-    </div>
-
-    <!-- An illustration of the product, not live data. Resource names are as seeded. -->
-    <div class="preview card" aria-hidden="true">
-      <p class="preview-title" i18n="@@home.preview.today">Today</p>
-      <ul>
-        <li>
-          <span class="time">09:30</span>
-          <span class="what"
-            ><strong>Meeting Room A</strong>
-            <ng-container i18n="@@home.preview.sprintPlanning">Sprint planning</ng-container></span
-          >
-          <span class="state busy" i18n="@@home.preview.booked">Booked</span>
-        </li>
-        <li>
-          <span class="time">11:00</span>
-          <span class="what"
-            ><strong>Desk 3-01</strong>
-            <ng-container i18n="@@home.preview.thirdFloor">3rd Floor</ng-container></span
-          >
-          <span class="state free" i18n="@@home.preview.free">Free</span>
-        </li>
-        <li>
-          <span class="time">14:00</span>
-          <span class="what"
-            ><strong>Company Car</strong>
-            <ng-container i18n="@@home.preview.clientVisit">Client visit</ng-container></span
-          >
-          <span class="state busy" i18n="@@home.preview.booked">Booked</span>
-        </li>
-        <li>
-          <span class="time">16:30</span>
-          <span class="what"
-            ><strong>Board Room</strong>
-            <ng-container i18n="@@home.preview.fifthFloor">5th Floor</ng-container></span
-          >
-          <span class="state free" i18n="@@home.preview.free">Free</span>
-        </li>
-      </ul>
-    </div>
-  </section>
+  <app-home-hero />
 
   <section class="features" aria-labelledby="features-title">
-    <h2 id="features-title" i18n="@@home.featuresTitle">
-      Everything the office shares, in one place
-    </h2>
+    <div class="section-head">
+      <p class="section-eyebrow" i18n="@@home.featuresEyebrow">Why SmartDesk</p>
+      <h2 id="features-title" i18n="@@home.featuresTitle">
+        Everything the office shares, in one place
+      </h2>
+    </div>
     <ul class="feature-grid">
       @for (feature of features; track feature.title) {
         <li class="card feature">
+          <span class="feature-icon"><app-icon [name]="feature.icon" /></span>
           <h3>{{ feature.title }}</h3>
           <p>{{ feature.text }}</p>
         </li>
@@ -81,15 +31,16 @@
   </section>
 
   <section id="how-it-works" class="steps" aria-labelledby="steps-title">
-    <h2 id="steps-title" i18n="@@home.howItWorks">How it works</h2>
+    <div class="section-head">
+      <p class="section-eyebrow" i18n="@@home.stepsEyebrow">Three steps</p>
+      <h2 id="steps-title" i18n="@@home.howItWorks">How it works</h2>
+    </div>
     <ol class="step-list">
       @for (step of steps; track step.title; let i = $index) {
-        <li class="step">
+        <li class="card step">
           <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
-          <div>
-            <h3>{{ step.title }}</h3>
-            <p>{{ step.text }}</p>
-          </div>
+          <h3>{{ step.title }}</h3>
+          <p>{{ step.text }}</p>
         </li>
       }
     </ol>
@@ -113,15 +64,19 @@
     </section>
   }
 
-  <section class="cta" aria-labelledby="cta-title">
+  <section class="cta brand-panel" aria-labelledby="cta-title">
     <h2 id="cta-title" i18n="@@home.ctaTitle">Ready to book?</h2>
-    <a class="btn btn-primary btn-lg" routerLink="/login" i18n="@@home.ctaButton"
+    <p i18n="@@home.ctaText">Rooms, desks, cars and equipment - the whole office, one calendar.</p>
+    <a class="btn btn-light btn-lg" routerLink="/login" i18n="@@home.ctaButton"
       >Sign in to SmartDesk</a
     >
   </section>
 </main>
 
-<footer class="footer text-muted">
-  <span>© {{ year }} SmartDesk</span>
-  <span i18n="@@home.footer">Office resource &amp; reservation system</span>
+<footer class="footer">
+  <app-logo />
+  <span class="text-muted"
+    >© {{ year }} ·
+    <ng-container i18n="@@home.footer">Office resource &amp; reservation system</ng-container></span
+  >
 </footer>

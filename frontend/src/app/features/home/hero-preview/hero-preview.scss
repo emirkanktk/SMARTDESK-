@@ -1,0 +1,227 @@
+:host {
+  position: relative;
+  display: block;
+  padding: var(--space-7) var(--space-5);
+}
+
+.window {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  transform: perspective(1400px) rotateY(-6deg) rotateX(2deg);
+}
+
+.window-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+}
+
+.dots {
+  display: flex;
+  gap: 6px;
+
+  i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #f87171;
+  }
+
+  i:nth-child(2) {
+    background: #fbbf24;
+  }
+
+  i:nth-child(3) {
+    background: #4ade80;
+  }
+}
+
+.window-title {
+  font-weight: 700;
+}
+
+.live {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.125rem 0.6rem;
+  border-radius: 999px;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+// A dot with a ring that keeps spreading out from it.
+.live-dot {
+  position: relative;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: currentColor;
+    animation: ping 1.8s ease-out infinite;
+  }
+}
+
+@keyframes ping {
+  to {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+.slots {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  list-style: none;
+}
+
+.slot {
+  --tone: #6366f1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+
+  & + & {
+    border-top: 1px solid var(--color-border);
+  }
+
+  &[data-tone='green'] {
+    --tone: #10b981;
+  }
+
+  &[data-tone='amber'] {
+    --tone: #f59e0b;
+  }
+
+  &[data-tone='pink'] {
+    --tone: #ec4899;
+  }
+}
+
+.time {
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--tone);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+  }
+}
+
+.state {
+  padding: 0.0625rem var(--space-2);
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+
+  &.free {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+}
+
+// The notes floating over the window's corners.
+.float {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.8125rem;
+  animation: float 6s ease-in-out infinite;
+}
+
+.booked-note {
+  top: var(--space-2);
+  right: 0;
+}
+
+.reminder-note {
+  bottom: var(--space-2);
+  left: 0;
+  animation-delay: -3s;
+}
+
+.float-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #10b981, #0d9488);
+  color: #fff;
+  font-size: 1rem;
+
+  .reminder-note & {
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+  }
+}
+
+.float-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+
+  span {
+    color: var(--color-text-muted);
+  }
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@media (max-width: 520px) {
+  :host {
+    padding: var(--space-6) 0;
+  }
+
+  .window {
+    transform: none;
+  }
+}

@@ -1,12 +1,20 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Backdrop } from '../../shared/components/backdrop/backdrop';
+import { Icon, IconName } from '../../shared/components/icon/icon';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
+import { Logo } from '../../shared/components/logo/logo';
 import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
 import { environment } from '../../../environments/environment';
+import { HomeHero } from './home-hero/home-hero';
 
-interface Feature {
+interface Step {
   title: string;
   text: string;
+}
+
+interface Feature extends Step {
+  icon: IconName;
 }
 
 /**
@@ -14,7 +22,7 @@ interface Feature {
  * never see it - guestGuard sends them straight to their dashboard.
  */
 @Component({
-  imports: [RouterLink, LanguageSwitch, ThemeSwitch],
+  imports: [RouterLink, Backdrop, HomeHero, Icon, LanguageSwitch, Logo, ThemeSwitch],
   selector: 'app-home',
   styleUrl: './home.scss',
   templateUrl: './home.html',
@@ -35,32 +43,38 @@ export class Home {
 
   protected readonly features: readonly Feature[] = [
     {
+      icon: 'search',
       title: $localize`:@@home.feature.free.title:Find what’s free`,
       text: $localize`:@@home.feature.free.text:Search by time, type and capacity, and see only the resources you can book right then.`,
     },
     {
+      icon: 'shield',
       title: $localize`:@@home.feature.noDouble.title:No double bookings`,
       text: $localize`:@@home.feature.noDouble.text:The server refuses overlapping reservations, even when two people click at the same moment.`,
     },
     {
+      icon: 'zap',
       title: $localize`:@@home.feature.live.title:A live office calendar`,
       text: $localize`:@@home.feature.live.text:New bookings and cancellations appear on everyone’s screen straight away, without a reload.`,
     },
     {
+      icon: 'bell',
       title: $localize`:@@home.feature.reminders.title:Reminders`,
       text: $localize`:@@home.feature.reminders.text:Pick 5 to 60 minutes before a reservation starts and get a nudge in the app or on your desktop.`,
     },
     {
+      icon: 'sun',
       title: $localize`:@@home.feature.day.title:Your day at a glance`,
       text: $localize`:@@home.feature.day.text:The dashboard shows today’s bookings, what’s in use right now and your next reservations.`,
     },
     {
+      icon: 'chart',
       title: $localize`:@@home.feature.admin.title:Tools for admins`,
       text: $localize`:@@home.feature.admin.text:Manage resources, block maintenance windows, handle anyone’s bookings and read usage reports.`,
     },
   ];
 
-  protected readonly steps: readonly Feature[] = [
+  protected readonly steps: readonly Step[] = [
     {
       title: $localize`:@@home.step.signIn.title:Sign in`,
       text: $localize`:@@home.step.signIn.text:Use the account your office gave you.`,

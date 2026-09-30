@@ -69,6 +69,14 @@ describe('Home', () => {
     }
   });
 
+  it('ticks off the live calendar, both languages and both themes under the hero', () => {
+    expect(texts('.assurances li')).toEqual([
+      'Live calendar',
+      'Turkish and English',
+      'Light and dark mode',
+    ]);
+  });
+
   it('marks the product preview as decoration for screen readers', () => {
     expect(element.querySelector('.preview')!.getAttribute('aria-hidden')).toBe('true');
   });

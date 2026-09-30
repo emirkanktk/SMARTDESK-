@@ -1,12 +1,6 @@
-:host {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-height: 100vh;
-  padding: var(--space-4);
-}
+@use '../../shared/styles/auth-page';
+
+@include auth-page.auth-page;
 
 .top {
   display: flex;
@@ -14,7 +8,7 @@
   justify-content: space-between;
   gap: var(--space-3);
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
 }
 
 .preferences {
@@ -24,49 +18,24 @@
 }
 
 .back {
-  color: var(--color-text-muted);
+  width: auto;
+}
+
+.brand {
+  display: inline-flex;
+  font-size: 1.5rem;
   text-decoration: none;
-
-  &:hover {
-    color: var(--color-primary);
-  }
-}
-
-.login-card {
-  width: 100%;
-  max-width: 400px;
-  box-shadow: var(--shadow);
-}
-
-h1 {
-  margin-bottom: var(--space-1);
-
-  a {
-    color: var(--color-primary);
-    text-decoration: none;
-  }
-}
-
-.subtitle {
-  margin: 0 0 var(--space-5);
 }
 
 .forgot {
   display: inline-block;
   margin-top: var(--space-2);
   font-size: 0.875rem;
-}
-
-.notice {
-  margin: 0 0 var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius);
-  background: var(--color-success-soft);
-  color: var(--color-success);
+  font-weight: 600;
 }
 
 .signup {
-  margin: var(--space-4) 0 0;
+  margin: var(--space-5) 0 0;
   font-size: 0.875rem;
   text-align: center;
 }

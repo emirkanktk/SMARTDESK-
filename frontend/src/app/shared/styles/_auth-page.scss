@@ -1,20 +1,60 @@
-// The centred card used by the signed-out account screens (forgot and reset password), so
-// they look like the sign-in page they sit next to.
+// The signed-out account screens (sign-in, sign-up, forgot and reset password) and the
+// password change: a card on the drifting brand colour of app-backdrop, like the front page.
+// On wide screens, a page with the showcase (app-auth-showcase) puts it beside the card, which
+// then takes the right-hand half.
 @mixin auth-page {
   :host {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    min-height: 100vh;
+    padding: var(--space-4);
+    overflow-x: clip;
+  }
+
+  app-auth-showcase {
+    display: none;
+  }
+
+  // Beside a long form (sign-up) it stays in view while the form scrolls.
+  @media (min-width: 960px) {
+    :host:has(app-auth-showcase) {
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    }
+
+    app-auth-showcase {
+      position: sticky;
+      top: var(--space-4);
+      display: flex;
+      height: calc(100vh - 2 * var(--space-4));
+    }
+  }
+
+  .auth-main {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: var(--space-3);
-    min-height: 100vh;
-    padding: var(--space-4);
+    padding: var(--space-4) 0;
+    animation: auth-in 0.5s var(--ease-out) both;
   }
 
+  @keyframes auth-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+
+  // A little darker than muted text: on phones it sits where the backdrop's colours overlap.
   .back {
     width: 100%;
-    max-width: 400px;
-    color: var(--color-text-muted);
+    max-width: 420px;
+    color: color-mix(in srgb, var(--color-text) 35%, var(--color-text-muted));
+    font-weight: 500;
     text-decoration: none;
 
     &:hover {
@@ -24,13 +64,19 @@
 
   .auth-card {
     width: 100%;
-    max-width: 400px;
-    box-shadow: var(--shadow);
+    max-width: 420px;
+    padding: var(--space-6);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+
+    @media (max-width: 480px) {
+      padding: var(--space-5);
+    }
   }
 
   h1 {
     margin-bottom: var(--space-1);
-    font-size: 1.5rem;
+    font-size: 1.625rem;
   }
 
   .subtitle {
@@ -40,6 +86,7 @@
   .notice {
     margin: 0 0 var(--space-4);
     padding: var(--space-3) var(--space-4);
+    border: 1px solid color-mix(in srgb, var(--color-success) 25%, transparent);
     border-radius: var(--radius);
     background: var(--color-success-soft);
     color: var(--color-success);

@@ -1,0 +1,32 @@
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-text">
+    <p class="eyebrow">
+      <span class="eyebrow-dot" aria-hidden="true"></span>
+      <span i18n="@@home.eyebrow">Office resources &amp; reservations</span>
+    </p>
+    <h1 id="hero-title" i18n="@@home.headline">
+      Book meeting rooms, desks and equipment <span class="gradient-text">in seconds</span>.
+    </h1>
+    <p class="lead" i18n="@@home.lead">
+      See what’s free, reserve it, and watch the office calendar update live. SmartDesk makes sure
+      no two people ever get the same slot.
+    </p>
+    <div class="actions">
+      <a class="btn btn-primary btn-lg" routerLink="/login">
+        <span i18n="@@home.signIn">Sign in</span>
+        <app-icon name="arrow-right" />
+      </a>
+      <a class="btn btn-secondary btn-lg" href="#how-it-works" i18n="@@home.howItWorksLink"
+        >How it works</a
+      >
+    </div>
+    <ul class="assurances">
+      @for (item of assurances; track item) {
+        <li><app-icon name="check" />{{ item }}</li>
+      }
+    </ul>
+  </div>
+
+  <!-- An illustration of the product, not live data. -->
+  <app-hero-preview class="preview" aria-hidden="true" />
+</section>
