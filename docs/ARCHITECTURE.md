@@ -224,6 +224,12 @@ picker drops seconds and any difference would count as a change.
     laptop slept) is renewed on the next request or guarded navigation.
   - Only one tab renews at a time (the Web Locks API), since each renewal replaces the shared
     cookie. Tabs tell each other about signing in and out over a `BroadcastChannel`.
+  - A renewal ends in one of three ways: a new token, the API saying the session is over
+    (sign out here), or no answer. With no answer the user stays signed in (`isAuthenticated()`
+    stays true while the token may have expired), guards let navigation through, and the
+    service tries again after 10, 20 and 40 seconds, then every minute.
+  - A sign-out that can't reach the server is noted in `localStorage` and finished before the
+    next renewal, so the cookie's session isn't taken up again.
   - The current user (id, name, email, roles) is read from the token's claims, so guards and
     the top bar work without an extra request. The claims only drive the UI: the API
     re-checks the token, its session and the roles on every request.

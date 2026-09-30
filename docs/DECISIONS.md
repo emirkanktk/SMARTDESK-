@@ -639,7 +639,16 @@ new tables.
 - **Rotation, with theft detection.** Each renewal replaces the refresh token. The replaced one
   still works for 30 seconds, for two tabs renewing at once; used later, it can only be a
   copy, and the whole session ends. Tabs take turns renewing (Web Locks) and tell each other
-  about signing in and out (`BroadcastChannel`).
+  about signing in and out (`BroadcastChannel`). The replacement is a conditional update, so
+  two renewals with the same token can't both make one: the second gets an access token and
+  no new cookie, since the first answer brings that to the same browser.
+- **Only the API ends a session.** A renewal that gets no answer - a laptop waking before its
+  Wi-Fi, an API restarting - keeps the user signed in: the app tries again after 10, 20 and
+  40 seconds, then every minute, and guards let navigation through, where the page's calls say
+  the server can't be reached. A 401 from the refresh endpoint ends it. A browser without the
+  cookie gets a 204.
+- **A sign-out is finished.** The cookie can't be removed by script, so a sign-out that can't
+  reach the server is noted in the browser and finished before any session is taken up again.
 - **Ending a session.** A session ends after 14 days without a renewal, after 30 days in any
   case, on sign-out, and when the password changes or the account is switched off. Each access
   token names its session (`sess`), and the per-request check (ADR-0020) refuses a token whose
@@ -660,6 +669,9 @@ new tables.
   sign-out. A 15-minute access token caps what a stolen one is worth.
 - Rotating the refresh token turns a stolen copy into a detectable event: whichever side uses
   a replaced token ends the session for both.
+- A network error says nothing about the session, which is still open on the server. Ending
+  it there would throw away a 14-day session over a Wi-Fi blip. On a shared computer, a
+  sign-out that never reached the server would leave the next person signed in.
 - The per-request session check rides on the per-user lookup that already checks the
   account's status, roles and stamp. That lookup is cached for 30 seconds and gains one small
   indexed query, so most requests cost nothing extra.

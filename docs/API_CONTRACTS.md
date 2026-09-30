@@ -15,7 +15,7 @@ examples below are the English ones.
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
 | POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt, passwordChangeRequired }`, and a new **session** in the `smartdesk_session` cookie (see Sessions below). 400 if a field is missing/malformed, 401 on wrong credentials. With the right password, 403 for an account that isn't active yet or any more (see below). `passwordChangeRequired: true` means the password was set by someone else and must be changed first (ADR-0021). |
-| POST | `/api/auth/refresh` | none (the session cookie) | `RefreshSessionCommand` | no body → the same answer as login, for the session in the cookie, whose refresh token is replaced. 401 `"Your session has ended. Sign in again."`, and the cookie deleted, when there's no cookie, or its session ended, expired, or was used from a copy (see Sessions). Not rate limited. |
+| POST | `/api/auth/refresh` | none (the session cookie) | `RefreshSessionCommand` | no body → the same answer as login, for the session in the cookie, whose refresh token is replaced. 204 when there's no cookie at all: nothing to renew, and no failed request for a guest's browser to show. 401 `"Your session has ended. Sign in again."`, and the cookie deleted, when its session ended, expired, or was used from a copy (see Sessions). Not rate limited. |
 | POST | `/api/auth/logout` | none (the session cookie) | `LogoutCommand` | no body → 204. Ends the cookie's session on the server, so its access tokens stop working too, and deletes the cookie. Fine without a session, and fine twice. |
 | POST | `/api/auth/register` | none | `RegisterCommand` | body: `{ firstName, lastName, email, password, managerEmail? }` → **202** for valid input, whether or not the email already has an account. Without `managerEmail`: a **Manager** who waits for an Admin's approval (ADR-0020). With it: an **Employee** asking to join that manager's team, who waits for that manager's approval (ADR-0021). 400 for missing/malformed fields (`managerEmail` must be a valid address and not the applicant's own), or with `Password`: Identity's reasons for refusing it. |
 | GET | `/api/auth/me` | any authenticated user | `GetCurrentUserQuery` | → `{ id, firstName, lastName, email, roles: string[] }`. Also answers while a password change is required. |
@@ -42,6 +42,11 @@ examples below are the English ones.
   - Each renewal replaces the refresh token. The one it replaced still works for
     `Sessions:ReuseGraceSeconds` (30), so two tabs renewing at once both get through. Used
     after that, it can only be a copy, and the whole session ends.
+  - The replacement is atomic: of two renewals with the same token at the same moment, one
+    replaces it, and the other gets an access token with no `Set-Cookie`, since the first
+    answer brings the new token to the same browser.
+  - The app keeps the user signed in when a renewal gets no answer (status 0, 5xx), and tries
+    again; only an answer from the API (401) ends the session there.
   - A session ends after `Sessions:IdleDays` (14) without a renewal, after `Sessions:MaxDays`
     (30) in any case, on sign-out, and when the password changes or the account is switched
     off.
