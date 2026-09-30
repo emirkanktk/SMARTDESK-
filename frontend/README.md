@@ -111,6 +111,18 @@ bar, front page, sign-in). The choice is kept per browser, and switching reloads
   `toLocaleString()` without a locale.
 - Unit tests run in English, the language of the code.
 
+## The assistant
+
+`layout/assistant` holds the booking assistant (ADR-0029). The shell shows its button in the
+bottom corner, but only when `GET /api/assistant` says the server has one. It needs no setting
+in the app. The conversation is kept in the component until sign-out, and every question sends
+all of it. Replies are plain text, shown as paragraphs and lists (`reply-format.ts`), never as
+HTML. Cards book and cancel through `ReservationService`, so errors, live updates and "My
+reservations" behave as they do on the screens.
+
+The browser tests answer for the model with `page.route` (`e2e/assistant.spec.ts`), so they
+need no key. The booking a card makes still goes to the real API.
+
 ## Look and feel
 
 - **Brand:** indigo into violet. `--gradient-brand` fills the logo (`shared/components/logo`),

@@ -99,6 +99,11 @@ app-profile-menu {
   max-width: 1240px;
   margin: 0 auto;
   padding: var(--space-5);
+
+  // Scrolled to the end, the page's last buttons stay clear of the assistant's.
+  &.with-assistant {
+    padding-bottom: 6.5rem;
+  }
 }
 
 @media (max-width: 640px) {

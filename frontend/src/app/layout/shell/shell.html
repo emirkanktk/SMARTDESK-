@@ -25,6 +25,8 @@
   </div>
 </header>
 
-<main class="content">
+<main class="content" [class.with-assistant]="assistantShown()">
   <router-outlet />
 </main>
+
+<app-assistant (available)="assistantShown.set($event)" />

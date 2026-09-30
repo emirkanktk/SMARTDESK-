@@ -1,0 +1,176 @@
+@if (enabled()) {
+  <button
+    #launcher
+    type="button"
+    class="launcher"
+    aria-controls="assistant-panel"
+    [attr.aria-expanded]="open()"
+    (click)="toggle()"
+  >
+    <app-icon name="sparkles" />
+    <span class="launcher-label" i18n="@@assistant.launcher">Assistant</span>
+  </button>
+
+  @if (open()) {
+    <section
+      id="assistant-panel"
+      class="panel"
+      role="dialog"
+      aria-labelledby="assistant-title"
+      aria-describedby="assistant-intro"
+    >
+      <div class="head">
+        <span class="mark"><app-icon name="sparkles" /></span>
+        <div class="titles">
+          <h2 id="assistant-title" i18n="@@assistant.title">Booking assistant</h2>
+          <p id="assistant-intro" i18n="@@assistant.intro">
+            It finds and prepares; nothing is booked until you confirm.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="icon-button"
+          i18n-title="@@assistant.new"
+          title="New conversation"
+          [disabled]="entries().length === 0 && !failure()"
+          (click)="newConversation()"
+        >
+          <app-icon name="compose" />
+          <span class="visually-hidden" i18n="@@assistant.new">New conversation</span>
+        </button>
+        <button
+          type="button"
+          class="icon-button"
+          i18n-title="@@assistant.close"
+          title="Close the assistant"
+          (click)="close()"
+        >
+          <app-icon name="close" />
+          <span class="visually-hidden" i18n="@@assistant.close">Close the assistant</span>
+        </button>
+      </div>
+
+      <div
+        #log
+        class="log"
+        role="log"
+        i18n-aria-label="@@assistant.conversation"
+        aria-label="Conversation"
+      >
+        <div class="bubble from-assistant">
+          <p>{{ greeting() }}</p>
+        </div>
+
+        @if (entries().length === 0) {
+          <div class="suggestions">
+            @for (suggestion of suggestions; track suggestion) {
+              <button type="button" class="suggestion" (click)="send(suggestion)">
+                {{ suggestion }}
+              </button>
+            }
+          </div>
+        }
+
+        @for (entry of entries(); track entry.id) {
+          @switch (entry.kind) {
+            @case ('user') {
+              <div class="bubble from-user">
+                <span class="visually-hidden" i18n="@@assistant.you">You:</span>
+                <p>{{ entry.text }}</p>
+              </div>
+            }
+            @case ('note') {
+              <p class="event"><app-icon name="check" />{{ entry.text }}</p>
+            }
+            @default {
+              <div class="bubble from-assistant">
+                <span class="visually-hidden" i18n="@@assistant.name">Assistant:</span>
+                @for (block of entry.blocks; track $index) {
+                  @if (block.kind === 'list') {
+                    <ul>
+                      @for (item of block.items; track $index) {
+                        <li>
+                          <ng-container *ngTemplateOutlet="runs; context: { $implicit: item }" />
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p>
+                      <ng-container *ngTemplateOutlet="runs; context: { $implicit: block.parts }" />
+                    </p>
+                  }
+                }
+                @for (card of entry.cards; track $index) {
+                  <app-assistant-card
+                    [proposal]="card.proposal"
+                    [state]="card.state"
+                    [error]="card.error"
+                    (confirmed)="confirm(entry, $index)"
+                  />
+                }
+              </div>
+            }
+          }
+        }
+
+        @if (busy()) {
+          <div class="bubble from-assistant thinking">
+            <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="visually-hidden" i18n="@@assistant.thinking">Thinking…</span>
+          </div>
+        }
+
+        @if (failure(); as failed) {
+          <div class="failure" role="alert">
+            <p>{{ failed.message }}</p>
+            @if (failed.retry) {
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary"
+                i18n="@@assistant.retry"
+                (click)="retry()"
+              >
+                Try again
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <form class="composer" (submit)="$event.preventDefault(); send()">
+        <label class="visually-hidden" for="assistant-input" i18n="@@assistant.inputLabel"
+          >Message to the assistant</label
+        >
+        <textarea
+          #input
+          id="assistant-input"
+          class="input"
+          rows="1"
+          i18n-placeholder="@@assistant.placeholder"
+          placeholder="Ask about rooms, desks, cars…"
+          [maxLength]="maxLength"
+          [value]="draft()"
+          (input)="draft.set($any($event.target).value)"
+          (keydown)="onKeydown($event)"
+        ></textarea>
+        <button type="submit" class="btn btn-primary send" [disabled]="busy() || !draft().trim()">
+          <app-icon name="send" />
+          <span class="visually-hidden" i18n="@@assistant.send">Send</span>
+        </button>
+      </form>
+      <p class="disclaimer" i18n="@@assistant.disclaimer">
+        The assistant can be wrong: check a card before you confirm it.
+      </p>
+    </section>
+  }
+}
+
+<ng-template #runs let-parts>
+  @for (part of parts; track $index) {
+    @if (part.strong) {
+      <strong>{{ part.text }}</strong>
+    } @else {
+      <span>{{ part.text }}</span>
+    }
+  }
+</ng-template>
