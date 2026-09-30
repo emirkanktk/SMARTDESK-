@@ -264,7 +264,7 @@
                   [disabled]="busyId() === account.id"
                   (change)="assignManager(account, $event)"
                 >
-                  <option value="" [selected]="!account.managerId" i18n="@@users.noTeam">
+                  <option value="" [selected]="!account.managerId" i18n="@@users.noTeamRow">
                     No team
                   </option>
                   @for (manager of managers(); track manager.id) {

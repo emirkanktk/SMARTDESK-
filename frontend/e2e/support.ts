@@ -10,7 +10,10 @@ import {
 /** The API the app calls in development. */
 export const API_URL = process.env['E2E_API_URL'] ?? 'https://localhost:7065/api';
 
-/** The Development seed's demo users (ADR-0007). Both employees are in the manager's team. */
+/**
+ * The Development seed's demo users (ADR-0007). The seed puts both employees in the manager's
+ * team, but a local database drifts: ask `teamMember()` rather than assume.
+ */
 export const USERS = {
   admin: 'admin@smartdesk.local',
   manager: 'manager@smartdesk.local',
@@ -42,6 +45,19 @@ export async function apiAs(user: User): Promise<APIRequestContext> {
     ignoreHTTPSErrors: true,
     extraHTTPHeaders: { Authorization: `Bearer ${accessToken}`, 'Accept-Language': 'en' },
   });
+}
+
+/** A demo employee who is an active member of the demo manager's team right now, if any. */
+export async function teamMember(): Promise<User | null> {
+  const manager = await apiAs('manager');
+  const team = (await (await manager.get('team')).json()) as { email: string; status: string }[];
+  await manager.dispose();
+  const employees: User[] = ['ayse', 'mehmet'];
+  return (
+    employees.find((user) =>
+      team.some((member) => member.email === USERS[user] && member.status === 'Active'),
+    ) ?? null
+  );
 }
 
 /** `days` from today at `hour`:00 local time, for `minutes`. */

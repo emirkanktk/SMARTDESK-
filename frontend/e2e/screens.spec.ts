@@ -2,9 +2,10 @@ import AxeBuilder from '@axe-core/playwright';
 import { Page } from '@playwright/test';
 import { expect, test } from './support';
 
-// Every screen, in Turkish (the default, and the longer words): nothing axe finds against
-// WCAG 2.1 AA and its best practices, and nothing wider than a 390px phone. One test per
-// user, with soft checks, so a run lists every screen that fails.
+// Every screen, in Turkish (the default, and the longer words) and in both colour themes:
+// nothing axe finds against WCAG 2.1 AA and its best practices, and nothing wider than a
+// 390px phone. One test per user and theme, with soft checks, so a run lists every screen
+// that fails.
 
 interface Screen {
   path: string;
@@ -78,16 +79,31 @@ async function settle(page: Page): Promise<void> {
   await expect(page.getByText(/yükleniyor…|sayılıyor…/)).toHaveCount(0);
 }
 
-test('the public pages', async ({ browser }) => {
-  const context = await browser.newContext();
-  await check(await context.newPage(), PUBLIC);
-  await context.close();
-});
+/** From the next page load on, in this theme (as if the user had picked it). */
+async function useTheme(page: Page, theme: 'light' | 'dark'): Promise<void> {
+  await page.context().addInitScript((t) => localStorage.setItem('smartdesk_theme', t), theme);
+}
 
-test("an admin's screens", async ({ open }) => {
-  await check(await open('admin', 'tr'), ADMIN);
-});
+for (const theme of ['light', 'dark'] as const) {
+  test.describe(`${theme} theme`, () => {
+    test('the public pages', async ({ browser }) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      await useTheme(page, theme);
+      await check(page, PUBLIC);
+      await context.close();
+    });
 
-test("a manager's screens", async ({ open }) => {
-  await check(await open('manager', 'tr'), MANAGER);
-});
+    test("an admin's screens", async ({ open }) => {
+      const page = await open('admin', 'tr');
+      await useTheme(page, theme);
+      await check(page, ADMIN);
+    });
+
+    test("a manager's screens", async ({ open }) => {
+      const page = await open('manager', 'tr');
+      await useTheme(page, theme);
+      await check(page, MANAGER);
+    });
+  });
+}

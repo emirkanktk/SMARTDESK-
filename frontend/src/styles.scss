@@ -4,6 +4,7 @@
 // Text colours keep at least 4.5:1 (WCAG AA) against white and against their own "soft"
 // background, which is where badges, pills and alerts put them.
 :root {
+  color-scheme: light;
   --color-bg: #f5f7fa;
   --color-surface: #ffffff;
   --color-border: #dde3ea;
@@ -12,6 +13,8 @@
   --color-primary: #2563eb;
   --color-primary-hover: #1d4ed8;
   --color-primary-soft: #eef3ff;
+  // Text on a primary background: a button, a step number.
+  --color-on-primary: #ffffff;
   --color-danger: #b91c1c;
   --color-danger-soft: #fdecec;
   --color-success: #15803d;
@@ -32,10 +35,41 @@
   --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+// Dark: the same tokens picked for a dark background, each text colour still at least 4.5:1 on
+// the backgrounds it sits on. The primary blue gets lighter to stay readable as text, so text
+// on it turns dark. index.html sets data-theme before the app starts (core/theme).
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-border: #334155;
+  --color-text: #e5e7eb;
+  --color-text-muted: #a3aebd;
+  --color-primary: #60a5fa;
+  --color-primary-hover: #93c5fd;
+  --color-primary-soft: #1b3355;
+  --color-on-primary: #0f172a;
+  --color-danger: #f87171;
+  --color-danger-soft: #3f1d24;
+  --color-success: #4ade80;
+  --color-success-soft: #16301f;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #3a2c10;
+  --shadow: 0 4px 16px rgb(0 0 0 / 45%);
+}
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+// Switching themes (theme-switch.ts): the new theme is uncovered in a growing circle over the
+// old one, instead of the browser's default cross-fade.
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
 html,
@@ -86,7 +120,7 @@ a {
 
 .btn-primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
 
   &:hover:not(:disabled) {
     background: var(--color-primary-hover);
