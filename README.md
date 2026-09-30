@@ -20,7 +20,8 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   Admins change roles, move people between teams and disable accounts
   ([ADR-0020](docs/DECISIONS.md), [ADR-0021](docs/DECISIONS.md)).
 - **Resources** - meeting rooms, desks, company cars, projectors, cameras - with type,
-  capacity, location, features and a status (`Active` / `Inactive` / `Maintenance`).
+  capacity, location, features, a status (`Active` / `Inactive` / `Maintenance`) and a photo,
+  or their type's picture until someone uploads one ([ADR-0027](docs/DECISIONS.md)).
   A resource belongs to one or more teams, whose members can see and book it, or it is shared
   by everyone ([ADR-0022](docs/DECISIONS.md)). Admins manage every resource; a Manager adds
   and edits the ones that belong to their team alone. Everyone can browse and filter what
@@ -276,3 +277,17 @@ docker-compose.yml            local PostgreSQL; optional API via the `api` profi
 ```
 
 See `docs/TEAM_SYNC.md` for who owns which part of this structure.
+
+## Photo credits
+
+The pictures shown for each resource type are free photos from
+[Unsplash](https://unsplash.com), used under the [Unsplash License](https://unsplash.com/license),
+resized and re-encoded for the app (`frontend/public/images/resource-types`):
+
+| Picture | Source |
+|---|---|
+| Meeting Room | [photo-1431540015161-0bf868a2d407](https://images.unsplash.com/photo-1431540015161-0bf868a2d407) |
+| Desk | [photo-1518455027359-f3f8164ba6bd](https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd) |
+| Company Car | [photo-1549317661-bd32c8ce0db2](https://images.unsplash.com/photo-1549317661-bd32c8ce0db2) |
+| Projector | [photo-1579036095242-fe07594274ca](https://images.unsplash.com/photo-1579036095242-fe07594274ca), by Chirayu Trivedi |
+| Camera | [photo-1502920917128-1aa500764cbd](https://images.unsplash.com/photo-1502920917128-1aa500764cbd) |

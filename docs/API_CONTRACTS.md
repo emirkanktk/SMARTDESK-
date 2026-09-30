@@ -172,6 +172,9 @@ first come, first served, under the usual overlap rule.
 | PUT | `/api/resources/{id}` | Admin or Manager | `UpdateResourceCommand` | body: the POST fields (without `teamIds`) plus `status`. Full replace: omitting `features` removes them all. A Manager may edit only a resource that belongs to their team alone; a shared resource, or one other teams share, is 403. Teams don't change here. A `status` other than `Active` follows the PATCH rule below (409 while bookings are still to come). |
 | PATCH | `/api/resources/{id}/status` | Admin or Manager | `ChangeResourceStatusCommand` | body: `{ "status": "Inactive" }` → 200 with the resource. Changes only the status, so an Activate/Deactivate button can't overwrite another admin's edit the way a full PUT can. Same status again is a no-op. `Maintenance` or `Inactive` is refused with 409 (`code: "resource-has-reservations"`, `"2 confirmed reservation(s) on Camera C-1 from now on. Cancel or move them first."`) while `Confirmed` reservations on it are still to start; past and running ones don't count, and going back to `Active` is always allowed (issue #41, ADR-0024). A Manager, as for PUT. |
 | PATCH | `/api/resources/{id}/teams` | Admin | `SetResourceTeamsCommand` | body: `{ "teamIds": ["…"] }` → 200 with the resource. Replaces its teams; `[]` makes it shared. Each id must be an active Manager's (400 otherwise), at most 20. Existing reservations are kept. |
+| GET | `/api/resources/{id}/photo` | any authenticated user | `GetResourcePhotoQuery` | The photo's bytes, as `image/jpeg`, `image/png` or `image/webp`. 404 when it has none, or for another team's resource. `Cache-Control: private, no-cache` with an `ETag`: send `If-None-Match` and an unchanged photo is a 304. The app adds `?v={photoUpdatedAt}`, which the API ignores, so a browser never offers an older photo (ADR-0027). |
+| PUT | `/api/resources/{id}/photo` | Admin or Manager | `SetResourcePhotoCommand` | `multipart/form-data` with the file in the field `photo` → 200 with the resource. Sets or replaces it. A JPEG, PNG or WebP of at most 2 MB, recognised by its first bytes, whatever name or type the upload gives (400 on `Photo` otherwise; no SVG). The request itself may be up to 8 MB, so a photo a little over the limit still gets that message. Who may: as for PUT. |
+| DELETE | `/api/resources/{id}/photo` | Admin or Manager | `RemoveResourcePhotoCommand` | 204. Its type's picture shows instead; removing a photo that isn't there is fine. Who may: as for PUT. |
 
 Every resource endpoint returns the same shape:
 
@@ -183,9 +186,13 @@ Every resource endpoint returns the same shape:
   "status": "Active",            // "Active" | "Inactive" | "Maintenance"
   "description": null,
   "features": ["TV", "Video Conference"],
-  "teams": [{ "id": "…", "managerName": "Zeynep Kaya" }]   // [] = shared by everyone
+  "teams": [{ "id": "…", "managerName": "Zeynep Kaya" }],  // [] = shared by everyone
+  "photoUpdatedAt": "2026-10-05T08:00:00.123456Z"          // null = no photo of its own
 }
 ```
+
+`photoUpdatedAt` says when the photo last changed, never the photo itself, so lists stay small;
+the photo comes from `GET /api/resources/{id}/photo`.
 
 **Validation (400):** `name` and `location` required, max 200 chars; `description` max 1000;
 `capacity` 1-1000; `resourceTypeId` must exist; at most 20 `features`, each 1-100 chars, no

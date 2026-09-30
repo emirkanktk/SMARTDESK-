@@ -283,6 +283,12 @@ picker drops seconds and any difference would count as a change.
 - **Password fields.** Every password input sits in `<app-password-field>`, whose eye button
   shows what was typed. It hides it again when the form is sent, so a password manager sees a
   password field.
+- **Resource photos (ADR-0027).** `<app-resource-photo>` shows a resource's photo, or its
+  type's picture from `public/images/resource-types` when it has none, in the resource list,
+  the availability cards, the booking form and the resource form. `ResourcePhotoService`
+  fetches a photo with the token and keeps an object URL per version (`photoUpdatedAt`). The
+  resource form makes a chosen picture smaller (`shared/utils/photo.ts`) and uploads it after
+  the details are saved.
 - **Styling.** Plain SCSS. Design tokens (colors, the brand's gradients, spacing, radius,
   shadows) and shared building blocks (`.btn`, `.field`, `.input`, `.card`, `.alert-error`,
   `.brand-panel`, `.empty`) live in `src/styles.scss`. Component styles use those variables

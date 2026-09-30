@@ -95,6 +95,19 @@ A team a resource belongs to (ADR-0022). Key (`ResourceId`, `TeamId`).
 
 A resource with no rows here is shared by everyone.
 
+### ResourcePhoto
+
+A resource's photo (ADR-0027). At most one per resource, keyed by it.
+
+| Field | Type | Notes |
+|---|---|---|
+| ResourceId | Guid | key, and FK → `Resource.Id`, cascade delete |
+| ContentType | string | `image/jpeg`, `image/png` or `image/webp`, recognised from the first bytes when it was uploaded; max 32 |
+| Data | byte[] | the image, at most 2 MB (`bytea`) |
+| UpdatedAt | DateTime | UTC, when it was last set. Resource responses carry it as `photoUpdatedAt`, and the app uses it to tell a new photo from one it already has |
+
+A resource without a row here shows its type's picture, which ships with the app.
+
 ### ResourceBlock
 
 | Field | Type | Notes |
@@ -117,6 +130,8 @@ ResourceType 1 ── * Resource 1 ── * ResourceFeature
                     Reservation ── (UserId, scalar) ──→ ApplicationUser
 
 Resource 1 ── * ResourceBlock
+
+Resource 1 ── 0..1 ResourcePhoto
 
 ApplicationUser (Manager) 1 ── * ApplicationUser (Employee, via ManagerId)
 
