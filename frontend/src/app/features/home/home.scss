@@ -1,13 +1,19 @@
+@use 'sass:list';
+
 :host {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  // The backdrop's blurred colour reaches past the sides; nothing may scroll sideways.
+  overflow-x: clip;
 }
 
 main {
   flex: 1;
   width: 100%;
-  max-width: 1100px;
+  max-width: 1160px;
   margin: 0 auto;
   padding: 0 var(--space-5);
 
@@ -16,150 +22,87 @@ main {
   }
 }
 
-// Same bar as the signed-in shell, so signing in doesn't feel like moving to another site.
+// Same brand as the signed-in shell, so signing in doesn't feel like moving to another site.
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-5);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  backdrop-filter: saturate(160%) blur(14px);
+  transition: transform 0.25s var(--ease-out);
+
+  // Out of the way while the page scrolls down, back on the way up (HideOnScroll).
+  &.scrolled-away:not(:focus-within) {
+    transform: translateY(-100%);
+  }
 }
 
 .brand {
-  font-weight: 700;
-  font-size: 1.125rem;
-  color: var(--color-primary);
+  display: inline-flex;
+  font-size: 1.2rem;
   text-decoration: none;
 }
 
-.btn-lg {
-  padding: var(--space-3) var(--space-5);
-  font-size: 1rem;
-}
-
-h2 {
-  margin: 0 0 var(--space-4);
-  font-size: 1.5rem;
-  line-height: 1.25;
-}
-
-h3 {
-  margin: 0 0 var(--space-1);
-  font-size: 1.0625rem;
-}
-
-section {
-  margin: var(--space-6) 0;
-}
-
-// Hero
-
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: var(--space-6);
-  align-items: center;
-  margin-top: var(--space-6);
-
-  @media (max-width: 860px) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.eyebrow {
-  margin: 0 0 var(--space-2);
-  color: var(--color-primary);
-  font-weight: 600;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.hero h1 {
-  margin: 0 0 var(--space-4);
-  font-size: clamp(1.75rem, 1.2rem + 2.4vw, 2.75rem);
-  line-height: 1.15;
-}
-
-.lead {
-  margin: 0 0 var(--space-5);
-  font-size: 1.0625rem;
-  color: var(--color-text-muted);
-}
-
-.actions {
+.topbar-actions {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-3);
 }
 
-.preview {
-  padding: var(--space-4);
-  box-shadow: var(--shadow);
+// Phones: no room for it in the bar, and the hero's own "Sign in" is right below.
+@media (max-width: 480px) {
+  .topbar {
+    padding: var(--space-2) var(--space-4);
+  }
 
-  ul {
+  .topbar-actions .btn {
+    display: none;
+  }
+}
+
+section {
+  margin: var(--space-8) 0;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 1.15rem + 1.3vw, 2.125rem);
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.0625rem;
+}
+
+// Features and steps
+
+.section-head {
+  max-width: 40rem;
+  margin: 0 auto var(--space-6);
+  text-align: center;
+
+  h2 {
     margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  li {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) 0;
-    border-bottom: 1px solid var(--color-border);
-
-    &:last-child {
-      border-bottom: 0;
-    }
   }
 }
 
-.preview-title {
-  margin: 0 0 var(--space-1);
-  font-weight: 600;
+.section-eyebrow {
+  margin: 0 0 var(--space-2);
+  color: var(--color-primary);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.time {
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.what {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-
-  strong {
-    margin-right: var(--space-2);
-  }
-}
-
-.state {
-  padding: 0 var(--space-2);
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-
-  &.busy {
-    background: var(--color-primary-soft);
-    color: var(--color-primary);
-  }
-
-  &.free {
-    background: var(--color-success-soft);
-    color: var(--color-success);
-  }
-}
-
-// Features
-
-.feature-grid {
+.feature-grid,
+.step-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
@@ -176,50 +119,68 @@ section {
   }
 }
 
-.feature {
-  padding: var(--space-4);
-
-  p {
-    margin: 0;
-    color: var(--color-text-muted);
-  }
-}
-
-// How it works
-
-.step-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  @media (max-width: 760px) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
+.feature,
 .step {
-  display: flex;
-  gap: var(--space-3);
+  position: relative;
+  transition:
+    transform 0.25s var(--ease-out),
+    box-shadow 0.25s,
+    border-color 0.25s;
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+    box-shadow: var(--shadow-lg);
+  }
 
   p {
     margin: 0;
     color: var(--color-text-muted);
+  }
+}
+
+// Each feature's icon on a gradient of its own.
+.feature-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: var(--space-4);
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--from), var(--to));
+  box-shadow: 0 8px 18px -8px var(--from);
+  color: #fff;
+  font-size: 1.3rem;
+}
+
+$feature-colors: (
+  #6366f1 #8b5cf6,
+  #10b981 #0d9488,
+  #f59e0b #ea580c,
+  #ec4899 #e11d48,
+  #0ea5e9 #2563eb,
+  #a855f7 #d946ef
+);
+
+@for $i from 1 through list.length($feature-colors) {
+  $pair: list.nth($feature-colors, $i);
+
+  .feature:nth-child(#{$i}) .feature-icon {
+    --from: #{list.nth($pair, 1)};
+    --to: #{list.nth($pair, 2)};
   }
 }
 
 .step-number {
   display: grid;
   place-items: center;
-  flex: none;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
-  background: var(--color-primary);
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: var(--space-4);
+  border-radius: 12px;
+  background: var(--gradient-brand);
   color: var(--color-on-primary);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 // Demo accounts (development builds only)
@@ -234,7 +195,7 @@ section {
   }
 
   p {
-    margin: 0 0 var(--space-2);
+    margin: 0 0 var(--space-3);
   }
 
   ul {
@@ -259,32 +220,30 @@ section {
   }
 }
 
-// Closing call to action
-
+// Closing call to action, on a .brand-panel.
 .cta {
-  padding: var(--space-6) var(--space-4);
-  border-radius: var(--radius);
-  background: var(--color-primary-soft);
+  padding: var(--space-8) var(--space-5);
   text-align: center;
 
   h2 {
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-3);
+  }
+
+  p {
+    max-width: 34rem;
+    margin: 0 auto var(--space-6);
+    color: rgb(255 255 255 / 85%);
+    font-size: 1.0625rem;
   }
 }
 
 .footer {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
-  font-size: 0.875rem;
-}
-
-.topbar-actions {
-  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
+  padding: var(--space-5);
+  border-top: 1px solid var(--color-border);
+  font-size: 0.875rem;
 }

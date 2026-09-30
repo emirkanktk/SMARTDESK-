@@ -1,0 +1,37 @@
+<div class="window">
+  <div class="window-bar">
+    <span class="dots"><i></i><i></i><i></i></span>
+    <span class="window-title" i18n="@@home.preview.today">Today</span>
+    <span class="live"
+      ><span class="live-dot"></span><span i18n="@@home.preview.live">Live</span></span
+    >
+  </div>
+  <ul class="slots">
+    @for (slot of slots; track slot.time) {
+      <li class="slot" [attr.data-tone]="slot.tone">
+        <span class="time">{{ slot.time }}</span>
+        <span class="what">
+          <strong>{{ slot.name }}</strong>
+          <span>{{ slot.note }}</span>
+        </span>
+        <span class="state" [class.free]="slot.free">{{ slot.free ? free : booked }}</span>
+      </li>
+    }
+  </ul>
+</div>
+
+<div class="float booked-note">
+  <span class="float-icon"><app-icon name="check" /></span>
+  <span class="float-text">
+    <strong i18n="@@home.preview.reserved">Reserved</strong>
+    <span>Meeting Room A · 09:30</span>
+  </span>
+</div>
+
+<div class="float reminder-note">
+  <span class="float-icon"><app-icon name="bell" /></span>
+  <span class="float-text">
+    <strong i18n="@@home.preview.startsSoon">Starts in 10 minutes</strong>
+    <span>Board Room · 16:30</span>
+  </span>
+</div>

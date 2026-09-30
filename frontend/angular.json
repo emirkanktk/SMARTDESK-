@@ -30,6 +30,7 @@
               }
             ],
             "styles": [
+              "@fontsource-variable/plus-jakarta-sans/index.css",
               "src/styles.scss"
             ],
             "polyfills": [

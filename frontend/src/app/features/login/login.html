@@ -1,83 +1,90 @@
-<div class="top">
-  <a class="back" routerLink="/" i18n="@@login.backHome">← Back to home</a>
-  <span class="preferences">
-    <app-language-switch />
-    <app-theme-switch />
-  </span>
-</div>
+<app-backdrop />
+<app-auth-showcase />
 
-<div class="card login-card">
-  <h1><a routerLink="/">SmartDesk</a></h1>
-  <p class="text-muted subtitle" i18n="@@login.subtitle">
-    Sign in to book meeting rooms, desks and equipment.
-  </p>
+<div class="auth-main">
+  <div class="top">
+    <a class="back" routerLink="/" i18n="@@login.backHome">← Back to home</a>
+    <span class="preferences">
+      <app-language-switch />
+      <app-theme-switch />
+    </span>
+  </div>
 
-  @if (reset() === 'done' && !errorMessage()) {
-    <div class="notice" role="status" i18n="@@login.passwordChanged">
-      Your password has been changed. Sign in with the new one.
-    </div>
-  }
+  <div class="card auth-card login-card">
+    <h1>
+      <a class="brand" routerLink="/"><app-logo /></a>
+    </h1>
+    <p class="text-muted subtitle" i18n="@@login.subtitle">
+      Sign in to book meeting rooms, desks and equipment.
+    </p>
 
-  @if (errorMessage(); as message) {
-    <div class="alert-error" role="alert">{{ message }}</div>
-  }
+    @if (reset() === 'done' && !errorMessage()) {
+      <div class="notice" role="status" i18n="@@login.passwordChanged">
+        Your password has been changed. Sign in with the new one.
+      </div>
+    }
 
-  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-    <div class="field">
-      <label for="email" i18n="@@field.email">Email</label>
-      <input
-        id="email"
-        type="email"
-        class="input"
-        formControlName="email"
-        autocomplete="username"
-        [class.invalid]="showError('email')"
-        [attr.aria-invalid]="showError('email')"
-        aria-describedby="email-error"
-      />
-      @if (showError('email')) {
-        <span id="email-error" class="field-error">
-          @if (form.controls.email.hasError('required')) {
-            <ng-container i18n="@@field.emailRequired">Email is required.</ng-container>
-          } @else {
-            <ng-container i18n="@@field.emailInvalid">Enter a valid email address.</ng-container>
-          }
-        </span>
-      }
-    </div>
+    @if (errorMessage(); as message) {
+      <div class="alert-error" role="alert">{{ message }}</div>
+    }
 
-    <div class="field">
-      <label for="password" i18n="@@field.password">Password</label>
-      <app-password-field>
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="email" i18n="@@field.email">Email</label>
         <input
-          id="password"
-          type="password"
+          id="email"
+          type="email"
           class="input"
-          formControlName="password"
-          autocomplete="current-password"
-          [class.invalid]="showError('password')"
-          [attr.aria-invalid]="showError('password')"
-          aria-describedby="password-error"
+          formControlName="email"
+          autocomplete="username"
+          [class.invalid]="showError('email')"
+          [attr.aria-invalid]="showError('email')"
+          aria-describedby="email-error"
         />
-      </app-password-field>
-      @if (showError('password')) {
-        <span id="password-error" class="field-error" i18n="@@field.passwordRequired"
-          >Password is required.</span
-        >
-      }
-      <a class="forgot" routerLink="/forgot-password" i18n="@@login.forgot">Forgot password?</a>
-    </div>
+        @if (showError('email')) {
+          <span id="email-error" class="field-error">
+            @if (form.controls.email.hasError('required')) {
+              <ng-container i18n="@@field.emailRequired">Email is required.</ng-container>
+            } @else {
+              <ng-container i18n="@@field.emailInvalid">Enter a valid email address.</ng-container>
+            }
+          </span>
+        }
+      </div>
 
-    <button type="submit" class="btn btn-primary btn-block" [disabled]="submitting()">
-      @if (submitting()) {
-        <ng-container i18n="@@login.signingIn">Signing in…</ng-container>
-      } @else {
-        <ng-container i18n="@@login.submit">Sign in</ng-container>
-      }
-    </button>
-  </form>
+      <div class="field">
+        <label for="password" i18n="@@field.password">Password</label>
+        <app-password-field>
+          <input
+            id="password"
+            type="password"
+            class="input"
+            formControlName="password"
+            autocomplete="current-password"
+            [class.invalid]="showError('password')"
+            [attr.aria-invalid]="showError('password')"
+            aria-describedby="password-error"
+          />
+        </app-password-field>
+        @if (showError('password')) {
+          <span id="password-error" class="field-error" i18n="@@field.passwordRequired"
+            >Password is required.</span
+          >
+        }
+        <a class="forgot" routerLink="/forgot-password" i18n="@@login.forgot">Forgot password?</a>
+      </div>
 
-  <p class="signup" i18n="@@login.signUp">
-    New to SmartDesk? <a routerLink="/register">Sign up</a>
-  </p>
+      <button type="submit" class="btn btn-primary btn-block" [disabled]="submitting()">
+        @if (submitting()) {
+          <ng-container i18n="@@login.signingIn">Signing in…</ng-container>
+        } @else {
+          <ng-container i18n="@@login.submit">Sign in</ng-container>
+        }
+      </button>
+    </form>
+
+    <p class="signup" i18n="@@login.signUp">
+      New to SmartDesk? <a routerLink="/register">Sign up</a>
+    </p>
+  </div>
 </div>

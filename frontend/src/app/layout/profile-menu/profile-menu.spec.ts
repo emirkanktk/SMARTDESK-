@@ -1,4 +1,4 @@
-import { computed, signal } from '@angular/core';
+import { LOCALE_ID, computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { Role, Roles } from '../../core/constants/roles';
@@ -88,6 +88,14 @@ describe('ProfileMenu', () => {
     await render();
 
     expect(element.querySelector('.avatar')!.textContent!.trim()).toBe('A');
+  });
+
+  it('writes the initials in capitals the way the language on screen does', async () => {
+    TestBed.overrideProvider(LOCALE_ID, { useValue: 'tr' });
+    signInAs(Roles.Employee, 'ilker', 'ışık');
+    await render();
+
+    expect(element.querySelector('.avatar')!.textContent!.trim()).toBe('İI');
   });
 
   it('opens a menu with the profile, the password page and signing out', async () => {

@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -8,6 +8,7 @@ import { Reservation } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
 import { DashboardService, browserTimeZone } from '../../core/services/dashboard.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
+import { Icon, IconName } from '../../shared/components/icon/icon';
 
 const TIME = 'HH:mm';
 const DAY_AND_TIME = 'EEE d MMM, HH:mm';
@@ -23,6 +24,16 @@ interface Row {
   runningNow: boolean;
 }
 
+interface Tile {
+  label: string;
+  value: number;
+  /** The screen it opens, if any. */
+  link: string | null;
+  icon: IconName;
+  /** Its colour: the icon's and the soft glow behind it. */
+  tone: 'indigo' | 'green' | 'amber' | 'violet';
+}
+
 /**
  * Today at a glance: counts, what's in use right now, everything booked today and the user's
  * next reservations. "Today" is the browser's day (its time zone is sent to the API). Kept
@@ -30,7 +41,7 @@ interface Row {
  * end.
  */
 @Component({
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, NgTemplateOutlet, Icon],
   selector: 'app-dashboard',
   styleUrl: './dashboard.scss',
   templateUrl: './dashboard.html',
@@ -48,7 +59,7 @@ export class Dashboard {
 
   private readonly retries = new Subject<void>();
 
-  protected readonly tiles = computed(() => {
+  protected readonly tiles = computed<Tile[]>(() => {
     const stats = this.data()?.stats;
     if (!stats) return [];
     return [
@@ -56,21 +67,29 @@ export class Dashboard {
         label: $localize`:@@dashboard.tile.active:Active resources`,
         value: stats.activeResources,
         link: '/resources',
+        icon: 'building',
+        tone: 'indigo',
       },
       {
         label: $localize`:@@dashboard.inUseNow:In use now`,
         value: stats.resourcesInUseNow,
         link: null,
+        icon: 'zap',
+        tone: 'green',
       },
       {
         label: $localize`:@@dashboard.tile.today:Reservations today`,
         value: stats.reservationsToday,
         link: null,
+        icon: 'calendar',
+        tone: 'amber',
       },
       {
         label: $localize`:@@dashboard.tile.upcoming:Your upcoming`,
         value: stats.myUpcomingReservations,
         link: '/reservations/mine',
+        icon: 'clipboard',
+        tone: 'violet',
       },
     ];
   });

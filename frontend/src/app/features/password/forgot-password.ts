@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
+import { AuthShowcase } from '../../shared/components/auth-showcase/auth-showcase';
+import { Backdrop } from '../../shared/components/backdrop/backdrop';
 
 /**
  * Asks for a password-reset link. Whatever the API knows, the screen says the same thing
@@ -11,7 +13,7 @@ import { AuthService } from '../../core/services/auth.service';
  * which emails are registered (ADR-0019).
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, AuthShowcase, Backdrop],
   selector: 'app-forgot-password',
   // The page's main landmark: it renders outside the shell, which provides one elsewhere.
   host: { role: 'main' },

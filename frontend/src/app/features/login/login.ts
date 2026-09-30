@@ -4,14 +4,26 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
+import { AuthShowcase } from '../../shared/components/auth-showcase/auth-showcase';
+import { Backdrop } from '../../shared/components/backdrop/backdrop';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
+import { Logo } from '../../shared/components/logo/logo';
 import { PasswordField } from '../../shared/components/password-field/password-field';
 import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
 
 const DEFAULT_REDIRECT = '/dashboard';
 
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, LanguageSwitch, ThemeSwitch, PasswordField],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    AuthShowcase,
+    Backdrop,
+    LanguageSwitch,
+    Logo,
+    PasswordField,
+    ThemeSwitch,
+  ],
   selector: 'app-login',
   // The page's main landmark: it renders outside the shell, which provides one elsewhere.
   host: { role: 'main' },

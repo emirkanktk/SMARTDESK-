@@ -67,7 +67,7 @@ npm run i18n:check                             # every text has its Turkish vers
 | `/login`, `/forgot-password`, `/reset-password` | anyone | Sign-in, and a password reset by emailed link |
 | `/register` | visitors | Sign-up: a team member gives their manager's email and waits for that manager; a manager waits for an admin |
 | `/change-password` | signed in | Change your password. Forced, before anything else, after signing in with a temporary password |
-| `/profile` | signed in | Your own name, which you can change, and your email and role, which an admin changes. Open it, the password page or sign out from the menu under your name in the top right |
+| `/profile` | signed in | Your own name, which you can change, and your email and role, which an admin changes. Open it, the password page or sign out from the menu under your name: at the bottom of the sidebar, or in the top right on narrower screens |
 | `/dashboard` | signed in | Today's reservations, what's in use now, your next bookings |
 | `/resources` | signed in | Your team's resources and the shared ones; admins see every resource. Each row says whose team it belongs to, or "Shared" |
 | `/resources/new`, `/resources/:id/edit` | Admin, Manager | Admins create and edit any resource and pick the teams that may use it (none: shared by everyone). A manager adds resources to their own team, and edits, activates and deactivates only the ones that belong to their team alone (ADR-0022) |
@@ -111,6 +111,33 @@ bar, front page, sign-in). The choice is kept per browser, and switching reloads
   `toLocaleString()` without a locale.
 - Unit tests run in English, the language of the code.
 
+## Look and feel
+
+- **Brand:** indigo into violet. `--gradient-brand` fills the logo (`shared/components/logo`),
+  primary buttons and avatars; the deeper `--gradient-deep` is for large areas with white text,
+  through the `.brand-panel` class (the dashboard's greeting, the front page's closing panel,
+  the sign-in pages' showcase). `.btn-light` is the button for those panels.
+- **Typeface:** Plus Jakarta Sans, bundled with the app from `@fontsource-variable` (no request
+  to a font service; only the Latin subsets a page needs are downloaded), with the system font
+  as the fallback.
+- **Icons:** `<app-icon name="…">` draws one of a small set of line icons in the text's colour.
+  They're decoration: whatever an icon stands for is written next to it. Add one to the list in
+  `icon.ts`.
+- **Layout:** signed-in screens get a sidebar from 1100px, and a bar on top below that. The
+  public pages (front page, sign-in, sign-up, password pages) share `<app-backdrop>`, a slow
+  drift of the brand's colours; on wide screens the account pages put `<app-auth-showcase>`
+  beside the form.
+- **Bars on top** (the app's below 1100px, the front page's) get out of the way while the page
+  scrolls down and come back as soon as it scrolls up, so the navigation is one flick away on a
+  long page. They're always there at the top and the very bottom of a page, and whenever
+  something in them has focus. The `appHideOnScroll` directive (`shared/directives`) sets
+  `scrolled-away`; the bar's styles slide it up.
+- **Motion:** screens rise in as they open, the front page's hero line by line. Hover lifts
+  cards and buttons a little. With "reduce motion" on, nothing moves (`styles.scss`).
+- **Style budgets:** a component's styles stay under 4 kB (`angular.json`). When one grows
+  past that, move a part that stands on its own into a component (the front page's hero and
+  its preview are their own), or a pattern that several screens use into `styles.scss`.
+
 ## Light and dark
 
 The moon/sun button next to **TR | EN** switches between a light and a dark theme. Until a
@@ -120,9 +147,13 @@ browser, and other open tabs follow it.
 - **Colours are tokens.** `src/styles.scss` defines them on `:root` and again, for dark, on
   `:root[data-theme='dark']`. Use `var(--color-…)`, never a colour value, and a new token
   needs a dark value too. Text on a primary background uses `--color-on-primary`, because the
-  dark theme's primary blue is light.
+  dark theme's primary indigo is light.
 - **Contrast:** every text colour keeps at least 4.5:1 on the backgrounds it sits on, in both
-  themes. `e2e/screens.spec.ts` runs axe on every screen in each theme.
+  themes. `e2e/screens.spec.ts` runs axe on every screen in each theme, once the screen's
+  entrance animation is over. axe can't judge text on a gradient or on the drifting backdrop,
+  so keep those colours to the ones already checked: white on `--gradient-deep`, and on the
+  backdrop nothing fainter than the front page's lead (muted text mixed with a third of the
+  text colour).
 - **No flash of the wrong theme:** a small script in `index.html` sets `data-theme` before
   anything is drawn. `ThemeService` (`core/theme`) takes over from there.
 

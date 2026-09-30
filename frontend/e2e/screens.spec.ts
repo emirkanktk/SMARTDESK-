@@ -73,10 +73,21 @@ async function check(page: Page, screens: Screen[]): Promise<void> {
   }
 }
 
-/** Loaded: no request in flight and no "…yükleniyor" / "…sayılıyor" left on screen. */
+/**
+ * Loaded: no request in flight, no "…yükleniyor" / "…sayılıyor" left on screen, and the
+ * screen's entrance over - axe would measure text halfway through fading in. Endless
+ * animations (a drifting background, a pulsing dot) never finish, and don't fade text.
+ */
 async function settle(page: Page): Promise<void> {
   await page.waitForLoadState('networkidle');
   await expect(page.getByText(/yükleniyor…|sayılıyor…/)).toHaveCount(0);
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (a) => a.playState !== 'running' || a.effect?.getComputedTiming().endTime === Infinity,
+      ),
+  );
 }
 
 /** From the next page load on, in this theme (as if the user had picked it). */

@@ -1,43 +1,89 @@
+// Narrow screens first: a bar on top with the logo, the switches and the user's menu, the
+// links in a row below it that scrolls sideways. From 1100px the bar becomes a sidebar.
 :host {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  // A faint wash of the brand's colour in the top corner, behind every screen.
+  background: radial-gradient(56rem 22rem at 90% -8rem, var(--glow-1), transparent 70%) no-repeat;
 }
 
-.topbar {
-  display: flex;
-  flex-wrap: wrap;
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'brand preferences menu'
+    'nav nav nav';
   align-items: center;
-  gap: var(--space-3) var(--space-5);
-  padding: var(--space-3) var(--space-5);
-  background: var(--color-surface);
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-5) 0;
   border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  backdrop-filter: saturate(160%) blur(14px);
+  transition: transform 0.25s var(--ease-out);
+
+  // Out of the way while the page scrolls down, back on the way up (HideOnScroll); never
+  // while something in it has focus.
+  &.scrolled-away:not(:focus-within) {
+    transform: translateY(-100%);
+  }
+}
+
+// Its parts take their own places in the bar's grid, and stack in the sidebar.
+.user {
+  display: contents;
 }
 
 .brand {
-  font-weight: 700;
+  grid-area: brand;
+  justify-self: start;
+  display: inline-flex;
   font-size: 1.125rem;
-  color: var(--color-primary);
   text-decoration: none;
+}
+
+.preferences {
+  grid-area: preferences;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+app-profile-menu {
+  grid-area: menu;
 }
 
 .nav {
+  grid-area: nav;
   display: flex;
-  flex-wrap: wrap;
   gap: var(--space-1);
-  flex: 1;
+  margin: 0 calc(-1 * var(--space-5));
+  padding: var(--space-1) var(--space-5) var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .nav-link {
-  padding: var(--space-2) var(--space-3);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.45rem 0.8rem;
   border-radius: var(--radius);
   color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
   text-decoration: none;
-  font-weight: 500;
   white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
 
   &:hover {
-    background: var(--color-bg);
+    background: var(--color-surface-2);
     color: var(--color-text);
   }
 
@@ -47,45 +93,104 @@
   }
 }
 
-.user {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-}
-
 .content {
   flex: 1;
   width: 100%;
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: var(--space-5);
 }
 
-// Narrow screens: brand and user on the first row, the navigation on its own row below
-// that scrolls sideways instead of stacking one link per line.
-@media (max-width: 760px) {
-  .topbar {
+@media (max-width: 640px) {
+  .bar {
+    gap: var(--space-2) var(--space-3);
     padding: var(--space-2) var(--space-4) 0;
-    gap: var(--space-2);
-  }
-
-  .brand {
-    flex: 1;
   }
 
   .nav {
-    order: 3;
-    flex-basis: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
     margin: 0 calc(-1 * var(--space-4));
-    padding: 0 var(--space-4) var(--space-2);
+    padding: var(--space-1) var(--space-4) var(--space-2);
   }
 
   .content {
     padding: var(--space-4);
+  }
+}
+
+// Wide screens: a sidebar with the links down the side and the user's card at the bottom,
+// where the user's menu opens upwards (profile-menu.scss).
+@media (min-width: 1100px) {
+  :host {
+    display: grid;
+    grid-template-columns: 17rem minmax(0, 1fr);
+  }
+
+  .bar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-5);
+    height: 100vh;
+    padding: var(--space-5) var(--space-4) var(--space-4);
+    overflow-y: auto;
+    border-bottom: 0;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-surface);
+    backdrop-filter: none;
+
+    // A sidebar takes no height from the page, so it stays put.
+    &.scrolled-away:not(:focus-within) {
+      transform: none;
+    }
+  }
+
+  .brand {
+    align-self: flex-start;
+    padding: var(--space-1) var(--space-2);
+    font-size: 1.25rem;
+  }
+
+  .nav {
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .nav-link {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+
+    // The open screen's link gets a bar of the brand's colour at the sidebar's edge.
+    &.active::before {
+      content: '';
+      position: absolute;
+      top: 0.5rem;
+      bottom: 0.5rem;
+      left: calc(-1 * var(--space-4));
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--gradient-brand);
+    }
+  }
+
+  .user {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-2);
+  }
+
+  .preferences {
+    justify-content: space-between;
+  }
+
+  .content {
+    padding: var(--space-6) var(--space-6) var(--space-7);
   }
 }

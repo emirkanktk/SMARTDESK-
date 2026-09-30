@@ -12,16 +12,17 @@ import { Router, RouterLink } from '@angular/router';
 import { Roles } from '../../core/constants/roles';
 import { roleLabel } from '../../core/i18n/labels';
 import { AuthService } from '../../core/services/auth.service';
+import { Icon } from '../../shared/components/icon/icon';
 
 /**
- * The signed-in user in the top bar: their initials, name and role, opening a menu with their
- * profile, the password page and signing out. A menu button as WAI-ARIA describes it: the
- * arrow keys move through the items, Escape closes it and gives focus back to the button, and
- * a click anywhere else closes it.
+ * The signed-in user in the top bar or at the bottom of the sidebar: their initials, name and
+ * role, opening a menu with their profile, the password page and signing out. A menu button as
+ * WAI-ARIA describes it: the arrow keys move through the items, Escape closes it and gives
+ * focus back to the button, and a click anywhere else closes it.
  */
 @Component({
   selector: 'app-profile-menu',
-  imports: [RouterLink],
+  imports: [RouterLink, Icon],
   templateUrl: './profile-menu.html',
   styleUrl: './profile-menu.scss',
   host: {

@@ -5,6 +5,8 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
+import { AuthShowcase } from '../../shared/components/auth-showcase/auth-showcase';
+import { Backdrop } from '../../shared/components/backdrop/backdrop';
 import { PasswordField } from '../../shared/components/password-field/password-field';
 import {
   PASSWORD_HINT,
@@ -20,7 +22,7 @@ import {
  * still signed in; that session ends, so the sign-in page can confirm the change.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, PasswordField],
+  imports: [ReactiveFormsModule, RouterLink, AuthShowcase, Backdrop, PasswordField],
   selector: 'app-reset-password',
   // The page's main landmark: it renders outside the shell, which provides one elsewhere.
   host: { role: 'main' },

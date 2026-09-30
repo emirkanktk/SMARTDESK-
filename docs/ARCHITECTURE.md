@@ -194,10 +194,15 @@ frontend/src/app/
     services/        AuthService, NotificationService, ReservationHubService
     utils/           JWT claim decoding, isApiUrl
   layout/
-    shell/           top bar + navigation around every signed-in screen
+    shell/           navigation and the user around every signed-in screen: a sidebar on
+                     wide screens, a bar on top on narrower ones
+    profile-menu/    the user's menu: profile, password page, sign out
     notification-host/  toast messages
   shared/
-    components/      small reusable UI pieces (e.g. StatusBadge, LanguageSwitch, ThemeSwitch)
+    components/      small reusable UI pieces (e.g. StatusBadge, LanguageSwitch, ThemeSwitch,
+                     Logo, Icon, Backdrop, AuthShowcase)
+    directives/      HideOnScroll: a bar on top gets out of the way while the page scrolls
+                     down, and is back on the way up
     utils/           form helpers (applyServerErrors: API 400 messages -> form controls,
                      keepDurationWhenStartMoves), datetime-local <-> Date conversion
     validators/      dateRangeValidator (end after start, max length, start not in the
@@ -269,18 +274,22 @@ picker drops seconds and any difference would count as a change.
   then imports the app and bootstraps it with a matching `LOCALE_ID`. The **TR | EN** switch
   stores the choice and reloads. Texts are marked with `i18n` in templates and `$localize` in
   code; `npm run i18n:extract` lists what still needs a Turkish version.
-- **Top bar.** Next to **TR | EN** and the theme switch, `<app-profile-menu>` shows the user's
-  initials, name and role. It opens a menu, built to the WAI-ARIA menu button pattern (arrow
-  keys, Escape, a click outside), with **My profile** (`/profile`, the user's own name), the
-  password page and **Sign out**.
+- **Sidebar and user menu.** From 1100px the shell is a sidebar: the links, then the user's
+  card with **TR | EN**, the theme switch and `<app-profile-menu>`; on narrower screens they sit
+  in a bar on top. The menu shows the user's initials, name and role, and opens (upwards in the
+  sidebar) a menu built to the WAI-ARIA menu button pattern (arrow keys, Escape, a click
+  outside), with **My profile** (`/profile`, the user's own name), the password page and
+  **Sign out**.
 - **Password fields.** Every password input sits in `<app-password-field>`, whose eye button
   shows what was typed. It hides it again when the form is sent, so a password manager sees a
   password field.
-- **Styling.** Plain SCSS. Design tokens (colors, spacing, radius) and shared building blocks
-  (`.btn`, `.field`, `.input`, `.card`, `.alert-error`) live in `src/styles.scss`. Component
-  styles use those variables instead of hardcoded values. The dark theme redefines the colour
-  tokens under `:root[data-theme='dark']`, which a script in `index.html` sets before the first
-  paint: the stored choice, or the system's setting.
+- **Styling.** Plain SCSS. Design tokens (colors, the brand's gradients, spacing, radius,
+  shadows) and shared building blocks (`.btn`, `.field`, `.input`, `.card`, `.alert-error`,
+  `.brand-panel`, `.empty`) live in `src/styles.scss`. Component styles use those variables
+  instead of hardcoded values. The dark theme redefines the colour tokens under
+  `:root[data-theme='dark']`, which a script in `index.html` sets before the first paint: the
+  stored choice, or the system's setting. The typeface (Plus Jakarta Sans) is bundled with the
+  app from `@fontsource-variable`, so no page asks a font service for anything.
 
 ## 8. Team ownership boundaries
 

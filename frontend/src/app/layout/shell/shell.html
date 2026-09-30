@@ -1,5 +1,5 @@
-<header class="topbar">
-  <a class="brand" routerLink="/dashboard">SmartDesk</a>
+<header class="bar" appHideOnScroll>
+  <a class="brand" routerLink="/dashboard"><app-logo /></a>
 
   <nav class="nav" aria-label="Main" i18n-aria-label="@@nav.label">
     @for (item of visibleNavItems(); track item.path) {
@@ -9,14 +9,18 @@
         routerLinkActive="active"
         [routerLinkActiveOptions]="{ exact: item.path === '/admin' }"
         ariaCurrentWhenActive="page"
-        >{{ item.label }}</a
       >
+        <app-icon [name]="item.icon" />
+        <span>{{ item.label }}</span>
+      </a>
     }
   </nav>
 
   <div class="user">
-    <app-language-switch />
-    <app-theme-switch />
+    <div class="preferences">
+      <app-language-switch />
+      <app-theme-switch />
+    </div>
     <app-profile-menu />
   </div>
 </header>
