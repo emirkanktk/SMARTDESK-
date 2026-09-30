@@ -1,0 +1,54 @@
+<button
+  #trigger
+  type="button"
+  class="trigger"
+  aria-haspopup="menu"
+  aria-controls="profile-menu"
+  [attr.aria-label]="buttonLabel()"
+  [attr.aria-expanded]="open()"
+  (click)="toggle()"
+  (keydown.arrowdown)="openAt(0, $event)"
+  (keydown.arrowup)="openAt(-1, $event)"
+>
+  <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+  <span class="who">
+    <span class="user-name">{{ displayName() }}</span>
+    @if (roleBadge(); as role) {
+      <span class="badge">{{ role }}</span>
+    }
+  </span>
+  <svg class="chevron" [class.up]="open()" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <path d="M4 6l4 4 4-4" />
+  </svg>
+</button>
+
+@if (open()) {
+  <div
+    id="profile-menu"
+    class="menu"
+    role="menu"
+    aria-label="Account"
+    i18n-aria-label="@@profileMenu.label"
+    (keydown)="onMenuKeydown($event)"
+  >
+    <div class="identity">
+      <span class="avatar large" aria-hidden="true">{{ initials() }}</span>
+      <div class="who">
+        <span class="full-name">{{ displayName() }}</span>
+        <span class="email">{{ email() }}</span>
+      </div>
+    </div>
+    <a #item role="menuitem" class="item" routerLink="/profile" (click)="close()">
+      <app-icon name="user" />
+      <span i18n="@@profileMenu.profile">My profile</span>
+    </a>
+    <a #item role="menuitem" class="item" routerLink="/change-password" (click)="close()">
+      <app-icon name="key" />
+      <span i18n="@@profileMenu.password">Change password</span>
+    </a>
+    <button #item role="menuitem" type="button" class="item sign-out" (click)="signOut()">
+      <app-icon name="logout" />
+      <span i18n="@@nav.signOut">Sign out</span>
+    </button>
+  </div>
+}

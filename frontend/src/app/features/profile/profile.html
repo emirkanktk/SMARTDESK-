@@ -1,0 +1,69 @@
+<div class="page-header">
+  <h1 i18n="@@profile.title">My profile</h1>
+</div>
+
+@if (user(); as me) {
+  <section class="card account" aria-labelledby="account-title">
+    <h2 id="account-title" class="section-title" i18n="@@profile.account">Account</h2>
+    <dl class="details">
+      <dt i18n="@@field.email">Email</dt>
+      <dd>{{ me.email }}</dd>
+      <dt i18n="@@profile.role">Role</dt>
+      <dd>{{ roles() }}</dd>
+    </dl>
+    <p class="text-muted hint" i18n="@@profile.adminChanges">
+      An administrator changes your email and role.
+    </p>
+  </section>
+
+  <form class="card form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <h2 class="section-title" i18n="@@profile.nameTitle">Your name</h2>
+    @if (formError(); as message) {
+      <div class="alert-error" role="alert">{{ message }}</div>
+    }
+
+    <div class="row">
+      <div class="field">
+        <label for="firstName" i18n="@@field.firstName">First name</label>
+        <input
+          id="firstName"
+          class="input"
+          formControlName="firstName"
+          autocomplete="given-name"
+          [maxlength]="maxNameLength"
+          [class.invalid]="errorFor('firstName')"
+        />
+        @if (errorFor('firstName'); as error) {
+          <span class="field-error">{{ error }}</span>
+        }
+      </div>
+      <div class="field">
+        <label for="lastName" i18n="@@field.lastName">Last name</label>
+        <input
+          id="lastName"
+          class="input"
+          formControlName="lastName"
+          autocomplete="family-name"
+          [maxlength]="maxNameLength"
+          [class.invalid]="errorFor('lastName')"
+        />
+        @if (errorFor('lastName'); as error) {
+          <span class="field-error">{{ error }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a class="btn btn-secondary" routerLink="/change-password" i18n="@@profileMenu.password"
+        >Change password</a
+      >
+      <button type="submit" class="btn btn-primary" [disabled]="saving() || form.pristine">
+        @if (saving()) {
+          <ng-container i18n="@@common.saving">Saving…</ng-container>
+        } @else {
+          <ng-container i18n="@@common.saveChanges">Save changes</ng-container>
+        }
+      </button>
+    </div>
+  </form>
+}

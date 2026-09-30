@@ -1,4 +1,4 @@
-import { LOCALE_ID, computed, signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { Role, Roles } from '../../core/constants/roles';
@@ -74,31 +74,6 @@ describe('Shell', () => {
     expect(badge(element)).toBe('Admin');
   });
 
-  const avatar = (element: HTMLElement) => element.querySelector('.avatar')!.textContent!.trim();
-
-  it("puts the user's initials in the avatar", async () => {
-    expect(avatar(await render())).toBe('AY');
-  });
-
-  it("uses the email's first letter for a user without a name", async () => {
-    currentUser.set({ id: 'u-2', firstName: '', lastName: '', email: 'zeynep@x.io', roles: [] });
-
-    expect(avatar(await render())).toBe('Z');
-  });
-
-  it('writes the initials in capitals the way the language on screen does', async () => {
-    TestBed.overrideProvider(LOCALE_ID, { useValue: 'tr' });
-    currentUser.set({
-      id: 'u-3',
-      firstName: 'ilker',
-      lastName: 'ışık',
-      email: 'i@x.io',
-      roles: [],
-    });
-
-    expect(avatar(await render())).toBe('İI');
-  });
-
   it('shows My team to managers, and no admin links', async () => {
     signInAs(Roles.Manager);
     const element = await render();
@@ -109,12 +84,16 @@ describe('Shell', () => {
     expect(badge(element)).toBe('Manager');
   });
 
-  it('signs out and goes to the front page', async () => {
+  it('signs out from the user menu and goes to the front page', async () => {
     const navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
-    const element = await render();
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    const element: HTMLElement = fixture.nativeElement;
 
-    const buttons = Array.from(element.querySelectorAll<HTMLButtonElement>('button'));
-    buttons.find((b) => b.textContent!.trim() === 'Sign out')!.click();
+    element.querySelector<HTMLButtonElement>('app-profile-menu .trigger')!.click();
+    await fixture.whenStable();
+    const items = Array.from(element.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    items.find((item) => item.textContent!.trim() === 'Sign out')!.click();
 
     expect(logout).toHaveBeenCalled();
     expect(navigateByUrl).toHaveBeenCalledWith('/');

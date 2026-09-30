@@ -7,6 +7,7 @@ import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
 import { AuthShowcase } from '../../shared/components/auth-showcase/auth-showcase';
 import { Backdrop } from '../../shared/components/backdrop/backdrop';
+import { PasswordField } from '../../shared/components/password-field/password-field';
 import { applyServerErrors } from '../../shared/utils/server-errors';
 import {
   PASSWORD_HINT,
@@ -28,7 +29,7 @@ export type AccountType = 'member' | 'manager';
  * the email already had an account or the manager's email matched anyone.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, AuthShowcase, Backdrop],
+  imports: [ReactiveFormsModule, RouterLink, AuthShowcase, Backdrop, PasswordField],
   selector: 'app-register',
   host: { role: 'main' },
   styleUrl: './register.scss',

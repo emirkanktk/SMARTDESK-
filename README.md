@@ -188,6 +188,19 @@ The Development seed also creates eight sample resources (meeting rooms, desks, 
 car, a projector, and a camera under maintenance) when the database has none. The five
 resource types come from a migration and exist in every environment (ADR-0010).
 
+### Behind a reverse proxy
+
+In production the API sits behind a reverse proxy that terminates HTTPS (nginx, a load
+balancer). The API reads the client's address and the original scheme from the proxy's
+`X-Forwarded-For` and `X-Forwarded-Proto` headers, but only when the request comes from a
+proxy it trusts (ADR-0028). A proxy on the same machine is trusted as it is. Any other proxy
+has to be listed, or every user shares one sign-in rate limit and HSTS is never sent:
+
+```bash
+ForwardedHeaders__KnownProxies__0=10.0.0.5         # the proxy's address, or
+ForwardedHeaders__KnownNetworks__0=172.18.0.0/16   # the network it's on, e.g. a Docker network
+```
+
 ### API at a glance
 
 Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS.md).

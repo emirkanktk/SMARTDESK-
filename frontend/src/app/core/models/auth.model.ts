@@ -23,6 +23,12 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+/** Body of `PUT /api/auth/me`: the signed-in user's own name. */
+export interface UpdateProfileRequest {
+  firstName: string;
+  lastName: string;
+}
+
 export interface CurrentUser {
   id: string;
   firstName: string;

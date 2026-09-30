@@ -401,6 +401,37 @@ describe('AuthService', () => {
     });
   });
 
+  it('changes the name, shows it at once, then renews so the token carries it', async () => {
+    const { service, http } = createService();
+    service.login({ email: 'employee1@smartdesk.local', password: 'secret' }).subscribe();
+    http.expectOne(LOGIN).flush(session());
+
+    let saved: unknown;
+    service
+      .updateProfile({ firstName: 'Ayşe Nur', lastName: 'Demir' })
+      .subscribe((u) => (saved = u));
+    const req = http.expectOne({ method: 'PUT', url: `${environment.apiUrl}/auth/me` });
+    expect(req.request.body).toEqual({ firstName: 'Ayşe Nur', lastName: 'Demir' });
+    expect(req.request.context.get(SKIP_ERROR_NOTIFICATION)).toBe(true);
+    const profile = {
+      id: '11111111-1111-1111-1111-111111111111',
+      firstName: 'Ayşe Nur',
+      lastName: 'Demir',
+      email: 'employee1@smartdesk.local',
+      roles: [Roles.Employee],
+    };
+    req.flush(profile);
+
+    expect(service.displayName()).toBe('Ayşe Nur Demir');
+    const renewed = fakeJwt({ given_name: 'Ayşe Nur', family_name: 'Demir' });
+    http.expectOne(REFRESH).flush(session({ accessToken: renewed }));
+    await settle();
+
+    expect(saved).toEqual(profile);
+    expect(service.getToken()).toBe(renewed);
+    expect(service.displayName()).toBe('Ayşe Nur Demir');
+  });
+
   it('asks for a reset link without a session and without a toast', () => {
     const { service, http } = createService();
 

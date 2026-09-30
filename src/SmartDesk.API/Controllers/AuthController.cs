@@ -12,6 +12,7 @@ using SmartDesk.Application.Features.Auth.Commands.Login;
 using SmartDesk.Application.Features.Auth.Commands.Logout;
 using SmartDesk.Application.Features.Auth.Commands.RefreshSession;
 using SmartDesk.Application.Features.Auth.Commands.ResetPassword;
+using SmartDesk.Application.Features.Auth.Commands.UpdateProfile;
 using SmartDesk.Application.Features.Auth.Queries.GetCurrentUser;
 using SmartDesk.Application.Resources;
 
@@ -145,4 +146,13 @@ public sealed class AuthController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public Task<CurrentUserDto> Me(CancellationToken cancellationToken) =>
         sender.Send(new GetCurrentUserQuery(), cancellationToken);
+
+    // The signed-in user's own name. The answer is the profile as it is now; the app then
+    // renews its session, so its token carries the new name too.
+    [HttpPut("me")]
+    [ProducesResponseType<CurrentUserDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public Task<CurrentUserDto> UpdateProfile(UpdateProfileCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command, cancellationToken);
 }

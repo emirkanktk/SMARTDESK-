@@ -1,12 +1,12 @@
-import { Component, LOCALE_ID, computed, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, computed, inject } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Role, Roles } from '../../core/constants/roles';
-import { roleLabel } from '../../core/i18n/labels';
 import { AuthService } from '../../core/services/auth.service';
 import { Icon, IconName } from '../../shared/components/icon/icon';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
 import { Logo } from '../../shared/components/logo/logo';
 import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
+import { ProfileMenu } from '../profile-menu/profile-menu';
 
 interface NavItem {
   path: string;
@@ -17,21 +17,27 @@ interface NavItem {
 }
 
 /**
- * Frame around every signed-in screen: the navigation, the user and sign-out. A sidebar on
- * wide screens; on narrower ones a bar on top, its links in a row that scrolls sideways.
+ * Frame around every signed-in screen: the navigation, the language and theme switches, and
+ * the user's menu (profile, password, sign out). A sidebar on wide screens, with the user's
+ * card at the bottom; on narrower ones a bar on top, its links in a row that scrolls sideways.
  */
 @Component({
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, Icon, LanguageSwitch, Logo, ThemeSwitch],
+  imports: [
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
+    Icon,
+    LanguageSwitch,
+    Logo,
+    ProfileMenu,
+    ThemeSwitch,
+  ],
   selector: 'app-shell',
   styleUrl: './shell.scss',
   templateUrl: './shell.html',
 })
 export class Shell {
   private readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
-  private readonly locale = inject(LOCALE_ID);
-
-  protected readonly displayName = this.authService.displayName;
 
   private readonly navItems: readonly NavItem[] = [
     { path: '/dashboard', label: $localize`:@@nav.dashboard:Dashboard`, icon: 'dashboard' },
@@ -66,29 +72,4 @@ export class Shell {
       (item) => !item.roles || item.roles.some((role) => this.authService.hasRole(role)),
     );
   });
-
-  /** "Admin" or "Manager" next to the name; nothing for an Employee. */
-  protected readonly roleBadge = computed(() =>
-    this.authService.isAdmin()
-      ? roleLabel(Roles.Admin)
-      : this.authService.isManager()
-        ? roleLabel(Roles.Manager)
-        : null,
-  );
-
-  /**
-   * For the avatar: "AY" for Ayşe Yılmaz, the email's first letter when there's no name. A
-   * token may leave any of them out.
-   */
-  protected readonly initials = computed(() => {
-    const user = this.authService.currentUser();
-    if (!user) return '';
-    const letters = [user.firstName, user.lastName].map((part) => part?.trim().charAt(0) ?? '');
-    return (letters.join('') || user.email?.charAt(0) || '').toLocaleUpperCase(this.locale);
-  });
-
-  protected logout(): void {
-    this.authService.logout();
-    void this.router.navigateByUrl('/');
-  }
 }

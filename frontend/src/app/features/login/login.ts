@@ -8,6 +8,7 @@ import { AuthShowcase } from '../../shared/components/auth-showcase/auth-showcas
 import { Backdrop } from '../../shared/components/backdrop/backdrop';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
 import { Logo } from '../../shared/components/logo/logo';
+import { PasswordField } from '../../shared/components/password-field/password-field';
 import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
 
 const DEFAULT_REDIRECT = '/dashboard';
@@ -20,6 +21,7 @@ const DEFAULT_REDIRECT = '/dashboard';
     Backdrop,
     LanguageSwitch,
     Logo,
+    PasswordField,
     ThemeSwitch,
   ],
   selector: 'app-login',

@@ -68,7 +68,7 @@ public class ReservationHubTests
     private sealed class FakeConnection(ClaimsPrincipal user) : HubCallerContext
     {
         public override string ConnectionId { get; } = Guid.NewGuid().ToString();
-        public override string? UserIdentifier => user.FindFirstValue(ClaimTypes.NameIdentifier);
+        public override string? UserIdentifier => User?.FindFirstValue(ClaimTypes.NameIdentifier);
         public override ClaimsPrincipal? User { get; } = user;
         public override IDictionary<object, object?> Items { get; } = new Dictionary<object, object?>();
         public override IFeatureCollection Features { get; } = new FeatureCollection();

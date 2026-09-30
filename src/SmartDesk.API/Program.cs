@@ -1,7 +1,9 @@
 using System.Globalization;
+using System.Net;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SmartDesk.API.Authentication;
@@ -106,6 +108,24 @@ builder.Services.AddProblemDetails();
 
 builder.Services.AddSmartDeskRateLimiting(builder.Configuration);
 
+// Behind a reverse proxy, the client's address and the scheme it used arrive in X-Forwarded-For
+// and X-Forwarded-Proto (ADR-0028). Anyone can send those headers, so they're believed only
+// from the proxies listed in ForwardedHeaders:KnownProxies (addresses) or KnownNetworks (CIDR
+// ranges, e.g. a Docker network). With neither set, only a proxy on this machine is trusted.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    foreach (var proxy in builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [])
+    {
+        options.KnownProxies.Add(IPAddress.Parse(proxy));
+    }
+
+    foreach (var network in builder.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [])
+    {
+        options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+    }
+});
+
 var app = builder.Build();
 
 // Roles in every environment; demo users and resources only in Development (ADR-0007).
@@ -125,7 +145,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/openapi/v1.json", "SmartDesk API v1"));
 }
 
-// First, so everything after it - errors included - answers in the request's language
+// First, so everything after it - the sign-in rate limit, HSTS, the HTTPS redirect - sees the
+// client's address and scheme rather than a reverse proxy's (ADR-0028).
+app.UseForwardedHeaders();
+
+// Then the language, so everything after it - errors included - answers in the request's language
 // (ADR-0023). Accept-Language picks Turkish or English; no header, or any other language, is
 // English. Only the UI culture follows it, which is what messages are looked up in. Formatting
 // stays English, so a Turkish request can't change how the code parses, formats or compares

@@ -1,6 +1,6 @@
 import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, finalize, from, map, of, shareReplay, tap } from 'rxjs';
+import { Observable, catchError, finalize, from, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Role, Roles } from '../constants/roles';
 import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
@@ -12,6 +12,7 @@ import {
   LoginRequest,
   LoginResponse,
   ResetPasswordRequest,
+  UpdateProfileRequest,
 } from '../models/auth.model';
 import { JwtClaims, decodeJwtClaims, isJwtExpired } from '../utils/jwt';
 
@@ -206,6 +207,21 @@ export class AuthService {
     return this.http
       .get<CurrentUser>(`${environment.apiUrl}/auth/me`)
       .pipe(tap((user) => this.currentUserSignal.set(user)));
+  }
+
+  /**
+   * Changes the signed-in user's own name. It shows at once, and the session is renewed so the
+   * token carries it too. The caller shows its own errors.
+   */
+  updateProfile(request: UpdateProfileRequest): Observable<CurrentUser> {
+    return this.http
+      .put<CurrentUser>(`${environment.apiUrl}/auth/me`, request, {
+        context: new HttpContext().set(SKIP_ERROR_NOTIFICATION, true),
+      })
+      .pipe(
+        tap((user) => this.currentUserSignal.set(user)),
+        switchMap((user) => this.renew().pipe(map(() => user))),
+      );
   }
 
   /**
