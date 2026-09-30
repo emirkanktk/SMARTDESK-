@@ -81,6 +81,9 @@
   <data name="Auth_SamePassword" xml:space="preserve">
     <value>Mevcut parolanızdan farklı bir parola seçin.</value>
   </data>
+  <data name="Auth_SessionEnded" xml:space="preserve">
+    <value>Oturumunuz sona erdi. Tekrar giriş yapın.</value>
+  </data>
   <data name="Auth_WrongCurrentPassword" xml:space="preserve">
     <value>Mevcut parola yanlış.</value>
   </data>

@@ -17,7 +17,7 @@ public sealed class JwtTokenGenerator(IOptions<JwtOptions> options, TimeProvider
 
     private readonly JsonWebTokenHandler _handler = new();
 
-    public AccessToken Generate(UserProfile user)
+    public AccessToken Generate(UserProfile user, Guid sessionId)
     {
         var jwt = options.Value;
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -35,6 +35,9 @@ public sealed class JwtTokenGenerator(IOptions<JwtOptions> options, TimeProvider
 
         // Ties the token to the password it was issued under (ADR-0021).
         claims.Add(new Claim(SmartDeskClaims.SessionStamp, user.SessionStamp));
+
+        // And to the session it was issued under, which signing out ends (ADR-0026).
+        claims.Add(new Claim(SmartDeskClaims.Session, sessionId.ToString()));
 
         var descriptor = new SecurityTokenDescriptor
         {

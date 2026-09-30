@@ -2,18 +2,19 @@ using MediatR;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Localization;
+using SmartDesk.Application.Features.Auth.Common;
 using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Enums;
 
 namespace SmartDesk.Application.Features.Auth.Commands.Login;
 
-public sealed class LoginCommandHandler(IIdentityService identityService, IJwtTokenGenerator tokenGenerator)
-    : IRequestHandler<LoginCommand, LoginResponse>
+public sealed class LoginCommandHandler(IIdentityService identityService, IJwtTokenGenerator tokenGenerator, IUserSessions sessions)
+    : IRequestHandler<LoginCommand, SignedIn>
 {
     public static string PendingApprovalMessage => Messages.Auth_PendingApproval;
     public static string DisabledMessage => Messages.Auth_Disabled;
 
-    public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
+    public async Task<SignedIn> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         var user = await identityService.CheckCredentialsAsync(request.Email, request.Password, cancellationToken)
             ?? throw new UnauthorizedException(Messages.Auth_InvalidCredentials);
@@ -32,8 +33,7 @@ public sealed class LoginCommandHandler(IIdentityService identityService, IJwtTo
             await identityService.RememberLanguageAsync(user.Id, Languages.Current, cancellationToken);
         }
 
-        var token = tokenGenerator.Generate(user);
-
-        return new LoginResponse(token.Token, token.ExpiresAtUtc, user.MustChangePassword);
+        var session = await sessions.StartAsync(user.Id, user.SessionStamp, cancellationToken);
+        return SessionIssuer.Answer(tokenGenerator, user, session);
     }
 }

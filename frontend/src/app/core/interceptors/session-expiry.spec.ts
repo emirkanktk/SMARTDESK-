@@ -14,15 +14,20 @@ import { jwtInterceptor } from './jwt.interceptor';
 class Blank {}
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+const RESOURCES = `${environment.apiUrl}/resources`;
+const REFRESH = `${environment.apiUrl}/auth/refresh`;
 
 // End to end through the real AuthService and both interceptors, in the order app.config
-// registers them: a token that expires while the user sits on a screen must still land
-// them on the login page, not leave them signed out on a screen whose calls all fail.
+// registers them (ADR-0026). The token expires while the user sits on a screen - the laptop
+// slept. If the session is still open, the next call quietly gets a new token; if it's over,
+// the user lands on the login page, not on a screen whose calls all fail.
 describe('session expiry while a screen is open', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    localStorage.setItem('smartdesk_access_token', fakeJwt());
+  let router: Router;
+  let auth: AuthService;
+  let backend: HttpTestingController;
 
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -33,28 +38,100 @@ describe('session expiry while a screen is open', () => {
         provideHttpClientTesting(),
       ],
     });
+    router = TestBed.inject(Router);
+    auth = TestBed.inject(AuthService);
+    backend = TestBed.inject(HttpTestingController);
+
+    auth.login({ email: 'employee1@smartdesk.local', password: 'secret' }).subscribe();
+    backend
+      .expectOne(`${environment.apiUrl}/auth/login`)
+      .flush({ accessToken: fakeJwt(), expiresAt: new Date().toISOString() });
+    await router.navigateByUrl('/resources');
+    expect(auth.isAuthenticated()).toBe(true);
+    vi.setSystemTime(Date.now() + TWO_HOURS_MS);
   });
 
   afterEach(() => {
+    backend.verify();
     vi.useRealTimers();
-    localStorage.clear();
   });
 
-  it('redirects to login when a call fails with 401 after the token expired', async () => {
-    const router = TestBed.inject(Router);
-    const auth = TestBed.inject(AuthService);
-    const backend = TestBed.inject(HttpTestingController);
-    await router.navigateByUrl('/resources');
-    expect(auth.isAuthenticated()).toBe(true);
-
-    vi.setSystemTime(Date.now() + TWO_HOURS_MS);
+  it('renews the token and carries on when the session is still open', async () => {
+    let body: unknown;
     TestBed.inject(HttpClient)
-      .get(`${environment.apiUrl}/resources`)
+      .get(RESOURCES)
+      .subscribe((b) => (body = b));
+
+    const renewed = fakeJwt({ given_name: 'Renewed' });
+    await vi.waitFor(() =>
+      backend
+        .expectOne(REFRESH)
+        .flush({ accessToken: renewed, expiresAt: new Date().toISOString() }),
+    );
+    const req = await vi.waitFor(() => backend.expectOne(RESOURCES));
+    expect(req.request.headers.get('Authorization')).toBe(`Bearer ${renewed}`);
+    req.flush([]);
+
+    expect(body).toEqual([]);
+    expect(auth.isAuthenticated()).toBe(true);
+    expect(router.url).toBe('/resources');
+  });
+
+  it('keeps the user signed in through a network outage, and carries on once it ends', async () => {
+    // The laptop woke up before its Wi-Fi did.
+    const http = TestBed.inject(HttpClient);
+    let failure: unknown;
+    http.get(RESOURCES).subscribe({ error: (e: unknown) => (failure = e) });
+
+    await vi.waitFor(() => backend.expectOne(REFRESH).error(new ProgressEvent('error')));
+    const offline = await vi.waitFor(() => backend.expectOne(RESOURCES));
+    offline.error(new ProgressEvent('error'));
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect((failure as { status: number }).status).toBe(0);
+    expect(auth.isAuthenticated()).toBe(true);
+    expect(router.url).toBe('/resources');
+    backend.expectNone(`${environment.apiUrl}/auth/logout`);
+    expect(TestBed.inject(NotificationService).notifications()[0]?.message).toContain(
+      'Cannot reach the server',
+    );
+
+    // Back online: the next call renews and goes through.
+    let body: unknown;
+    http.get(RESOURCES).subscribe((b) => (body = b));
+    const renewed = fakeJwt({ given_name: 'Renewed' });
+    await vi.waitFor(() =>
+      backend
+        .expectOne(REFRESH)
+        .flush({ accessToken: renewed, expiresAt: new Date().toISOString() }),
+    );
+    const online = await vi.waitFor(() => backend.expectOne(RESOURCES));
+    expect(online.request.headers.get('Authorization')).toBe(`Bearer ${renewed}`);
+    online.flush([]);
+    expect(body).toEqual([]);
+  });
+
+  it('redirects to login when the session is over too', async () => {
+    TestBed.inject(HttpClient)
+      .get(RESOURCES)
       .subscribe({ error: () => {} });
 
-    const req = backend.expectOne(`${environment.apiUrl}/resources`);
+    // The expired token can't be renewed, so the call goes out without one...
+    await vi.waitFor(() =>
+      backend.expectOne(REFRESH).flush(null, { status: 401, statusText: 'Unauthorized' }),
+    );
+    const req = await vi.waitFor(() => backend.expectOne(RESOURCES));
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({}, { status: 401, statusText: 'Unauthorized' });
+    // ...the 401 tries one more renewal, which fails too, and the user is signed out.
+    await vi.waitFor(() =>
+      backend.expectOne(REFRESH).flush(null, { status: 401, statusText: 'Unauthorized' }),
+    );
+    await vi.waitFor(() =>
+      backend
+        .expectOne(`${environment.apiUrl}/auth/logout`)
+        .flush(null, { status: 204, statusText: 'No Content' }),
+    );
     await TestBed.inject(ApplicationRef).whenStable();
 
     expect(auth.isAuthenticated()).toBe(false);
@@ -62,6 +139,5 @@ describe('session expiry while a screen is open', () => {
     expect(TestBed.inject(NotificationService).notifications()[0]?.message).toContain(
       'session has expired',
     );
-    backend.verify();
   });
 });

@@ -51,7 +51,8 @@ public sealed record UserAccessSnapshot(
     IReadOnlySet<string> Roles,
     string SessionStamp,
     Guid? ManagerId,
-    bool MustChangePassword);
+    bool MustChangePassword,
+    IReadOnlySet<Guid> OpenSessions);
 
 public interface IUserAccessChecker
 {

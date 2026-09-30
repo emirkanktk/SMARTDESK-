@@ -29,7 +29,7 @@ public class JwtBearerSetupTests
 
     private static string IssuedAt(DateTimeOffset issuedAt) =>
         new JwtTokenGenerator(Microsoft.Extensions.Options.Options.Create(Options), new FakeTimeProvider(issuedAt))
-            .Generate(User).Token;
+            .Generate(User, Guid.NewGuid()).Token;
 
     private static Task<TokenValidationResult> ValidateAsync(string token) =>
         new JsonWebTokenHandler().ValidateTokenAsync(token, JwtBearerSetup.ValidationParameters(Options));

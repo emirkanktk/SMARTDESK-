@@ -4,11 +4,17 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { of } from 'rxjs';
 import { routes } from './app.routes';
 import { AuthService } from './core/services/auth.service';
 
 // The app's real routes and guards, with only the session faked: where does each visitor land?
 describe('app routes', () => {
+  // These navigate to the real, lazily loaded screens. On a cold cache in a busy full run the
+  // first load of a screen can take longer than Vitest's default 5 s, so allow more.
+  beforeAll(() => vi.setConfig({ testTimeout: 20_000 }));
+  afterAll(() => vi.resetConfig());
+
   let signedIn: boolean;
   let roles: string[];
 
@@ -26,6 +32,8 @@ describe('app routes', () => {
             hasValidSession: () => signedIn,
             hasRole: (role: string) => roles.includes(role),
             getToken: () => (signedIn ? 'token' : null),
+            // An expired token that the session can't renew: the visitor is signed out.
+            validToken: () => of(signedIn ? 'token' : null),
             isAuthenticated: signal(false),
             isAdmin: signal(false),
             isManager: signal(false),

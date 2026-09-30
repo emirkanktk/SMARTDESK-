@@ -223,7 +223,7 @@ public sealed class AccountManagementTests : IDisposable
         (await AsAdmin(new SetAccountStatusCommand(member, Enabled: true))).Status.Should().Be(AccountStatus.Active);
 
         (await _host.IsCurrentAsync(member, Roles.Employee)).Should().BeTrue();
-        (await login()).AccessToken.Should().NotBeNullOrEmpty();
+        (await login()).Response.AccessToken.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
@@ -280,22 +280,22 @@ public sealed class AccountManagementTests : IDisposable
             .And.NotContain(Temporary, "the password never travels by email");
 
         var login = await _host.SendAnonymousAsync(new LoginCommand("elif@company.example", Temporary));
-        login.PasswordChangeRequired.Should().BeTrue();
+        login.Response.PasswordChangeRequired.Should().BeTrue();
         var before = (await _host.GetAccessAsync(created.Id))!; // now remembered for 30 seconds
         before.MustChangePassword.Should().BeTrue();
-        new JsonWebToken(login.AccessToken).GetClaim(SmartDeskClaims.SessionStamp).Value
+        new JsonWebToken(login.Response.AccessToken).GetClaim(SmartDeskClaims.SessionStamp).Value
             .Should().Be(before.SessionStamp, "the token is tied to the password it was issued under");
 
         var changed = await _host.SendAsync(created.Id, Roles.Employee, new ChangePasswordCommand(Temporary, "Elifs-Own-Pass-1"));
 
-        changed.PasswordChangeRequired.Should().BeFalse();
-        changed.AccessToken.Should().NotBe(login.AccessToken);
-        var newStamp = new JsonWebToken(changed.AccessToken).GetClaim(SmartDeskClaims.SessionStamp).Value;
+        changed.Response.PasswordChangeRequired.Should().BeFalse();
+        changed.Response.AccessToken.Should().NotBe(login.Response.AccessToken);
+        var newStamp = new JsonWebToken(changed.Response.AccessToken).GetClaim(SmartDeskClaims.SessionStamp).Value;
         var after = (await _host.GetAccessAsync(created.Id))!;
         after.MustChangePassword.Should().BeFalse("the remembered answer was dropped");
         after.SessionStamp.Should().NotBe(before.SessionStamp);
         newStamp.Should().Be(after.SessionStamp, "the new token carries the new stamp");
-        (await _host.SendAnonymousAsync(new LoginCommand("elif@company.example", "Elifs-Own-Pass-1"))).PasswordChangeRequired.Should().BeFalse();
+        (await _host.SendAnonymousAsync(new LoginCommand("elif@company.example", "Elifs-Own-Pass-1"))).Response.PasswordChangeRequired.Should().BeFalse();
         var oldPassword = () => _host.SendAnonymousAsync(new LoginCommand("elif@company.example", Temporary));
         await oldPassword.Should().ThrowAsync<UnauthorizedException>();
     }
@@ -342,7 +342,7 @@ public sealed class AccountManagementTests : IDisposable
 
         var oldPassword = () => _host.SendAnonymousAsync(new LoginCommand("member@company.example", AccountsTestHost.Password));
         await oldPassword.Should().ThrowAsync<UnauthorizedException>();
-        (await _host.SendAnonymousAsync(new LoginCommand("member@company.example", Temporary))).PasswordChangeRequired.Should().BeTrue();
+        (await _host.SendAnonymousAsync(new LoginCommand("member@company.example", Temporary))).Response.PasswordChangeRequired.Should().BeTrue();
     }
 
     [Fact]
@@ -356,7 +356,7 @@ public sealed class AccountManagementTests : IDisposable
 
         (await weak.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().OnlyContain(e => e.PropertyName == "Password");
         (await _host.GetAccessAsync(member))!.Should().BeEquivalentTo(new { SessionStamp = stampBefore, MustChangePassword = false });
-        (await _host.SendAnonymousAsync(new LoginCommand("member@company.example", AccountsTestHost.Password))).AccessToken.Should().NotBeNullOrEmpty();
+        (await _host.SendAnonymousAsync(new LoginCommand("member@company.example", AccountsTestHost.Password))).Response.AccessToken.Should().NotBeNullOrEmpty();
         _host.Emails.Sent.Should().BeEmpty();
     }
 

@@ -77,15 +77,28 @@ public sealed class UserAccessTests : IDisposable
     }
 
     private const string Stamp = "stamp-1";
+    private static readonly Guid Session = Guid.NewGuid();
 
     private static UserAccessSnapshot Access(
-        string role, AccountStatus status = AccountStatus.Active, string stamp = Stamp, Guid? managerId = null, bool mustChange = false) =>
-        new(status, new HashSet<string> { role }, stamp, managerId, mustChange);
+        string role, AccountStatus status = AccountStatus.Active, string stamp = Stamp, Guid? managerId = null, bool mustChange = false,
+        params Guid[] openSessions) =>
+        new(status, new HashSet<string> { role }, stamp, managerId, mustChange, (openSessions.Length > 0 ? openSessions : [Session]).ToHashSet());
 
-    private static Claim[] Token(Guid userId, string role, string? stamp = Stamp) =>
-        stamp is null
-            ? [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role)]
-            : [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role), new Claim(SmartDeskClaims.SessionStamp, stamp)];
+    private static Claim[] Token(Guid userId, string role, string? stamp = Stamp, string? session = "default")
+    {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()), new(ClaimTypes.Role, role) };
+        if (stamp is not null)
+        {
+            claims.Add(new Claim(SmartDeskClaims.SessionStamp, stamp));
+        }
+
+        if (session is not null)
+        {
+            claims.Add(new Claim(SmartDeskClaims.Session, session == "default" ? Session.ToString() : session));
+        }
+
+        return [.. claims];
+    }
 
     public static TheoryData<string, UserAccessSnapshot?> StaleAccounts => new()
     {
@@ -94,6 +107,7 @@ public sealed class UserAccessTests : IDisposable
         { "waiting", Access(Roles.Manager, AccountStatus.PendingApproval) },
         { "role changed", Access(Roles.Employee) },
         { "password changed since", Access(Roles.Manager, stamp: "stamp-2") },
+        { "signed out of that session", Access(Roles.Manager, openSessions: Guid.NewGuid()) },
     };
 
     [Theory]
@@ -107,6 +121,17 @@ public sealed class UserAccessTests : IDisposable
 
         context.Result.Should().NotBeNull(why);
         context.Result!.Failure!.Message.Should().Be(JwtBearerSetup.StaleAccessMessage);
+    }
+
+    [Fact]
+    public async Task ATokenWithoutASession_FailsAuthentication()
+    {
+        var userId = Guid.NewGuid();
+
+        var context = TokenValidated(Checker(userId, Access(Roles.Employee)), Token(userId, Roles.Employee, session: null));
+        await JwtBearerSetup.RequireCurrentAccessAsync(context);
+
+        context.Result!.Failure.Should().NotBeNull();
     }
 
     [Fact]

@@ -14,8 +14,15 @@ public class LoginCommandHandlerTests
 {
     private readonly Mock<IIdentityService> _identityService = new();
     private readonly Mock<IJwtTokenGenerator> _tokenGenerator = new();
+    private readonly Mock<IUserSessions> _sessions = new();
+    private static readonly Guid SessionId = Guid.NewGuid();
 
-    private LoginCommandHandler CreateHandler() => new(_identityService.Object, _tokenGenerator.Object);
+    public LoginCommandHandlerTests() =>
+        _sessions
+            .Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new IssuedSession(SessionId, "refresh-token", new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc)));
+
+    private LoginCommandHandler CreateHandler() => new(_identityService.Object, _tokenGenerator.Object, _sessions.Object);
 
     [Fact]
     public async Task Handle_ValidCredentials_ReturnsGeneratedToken()
@@ -25,13 +32,30 @@ public class LoginCommandHandlerTests
         _identityService
             .Setup(s => s.CheckCredentialsAsync("ayse@smartdesk.local", "Secret123!", It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _tokenGenerator.Setup(g => g.Generate(user)).Returns(new AccessToken("jwt-value", expiresAt));
+        _tokenGenerator.Setup(g => g.Generate(user, SessionId)).Returns(new AccessToken("jwt-value", expiresAt));
 
         var response = await CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "Secret123!"), CancellationToken.None);
 
-        response.AccessToken.Should().Be("jwt-value");
-        response.ExpiresAt.Should().Be(expiresAt);
-        response.PasswordChangeRequired.Should().BeFalse();
+        response.Response.AccessToken.Should().Be("jwt-value");
+        response.Response.ExpiresAt.Should().Be(expiresAt);
+        response.Response.PasswordChangeRequired.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Handle_StartsASessionTiedToTheCurrentPassword()
+    {
+        var user = new UserProfile(Guid.NewGuid(), "Ayşe", "Yılmaz", "ayse@smartdesk.local", [Roles.Employee]) { SessionStamp = "stamp-1" };
+        _identityService
+            .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _tokenGenerator.Setup(g => g.Generate(user, SessionId)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddMinutes(15)));
+
+        var signedIn = await CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "Secret123!"), CancellationToken.None);
+
+        _sessions.Verify(s => s.StartAsync(user.Id, "stamp-1", It.IsAny<CancellationToken>()), Times.Once);
+        signedIn.RefreshToken.Should().Be("refresh-token");
+        signedIn.RefreshExpiresAt.Should().Be(new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc));
+        signedIn.Response.AccessToken.Should().Be("jwt-value");
     }
 
     [Fact]
@@ -41,11 +65,11 @@ public class LoginCommandHandlerTests
         _identityService
             .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _tokenGenerator.Setup(g => g.Generate(user)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddHours(1)));
+        _tokenGenerator.Setup(g => g.Generate(user, SessionId)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddHours(1)));
 
         var response = await CreateHandler().Handle(new LoginCommand("elif@smartdesk.local", "Temp-Pass-2026"), CancellationToken.None);
 
-        response.PasswordChangeRequired.Should().BeTrue();
+        response.Response.PasswordChangeRequired.Should().BeTrue();
     }
 
     [Theory]
@@ -62,7 +86,7 @@ public class LoginCommandHandlerTests
         var act = () => CreateHandler().Handle(new LoginCommand("zeynep@smartdesk.local", "Secret123!"), CancellationToken.None);
 
         await act.Should().ThrowAsync<ForbiddenAccessException>().WithMessage(message);
-        _tokenGenerator.Verify(g => g.Generate(It.IsAny<UserProfile>()), Times.Never);
+        _tokenGenerator.Verify(g => g.Generate(It.IsAny<UserProfile>(), It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -75,7 +99,7 @@ public class LoginCommandHandlerTests
         var act = () => CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "wrong"), CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedException>().WithMessage("Invalid email or password.");
-        _tokenGenerator.Verify(g => g.Generate(It.IsAny<UserProfile>()), Times.Never);
+        _tokenGenerator.Verify(g => g.Generate(It.IsAny<UserProfile>(), It.IsAny<Guid>()), Times.Never);
     }
 
     [Fact]
@@ -85,7 +109,7 @@ public class LoginCommandHandlerTests
         _identityService
             .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _tokenGenerator.Setup(g => g.Generate(user)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddHours(1)));
+        _tokenGenerator.Setup(g => g.Generate(user, SessionId)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddHours(1)));
 
         using (UiCulture.Use("tr-TR"))
         {
@@ -102,7 +126,7 @@ public class LoginCommandHandlerTests
         _identityService
             .Setup(s => s.CheckCredentialsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _tokenGenerator.Setup(g => g.Generate(user)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddHours(1)));
+        _tokenGenerator.Setup(g => g.Generate(user, SessionId)).Returns(new AccessToken("jwt-value", DateTime.UtcNow.AddHours(1)));
 
         await CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "Secret123!"), CancellationToken.None);
 

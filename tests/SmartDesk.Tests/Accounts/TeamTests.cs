@@ -66,7 +66,7 @@ public sealed class TeamTests : IDisposable
         email.To.Should().Be("elif@company.example");
         email.Text.Should().Contain("Zeynep Kaya created a SmartDesk account for you").And.NotContain(Temporary);
         (await AsManager(new GetMyTeamQuery())).Should().Contain(a => a.Id == added.Id);
-        (await _host.SendAnonymousAsync(new LoginCommand("elif@company.example", Temporary))).PasswordChangeRequired.Should().BeTrue();
+        (await _host.SendAnonymousAsync(new LoginCommand("elif@company.example", Temporary))).Response.PasswordChangeRequired.Should().BeTrue();
     }
 
     [Fact]

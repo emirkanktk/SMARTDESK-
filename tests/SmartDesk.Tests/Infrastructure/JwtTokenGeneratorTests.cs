@@ -33,7 +33,7 @@ public class JwtTokenGeneratorTests
     [Fact]
     public void Generate_ExpiresAfterConfiguredLifetime()
     {
-        var token = CreateGenerator().Generate(User);
+        var token = CreateGenerator().Generate(User, Guid.NewGuid());
 
         token.ExpiresAtUtc.Should().Be(Now.UtcDateTime.AddMinutes(30));
         token.ExpiresAtUtc.Kind.Should().Be(DateTimeKind.Utc);
@@ -42,7 +42,7 @@ public class JwtTokenGeneratorTests
     [Fact]
     public void Generate_CarriesUserIdentityAndEveryRole()
     {
-        var jwt = new JsonWebToken(CreateGenerator().Generate(User).Token);
+        var jwt = new JsonWebToken(CreateGenerator().Generate(User, Guid.NewGuid()).Token);
 
         jwt.Subject.Should().Be(User.Id.ToString());
         jwt.GetClaim(JwtRegisteredClaimNames.Email).Value.Should().Be(User.Email);
@@ -57,7 +57,7 @@ public class JwtTokenGeneratorTests
     {
         var user = User with { SessionStamp = "abc123", ManagerId = Guid.NewGuid(), MustChangePassword = true };
 
-        var jwt = new JsonWebToken(CreateGenerator().Generate(user).Token);
+        var jwt = new JsonWebToken(CreateGenerator().Generate(user, Guid.NewGuid()).Token);
 
         jwt.GetClaim(SmartDeskClaims.SessionStamp).Value.Should().Be("abc123");
         jwt.Claims.Should().NotContain(c => c.Type == SmartDeskClaims.Team || c.Type == SmartDeskClaims.PasswordChangeRequired);
@@ -66,7 +66,7 @@ public class JwtTokenGeneratorTests
     [Fact]
     public async Task Generate_TokenValidatesAgainstTheSameKeyOnly()
     {
-        var token = CreateGenerator().Generate(User).Token;
+        var token = CreateGenerator().Generate(User, Guid.NewGuid()).Token;
         var handler = new JsonWebTokenHandler();
 
         var withRightKey = await handler.ValidateTokenAsync(token, ValidationParameters(Options.Key));
