@@ -5,6 +5,7 @@ import { Icon, IconName } from '../../shared/components/icon/icon';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
 import { Logo } from '../../shared/components/logo/logo';
 import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
+import { HideOnScroll } from '../../shared/directives/hide-on-scroll';
 import { environment } from '../../../environments/environment';
 import { HomeHero } from './home-hero/home-hero';
 
@@ -22,7 +23,7 @@ interface Feature extends Step {
  * never see it - guestGuard sends them straight to their dashboard.
  */
 @Component({
-  imports: [RouterLink, Backdrop, HomeHero, Icon, LanguageSwitch, Logo, ThemeSwitch],
+  imports: [RouterLink, Backdrop, HideOnScroll, HomeHero, Icon, LanguageSwitch, Logo, ThemeSwitch],
   selector: 'app-home',
   styleUrl: './home.scss',
   templateUrl: './home.html',

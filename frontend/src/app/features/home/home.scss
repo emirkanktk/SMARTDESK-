@@ -35,6 +35,12 @@ main {
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
   background: color-mix(in srgb, var(--color-bg) 72%, transparent);
   backdrop-filter: saturate(160%) blur(14px);
+  transition: transform 0.25s var(--ease-out);
+
+  // Out of the way while the page scrolls down, back on the way up (HideOnScroll).
+  &.scrolled-away:not(:focus-within) {
+    transform: translateY(-100%);
+  }
 }
 
 .brand {

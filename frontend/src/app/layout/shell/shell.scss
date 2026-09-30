@@ -23,6 +23,13 @@
   border-bottom: 1px solid var(--color-border);
   background: color-mix(in srgb, var(--color-surface) 85%, transparent);
   backdrop-filter: saturate(160%) blur(14px);
+  transition: transform 0.25s var(--ease-out);
+
+  // Out of the way while the page scrolls down, back on the way up (HideOnScroll); never
+  // while something in it has focus.
+  &.scrolled-away:not(:focus-within) {
+    transform: translateY(-100%);
+  }
 }
 
 // Its parts take their own places in the bar's grid, and stack in the sidebar.
@@ -130,6 +137,11 @@ app-profile-menu {
     border-right: 1px solid var(--color-border);
     background: var(--color-surface);
     backdrop-filter: none;
+
+    // A sidebar takes no height from the page, so it stays put.
+    &.scrolled-away:not(:focus-within) {
+      transform: none;
+    }
   }
 
   .brand {

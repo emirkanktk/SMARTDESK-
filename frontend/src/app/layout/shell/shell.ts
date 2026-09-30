@@ -3,6 +3,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Role, Roles } from '../../core/constants/roles';
 import { AuthService } from '../../core/services/auth.service';
 import { Icon, IconName } from '../../shared/components/icon/icon';
+import { HideOnScroll } from '../../shared/directives/hide-on-scroll';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
 import { Logo } from '../../shared/components/logo/logo';
 import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
@@ -20,12 +21,14 @@ interface NavItem {
  * Frame around every signed-in screen: the navigation, the language and theme switches, and
  * the user's menu (profile, password, sign out). A sidebar on wide screens, with the user's
  * card at the bottom; on narrower ones a bar on top, its links in a row that scrolls sideways.
+ * That bar gets out of the way while the page scrolls down and is back on the way up.
  */
 @Component({
   imports: [
     RouterLink,
     RouterLinkActive,
     RouterOutlet,
+    HideOnScroll,
     Icon,
     LanguageSwitch,
     Logo,

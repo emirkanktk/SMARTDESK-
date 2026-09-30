@@ -201,6 +201,8 @@ frontend/src/app/
   shared/
     components/      small reusable UI pieces (e.g. StatusBadge, LanguageSwitch, ThemeSwitch,
                      Logo, Icon, Backdrop, AuthShowcase)
+    directives/      HideOnScroll: a bar on top gets out of the way while the page scrolls
+                     down, and is back on the way up
     utils/           form helpers (applyServerErrors: API 400 messages -> form controls,
                      keepDurationWhenStartMoves), datetime-local <-> Date conversion
     validators/      dateRangeValidator (end after start, max length, start not in the

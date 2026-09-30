@@ -127,6 +127,11 @@ bar, front page, sign-in). The choice is kept per browser, and switching reloads
   public pages (front page, sign-in, sign-up, password pages) share `<app-backdrop>`, a slow
   drift of the brand's colours; on wide screens the account pages put `<app-auth-showcase>`
   beside the form.
+- **Bars on top** (the app's below 1100px, the front page's) get out of the way while the page
+  scrolls down and come back as soon as it scrolls up, so the navigation is one flick away on a
+  long page. They're always there at the top and the very bottom of a page, and whenever
+  something in them has focus. The `appHideOnScroll` directive (`shared/directives`) sets
+  `scrolled-away`; the bar's styles slide it up.
 - **Motion:** screens rise in as they open, the front page's hero line by line. Hover lifts
   cards and buttons a little. With "reduce motion" on, nothing moves (`styles.scss`).
 - **Style budgets:** a component's styles stay under 4 kB (`angular.json`). When one grows
