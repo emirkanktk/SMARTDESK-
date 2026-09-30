@@ -13,6 +13,7 @@ import {
 } from '../../core/models/resource.model';
 import { RESERVATION_LIMITS } from '../../core/models/reservation.model';
 import { ResourceService } from '../../core/services/resource.service';
+import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
 import {
   addMinutes,
   floorToQuarterHour,
@@ -36,7 +37,7 @@ interface SearchResult {
 
 /** Find resources that are free for a time range, then go on to book one. */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, DatePipe],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, ResourcePhoto],
   selector: 'app-availability',
   styleUrl: './availability.scss',
   templateUrl: './availability.html',

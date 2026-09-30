@@ -225,6 +225,9 @@
   <data name="Entity_ResourceBlock" xml:space="preserve">
     <value>ResourceBlock</value>
   </data>
+  <data name="Entity_ResourcePhoto" xml:space="preserve">
+    <value>Photo</value>
+  </data>
   <data name="Error_Forbidden" xml:space="preserve">
     <value>You are not allowed to perform this action.</value>
   </data>
@@ -431,6 +434,15 @@
   </data>
   <data name="Resources_OwnTeamOnly" xml:space="preserve">
     <value>Managers add resources to their own team only.</value>
+  </data>
+  <data name="Resources_PhotoMissing" xml:space="preserve">
+    <value>Choose a photo to upload.</value>
+  </data>
+  <data name="Resources_PhotoTooLarge" xml:space="preserve">
+    <value>The photo can be at most {0} MB.</value>
+  </data>
+  <data name="Resources_PhotoType" xml:space="preserve">
+    <value>The photo must be a JPEG, PNG or WebP image.</value>
   </data>
   <data name="Resources_SearchTooFarAhead" xml:space="preserve">
     <value>The search can start at most {0} days ahead.</value>

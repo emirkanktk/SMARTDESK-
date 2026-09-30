@@ -21,6 +21,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<ResourceBlock> ResourceBlocks => Set<ResourceBlock>();
     public DbSet<ResourceTeam> ResourceTeams => Set<ResourceTeam>();
+    public DbSet<ResourcePhoto> ResourcePhotos => Set<ResourcePhoto>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -75,6 +76,18 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // A resource's photo: one row keyed by the resource, deleted with it.
+        builder.Entity<ResourcePhoto>(entity =>
+        {
+            entity.HasKey(e => e.ResourceId);
+            entity.Property(e => e.ContentType).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Data).IsRequired();
+            entity.HasOne<Resource>()
+                .WithOne(r => r.Photo)
+                .HasForeignKey<ResourcePhoto>(e => e.ResourceId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

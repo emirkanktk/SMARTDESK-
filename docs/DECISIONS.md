@@ -683,6 +683,44 @@ new tables.
   - An access token already issued stays usable until its session's end reaches the cache,
     at most 30 seconds on another API instance.
 
+## ADR-0027: Resource photos, kept in the database and fetched with the token
+
+**Decision:**
+- **One optional photo per resource**, set by whoever may edit the resource: an Admin, or a
+  Manager for a resource that belongs to their team alone (ADR-0022). Without one, the resource
+  shows its type's picture, which ships with the app (`frontend/public/images/resource-types`).
+- **In the database.** `ResourcePhotos` keeps the image, at most 2 MB, next to the resource:
+  nothing else to back up or deploy, and a resource's photo goes with it.
+- **Only real images.** The API recognises JPEG, PNG and WebP by their first bytes and stores
+  the type it recognised; the name and type the upload claims don't count. No SVG, which can
+  carry script. Photos are served with `X-Content-Type-Options: nosniff`.
+- **Smaller before uploading.** The app draws the chosen picture at most 1600 pixels on its
+  longest side and writes it as WebP (JPEG where the browser can't), so a phone photo of
+  several MB goes up as a few hundred KB, without the location and the other details the
+  camera stored in it.
+- **The resource's access rule.** `GET /api/resources/{id}/photo` needs a signed-in user and
+  answers 404 for another team's resource. The app fetches it with the token, like any other
+  call, and shows it through an object URL.
+- **Caching.** Resource responses carry `photoUpdatedAt`, not the photo. The app keeps each
+  version of a photo for as long as it runs, and the API sends an `ETag` with
+  `Cache-Control: private, no-cache`, so after a reload an unchanged photo costs a 304.
+
+**Why:**
+- People pick faster when they recognise the room or the car, and the type's picture keeps
+  the screens looking finished before anyone uploads a photo.
+- A few dozen photos of a few hundred KB are little for PostgreSQL, and keeping all data in one
+  place leaves backups and the Docker setup as they are. A file or object store is the step to
+  take if photos ever grow large or many.
+- Trusting the upload's name or type would let an HTML or SVG file be stored as a "photo" and
+  served from the API's origin. Recognising the bytes and refusing everything else closes that.
+- A plain `<img>` URL can't carry the bearer token, and a public one would show other teams'
+  resources. Fetching with the token keeps a single access rule.
+- **Trade-offs:**
+  - Photos travel through the API rather than a CDN; fine at this size.
+  - Getting a picture ready needs a browser that can read it. A HEIC photo in a browser that
+    can't is refused with a message, and has to be converted first.
+  - The type pictures are stock photos under the Unsplash License, credited in the README.
+
 ## ADR-0028: Behind a reverse proxy, the client's address comes from trusted forwarded headers
 
 **Decision:**

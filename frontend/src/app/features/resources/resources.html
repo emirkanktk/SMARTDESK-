@@ -77,10 +77,20 @@
         @for (resource of visibleResources(); track resource.id) {
           <tr [class.unavailable]="resource.status !== 'Active'">
             <td>
-              <div class="name">{{ resource.name }}</div>
-              @if (resource.description) {
-                <div class="text-muted description">{{ resource.description }}</div>
-              }
+              <div class="resource-name">
+                <app-resource-photo
+                  class="thumb"
+                  [resourceId]="resource.id"
+                  [typeName]="resource.resourceTypeName"
+                  [photoUpdatedAt]="resource.photoUpdatedAt"
+                />
+                <div>
+                  <div class="name">{{ resource.name }}</div>
+                  @if (resource.description) {
+                    <div class="text-muted description">{{ resource.description }}</div>
+                  }
+                </div>
+              </div>
             </td>
             <td>{{ resource.resourceTypeName }}</td>
             <td class="num">{{ resource.capacity }}</td>

@@ -112,6 +112,12 @@
       <ul class="grid">
         @for (resource of result.resources; track resource.id) {
           <li class="card resource">
+            <app-resource-photo
+              class="card-photo"
+              [resourceId]="resource.id"
+              [typeName]="resource.resourceTypeName"
+              [photoUpdatedAt]="resource.photoUpdatedAt"
+            />
             <div class="resource-head">
               <h2>{{ resource.name }}</h2>
               <span class="badge">{{ resource.resourceTypeName }}</span>

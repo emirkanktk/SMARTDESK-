@@ -103,22 +103,30 @@
       @if (resourceError(); as error) {
         <span class="field-error">{{ error }}</span>
       } @else if (selectedResource(); as r) {
-        <span class="text-muted hint resource-info">
-          {{ r.location }}
-          @if (r.capacity !== null) {
-            ·
-            @if (r.capacity === 1) {
-              <ng-container i18n="@@availability.onePerson">1 person</ng-container>
-            } @else {
-              <ng-container i18n="@@availability.people.count"
-                >{{ r.capacity }} people</ng-container
-              >
+        <div class="resource-preview">
+          <app-resource-photo
+            class="preview-photo"
+            [resourceId]="r.id"
+            [typeName]="r.typeName"
+            [photoUpdatedAt]="r.photoUpdatedAt"
+          />
+          <span class="text-muted hint resource-info">
+            {{ r.location }}
+            @if (r.capacity !== null) {
+              ·
+              @if (r.capacity === 1) {
+                <ng-container i18n="@@availability.onePerson">1 person</ng-container>
+              } @else {
+                <ng-container i18n="@@availability.people.count"
+                  >{{ r.capacity }} people</ng-container
+                >
+              }
             }
-          }
-          @if (r.features.length > 0) {
-            · {{ r.features.join(', ') }}
-          }
-        </span>
+            @if (r.features.length > 0) {
+              · {{ r.features.join(', ') }}
+            }
+          </span>
+        </div>
       }
     </div>
 

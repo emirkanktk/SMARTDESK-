@@ -287,6 +287,28 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("ResourceFeatures");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ResourcePhoto", b =>
+                {
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ResourceId");
+
+                    b.ToTable("ResourcePhotos");
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceTeam", b =>
                 {
                     b.Property<Guid>("ResourceId")
@@ -586,6 +608,15 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Navigation("Resource");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ResourcePhoto", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Resource", null)
+                        .WithOne("Photo")
+                        .HasForeignKey("SmartDesk.Domain.Entities.ResourcePhoto", "ResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.ResourceTeam", b =>
                 {
                     b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
@@ -619,6 +650,8 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Navigation("Blocks");
 
                     b.Navigation("Features");
+
+                    b.Navigation("Photo");
 
                     b.Navigation("Reservations");
 

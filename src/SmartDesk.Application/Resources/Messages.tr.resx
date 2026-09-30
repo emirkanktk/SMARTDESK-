@@ -225,6 +225,9 @@
   <data name="Entity_ResourceBlock" xml:space="preserve">
     <value>Kapatma</value>
   </data>
+  <data name="Entity_ResourcePhoto" xml:space="preserve">
+    <value>Fotoğraf</value>
+  </data>
   <data name="Error_Forbidden" xml:space="preserve">
     <value>Bu işlemi yapma yetkiniz yok.</value>
   </data>
@@ -431,6 +434,15 @@
   </data>
   <data name="Resources_OwnTeamOnly" xml:space="preserve">
     <value>Ekip yöneticileri yalnızca kendi ekiplerine kaynak ekleyebilir.</value>
+  </data>
+  <data name="Resources_PhotoMissing" xml:space="preserve">
+    <value>Yüklenecek bir fotoğraf seçin.</value>
+  </data>
+  <data name="Resources_PhotoTooLarge" xml:space="preserve">
+    <value>Fotoğraf en fazla {0} MB olabilir.</value>
+  </data>
+  <data name="Resources_PhotoType" xml:space="preserve">
+    <value>Fotoğraf JPEG, PNG ya da WebP biçiminde olmalı.</value>
   </data>
   <data name="Resources_SearchTooFarAhead" xml:space="preserve">
     <value>Arama en fazla {0} gün sonrası için yapılabilir.</value>

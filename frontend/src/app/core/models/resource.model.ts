@@ -26,6 +26,8 @@ export interface Resource {
   features: string[];
   /** Empty: shared by everyone. Otherwise only these teams (and admins) can use it. */
   teams: ResourceTeam[];
+  /** When its photo last changed; null when it has none and its type's picture shows (ADR-0027). */
+  photoUpdatedAt: string | null;
 }
 
 export interface ResourceFilter {
@@ -76,4 +78,14 @@ export const RESOURCE_LIMITS = {
   maxFeatures: 20,
   featureMaxLength: 100,
   maxTeams: 20,
+} as const;
+
+/**
+ * The API takes a JPEG, PNG or WebP of at most 2 MB. The app makes a larger picture smaller
+ * before uploading it, so the longest side is at most `maxSide` pixels.
+ */
+export const RESOURCE_PHOTO = {
+  types: ['image/jpeg', 'image/png', 'image/webp'],
+  maxBytes: 2 * 1024 * 1024,
+  maxSide: 1600,
 } as const;

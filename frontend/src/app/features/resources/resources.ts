@@ -13,13 +13,14 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ResourceService } from '../../core/services/resource.service';
+import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { canManageResource, teamLabel } from '../../shared/utils/resource-access';
 import { resourceStatusLabel } from '../../core/i18n/labels';
 
 /** Resource list for everyone; admins also get create, edit and activate/deactivate. */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, StatusBadge],
+  imports: [ReactiveFormsModule, RouterLink, StatusBadge, ResourcePhoto],
   selector: 'app-resources',
   styleUrl: './resources.scss',
   templateUrl: './resources.html',

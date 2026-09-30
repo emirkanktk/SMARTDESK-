@@ -70,6 +70,13 @@
   }
 }
 
+// Edge to edge across the top of the card.
+.card-photo {
+  aspect-ratio: 16 / 9;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-1);
+  border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
+}
+
 .resource-head {
   display: flex;
   align-items: flex-start;

@@ -81,6 +81,24 @@ describe('ResourceService', () => {
     share.flush(fakeResource());
   });
 
+  it('puts a photo up as the multipart field "photo", named after its type', () => {
+    const photo = new Blob(['webp'], { type: 'image/webp' });
+    service.setPhoto('res/1', photo).subscribe();
+
+    const req = http.expectOne({ method: 'PUT', url: `${base}/res%2F1/photo` });
+    const body = req.request.body as FormData;
+    const file = body.get('photo') as File;
+    expect(file.name).toBe('photo.webp');
+    expect(file.type).toBe('image/webp');
+    req.flush(fakeResource({ photoUpdatedAt: '2026-10-05T08:00:00Z' }));
+  });
+
+  it('takes a photo down with DELETE', () => {
+    service.removePhoto('res/1').subscribe();
+
+    http.expectOne({ method: 'DELETE', url: `${base}/res%2F1/photo` }).flush(null);
+  });
+
   it('changes only the status with PATCH', () => {
     service.changeStatus('res/1', 'Maintenance').subscribe();
 

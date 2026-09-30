@@ -173,6 +173,89 @@
       }
     </div>
 
+    <fieldset class="field photo" aria-describedby="photo-hint">
+      <legend i18n="@@resourceForm.photo">Photo <span class="text-muted">(optional)</span></legend>
+      <div class="photo-row">
+        @if (photoChange(); as change) {
+          @if (change.kind === 'set') {
+            <img class="photo-preview" [src]="change.preview" alt="" />
+          } @else {
+            <app-resource-photo
+              class="photo-preview"
+              [resourceId]="id()"
+              [typeName]="typeName()"
+              [photoUpdatedAt]="change.kind === 'remove' ? null : loadedPhoto()"
+            />
+          }
+        }
+        <div class="photo-controls">
+          <span id="photo-hint" class="text-muted hint">
+            @if (hasPhoto()) {
+              <ng-container i18n="@@resourceForm.photoHint"
+                >People see it when they look for something to book.</ng-container
+              >
+            } @else {
+              <ng-container i18n="@@resourceForm.noPhotoHint"
+                >Without a photo, the picture for its type is shown.</ng-container
+              >
+            }
+          </span>
+          <div class="photo-actions">
+            <label class="btn btn-secondary file-button" [class.disabled]="preparingPhoto()">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/*"
+                class="visually-hidden"
+                [disabled]="preparingPhoto()"
+                (change)="choosePhoto($event)"
+              />
+              @if (hasPhoto()) {
+                <ng-container i18n="@@resourceForm.replacePhoto">Choose another photo</ng-container>
+              } @else {
+                <ng-container i18n="@@resourceForm.choosePhoto">Choose a photo</ng-container>
+              }
+            </label>
+            @if (hasPhoto()) {
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="removePhoto()"
+                i18n="@@resourceForm.removePhoto"
+              >
+                Remove photo
+              </button>
+            }
+            @if (photoChange().kind !== 'none') {
+              <button
+                type="button"
+                class="btn text-button"
+                (click)="undoPhoto()"
+                i18n="@@resourceForm.undoPhoto"
+              >
+                Undo
+              </button>
+            }
+          </div>
+          @if (preparingPhoto()) {
+            <span class="text-muted hint" role="status" i18n="@@resourceForm.preparingPhoto"
+              >Preparing the photo…</span
+            >
+          } @else if (photoChange().kind === 'set') {
+            <span class="text-muted hint" i18n="@@resourceForm.photoOnSave"
+              >The photo is uploaded when you save.</span
+            >
+          } @else if (photoChange().kind === 'remove') {
+            <span class="text-muted hint" i18n="@@resourceForm.photoRemovedOnSave"
+              >The photo is removed when you save.</span
+            >
+          }
+          @if (photoError(); as error) {
+            <span class="field-error" role="alert">{{ error }}</span>
+          }
+        </div>
+      </div>
+    </fieldset>
+
     @if (isAdmin()) {
       <fieldset class="field teams" aria-describedby="teams-hint">
         <legend i18n="@@resourceForm.teams">
