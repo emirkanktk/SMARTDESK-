@@ -67,6 +67,7 @@ npm run i18n:check                             # every text has its Turkish vers
 | `/login`, `/forgot-password`, `/reset-password` | anyone | Sign-in, and a password reset by emailed link |
 | `/register` | visitors | Sign-up: a team member gives their manager's email and waits for that manager; a manager waits for an admin |
 | `/change-password` | signed in | Change your password. Forced, before anything else, after signing in with a temporary password |
+| `/profile` | signed in | Your own name, which you can change, and your email and role, which an admin changes. Open it, the password page or sign out from the menu under your name in the top right |
 | `/dashboard` | signed in | Today's reservations, what's in use now, your next bookings |
 | `/resources` | signed in | Your team's resources and the shared ones; admins see every resource. Each row says whose team it belongs to, or "Shared" |
 | `/resources/new`, `/resources/:id/edit` | Admin, Manager | Admins create and edit any resource and pick the teams that may use it (none: shared by everyone). A manager adds resources to their own team, and edits, activates and deactivates only the ones that belong to their team alone (ADR-0022) |

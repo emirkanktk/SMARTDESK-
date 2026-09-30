@@ -113,6 +113,11 @@ export const routes: Routes = [
           import('./features/my-reservations/my-reservations').then((m) => m.MyReservations),
       },
       {
+        path: 'profile',
+        title: $localize`:@@title.profile:My profile · SmartDesk`,
+        loadComponent: () => import('./features/profile/profile').then((m) => m.Profile),
+      },
+      {
         path: 'admin',
         title: $localize`:@@title.admin:Admin · SmartDesk`,
         canActivate: [adminGuard],

@@ -133,9 +133,11 @@ public sealed class IdentityService(
         hasher.VerifyHashedPassword(new ApplicationUser(), s_decoyPasswordHash, password);
     }
 
+    // As the database has it now, not as this request may already have loaded it: a change
+    // written straight to the columns (RenameAsync, RememberLanguageAsync) shows at once.
     public async Task<UserProfile?> FindByIdAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var user = await userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
         return user is null ? null : await ToProfileAsync(user);
     }
@@ -146,6 +148,14 @@ public sealed class IdentityService(
         await userManager.Users
             .Where(u => u.Id == userId)
             .ExecuteUpdateAsync(set => set.SetProperty(u => u.Language, language), cancellationToken);
+
+    // Straight to the columns too, for the same reason.
+    public async Task RenameAsync(Guid userId, string firstName, string lastName, CancellationToken cancellationToken) =>
+        await userManager.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(
+                set => set.SetProperty(u => u.FirstName, firstName).SetProperty(u => u.LastName, lastName),
+                cancellationToken);
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)

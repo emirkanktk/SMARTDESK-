@@ -6,6 +6,7 @@ import { finalize } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { PasswordField } from '../../shared/components/password-field/password-field';
 import {
   PASSWORD_HINT,
   matchingPasswordsValidator,
@@ -20,7 +21,7 @@ import {
  * answers nothing else until it's replaced. Every other session ends; this one gets a new token.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, PasswordField],
   selector: 'app-change-password',
   host: { role: 'main' },
   styleUrl: './password-pages.scss',

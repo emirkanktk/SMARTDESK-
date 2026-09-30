@@ -1,10 +1,10 @@
 import { Component, computed, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Role, Roles } from '../../core/constants/roles';
-import { roleLabel } from '../../core/i18n/labels';
 import { AuthService } from '../../core/services/auth.service';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
 import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
+import { ProfileMenu } from '../profile-menu/profile-menu';
 
 interface NavItem {
   path: string;
@@ -13,18 +13,18 @@ interface NavItem {
   roles?: readonly Role[];
 }
 
-/** Frame around every signed-in screen: top bar with navigation, user and sign-out. */
+/**
+ * Frame around every signed-in screen: the top bar with the navigation, the language and
+ * theme switches, and the user's menu (profile, password, sign out).
+ */
 @Component({
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, LanguageSwitch, ThemeSwitch],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, LanguageSwitch, ThemeSwitch, ProfileMenu],
   selector: 'app-shell',
   styleUrl: './shell.scss',
   templateUrl: './shell.html',
 })
 export class Shell {
   private readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
-
-  protected readonly displayName = this.authService.displayName;
 
   private readonly navItems: readonly NavItem[] = [
     { path: '/dashboard', label: $localize`:@@nav.dashboard:Dashboard` },
@@ -46,18 +46,4 @@ export class Shell {
       (item) => !item.roles || item.roles.some((role) => this.authService.hasRole(role)),
     );
   });
-
-  /** "Admin" or "Manager" next to the name; nothing for an Employee. */
-  protected readonly roleBadge = computed(() =>
-    this.authService.isAdmin()
-      ? roleLabel(Roles.Admin)
-      : this.authService.isManager()
-        ? roleLabel(Roles.Manager)
-        : null,
-  );
-
-  protected logout(): void {
-    this.authService.logout();
-    void this.router.navigateByUrl('/');
-  }
 }

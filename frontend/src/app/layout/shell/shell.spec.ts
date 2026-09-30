@@ -84,12 +84,16 @@ describe('Shell', () => {
     expect(badge(element)).toBe('Manager');
   });
 
-  it('signs out and goes to the front page', async () => {
+  it('signs out from the user menu and goes to the front page', async () => {
     const navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
-    const element = await render();
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    const element: HTMLElement = fixture.nativeElement;
 
-    const buttons = Array.from(element.querySelectorAll<HTMLButtonElement>('button'));
-    buttons.find((b) => b.textContent!.trim() === 'Sign out')!.click();
+    element.querySelector<HTMLButtonElement>('app-profile-menu .trigger')!.click();
+    await fixture.whenStable();
+    const items = Array.from(element.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    items.find((item) => item.textContent!.trim() === 'Sign out')!.click();
 
     expect(logout).toHaveBeenCalled();
     expect(navigateByUrl).toHaveBeenCalledWith('/');
