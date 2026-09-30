@@ -25,8 +25,8 @@ public sealed class RegistrationTests : IDisposable
     private static RegisterCommand SignUp(string email = Applicant, string password = StrongPassword) =>
         new("Zeynep", "Kaya", email, password);
 
-    private Task<LoginResponse> LoginAsync(string email, string password) =>
-        _host.SendAnonymousAsync(new LoginCommand(email, password));
+    private async Task<LoginResponse> LoginAsync(string email, string password) =>
+        (await _host.SendAnonymousAsync(new LoginCommand(email, password))).Response;
 
     [Fact]
     public async Task ANewSignUp_IsAManagerWaitingForApproval_AndActiveAdminsHearAboutIt()

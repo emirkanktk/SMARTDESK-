@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure.Persistence;
@@ -26,10 +27,12 @@ public sealed class SqliteTestDatabase : IDisposable
 
     // A fresh context per call, so a test's assertions read from the database rather than
     // from entities the handler left tracked in its own context. Collections load one query
-    // each, as in production (AddInfrastructure).
-    public SmartDeskDbContext CreateContext() =>
+    // each, as in production (AddInfrastructure). Interceptors let a test step in between a
+    // handler's commands, e.g. to stage a race.
+    public SmartDeskDbContext CreateContext(params IInterceptor[] interceptors) =>
         new(new DbContextOptionsBuilder<SmartDeskDbContext>()
             .UseSqlite(_connection, sqlite => sqlite.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
+            .AddInterceptors(interceptors)
             .Options);
 
     public async Task<Resource> AddResourceAsync(

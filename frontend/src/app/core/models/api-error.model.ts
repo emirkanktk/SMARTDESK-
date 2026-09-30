@@ -1,5 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
+/** For a request that got no answer at all. */
+export const SERVER_UNREACHABLE = $localize`:@@error.unreachable:Cannot reach the server. Check your connection and try again.`;
+
 /**
  * Normalized shape of a failed API call. The API answers errors with RFC 7807
  * ProblemDetails; validation failures (400) add an `errors` map of field -> messages.
@@ -20,10 +23,7 @@ export class ApiError extends Error {
 
   static fromHttpError(error: HttpErrorResponse): ApiError {
     if (error.status === 0) {
-      return new ApiError(
-        0,
-        $localize`:@@error.unreachable:Cannot reach the server. Check your connection and try again.`,
-      );
+      return new ApiError(0, SERVER_UNREACHABLE);
     }
 
     const body: unknown = error.error;

@@ -8,7 +8,7 @@ about working on it.
 ## Run it
 
 Start the API first, with the `https` launch profile. That serves `https://localhost:7065`,
-the address the development build calls:
+where the dev server sends the app's API calls:
 
 ```bash
 dotnet run --project src/SmartDesk.API --launch-profile https   # from the repository root
@@ -26,11 +26,14 @@ Sign in with a demo account: `employee1@smartdesk.local`, `employee2@smartdesk.l
 `manager@smartdesk.local` or `admin@smartdesk.local`, all with `SmartDesk123!`. They exist in
 Development only, and the front page lists them there.
 
-| Configuration | API it calls | When |
+The app always calls `/api` and `/hubs` on its own origin. `ng serve` proxies them to the API,
+so the session cookie is a same-site cookie in development too (ADR-0026):
+
+| Configuration | Proxied to | When |
 |---|---|---|
-| `development` (the `ng serve` default) | `https://localhost:7065/api` | the API from `dotnet run` |
-| `docker` (`ng serve --configuration docker`) | `http://localhost:8080/api` | the API container from `docker compose --profile api up` |
-| `production` (`ng build`) | `/api` on the same host | served behind the API or a proxy |
+| `development` (the `ng serve` default) | `https://localhost:7065` (`proxy.conf.json`) | the API from `dotnet run` |
+| `docker` (`ng serve --configuration docker`) | `http://localhost:8080` (`proxy.docker.json`) | the API container from `docker compose --profile api up` |
+| `production` (`ng build`) | nothing - `/api` on the same host | served behind the API or a reverse proxy |
 
 If the lists stay empty and the console shows a certificate error, the browser doesn't trust
 the dev certificate yet: `dotnet dev-certs https --trust`.

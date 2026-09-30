@@ -12,7 +12,7 @@ namespace SmartDesk.API.Authentication;
 public static class JwtBearerSetup
 {
     // How far a token's expiry may be off because of clock drift between machines. The
-    // library default is five minutes, which quietly lets a 60-minute token work for 65.
+    // library default is five minutes, which quietly lets a 15-minute token work for 20.
     public static readonly TimeSpan ClockSkew = TimeSpan.FromSeconds(30);
 
     // What an incoming bearer token must satisfy. Kept out of Program.cs so the rules can be
@@ -34,13 +34,14 @@ public static class JwtBearerSetup
     };
 
     public const string StaleAccessMessage =
-        "This session has ended: the account was switched off, its role or password changed. Sign in again.";
+        "This session has ended: the user signed out, the account was switched off, or its role or password changed. Sign in again.";
 
     // Runs once a token has passed the checks above (ADR-0020, ADR-0021). A token stays valid
     // until it expires, so on its own it would keep a disabled user in, a demoted Admin an
     // Admin, or a session going after its password was changed, for up to an hour. Its user must
-    // still be Active, hold exactly the roles it lists, and have the security stamp it was issued
-    // under; otherwise the request is unauthenticated (401) and the client signs in again.
+    // still be Active, hold exactly the roles it lists, have the security stamp it was issued
+    // under, and the sign-in session it names must still be open (ADR-0026); otherwise the request
+    // is unauthenticated (401) and the client renews its session or signs in again.
     // What only the account knows now - its team, a pending password change - is added to the
     // request's user here, never taken from the token.
     public static async Task RequireCurrentAccessAsync(TokenValidatedContext context)
@@ -58,7 +59,9 @@ public static class JwtBearerSetup
         var tokenRoles = principal.FindAll(ClaimTypes.Role).Select(claim => claim.Value);
         if (access is not { Status: AccountStatus.Active }
             || !access.Roles.SetEquals(tokenRoles)
-            || principal.FindFirstValue(SmartDeskClaims.SessionStamp) != access.SessionStamp)
+            || principal.FindFirstValue(SmartDeskClaims.SessionStamp) != access.SessionStamp
+            || !Guid.TryParse(principal.FindFirstValue(SmartDeskClaims.Session), out var sessionId)
+            || !access.OpenSessions.Contains(sessionId))
         {
             context.Fail(StaleAccessMessage);
             return;

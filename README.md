@@ -224,11 +224,12 @@ npm install
 ng serve
 ```
 
-Serves on `http://localhost:4200` by default - already in the API's CORS allow-list. The
-front page lists the demo accounts in development builds only. If
-your build serves on a different port, add it to `Cors:AllowedOrigins` too.
-`ng serve --configuration docker` talks to an API on `http://localhost:8080/api` instead,
-for an API running in Docker - no need to edit `environment.development.ts`.
+Serves on `http://localhost:4200` by default, and proxies `/api` and `/hubs` to the API on
+`https://localhost:7065` (`frontend/proxy.conf.json`). The app and the API then share one
+origin, as they do in production, which is what lets the session cookie work (ADR-0026). The
+front page lists the demo accounts in development builds only.
+`ng serve --configuration docker` proxies to an API on `http://localhost:8080` instead, for an
+API running in Docker (`proxy.docker.json`) - no need to edit anything.
 
 ## Running tests
 

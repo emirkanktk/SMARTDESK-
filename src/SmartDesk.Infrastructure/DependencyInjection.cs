@@ -102,6 +102,12 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IUserAccessChecker, UserAccessChecker>();
+        services.AddScoped<IUserSessions, UserSessions>();
+        services.AddOptions<SessionOptions>()
+            .Bind(configuration.GetSection(SessionOptions.SectionName))
+            .Validate(o => o.IdleDays > 0 && o.MaxDays >= o.IdleDays && o.ReuseGraceSeconds >= 0,
+                "Sessions: IdleDays must be positive, MaxDays at least IdleDays, and ReuseGraceSeconds not negative.")
+            .ValidateOnStart();
         services.AddScoped<UserAccessCache>();
         // The API registers the SignalR one first; this is the fallback without a hub.
         services.TryAddSingleton<IRealtimeSessions, NoRealtimeSessions>();

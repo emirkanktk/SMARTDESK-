@@ -45,12 +45,21 @@ public sealed class UserAccessChecker(SmartDeskDbContext db, IMemoryCache cache)
                     where userRole.UserId == userId
                     select role.Name!)
                 .ToListAsync(cancellationToken);
+
+            // Sessions not ended; expiry doesn't matter here, as a token lasts minutes and a
+            // session days.
+            var sessions = await db.UserSessions
+                .AsNoTracking()
+                .Where(s => s.UserId == userId && s.RevokedAt == null)
+                .Select(s => s.Id)
+                .ToListAsync(cancellationToken);
             return new UserAccessSnapshot(
                 user.Status,
                 roles.ToHashSet(StringComparer.Ordinal),
                 SessionStampOf(user.SecurityStamp),
                 user.ManagerId,
-                user.MustChangePassword);
+                user.MustChangePassword,
+                sessions.ToHashSet());
         });
 }
 

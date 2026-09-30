@@ -1,10 +1,16 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  ApplicationConfig,
+  inject,
+  provideAppInitializer,
+  provideBrowserGlobalErrorListeners,
+} from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { routes } from './app.routes';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { jwtInterceptor } from './core/interceptors/jwt.interceptor';
 import { languageInterceptor } from './core/interceptors/language.interceptor';
+import { AuthService } from './core/services/auth.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -14,5 +20,7 @@ export const appConfig: ApplicationConfig = {
     // token; errorInterceptor maps failures and ends the session on a 401 (except for requests
     // marked ANONYMOUS_REQUEST, i.e. login).
     provideHttpClient(withInterceptors([languageInterceptor, jwtInterceptor, errorInterceptor])),
+    // Before the first route: takes up the session this browser already has (ADR-0026).
+    provideAppInitializer(() => inject(AuthService).restoreSession()),
   ],
 };

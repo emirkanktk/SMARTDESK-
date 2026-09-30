@@ -13,5 +13,7 @@ public sealed class JwtOptions
     // Never in appsettings - dotnet user-secrets locally, environment variable elsewhere (ADR-0005).
     public string Key { get; init; } = string.Empty;
 
-    public int AccessTokenLifetimeMinutes { get; init; } = 60;
+    // Short, since the app renews it from the session in the background (ADR-0026): a copy of
+    // a token is worth little for long.
+    public int AccessTokenLifetimeMinutes { get; init; } = 15;
 }
