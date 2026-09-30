@@ -19,4 +19,7 @@ public class Resource
 
     // The teams that may use it; none means everyone may (ADR-0022).
     public ICollection<ResourceTeam> Teams { get; set; } = new List<ResourceTeam>();
+
+    // Optional; its type's picture is shown when there's none.
+    public ResourcePhoto? Photo { get; set; }
 }
