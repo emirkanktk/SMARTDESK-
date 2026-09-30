@@ -25,9 +25,12 @@ public sealed class SqliteTestDatabase : IDisposable
     }
 
     // A fresh context per call, so a test's assertions read from the database rather than
-    // from entities the handler left tracked in its own context.
+    // from entities the handler left tracked in its own context. Collections load one query
+    // each, as in production (AddInfrastructure).
     public SmartDeskDbContext CreateContext() =>
-        new(new DbContextOptionsBuilder<SmartDeskDbContext>().UseSqlite(_connection).Options);
+        new(new DbContextOptionsBuilder<SmartDeskDbContext>()
+            .UseSqlite(_connection, sqlite => sqlite.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
+            .Options);
 
     public async Task<Resource> AddResourceAsync(
         string name = "Meeting Room A",
