@@ -267,6 +267,13 @@ picker drops seconds and any difference would count as a change.
   then imports the app and bootstraps it with a matching `LOCALE_ID`. The **TR | EN** switch
   stores the choice and reloads. Texts are marked with `i18n` in templates and `$localize` in
   code; `npm run i18n:extract` lists what still needs a Turkish version.
+- **Top bar.** Next to **TR | EN** and the theme switch, `<app-profile-menu>` shows the user's
+  initials, name and role. It opens a menu, built to the WAI-ARIA menu button pattern (arrow
+  keys, Escape, a click outside), with **My profile** (`/profile`, the user's own name), the
+  password page and **Sign out**.
+- **Password fields.** Every password input sits in `<app-password-field>`, whose eye button
+  shows what was typed. It hides it again when the form is sent, so a password manager sees a
+  password field.
 - **Styling.** Plain SCSS. Design tokens (colors, spacing, radius) and shared building blocks
   (`.btn`, `.field`, `.input`, `.card`, `.alert-error`) live in `src/styles.scss`. Component
   styles use those variables instead of hardcoded values. The dark theme redefines the colour
