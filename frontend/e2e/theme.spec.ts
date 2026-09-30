@@ -12,11 +12,11 @@ test("a first visit follows the system's dark setting, and a pick sticks over it
   const toggle = page.getByRole('button', { name: 'Koyu mod' });
   await expect(html).toHaveAttribute('data-theme', 'dark');
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(15, 23, 42)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(10, 14, 26)');
 
   await toggle.click();
   await expect(html).toHaveAttribute('data-theme', 'light');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(245, 247, 250)');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(245, 246, 251)');
 
   // Light was picked, so it wins over the system's dark from now on.
   await page.reload();
