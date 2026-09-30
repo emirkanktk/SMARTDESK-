@@ -14,6 +14,10 @@ public interface IIdentityService
     // Nothing else about the account changes, and their sessions go on.
     Task RememberLanguageAsync(Guid userId, string language, CancellationToken cancellationToken);
 
+    // The user's own name, from their profile. Nothing else changes and their sessions go on;
+    // tokens issued from now on carry the new name.
+    Task RenameAsync(Guid userId, string firstName, string lastName, CancellationToken cancellationToken);
+
     // "First Last" (or the email when both are blank) for each id that exists, in one query.
     // Unknown ids are simply missing from the result.
     Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesAsync(

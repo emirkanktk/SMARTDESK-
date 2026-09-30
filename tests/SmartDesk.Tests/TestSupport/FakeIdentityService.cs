@@ -22,6 +22,9 @@ public sealed class FakeIdentityService(IReadOnlyDictionary<Guid, string>? names
     public Task RememberLanguageAsync(Guid userId, string language, CancellationToken cancellationToken) =>
         throw new NotSupportedException();
 
+    public Task RenameAsync(Guid userId, string firstName, string lastName, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
+
     public Task<PasswordResetToken?> CreatePasswordResetTokenAsync(string email, CancellationToken cancellationToken) =>
         throw new NotSupportedException();
 
