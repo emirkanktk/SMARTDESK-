@@ -10,6 +10,7 @@ import { AuthService } from './auth.service';
 const REFRESH = `${environment.apiUrl}/auth/refresh`;
 const LOGIN = `${environment.apiUrl}/auth/login`;
 const LOGOUT = `${environment.apiUrl}/auth/logout`;
+const SIGN_OUT_PENDING = 'smartdesk_sign_out_pending';
 
 describe('AuthService', () => {
   let otherTab: BroadcastChannel;
@@ -155,6 +156,60 @@ describe('AuthService', () => {
     expect(service.isAuthenticated()).toBe(false);
     expect(service.getToken()).toBeNull();
     expect(service.passwordChangeRequired()).toBe(false);
+    expect(localStorage.getItem(SIGN_OUT_PENDING)).toBeNull();
+  });
+
+  describe('a sign-out that cannot reach the server', () => {
+    // The session, and its HttpOnly cookie, would still be there on the next visit: on a shared
+    // computer the next person would find themselves signed in.
+    function signOutOffline(): void {
+      const { service, http } = createService();
+      service.login({ email: 'employee1@smartdesk.local', password: 'secret' }).subscribe();
+      http.expectOne(LOGIN).flush(session());
+      service.logout();
+      http.expectOne(LOGOUT).error(new ProgressEvent('error'));
+      expect(service.isAuthenticated()).toBe(false);
+      TestBed.resetTestingModule();
+    }
+
+    it('is finished on the next visit, before any session is taken up', async () => {
+      signOutOffline();
+      expect(localStorage.getItem(SIGN_OUT_PENDING)).not.toBeNull();
+
+      const { service, http } = createService();
+      const restored = service.restoreSession();
+      await vi.waitFor(() =>
+        http.expectOne(LOGOUT).flush(null, { status: 204, statusText: 'No Content' }),
+      );
+      await restored;
+
+      http.expectNone(REFRESH);
+      expect(service.isAuthenticated()).toBe(false);
+      expect(localStorage.getItem(SIGN_OUT_PENDING)).toBeNull();
+    });
+
+    it('keeps the session from being taken up while the server still cannot be reached', async () => {
+      signOutOffline();
+
+      const { service, http } = createService();
+      const restored = service.restoreSession();
+      await vi.waitFor(() => http.expectOne(LOGOUT).error(new ProgressEvent('error')));
+      await restored;
+
+      http.expectNone(REFRESH);
+      expect(service.isAuthenticated()).toBe(false);
+      expect(localStorage.getItem(SIGN_OUT_PENDING)).not.toBeNull();
+    });
+
+    it('is forgotten once someone signs in again', () => {
+      signOutOffline();
+
+      const { service, http } = createService();
+      service.login({ email: 'employee1@smartdesk.local', password: 'secret' }).subscribe();
+      http.expectOne(LOGIN).flush(session());
+
+      expect(localStorage.getItem(SIGN_OUT_PENDING)).toBeNull();
+    });
   });
 
   describe('renewing', () => {
@@ -218,6 +273,83 @@ describe('AuthService', () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(service.isAuthenticated()).toBe(true);
+    });
+
+    it('stays signed in when the renewal gets no answer, and tries again, less and less often', async () => {
+      // A laptop waking before its Wi-Fi: the session is still open on the server.
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      const { service, http } = createService();
+      const current = fakeJwt({ exp: Math.floor(Date.now() / 1000) + 5 * 60 });
+      service.login({ email: 'employee1@smartdesk.local', password: 'secret' }).subscribe();
+      http.expectOne(LOGIN).flush(session({ accessToken: current }));
+
+      await vi.advanceTimersByTimeAsync(4 * 60_000);
+      http.expectOne(REFRESH).error(new ProgressEvent('error'));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(service.isAuthenticated()).toBe(true);
+      expect(service.getToken()).toBe(current);
+
+      // Again after 10 s, then 20 s, then 40 s.
+      for (const wait of [10_000, 20_000, 40_000]) {
+        await vi.advanceTimersByTimeAsync(wait - 1);
+        http.expectNone(REFRESH);
+        await vi.advanceTimersByTimeAsync(1);
+        http.expectOne(REFRESH).flush(null, { status: 503, statusText: 'Service Unavailable' });
+        await vi.advanceTimersByTimeAsync(0);
+      }
+      // The token has expired meanwhile, but nobody was signed out.
+      expect(service.getToken()).toBeNull();
+      expect(service.isAuthenticated()).toBe(true);
+
+      // Then every minute, until an answer comes.
+      await vi.advanceTimersByTimeAsync(60_000);
+      const renewed = fakeJwt({ given_name: 'Renewed' });
+      http.expectOne(REFRESH).flush(session({ accessToken: renewed }));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(service.getToken()).toBe(renewed);
+
+      // Back to the usual renewal, a minute before the new token expires.
+      await vi.advanceTimersByTimeAsync(60_000);
+      http.expectNone(REFRESH);
+    });
+
+    it('leaves a guest alone when the renewal at start-up gets no answer', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      const { service, http } = createService();
+
+      const restored = service.restoreSession();
+      http.expectOne(REFRESH).error(new ProgressEvent('error'));
+      await vi.advanceTimersByTimeAsync(0);
+      await restored;
+
+      expect(service.isAuthenticated()).toBe(false);
+      await vi.advanceTimersByTimeAsync(5 * 60_000);
+      http.expectNone(REFRESH);
+    });
+
+    it('signs out here when the cookie is gone (a 204 to the renewal)', async () => {
+      // Say the browser's site data was cleared: there's no session left to renew.
+      const { service, http } = createService();
+      const soon = fakeJwt({ exp: Math.floor(Date.now() / 1000) + 10 });
+      service.login({ email: 'employee1@smartdesk.local', password: 'secret' }).subscribe();
+      http.expectOne(LOGIN).flush(session({ accessToken: soon }));
+
+      service.validToken().subscribe();
+      http.expectOne(REFRESH).flush(null, { status: 204, statusText: 'No Content' });
+      await settle();
+
+      expect(service.isAuthenticated()).toBe(false);
+    });
+
+    it('takes a 204 to mean the browser has no session', async () => {
+      const { service, http } = createService();
+
+      const restored = service.restoreSession();
+      http.expectOne(REFRESH).flush(null, { status: 204, statusText: 'No Content' });
+      await restored;
+
+      expect(service.isAuthenticated()).toBe(false);
+      expect(service.getToken()).toBeNull();
     });
   });
 

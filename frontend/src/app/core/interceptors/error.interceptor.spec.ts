@@ -23,12 +23,15 @@ describe('errorInterceptor', () => {
   let logout: ReturnType<typeof vi.fn>;
   let markPasswordChangeRequired: ReturnType<typeof vi.fn>;
   let renew: ReturnType<typeof vi.fn>;
+  /** Someone is still signed in here after the renewal: it got no answer. */
+  let known: boolean;
 
   beforeEach(() => {
     logout = vi.fn();
     markPasswordChangeRequired = vi.fn();
-    // By default the session is over: renewing gives no token.
+    // By default the session is over: renewing gives no token, and nobody is signed in.
     renew = vi.fn(() => of(null));
+    known = false;
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -37,7 +40,10 @@ describe('errorInterceptor', () => {
         ]),
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: { logout, markPasswordChangeRequired, renew } },
+        {
+          provide: AuthService,
+          useValue: { logout, markPasswordChangeRequired, renew, isAuthenticated: () => known },
+        },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -91,6 +97,48 @@ describe('errorInterceptor', () => {
       queryParams: { returnUrl: '/resources' },
     });
     expect(notifications.notifications()[0]?.message).toContain('session has expired');
+  });
+
+  it("keeps the user signed in when the renewal gets no answer, and says the server can't be reached", async () => {
+    // A laptop waking before its Wi-Fi: the session is still open on the server.
+    await router.navigateByUrl('/calendar');
+    const navigate = vi.spyOn(router, 'navigate');
+    known = true;
+
+    const result = request();
+    flush401();
+
+    expect(renew).toHaveBeenCalledTimes(1);
+    expect(logout).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+    expect((result.error() as ApiError).status).toBe(401);
+    expect(notifications.notifications()[0]?.message).toBe(
+      'Cannot reach the server. Check your connection and try again.',
+    );
+  });
+
+  it("doesn't retry with the token that was just refused", () => {
+    // No answer to the renewal, and the current token is the one the API refused.
+    known = true;
+    renew.mockReturnValue(of('old-token'));
+    http
+      .get(url, { headers: { Authorization: 'Bearer old-token' } })
+      .subscribe({ error: () => undefined });
+
+    backend.expectOne(url).flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    backend.expectNone(url);
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('shows nothing when the renewal gets no answer for a caller with its own message', () => {
+    known = true;
+
+    request({ context: new HttpContext().set(SKIP_ERROR_NOTIFICATION, true) });
+    flush401();
+
+    expect(logout).not.toHaveBeenCalled();
+    expect(notifications.notifications()).toEqual([]);
   });
 
   it('renews the session once and retries with the new token', () => {

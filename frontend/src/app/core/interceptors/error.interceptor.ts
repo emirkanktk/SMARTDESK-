@@ -2,7 +2,7 @@ import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpRequest } from '@a
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { OperatorFunction, catchError, switchMap, throwError } from 'rxjs';
-import { ApiError } from '../models/api-error.model';
+import { ApiError, SERVER_UNREACHABLE } from '../models/api-error.model';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
 import { isApiUrl } from '../utils/api-url';
@@ -44,16 +44,25 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       ) {
         // The session may well go on - the token expired while the laptop slept, or another
         // tab changed the password and started a new session (ADR-0026) - so renew once and
-        // try again. If the session itself is over, sign out.
+        // try again. Only the API saying the session is over signs out; a renewal that got
+        // no answer leaves the user signed in, and this request fails like any other that
+        // couldn't reach the server.
         if (!retried) {
+          const refused = bearerToken(request.headers.get('Authorization'));
           return authService.renew().pipe(
             switchMap((token) => {
-              if (!token) {
-                endSession(authService, notifications, router);
-                return throwError(() => apiError);
+              if (token && token !== refused) {
+                const retry = request.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+                return next(retry).pipe(handle(retry, true));
               }
-              const retry = request.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
-              return next(retry).pipe(handle(retry, true));
+              if (authService.isAuthenticated()) {
+                if (!request.context.get(SKIP_ERROR_NOTIFICATION)) {
+                  notifications.error(SERVER_UNREACHABLE);
+                }
+              } else {
+                endSession(authService, notifications, router);
+              }
+              return throwError(() => apiError);
             }),
           );
         }
@@ -116,4 +125,8 @@ function messageFor(error: ApiError): string | null {
     default:
       return null;
   }
+}
+
+function bearerToken(header: string | null): string | null {
+  return header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
 }

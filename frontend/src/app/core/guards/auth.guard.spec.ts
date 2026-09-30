@@ -19,12 +19,15 @@ describe('route guards', () => {
   let signedIn: boolean;
   /** Whether the session can still give a new token when the current one has expired. */
   let renewable: boolean;
+  /** Someone is signed in here, though a renewal may have got no answer. */
+  let known: boolean;
   let mustChangePassword: boolean;
   let roles: string[];
 
   beforeEach(() => {
     signedIn = false;
     renewable = false;
+    known = false;
     mustChangePassword = false;
     roles = [];
     TestBed.configureTestingModule({
@@ -35,6 +38,7 @@ describe('route guards', () => {
           useValue: {
             hasValidSession: () => signedIn,
             validToken: () => of(renewable ? 'renewed-token' : null),
+            isAuthenticated: () => known,
             passwordChangeRequired: () => mustChangePassword,
             hasRole: (role: string) => roles.includes(role),
           },
@@ -75,6 +79,12 @@ describe('route guards', () => {
       expect(await settle(run(authGuard))).toBe(true);
     });
 
+    it("doesn't send anyone to sign in when the renewal got no answer", async () => {
+      // The token expired and the server can't be reached: the session isn't known to be over.
+      known = true;
+      expect(await settle(run(authGuard, '/calendar'))).toBe(true);
+    });
+
     it('sends a user with a temporary password to change it first', () => {
       signedIn = true;
       mustChangePassword = true;
@@ -95,6 +105,11 @@ describe('route guards', () => {
 
     it('renews an expired token before deciding', async () => {
       renewable = true;
+      expect(await settle(run(sessionGuard))).toBe(true);
+    });
+
+    it('lets a signed-in user through when the renewal got no answer', async () => {
+      known = true;
       expect(await settle(run(sessionGuard))).toBe(true);
     });
   });

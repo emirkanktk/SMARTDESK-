@@ -77,6 +77,40 @@ describe('session expiry while a screen is open', () => {
     expect(router.url).toBe('/resources');
   });
 
+  it('keeps the user signed in through a network outage, and carries on once it ends', async () => {
+    // The laptop woke up before its Wi-Fi did.
+    const http = TestBed.inject(HttpClient);
+    let failure: unknown;
+    http.get(RESOURCES).subscribe({ error: (e: unknown) => (failure = e) });
+
+    await vi.waitFor(() => backend.expectOne(REFRESH).error(new ProgressEvent('error')));
+    const offline = await vi.waitFor(() => backend.expectOne(RESOURCES));
+    offline.error(new ProgressEvent('error'));
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect((failure as { status: number }).status).toBe(0);
+    expect(auth.isAuthenticated()).toBe(true);
+    expect(router.url).toBe('/resources');
+    backend.expectNone(`${environment.apiUrl}/auth/logout`);
+    expect(TestBed.inject(NotificationService).notifications()[0]?.message).toContain(
+      'Cannot reach the server',
+    );
+
+    // Back online: the next call renews and goes through.
+    let body: unknown;
+    http.get(RESOURCES).subscribe((b) => (body = b));
+    const renewed = fakeJwt({ given_name: 'Renewed' });
+    await vi.waitFor(() =>
+      backend
+        .expectOne(REFRESH)
+        .flush({ accessToken: renewed, expiresAt: new Date().toISOString() }),
+    );
+    const online = await vi.waitFor(() => backend.expectOne(RESOURCES));
+    expect(online.request.headers.get('Authorization')).toBe(`Bearer ${renewed}`);
+    online.flush([]);
+    expect(body).toEqual([]);
+  });
+
   it('redirects to login when the session is over too', async () => {
     TestBed.inject(HttpClient)
       .get(RESOURCES)

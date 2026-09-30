@@ -9,7 +9,9 @@ import { AuthService } from '../services/auth.service';
  * Lets signed-in users through; sends everyone else to login, remembering where they were going.
  * A user whose password was set by someone else goes to change it first - the API answers
  * nothing else until then (ADR-0021). A token that just expired - the laptop slept - is renewed
- * from the session first (ADR-0026).
+ * from the session first (ADR-0026). A renewal that gets no answer doesn't send anyone to
+ * sign in: the session isn't known to be over, the page's calls say the server can't be
+ * reached, and the next renewal picks up where this one left off.
  */
 export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
@@ -24,7 +26,7 @@ export const authGuard: CanActivateFn = (_route, state) => {
     .validToken()
     .pipe(
       map((token) =>
-        token
+        token || authService.isAuthenticated()
           ? signedIn()
           : router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } }),
       ),
@@ -39,7 +41,11 @@ export const sessionGuard: CanActivateFn = () => {
   if (authService.hasValidSession()) {
     return true;
   }
-  return authService.validToken().pipe(map((token) => (token ? true : router.parseUrl('/login'))));
+  return authService
+    .validToken()
+    .pipe(
+      map((token) => (token || authService.isAuthenticated() ? true : router.parseUrl('/login'))),
+    );
 };
 
 /** Keeps signed-in users off the login screen. */
