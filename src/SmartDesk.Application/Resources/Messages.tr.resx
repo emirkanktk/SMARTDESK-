@@ -66,6 +66,30 @@
   <data name="Accounts_UnknownRole" xml:space="preserve">
     <value>Rol şunlardan biri olmalı: {0}.</value>
   </data>
+  <data name="Assistant_LastFromUser" xml:space="preserve">
+    <value>Konuşma sizin mesajınızla bitmeli.</value>
+  </data>
+  <data name="Assistant_MessageTooLong" xml:space="preserve">
+    <value>Bir mesaj en fazla {0} karakter olabilir.</value>
+  </data>
+  <data name="Assistant_NoMessage" xml:space="preserve">
+    <value>Önce bir mesaj yazın.</value>
+  </data>
+  <data name="Assistant_NotConfigured" xml:space="preserve">
+    <value>Asistan bu sunucuda ayarlanmamış.</value>
+  </data>
+  <data name="Assistant_Refused" xml:space="preserve">
+    <value>Bu konuda yardımcı olamıyorum. Bana rezervasyonları ve kaynakları sorabilirsiniz.</value>
+  </data>
+  <data name="Assistant_TooManyMessages" xml:space="preserve">
+    <value>Bu konuşma {0} mesaj sınırına ulaştı. Yeni bir konuşma başlatın.</value>
+  </data>
+  <data name="Assistant_Unavailable" xml:space="preserve">
+    <value>Asistan şu anda yanıt veremiyor. Birazdan yeniden deneyin.</value>
+  </data>
+  <data name="Assistant_UnknownRole" xml:space="preserve">
+    <value>Bir mesaj ya kullanıcının ya da asistanın olabilir.</value>
+  </data>
   <data name="Auth_Disabled" xml:space="preserve">
     <value>Hesabınız devre dışı bırakıldı. Sistem yöneticinize başvurun.</value>
   </data>
@@ -237,6 +261,9 @@
   <data name="Error_PasswordChangeRequired" xml:space="preserve">
     <value>Devam etmeden önce yeni bir parola belirleyin.</value>
   </data>
+  <data name="Error_TooManyAssistantRequests" xml:space="preserve">
+    <value>Son bir dakikada asistana çok fazla soru soruldu. Biraz bekleyip yeniden deneyin.</value>
+  </data>
   <data name="Error_TooManySignIns" xml:space="preserve">
     <value>Çok fazla giriş denemesi yapıldı. Lütfen bir dakika bekleyip tekrar deneyin.</value>
   </data>
@@ -272,6 +299,9 @@
   </data>
   <data name="Problem_PasswordChangeRequired" xml:space="preserve">
     <value>Parola değişikliği gerekli</value>
+  </data>
+  <data name="Problem_ServiceUnavailable" xml:space="preserve">
+    <value>Hizmet kullanılamıyor</value>
   </data>
   <data name="Problem_TooManyRequests" xml:space="preserve">
     <value>Çok fazla istek</value>

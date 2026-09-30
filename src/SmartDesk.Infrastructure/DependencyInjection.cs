@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Auth.Common;
+using SmartDesk.Infrastructure.Assistant;
 using SmartDesk.Infrastructure.Email;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence;
@@ -114,6 +115,15 @@ public static class DependencyInjection
         services.AddScoped<IdentityDataSeeder>();
         services.AddScoped<BootstrapAdminSeeder>();
         services.AddScoped<DemoResourceSeeder>();
+
+        // The assistant (ADR-0029): Claude through the official SDK. Without Assistant:ApiKey it's
+        // off, and nothing else notices.
+        services.AddOptions<AssistantOptions>()
+            .Bind(configuration.GetSection(AssistantOptions.SectionName))
+            .Validate(o => o.MaxTokens > 0 && o.MaxToolRounds > 0,
+                "Assistant:MaxTokens and Assistant:MaxToolRounds must be positive.")
+            .ValidateOnStart();
+        services.AddSingleton<IAssistantModel, ClaudeAssistantModel>();
 
         return services;
     }

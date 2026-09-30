@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -10,6 +11,9 @@ public static class RateLimitingSetup
 {
     public const string LoginPolicy = "login";
 
+    // Every question to the assistant is a paid call to its language model (ADR-0029).
+    public const string AssistantPolicy = "assistant";
+
     // Identity's lockout (5 failures -> 5 minutes) protects one account at a time; this caps
     // how many sign-in attempts one client can make across all accounts, which is what a
     // password-spraying or credential-stuffing run looks like.
@@ -19,6 +23,7 @@ public static class RateLimitingSetup
     public static IServiceCollection AddSmartDeskRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
         var permitsPerMinute = configuration.GetValue("RateLimiting:LoginPermitsPerMinute", 10);
+        var assistantPermitsPerMinute = configuration.GetValue("RateLimiting:AssistantPermitsPerMinute", 20);
 
         services.AddRateLimiter(options =>
         {
@@ -33,6 +38,16 @@ public static class RateLimitingSetup
                     QueueLimit = 0,
                 }));
 
+            // Per signed-in user, whatever their address: the endpoint needs a token anyway.
+            options.AddPolicy(AssistantPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = assistantPermitsPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+
             // Same ProblemDetails shape as every other error, plus Retry-After.
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -42,6 +57,7 @@ public static class RateLimitingSetup
                     response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
                 }
 
+                var policy = context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
                 await context.HttpContext.RequestServices.GetRequiredService<IProblemDetailsService>().TryWriteAsync(
                     new ProblemDetailsContext
                     {
@@ -50,7 +66,7 @@ public static class RateLimitingSetup
                         {
                             Status = StatusCodes.Status429TooManyRequests,
                             Title = Messages.Problem_TooManyRequests,
-                            Detail = Messages.Error_TooManySignIns,
+                            Detail = policy == AssistantPolicy ? Messages.Error_TooManyAssistantRequests : Messages.Error_TooManySignIns,
                         },
                     });
             };
