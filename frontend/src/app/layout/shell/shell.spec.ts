@@ -1,4 +1,4 @@
-import { computed, signal } from '@angular/core';
+import { LOCALE_ID, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { Role, Roles } from '../../core/constants/roles';
@@ -72,6 +72,31 @@ describe('Shell', () => {
     expect(navLabels(element)).toEqual(expect.arrayContaining(['Admin', 'Users']));
     expect(navLabels(element)).not.toContain('My team');
     expect(badge(element)).toBe('Admin');
+  });
+
+  const avatar = (element: HTMLElement) => element.querySelector('.avatar')!.textContent!.trim();
+
+  it("puts the user's initials in the avatar", async () => {
+    expect(avatar(await render())).toBe('AY');
+  });
+
+  it("uses the email's first letter for a user without a name", async () => {
+    currentUser.set({ id: 'u-2', firstName: '', lastName: '', email: 'zeynep@x.io', roles: [] });
+
+    expect(avatar(await render())).toBe('Z');
+  });
+
+  it('writes the initials in capitals the way the language on screen does', async () => {
+    TestBed.overrideProvider(LOCALE_ID, { useValue: 'tr' });
+    currentUser.set({
+      id: 'u-3',
+      firstName: 'ilker',
+      lastName: 'ışık',
+      email: 'i@x.io',
+      roles: [],
+    });
+
+    expect(avatar(await render())).toBe('İI');
   });
 
   it('shows My team to managers, and no admin links', async () => {
