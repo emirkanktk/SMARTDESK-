@@ -15,18 +15,9 @@
   </nav>
 
   <div class="user">
-    <span class="user-name">{{ displayName() }}</span>
-    @if (roleBadge(); as role) {
-      <span class="badge">{{ role }}</span>
-    }
     <app-language-switch />
     <app-theme-switch />
-    <a class="btn btn-secondary btn-sm" routerLink="/change-password" i18n="@@nav.password"
-      >Password</a
-    >
-    <button type="button" class="btn btn-secondary btn-sm" (click)="logout()" i18n="@@nav.signOut">
-      Sign out
-    </button>
+    <app-profile-menu />
   </div>
 </header>
 

@@ -138,16 +138,18 @@
 
       <div class="field">
         <label for="password" i18n="@@field.password">Password</label>
-        <input
-          id="password"
-          type="password"
-          class="input"
-          formControlName="password"
-          autocomplete="new-password"
-          [class.invalid]="passwordErrors().length > 0"
-          [attr.aria-invalid]="passwordErrors().length > 0"
-          aria-describedby="password-help"
-        />
+        <app-password-field>
+          <input
+            id="password"
+            type="password"
+            class="input"
+            formControlName="password"
+            autocomplete="new-password"
+            [class.invalid]="passwordErrors().length > 0"
+            [attr.aria-invalid]="passwordErrors().length > 0"
+            aria-describedby="password-help"
+          />
+        </app-password-field>
         <span id="password-help">
           @for (message of passwordErrors(); track message) {
             <span class="field-error">{{ message }}</span>
@@ -159,16 +161,18 @@
 
       <div class="field">
         <label for="confirm" i18n="@@field.repeatPassword">Repeat the password</label>
-        <input
-          id="confirm"
-          type="password"
-          class="input"
-          formControlName="confirm"
-          autocomplete="new-password"
-          [class.invalid]="!!confirmError()"
-          [attr.aria-invalid]="!!confirmError()"
-          aria-describedby="confirm-error"
-        />
+        <app-password-field>
+          <input
+            id="confirm"
+            type="password"
+            class="input"
+            formControlName="confirm"
+            autocomplete="new-password"
+            [class.invalid]="!!confirmError()"
+            [attr.aria-invalid]="!!confirmError()"
+            aria-describedby="confirm-error"
+          />
+        </app-password-field>
         @if (confirmError(); as message) {
           <span id="confirm-error" class="field-error">{{ message }}</span>
         }

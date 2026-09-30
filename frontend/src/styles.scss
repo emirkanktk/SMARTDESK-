@@ -178,6 +178,16 @@ a {
   }
 }
 
+// A password input with its show/hide button (shared/components/password-field).
+.password-field {
+  position: relative;
+  display: block;
+
+  > .input {
+    padding-right: 2.75rem;
+  }
+}
+
 .field-error {
   color: var(--color-danger);
   font-size: 0.875rem;

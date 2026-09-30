@@ -48,16 +48,18 @@
 
     <div class="field">
       <label for="password" i18n="@@field.password">Password</label>
-      <input
-        id="password"
-        type="password"
-        class="input"
-        formControlName="password"
-        autocomplete="current-password"
-        [class.invalid]="showError('password')"
-        [attr.aria-invalid]="showError('password')"
-        aria-describedby="password-error"
-      />
+      <app-password-field>
+        <input
+          id="password"
+          type="password"
+          class="input"
+          formControlName="password"
+          autocomplete="current-password"
+          [class.invalid]="showError('password')"
+          [attr.aria-invalid]="showError('password')"
+          aria-describedby="password-error"
+        />
+      </app-password-field>
       @if (showError('password')) {
         <span id="password-error" class="field-error" i18n="@@field.passwordRequired"
           >Password is required.</span
