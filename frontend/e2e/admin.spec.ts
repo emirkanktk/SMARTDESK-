@@ -1,4 +1,13 @@
-import { acceptNextDialog, bookingLink, expect, localInput, retire, slot, test } from './support';
+import {
+  acceptNextDialog,
+  bookingLink,
+  expect,
+  localInput,
+  retire,
+  slot,
+  teamMember,
+  test,
+} from './support';
 
 // What admins and managers do to resources: blocked windows (ADR-0015) and team resources
 // (ADR-0022).
@@ -66,10 +75,18 @@ test("a manager's new resource is their team's, and a shared one stays the admin
     await manager.goto(`/resources/${resource.id}/edit`);
     await expect(manager.getByText('Only an administrator can change this resource')).toBeVisible();
 
-    // A member of the team sees it; the admin sees whose it is.
-    const ayse = await open('ayse');
-    await ayse.goto('/resources');
-    await expect(ayse.locator('tr', { hasText: name })).toBeVisible();
+    // A member of the team sees it. The seed has two; a local database may have none left.
+    const member = await teamMember();
+    if (member) {
+      const memberPage = await open(member);
+      await memberPage.goto('/resources');
+      await expect(memberPage.locator('tr', { hasText: name })).toBeVisible();
+    } else {
+      test.info().annotations.push({
+        type: 'not checked',
+        description: "A member seeing it: no demo employee is in the manager's team here.",
+      });
+    }
   } finally {
     const all = (await (await admin.get('resources')).json()) as { id: string; name: string }[];
     const created = all.find((r) => r.name === name);
