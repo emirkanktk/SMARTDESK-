@@ -205,7 +205,8 @@ dotnet user-secrets set "Assistant:ApiKey" "<your Anthropic API key>" --project 
 
 Elsewhere, set the environment variable `Assistant__ApiKey`; never put the key in
 `appsettings`. The other settings are in `appsettings.json` under `Assistant`: `Model`
-(`claude-opus-5-5`), `Effort` (`low`), `MaxTokens` and `MaxToolRounds`. Each question is a
+(`claude-opus-5-5`), `Effort` (`low`), `MaxTokens`, `MaxToolRounds` and `TimeoutSeconds` (`90`,
+the most one answer may take before the user is asked to try again). Each question is a
 paid call to the model. A user can ask 20 a minute (`RateLimiting:AssistantPermitsPerMinute`),
 and the API log shows the tokens each answer used.
 

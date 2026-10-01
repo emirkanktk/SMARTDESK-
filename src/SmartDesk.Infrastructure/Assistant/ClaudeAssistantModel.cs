@@ -11,11 +11,12 @@ namespace SmartDesk.Infrastructure.Assistant;
 
 // The assistant on Anthropic's Claude API (ADR-0029), through the official SDK. One answer is a
 // loop: Claude either replies, or asks for tools; the toolbox runs them as the signed-in user
-// and the results go back, until it replies or the rounds run out.
+// and the results go back, until it replies, the rounds run out or the time limit does.
 // httpClient is for tests, which put a fake API behind it; left out, the SDK uses its own.
 public sealed class ClaudeAssistantModel(
     IOptions<AssistantOptions> options,
     ILogger<ClaudeAssistantModel> logger,
+    TimeProvider timeProvider,
     HttpClient? httpClient = null) : IAssistantModel, IDisposable
 {
     // If Claude declines a request on policy grounds, the API may serve it with another model
@@ -35,6 +36,35 @@ public sealed class ClaudeAssistantModel(
         {
             throw new ServiceUnavailableException(Messages.Assistant_NotConfigured);
         }
+
+        // One time limit for the whole answer: every round, the SDK's retries and the tools in
+        // between. A limit per call would still let an answer run for rounds × attempts × limit.
+        using var timeLimit = new CancellationTokenSource(TimeSpan.FromSeconds(_options.TimeoutSeconds), timeProvider);
+        using var answer = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeLimit.Token);
+        try
+        {
+            return await AnswerInRoundsAsync(request, toolbox, answer.Token);
+        }
+        catch (OperationCanceledException e) when (!cancellationToken.IsCancellationRequested)
+        {
+            // The time limit ran out, or the SDK's own timeout for a call did. The caller is
+            // still waiting, so it gets an answer it can act on: try again.
+            logger.LogWarning(e, "The assistant didn't answer within {Seconds} s.", _options.TimeoutSeconds);
+            throw new ServiceUnavailableException(Messages.Assistant_Unavailable);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_client.IsValueCreated)
+        {
+            _client.Value.Dispose();
+        }
+    }
+
+    private async Task<string> AnswerInRoundsAsync(AssistantRequest request, IAssistantToolbox toolbox, CancellationToken cancellationToken)
+    {
+        var started = timeProvider.GetTimestamp();
 
         // The tools and the instructions are the same for every request and every user, and
         // come first, so they're cached; the context after them changes each time.
@@ -62,8 +92,8 @@ public sealed class ClaudeAssistantModel(
             if (refused || response.StopReason != "tool_use" || toolUses.Count == 0 || lastRound)
             {
                 logger.LogInformation(
-                    "The assistant answered in {Rounds} round(s): {InputTokens} input tokens ({CachedTokens} read from the cache), {OutputTokens} output tokens.",
-                    round + 1, usage.Input, usage.CacheRead, usage.Output);
+                    "The assistant answered in {Rounds} round(s) and {Seconds:0.0} s: {InputTokens} input tokens ({CachedTokens} read from the cache), {OutputTokens} output tokens.",
+                    round + 1, timeProvider.GetElapsedTime(started).TotalSeconds, usage.Input, usage.CacheRead, usage.Output);
                 return refused ? Messages.Assistant_Refused : AnswerText(response);
             }
 
@@ -78,14 +108,6 @@ public sealed class ClaudeAssistantModel(
 
             messages.Add(new BetaMessageParam { Role = Role.Assistant, Content = Echo(response) });
             messages.Add(new BetaMessageParam { Role = Role.User, Content = results });
-        }
-    }
-
-    public void Dispose()
-    {
-        if (_client.IsValueCreated)
-        {
-            _client.Value.Dispose();
         }
     }
 
