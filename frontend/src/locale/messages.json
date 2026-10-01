@@ -546,7 +546,6 @@
     "auth.showcase.live": "The calendar updates live",
     "auth.showcase.reminders": "A reminder before each booking",
     "passwordField.show": "Show password",
-    "passwordField.hide": "Hide password",
     "tempPassword.label": "Temporary password for {$INTERPOLATION}",
     "tempPassword.set": "Set",
     "tempPassword.cancel": " Cancel ",
