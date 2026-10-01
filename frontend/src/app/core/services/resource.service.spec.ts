@@ -119,6 +119,20 @@ describe('ResourceService', () => {
     replace.flush(code);
   });
 
+  it('sets up a door screen with POST and turns it off with DELETE', () => {
+    let url = '';
+    service.setUpDoorScreen('res/1').subscribe((link) => (url = link.url));
+    service.turnOffDoorScreen('res/1').subscribe();
+
+    const setUp = http.expectOne({ method: 'POST', url: `${base}/res%2F1/door-screen` });
+    expect(setUp.request.body).toBeNull();
+    setUp.flush({ url: 'http://localhost:4200/door/res-1#t0k3n', setUpAt: '2026-10-01T09:00:00Z' });
+    http
+      .expectOne({ method: 'DELETE', url: `${base}/res%2F1/door-screen` })
+      .flush(null, { status: 204, statusText: 'No Content' });
+    expect(url).toBe('http://localhost:4200/door/res-1#t0k3n');
+  });
+
   it('checks in with the code, and leaves explaining a refusal to the page', () => {
     service.checkIn('res/1', 'c0de').subscribe();
 

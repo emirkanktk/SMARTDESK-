@@ -107,6 +107,9 @@
                 @if (item.releasedNote; as note) {
                   · <span>{{ note }}</span>
                 }
+                @if (item.checkedInBy; as by) {
+                  · <span class="checked-in-by">{{ by }}</span>
+                }
               </p>
               @if (item.attendees; as attendees) {
                 <p class="text-muted meta attendees">{{ attendees }}</p>

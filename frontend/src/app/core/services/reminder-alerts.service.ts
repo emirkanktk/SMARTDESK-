@@ -32,6 +32,7 @@ export class ReminderAlertsService {
     this.started = true;
     this.hub.startingSoon$.subscribe((reservation) => this.show(reservation));
     this.hub.released$.subscribe((reservation) => this.showReleased(reservation));
+    this.hub.releaseWarning$.subscribe((reservation) => this.showReleaseWarning(reservation));
   }
 
   permission(): DesktopPermission {
@@ -72,6 +73,29 @@ export class ReminderAlertsService {
       desktop.onclick = () => {
         window.focus();
         void this.router.navigate(['/reservations', reservation.id, 'edit']);
+        desktop.close();
+      };
+    }
+  }
+
+  /**
+   * Nobody has checked in yet, and it's released in five minutes (ADR-0034): to the owner and
+   * to those invited, any of whom may still get to the door.
+   */
+  private showReleaseWarning(reservation: Reservation): void {
+    const closesAt = formatDate(checkInWindow(reservation).closesAt, 'HH:mm', this.locale);
+    const message = $localize`:@@reminder.releaseWarning:Nobody has checked in to ${reservation.resourceName}:resource: yet. Scan the QR code at the door by ${closesAt}:time:, or the booking is released.`;
+
+    this.notifications.info(message, REMINDER_TOAST_MS);
+
+    if (this.permission() === 'granted') {
+      const desktop = new Notification(
+        $localize`:@@reminder.releaseWarningTitle:Check in now, or the room is released`,
+        { body: message, tag: `release-warning-${reservation.id}` },
+      );
+      desktop.onclick = () => {
+        window.focus();
+        void this.router.navigateByUrl('/reservations/mine');
         desktop.close();
       };
     }

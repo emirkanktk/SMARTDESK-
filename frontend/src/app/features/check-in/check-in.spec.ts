@@ -1,17 +1,19 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { Reservation } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
+import { NotificationService } from '../../core/services/notification.service';
+import { ResourceBlockService } from '../../core/services/resource-block.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { fakeResource } from '../../../testing/resource-fixtures';
 import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
-import { CHECK_IN_TICK_MS, CheckIn, visitFor } from './check-in';
+import { CHECK_IN_TICK_MS, CheckIn, roomNowFor, visitFor } from './check-in';
 
 // Local times, so what the page prints reads the same in every time zone the tests run in.
 const at = (time: string) => new Date(`2026-10-07T${time}`);
@@ -123,11 +125,69 @@ describe('visitFor', () => {
   });
 });
 
+describe('roomNowFor', () => {
+  const now = at('10:00').getTime();
+  const room = fakeResource();
+  const other = (start: string, end: string) =>
+    booking({
+      id: `${start}`,
+      userId: 'someone-else',
+      startDateTime: iso(start),
+      endDateTime: iso(end),
+    });
+
+  it('is free until the next booking or block, or all day', () => {
+    expect(roomNowFor(room, { bookings: [], blocks: [] }, now)).toEqual({
+      kind: 'free',
+      until: null,
+    });
+    expect(roomNowFor(room, { bookings: [other('11:00', '12:00')], blocks: [] }, now)).toEqual({
+      kind: 'free',
+      until: at('11:00'),
+    });
+  });
+
+  it('is in use until the current booking ends, and a cancelled one does not count', () => {
+    expect(roomNowFor(room, { bookings: [other('09:30', '10:30')], blocks: [] }, now)).toEqual({
+      kind: 'busy',
+      until: at('10:30'),
+    });
+    expect(
+      roomNowFor(
+        room,
+        { bookings: [{ ...other('09:30', '10:30'), status: 'Cancelled' }], blocks: [] },
+        now,
+      ).kind,
+    ).toBe('free');
+  });
+
+  it('is out of use when the resource is, or a block covers now', () => {
+    expect(
+      roomNowFor(fakeResource({ status: 'Maintenance' }), { bookings: [], blocks: [] }, now).kind,
+    ).toBe('unavailable');
+    const block = {
+      id: 'b',
+      resourceId: 'res-1',
+      resourceName: 'A',
+      startDateTime: iso('09:00'),
+      endDateTime: iso('10:01'),
+      reason: 'x',
+      createdByUserId: 'u',
+    };
+    expect(roomNowFor(room, { bookings: [], blocks: [block] }, now).kind).toBe('unavailable');
+  });
+});
+
 describe('CheckIn', () => {
   const currentUser = signal<{ id: string } | null>({ id: OWNER_ID });
   let getResource: ReturnType<typeof vi.fn>;
   let getMine: ReturnType<typeof vi.fn>;
   let getInvited: ReturnType<typeof vi.fn>;
+  let getCalendar: ReturnType<typeof vi.fn>;
+  let getBlocks: ReturnType<typeof vi.fn>;
+  let create: ReturnType<typeof vi.fn>;
+  let end: ReturnType<typeof vi.fn>;
+  let success: ReturnType<typeof vi.fn>;
   let checkIn: ReturnType<typeof vi.fn>;
   let updated: Subject<Reservation>;
   let fixture: ComponentFixture<CheckIn>;
@@ -139,6 +199,19 @@ describe('CheckIn', () => {
     getResource = vi.fn(() => of(fakeResource({ checkInRequired: true })));
     getMine = vi.fn(() => of([booking()]));
     getInvited = vi.fn(() => of([]));
+    getCalendar = vi.fn(() => of([]));
+    getBlocks = vi.fn(() => of([]));
+    create = vi.fn((body: { startDateTime: string; endDateTime: string }) =>
+      of(
+        booking({
+          id: 'rsv-new',
+          startDateTime: body.startDateTime,
+          endDateTime: body.endDateTime,
+        }),
+      ),
+    );
+    end = vi.fn((id: string) => of(booking({ id, endDateTime: new Date().toISOString() })));
+    success = vi.fn();
     checkIn = vi.fn(() => of(booking({ checkedInAt: iso('09:55') })));
     updated = new Subject();
 
@@ -146,7 +219,19 @@ describe('CheckIn', () => {
       providers: [
         provideRouter([]),
         { provide: ResourceService, useValue: { getResource, checkIn } },
-        { provide: ReservationService, useValue: { getMine, getInvited } },
+        {
+          provide: ReservationService,
+          useValue: {
+            getMine,
+            getInvited,
+            getCalendar,
+            create,
+            end,
+            getExtensionOptions: () => of({ minutes: [15, 30] }),
+          },
+        },
+        { provide: ResourceBlockService, useValue: { getBlocks } },
+        { provide: NotificationService, useValue: { success } },
         {
           provide: ReservationHubService,
           useValue: { created$: new Subject(), updated$: updated, cancelled$: new Subject() },
@@ -351,8 +436,161 @@ describe('CheckIn', () => {
     await render();
 
     expect(element.textContent).toContain('You have no booking of Meeting Room A to check in to.');
-    const book = element.querySelector<HTMLAnchorElement>('a.btn')!;
-    expect(book.getAttribute('href')).toBe('/reservations/new?resourceId=res-1');
+    expect(element.textContent).toContain('Meeting Room A is free for the rest of the day.');
+    const later = element.querySelector<HTMLAnchorElement>('a.btn')!;
+    expect(later.textContent!.trim()).toBe('Book it for another time');
+    expect(later.getAttribute('href')).toBe('/reservations/new?resourceId=res-1');
+  });
+
+  describe('at the door (ADR-0034)', () => {
+    const buttons = () =>
+      Array.from(element.querySelectorAll<HTMLButtonElement>('button')).map((b) =>
+        b.textContent!.trim(),
+      );
+
+    function button(label: string): HTMLButtonElement {
+      return Array.from(element.querySelectorAll<HTMLButtonElement>('button')).find(
+        (b) => b.textContent!.trim() === label,
+      )!;
+    }
+
+    it('takes the code out of the address as soon as it has read it', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await render();
+
+      expect(navigate).toHaveBeenCalledWith(
+        [],
+        expect.objectContaining({ queryParams: { code: null }, replaceUrl: true }),
+      );
+      fixture.componentRef.setInput('code', undefined); // the address no longer has it
+      await fixture.whenStable();
+      checkInButton()!.click();
+      await fixture.whenStable();
+      expect(checkIn).toHaveBeenCalledWith('res-1', 'c0de');
+    });
+
+    it('says who checked in when it was someone else of the meeting', async () => {
+      getMine.mockReturnValue(
+        of([
+          booking({
+            checkedInAt: iso('09:52'),
+            checkedInBy: 'u-mehmet',
+            checkedInByName: 'Mehmet Demir',
+          }),
+        ]),
+      );
+      await render();
+
+      expect(element.textContent).toContain('Checked in by Mehmet Demir at 09:52.');
+    });
+
+    it('lets the owner end a booking under way, and the room is free again', async () => {
+      vi.setSystemTime(at('10:20'));
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      getMine.mockReturnValue(of([booking({ checkedInAt: iso('09:58') })]));
+      await render();
+
+      button("We're done: free the room").click();
+      await fixture.whenStable();
+
+      expect(end).toHaveBeenCalledWith('rsv-10');
+      expect(success).toHaveBeenCalledWith('Meeting Room A is free again.');
+      expect(element.textContent).toContain('Meeting Room A is free for the rest of the day.');
+    });
+
+    it('offers to run longer from the door', async () => {
+      vi.setSystemTime(at('10:20'));
+      getMine.mockReturnValue(of([booking({ checkedInAt: iso('09:58') })]));
+      await render();
+
+      button('Need longer?').click();
+      await fixture.whenStable();
+
+      expect(element.querySelector('app-extend-booking')).not.toBeNull();
+      expect(buttons()).toContain('+15 min');
+    });
+
+    it('offers no ending before the start', async () => {
+      getMine.mockReturnValue(of([booking({ checkedInAt: iso('09:52') })]));
+      await render(); // 09:55: checked in early
+
+      expect(buttons()).not.toContain("We're done: free the room");
+    });
+
+    it('books the free room on the spot and checks in at once', async () => {
+      getMine.mockReturnValue(of([]));
+      await render();
+
+      button('30 min').click();
+      await fixture.whenStable();
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resourceId: 'res-1',
+          startDateTime: at('09:55').toISOString(),
+          endDateTime: at('10:25').toISOString(),
+        }),
+      );
+      expect(success).toHaveBeenCalledWith('Meeting Room A is yours until 10:25.');
+      expect(checkIn).toHaveBeenCalledWith('res-1', 'c0de');
+    });
+
+    it('offers only what fits before the next booking', async () => {
+      getMine.mockReturnValue(of([]));
+      getCalendar.mockReturnValue(
+        of([
+          booking({
+            id: 'other',
+            userId: 'someone-else',
+            startDateTime: iso('10:40'),
+            endDateTime: iso('11:30'),
+          }),
+        ]),
+      );
+      await render();
+
+      expect(element.textContent).toContain('Meeting Room A is free until 10:40.');
+      expect(buttons()).toContain('30 min');
+      expect(buttons()).not.toContain('1 hour');
+    });
+
+    it('shows the room in use by someone else, with nothing to book now', async () => {
+      getMine.mockReturnValue(of([]));
+      getCalendar.mockReturnValue(
+        of([
+          booking({
+            id: 'other',
+            userId: 'someone-else',
+            startDateTime: iso('09:30'),
+            endDateTime: iso('11:00'),
+          }),
+        ]),
+      );
+      await render();
+
+      expect(element.textContent).toContain('Meeting Room A is in use until 11:00.');
+      expect(buttons()).not.toContain('30 min');
+    });
+
+    it('says the room cannot be booked during a blocked window', async () => {
+      getMine.mockReturnValue(of([]));
+      getBlocks.mockReturnValue(
+        of([
+          {
+            id: 'b',
+            resourceId: 'res-1',
+            resourceName: 'Meeting Room A',
+            startDateTime: iso('09:00'),
+            endDateTime: iso('12:00'),
+            reason: 'Cleaning',
+            createdByUserId: 'u',
+          },
+        ]),
+      );
+      await render();
+
+      expect(element.textContent).toContain("Meeting Room A can't be booked right now.");
+    });
   });
 
   it('says so when the resource could not be loaded', async () => {

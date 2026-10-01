@@ -27,6 +27,7 @@ describe('ReminderAlertsService', () => {
   const NOW = new Date('2026-10-07T13:45'); // local time, 15 minutes before 14:00
   let startingSoon: Subject<Reservation>;
   let released: Subject<Reservation>;
+  let releaseWarning: Subject<Reservation>;
   let info: ReturnType<typeof vi.fn>;
   let navigate: ReturnType<typeof vi.spyOn>;
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
@@ -48,6 +49,7 @@ describe('ReminderAlertsService', () => {
     vi.stubGlobal('Notification', FakeNotification);
     startingSoon = new Subject();
     released = new Subject();
+    releaseWarning = new Subject();
     info = vi.fn();
 
     TestBed.configureTestingModule({
@@ -55,7 +57,11 @@ describe('ReminderAlertsService', () => {
         provideRouter([]),
         {
           provide: ReservationHubService,
-          useValue: { startingSoon$: startingSoon, released$: released },
+          useValue: {
+            startingSoon$: startingSoon,
+            released$: released,
+            releaseWarning$: releaseWarning,
+          },
         },
         { provide: NotificationService, useValue: { info } },
       ],
@@ -101,6 +107,26 @@ describe('ReminderAlertsService', () => {
       "Meeting Room A starts in 15 min, at 14:00. Check in at the door with the QR code by 14:15, or it's released.",
       REMINDER_TOAST_MS,
     );
+  });
+
+  it('warns five minutes before a release, while there is still time to get to the door', () => {
+    FakeNotification.permission = 'granted';
+    service.start();
+    releaseWarning.next({
+      ...meeting,
+      startDateTime: new Date('2026-10-07T13:35').toISOString(),
+      endDateTime: new Date('2026-10-07T14:35').toISOString(),
+      checkInRequired: true,
+    });
+
+    const message =
+      'Nobody has checked in to Meeting Room A yet. Scan the QR code at the door by 13:50, or the booking is released.';
+    expect(info).toHaveBeenCalledExactlyOnceWith(message, REMINDER_TOAST_MS);
+    const [desktop] = FakeNotification.shown;
+    expect(desktop.title).toBe('Check in now, or the room is released');
+    expect(desktop.options).toEqual({ body: message, tag: 'release-warning-rsv-7' });
+    desktop.onclick!();
+    expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
   });
 
   it('tells the owner when a booking was released because nobody checked in', () => {

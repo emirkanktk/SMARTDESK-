@@ -53,3 +53,38 @@
 .alert-error {
   margin: 0;
 }
+
+// What can be done at the door: run longer, end, or book on the spot (ADR-0034).
+.door-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.book-now-label {
+  font-weight: 600;
+}
+
+.room-now {
+  margin: 0;
+  font-weight: 600;
+
+  &.free {
+    color: var(--color-success);
+  }
+
+  &.busy {
+    color: var(--color-text-muted);
+  }
+}
+
+.by {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.end-now:hover:not(:disabled) {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}

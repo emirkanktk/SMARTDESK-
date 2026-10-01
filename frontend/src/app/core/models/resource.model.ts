@@ -100,4 +100,15 @@ export const RESOURCE_PHOTO = {
 export interface CheckInCode {
   code: string;
   url: string;
+  /**
+   * When a screen was set up at its door (ADR-0034). While there is one, only the screen's
+   * changing code checks in, and the printed one doesn't.
+   */
+  doorScreenSince: string | null;
+}
+
+/** A door screen's address, with its token after '#': shown once, when it's set up. */
+export interface DoorScreenLink {
+  url: string;
+  setUpAt: string;
 }

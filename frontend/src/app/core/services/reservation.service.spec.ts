@@ -54,6 +54,15 @@ describe('ReservationService', () => {
     expect(names).toEqual(['Mehmet Demir']);
   });
 
+  it('ends a booking under way with POST to end, without a body', () => {
+    service.end('rsv-1').subscribe();
+
+    const req = http.expectOne(`${base}/rsv-1/end`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeNull();
+    req.flush(fakeReservation());
+  });
+
   it('asks how much longer a booking can run', () => {
     let minutes: number[] = [];
     service.getExtensionOptions('rsv-1').subscribe((options) => (minutes = options.minutes));
