@@ -215,7 +215,7 @@ one there's no **Assistant** button anywhere, and nothing else changes.
   and nothing is booked until a person presses its button, through the same endpoint and rules
   as the booking form (ADR-0029).
 
-### 11. Check-in with a QR code
+### 13. Check-in with a QR code
 
 - In a third window, sign in as the admin (`admin@smartdesk.local`), open **Resources** →
   **Board Room** → **Edit**, tick **Bookings must be checked in at the door with a QR code**
