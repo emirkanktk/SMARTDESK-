@@ -14,7 +14,7 @@ namespace SmartDesk.IntegrationTests;
 // The reservation hub through the real pipeline on PostgreSQL, with SignalR's own client on a
 // WebSocket and the token in the query string, where the browser puts it. The unit tests check
 // who each event is addressed to; these check who actually hears it, and who can't listen at
-// all (ADR-0011, ADR-0021, ADR-0022, ADR-0026).
+// all (ADR-0011, ADR-0018, ADR-0021, ADR-0022, ADR-0026).
 [Collection(PostgresApiCollection.Name)]
 [Trait("Category", "Integration")]
 public sealed class RealtimeTests(PostgresApiFixture fixture)
@@ -96,6 +96,37 @@ public sealed class RealtimeTests(PostgresApiFixture fixture)
         (await RefusedAsync(again)).Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task A_reminder_reaches_its_owner_once_and_nobody_else()
+    {
+        // The reminder job runs every second here (PostgresApiFixture), and this booking's
+        // reminder is due as soon as it's made: it starts in 10 minutes and asks for 15 (ADR-0018).
+        var admin = await SignInAsync("admin@smartdesk.local");
+        var owner = await SignInAsync("employee2@smartdesk.local");
+        await using var ownerHears = await ListenAsync(owner);
+        await using var adminHears = await ListenAsync(admin);
+
+        var desk = await AddDeskAsync(admin);
+        var now = DateTime.UtcNow;
+        var start = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc).AddMinutes(10);
+        var booked = await Api(owner).PostAsJsonAsync(
+            "/api/reservations", new { resourceId = desk, startDateTime = start, endDateTime = start.AddMinutes(30), reminderMinutes = 15 });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var booking = (await booked.Content.ReadFromJsonAsync<ReservationEvent>())!.Id;
+
+        await ownerHears.HearsAsync(ReservationHub.StartingSoon, booking);
+
+        // A few more runs of the job to send it again, then a cancel. Everyone hears that, and
+        // on each connection it comes after whatever was sent before it.
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        (await Api(owner).PostAsync($"/api/reservations/{booking}/cancel", null)).EnsureSuccessStatusCode();
+        await ownerHears.HearsAsync(ReservationHub.Cancelled, booking);
+        await adminHears.HearsAsync(ReservationHub.Cancelled, booking);
+
+        ownerHears.Heard.Count(e => e.Name == ReservationHub.StartingSoon && e.ReservationId == booking).Should().Be(1);
+        adminHears.Heard.Should().NotContain(e => e.Name == ReservationHub.StartingSoon);
+    }
+
     private HubConnection Connect(string? accessToken)
     {
         var server = fixture.Server;
@@ -167,6 +198,22 @@ public sealed class RealtimeTests(PostgresApiFixture fixture)
         return (await response.Content.ReadFromJsonAsync<ReservationEvent>())!.Id;
     }
 
+    // A shared desk of its own, so no other booking is in the way.
+    private async Task<Guid> AddDeskAsync(string adminToken)
+    {
+        var admin = Api(adminToken);
+        var types = (await admin.GetFromJsonAsync<List<ResourceRow>>("/api/resource-types"))!;
+        var created = await admin.PostAsJsonAsync("/api/resources", new
+        {
+            name = $"Hub desk {Guid.NewGuid():N}",
+            resourceTypeId = types.Single(t => t.Name == "Desk").Id,
+            capacity = 1,
+            location = "Integration floor",
+        });
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        return (await created.Content.ReadFromJsonAsync<ResourceRow>())!.Id;
+    }
+
     private HttpClient Api(string accessToken)
     {
         var client = fixture.CreateClient();
@@ -192,7 +239,7 @@ public sealed class RealtimeTests(PostgresApiFixture fixture)
 
         public async Task StartAsync()
         {
-            foreach (var name in new[] { ReservationHub.Created, ReservationHub.Updated, ReservationHub.Cancelled })
+            foreach (var name in new[] { ReservationHub.Created, ReservationHub.Updated, ReservationHub.Cancelled, ReservationHub.StartingSoon })
             {
                 connection.On<ReservationEvent>(name, reservation =>
                 {
