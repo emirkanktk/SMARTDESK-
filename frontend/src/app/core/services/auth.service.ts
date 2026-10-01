@@ -57,6 +57,8 @@ export class AuthService {
   private renewing: Observable<string | null> | null = null;
   /** Renewals in a row that got no answer, for spacing out the next try. */
   private unanswered = 0;
+  /** Sign-outs so far, here or in another tab. A renewal that began before the last one is void. */
+  private signOuts = 0;
   private readonly channel = openChannel();
 
   private readonly currentUserSignal = signal<CurrentUser | null>(null);
@@ -85,7 +87,7 @@ export class AuthService {
     // tab signed out: the session is over here too.
     const onMessage = (event: MessageEvent<ChannelMessage>) => {
       if (event.data === 'signed-out') {
-        this.clearSession();
+        this.signedOut();
       } else if (event.data === 'signed-in') {
         this.renew().subscribe();
       }
@@ -132,14 +134,27 @@ export class AuthService {
    * - The session is over: null, and signed out here.
    * - No answer: the current token while it lasts (null after that), still signed in, and
    *   another try soon.
+   * - Signed out meanwhile: null. Its answer belongs to the session that ended, so it can't
+   *   sign the tab back in, nor replace the session of whoever signed in since.
    */
   renew(): Observable<string | null> {
-    this.renewing ??= from(withRenewLock(() => this.requestRenewal())).pipe(
-      catchError(() => of<Renewal>({ kind: 'unanswered' })),
-      map((renewal) => this.apply(renewal)),
-      finalize(() => (this.renewing = null)),
-      shareReplay({ bufferSize: 1, refCount: false }),
-    );
+    if (!this.renewing) {
+      const signOuts = this.signOuts;
+      const renewing: Observable<string | null> = from(
+        withRenewLock(() => this.requestRenewal()),
+      ).pipe(
+        catchError(() => of<Renewal>({ kind: 'unanswered' })),
+        map((renewal) => (this.signOuts === signOuts ? this.apply(renewal) : null)),
+        finalize(() => {
+          // After a sign-out a newer renewal may have taken its place; that one stays shared.
+          if (this.renewing === renewing) {
+            this.renewing = null;
+          }
+        }),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+      this.renewing = renewing;
+    }
     return this.renewing;
   }
 
@@ -232,7 +247,7 @@ export class AuthService {
   logout(): void {
     markSignOutPending(true);
     this.endServerSession().subscribe();
-    this.clearSession();
+    this.signedOut();
     this.channel?.postMessage('signed-out' satisfies ChannelMessage);
   }
 
@@ -303,6 +318,13 @@ export class AuthService {
     this.currentUserSignal.set(user);
     this.passwordChangeRequiredSignal.set(response.passwordChangeRequired === true);
     this.scheduleRenewal(claims.exp * 1000);
+  }
+
+  /** Someone signed out, here or in another tab. A renewal under way is left to end unused. */
+  private signedOut(): void {
+    this.signOuts++;
+    this.renewing = null;
+    this.clearSession();
   }
 
   private clearSession(): void {

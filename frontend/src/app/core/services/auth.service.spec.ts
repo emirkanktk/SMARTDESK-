@@ -327,6 +327,74 @@ describe('AuthService', () => {
       http.expectNone(REFRESH);
     });
 
+    describe('when someone signs out while one is under way', () => {
+      const MEHMET = fakeJwt({ given_name: 'Mehmet', family_name: 'Demir' });
+
+      /** Signed in with a token about to expire, so asking for one starts a renewal. */
+      function signInAndStartRenewal() {
+        const created = createService();
+        const soon = fakeJwt({ exp: Math.floor(Date.now() / 1000) + 10 });
+        created.service
+          .login({ email: 'employee1@smartdesk.local', password: 'secret' })
+          .subscribe();
+        created.http.expectOne(LOGIN).flush(session({ accessToken: soon }));
+        const handed: (string | null)[] = [];
+        created.service.validToken().subscribe((t) => handed.push(t));
+        return { ...created, handed, renewal: created.http.expectOne(REFRESH) };
+      }
+
+      it('does not sign this tab back in when its answer comes', async () => {
+        const { service, http, handed, renewal } = signInAndStartRenewal();
+
+        service.logout();
+        http.expectOne(LOGOUT).flush(null, { status: 204, statusText: 'No Content' });
+        renewal.flush(session({ accessToken: MEHMET }));
+        await settle();
+
+        expect(service.isAuthenticated()).toBe(false);
+        expect(service.getToken()).toBeNull();
+        expect(handed).toEqual([null]);
+      });
+
+      it('nor when it was another tab that signed out', async () => {
+        const { service, renewal } = signInAndStartRenewal();
+
+        otherTab.postMessage('signed-out');
+        await vi.waitFor(() => expect(service.isAuthenticated()).toBe(false));
+        renewal.flush(session({ accessToken: MEHMET }));
+        await settle();
+
+        expect(service.isAuthenticated()).toBe(false);
+        expect(service.getToken()).toBeNull();
+      });
+
+      it('keeps the next session, and renews it afresh', async () => {
+        const { service, http, renewal } = signInAndStartRenewal();
+        service.logout();
+        http.expectOne(LOGOUT).flush(null, { status: 204, statusText: 'No Content' });
+        const next = fakeJwt({ given_name: 'Zeynep', exp: Math.floor(Date.now() / 1000) + 10 });
+        service.login({ email: 'employee2@smartdesk.local', password: 'secret' }).subscribe();
+        http.expectOne(LOGIN).flush(session({ accessToken: next }));
+
+        const handed: (string | null)[] = [];
+        service.validToken().subscribe((t) => handed.push(t));
+        const fresh = http.expectOne(REFRESH);
+        renewal.flush(session({ accessToken: MEHMET }));
+        await settle();
+        expect(service.displayName()).toBe('Zeynep Yılmaz');
+
+        // The old renewal ending doesn't let a third one start beside the one under way.
+        service.validToken().subscribe((t) => handed.push(t));
+        http.expectNone(REFRESH);
+        const renewed = fakeJwt({ given_name: 'Zeynep' });
+        fresh.flush(session({ accessToken: renewed }));
+        await settle();
+
+        expect(handed).toEqual([renewed, renewed]);
+        expect(service.getToken()).toBe(renewed);
+      });
+    });
+
     it('signs out here when the cookie is gone (a 204 to the renewal)', async () => {
       // Say the browser's site data was cleared: there's no session left to renew.
       const { service, http } = createService();
