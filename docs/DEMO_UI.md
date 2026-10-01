@@ -233,6 +233,22 @@ one there's no **Assistant** button anywhere, and nothing else changes.
   and switching it off stops releases at once. **Replace code** retires a printed code that
   has got around (ADR-0030).
 
+### 14. Meetings and the inbox
+
+- As the manager (`manager@smartdesk.local`), open **New reservation**, pick Board Room for
+  tomorrow, and under **Invite people** tick Ayşe and Mehmet. The hint counts them and says
+  each gets a message. **Book**: the toast adds "Your invitations were sent", and **My
+  reservations** shows "No answer yet: Ayşe Yılmaz, Mehmet Demir".
+- In Ayşe's window the toast arrives at once, and the **Inbox** link (the bell on a narrow
+  screen) counts it. Open **Inbox**: "Zeynep Kaya invited you to a meeting", the room and the
+  time. Press **I'm coming**. In Mehmet's, press **I can't come**, write why, and **Send**.
+- Back as the manager: two messages, "Ayşe Yılmaz is coming to your meeting" and "Mehmet Demir
+  can't come to your meeting" with his reason, and **My reservations** says "Coming: Ayşe
+  Yılmaz · Can't come: Mehmet Demir".
+- Move the meeting to another hour: both get "changed a meeting you're invited to" and are asked
+  to answer again. Point out: the reason is only in the manager's inbox, never on the shared
+  calendar, and anyone invited may check the meeting in at the door (ADR-0032).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

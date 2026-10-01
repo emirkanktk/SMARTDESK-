@@ -46,6 +46,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   there. The resource form shows the code and a sheet to print; switched off, nothing changes
   ([ADR-0030](docs/DECISIONS.md)). To try it on one machine, switch it on for a room, book the
   room for a few minutes from now, and open the link under its QR code.
+- **Meetings and an inbox** - a manager books a room and ticks whom of the team to meet; an
+  admin may invite anyone. Each person gets a message in their SmartDesk inbox, and another if
+  the meeting moves or is cancelled, and answers there: coming, or not and why. The organizer
+  sees every answer, and the reason only they read ([ADR-0032](docs/DECISIONS.md)).
 - **Usage report** - for Admins: how much each resource, type and person booked over up to
   92 days, and how full the office day was (Monday to Friday, 09:00-18:00, in the admin's
   time zone - [ADR-0017](docs/DECISIONS.md)).
@@ -266,10 +270,12 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin), `PATCH /api/resources/{id}/status` (Admin) |
 | Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
+| Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |
+| Inbox | `GET /api/inbox`, `GET /api/inbox/unread-count`, `POST /api/inbox/{id}/read`, `POST /api/inbox/read-all` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
 | Reports | `GET /api/reports/usage?from=&to=&timeZone=` (Admin) |
 | Assistant | `GET /api/assistant`, `POST /api/assistant/messages` (optional, ADR-0029) |
-| Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` |
+| Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled`; to one user: `ReservationStartingSoon`, `ReservationReleased`, `InboxMessageReceived` |
 | Ops | `GET /health` |
 
 ## Frontend setup

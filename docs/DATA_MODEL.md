@@ -89,6 +89,37 @@ schema it manages; a direct FK is unnecessary since Identity guarantees the user
 exists at reservation-creation time, and the query direction we need (reservations for the
 current user) is fully satisfiable filtering by a scalar `UserId`.
 
+### ReservationAttendee
+
+Someone invited to a booking (ADR-0032). Key (`ReservationId`, `UserId`).
+
+| Field | Type | Notes |
+|---|---|---|
+| ReservationId | Guid | FK → `Reservation.Id`, cascade delete |
+| UserId | Guid | an account id; no FK across the Identity boundary. Indexed, for "the meetings I'm invited to" |
+| Response | AttendeeResponse | Pending / Accepted / Declined; back to Pending when the meeting gets a new start or another resource |
+| RespondedAt | DateTime? | when they answered |
+| DeclineReason | string? (500) | why they can't come; for the organizer only, never in a reservation response |
+
+### InboxMessage
+
+A message in someone's inbox (ADR-0032). It keeps its own copy of the meeting, so it outlives
+the booking it's about.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | version 7, so ids sort like `CreatedAt` |
+| RecipientId | Guid | an account id; no FK across the Identity boundary |
+| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined |
+| SenderId | Guid? | who caused it; null for a release |
+| ReservationId | Guid? | FK → `Reservation.Id`, set null when the booking is deleted |
+| ResourceName | string (200) | the meeting when the message was sent: the room's name, |
+| StartDateTime, EndDateTime | DateTime | its times, |
+| Note | string? (500) | and the organizer's note |
+| Reason | string? (500) | why someone can't come, in a MeetingDeclined |
+| CreatedAt | DateTime | |
+| ReadAt | DateTime? | null while unread |
+
 ### ResourceTeam
 
 A team a resource belongs to (ADR-0022). Key (`ResourceId`, `TeamId`).
@@ -141,6 +172,11 @@ Resource 1 ── 0..1 ResourcePhoto
 ApplicationUser (Manager) 1 ── * ApplicationUser (Employee, via ManagerId)
 
 Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
+
+Reservation 1 ── * ReservationAttendee ── (UserId, scalar) ──→ ApplicationUser
+
+InboxMessage ── (RecipientId, SenderId, scalar) ──→ ApplicationUser
+InboxMessage * ── 0..1 Reservation (set null when it's deleted)
 ```
 
 ## Indexes
@@ -158,6 +194,10 @@ Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
   still to send - what the reminder job scans every 30 seconds.
 - `IX_Reservations_AwaitingCheckIn` on `Reservations(StartDateTime)`, only `Confirmed` rows that
   need a check-in nobody has made yet - what the release job scans every 30 seconds (ADR-0030).
+- `ReservationAttendees(UserId)` - the meetings someone is invited to (ADR-0032).
+- `InboxMessages(RecipientId, CreatedAt)` - someone's inbox, newest first; and
+  `IX_InboxMessages_Unread` on `InboxMessages(RecipientId)`, only unread rows - the count the app
+  asks for on every page.
 
 ## Constraints
 
@@ -220,6 +260,12 @@ Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
     - A check-in and a release are decided under the reservation's lock, and their time
       conditions are exact opposites, so a booking is never both checked in and released.
     - The single definition lives in `SmartDesk.Domain.Rules.CheckInRules`.
+    - Anyone invited to the booking may check it in too (ADR-0032).
+11. **Meetings (ADR-0032).** A Manager invites their own team's active members, an Admin any
+    active account, an Employee nobody. Each person added must be able to use the resource, and
+    the resource's `Capacity` must hold everyone, the organizer included. A new start or another
+    resource puts every answer back to Pending. A reason for not coming is only ever in the
+    organizer's message.
 
 ## Concurrency (formerly an open question)
 

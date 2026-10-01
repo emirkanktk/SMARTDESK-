@@ -166,6 +166,11 @@ Two events go to the reservation's owner alone: the reminder (`ReservationStarti
 ADR-0018) and the notice that a booking was released because nobody checked in
 (`ReservationReleased`, ADR-0030). Both come from timed jobs rather than a request.
 
+Inbox messages (ADR-0032) go to their recipient alone, through `IInboxNotifier`
+(`SignalRInboxNotifier`, `InboxMessageReceived`). Handlers write them with the change, in the
+same transaction (`MeetingInvitations`), and push them only after it's committed, so a message
+never announces a change that rolled back.
+
 The Angular app opens the connection when a session exists and closes it on logout.
 Negotiate does not send cookies (`withCredentials: false`); the hub uses the bearer token,
 renewed first if it's about to expire, on every (re)connect.
@@ -319,6 +324,12 @@ picker drops seconds and any difference would count as a change.
   `/resources/:id/check-in-poster`, outside the shell, is the sheet to print. The booking form
   and **My reservations** say when to check in, and `ReminderAlertsService` tells the owner when
   a booking was released.
+- **Meetings and the inbox (ADR-0032).** The booking form lists who the user may invite
+  (`GET /api/reservations/invitees`), with what each answered. `InboxService`, started by the
+  app, keeps the unread count for the **Inbox** link and the narrow bar's bell, and shows each
+  new message as a toast (and a desktop notification when allowed). `/inbox` lists the messages
+  and lets an invitation be answered there (`<app-meeting-answer>`, also in **My reservations**
+  and on the meeting's page). `core/i18n/inbox-texts.ts` writes each message's sentence.
 - **Styling.** Plain SCSS. Design tokens (colors, the brand's gradients, spacing, radius,
   shadows) and shared building blocks (`.btn`, `.field`, `.input`, `.card`, `.alert-error`,
   `.brand-panel`, `.empty`) live in `src/styles.scss`. Component styles use those variables

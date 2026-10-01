@@ -82,8 +82,9 @@ CI runs all of these on every pull request, and the browser tests too (see Brows
 | `/check-in/:resourceId?code=…` | signed in | Where a resource's QR code leads: your booking of it, and a button to check in while that's open |
 | `/availability` | signed in | What's free for a time range, by type and capacity |
 | `/calendar` | signed in | The shared office calendar: who booked what |
-| `/reservations/new`, `/reservations/:id/edit` | signed in | Book, change or cancel. Read-only for anyone but the owner or an admin |
-| `/reservations/mine` | signed in | Your upcoming, past and cancelled reservations |
+| `/reservations/new`, `/reservations/:id/edit` | signed in | Book, change or cancel; managers and admins invite people (ADR-0032). Read-only for anyone but the owner or an admin, where someone invited answers |
+| `/reservations/mine` | signed in | Your upcoming, past and cancelled reservations, and the meetings you're invited to |
+| `/inbox` | signed in | Your messages: invitations to answer, meetings moved or cancelled, and who's coming to yours. The **Inbox** link counts the unread ones |
 | `/admin` | Admin | Resource counts, and every reservation in a date range to change or cancel |
 | `/admin/reports` | Admin | Usage report |
 | `/admin/blocks` | Admin | Blocked windows: take a resource out of booking for a while |
