@@ -219,6 +219,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("CheckedInAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("CheckedInByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("EndDateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -228,6 +231,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReleaseWarningSentAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("ReleasedAt")
                         .HasColumnType("timestamp with time zone");
@@ -312,6 +318,13 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("DoorScreenSetUpAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DoorScreenTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Location")
                         .IsRequired()

@@ -6,6 +6,7 @@ using SmartDesk.Application.Features.Meetings.Queries.GetInvitees;
 using SmartDesk.Application.Features.Meetings.Queries.GetMyInvitations;
 using SmartDesk.Application.Features.Reservations.Commands.CancelReservation;
 using SmartDesk.Application.Features.Reservations.Commands.CreateReservation;
+using SmartDesk.Application.Features.Reservations.Commands.EndReservation;
 using SmartDesk.Application.Features.Reservations.Commands.ExtendReservation;
 using SmartDesk.Application.Features.Reservations.Commands.UpdateReservation;
 using SmartDesk.Application.Features.Reservations.Common;
@@ -47,6 +48,15 @@ public sealed class ReservationsController(ISender sender) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<ReservationDto> Update(Guid id, UpdateReservationCommand command, CancellationToken cancellationToken) =>
         sender.Send(command with { Id = id }, cancellationToken);
+
+    // Ends a booking under way now, so the room is free at once (ADR-0034); owner or Admin.
+    [HttpPost("{id:guid}/end")]
+    [ProducesResponseType<ReservationDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<ReservationDto> End(Guid id, CancellationToken cancellationToken) =>
+        sender.Send(new EndReservationCommand(id), cancellationToken);
 
     [HttpPost("{id:guid}/cancel")]
     [ProducesResponseType<ReservationDto>(StatusCodes.Status200OK)]

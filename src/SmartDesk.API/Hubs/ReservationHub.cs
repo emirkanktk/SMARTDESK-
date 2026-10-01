@@ -22,6 +22,10 @@ public class ReservationHub(HubConnectionRegistry connections) : Hub
     // Everyone else hears ReservationCancelled, which frees the slot on their screens.
     public const string Released = "ReservationReleased";
 
+    // To the owner and those invited: nobody has checked in yet, and it's released in five
+    // minutes (ADR-0034).
+    public const string ReleaseWarning = "ReservationReleaseWarning";
+
     // To the owner only: their booking is about to end; do they need longer (ADR-0033)?
     public const string EndingSoon = "ReservationEndingSoon";
 

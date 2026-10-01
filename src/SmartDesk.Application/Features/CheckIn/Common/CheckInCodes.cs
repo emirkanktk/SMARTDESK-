@@ -25,5 +25,5 @@ internal static class CheckInCodes
     }
 
     public static CheckInCodeDto ToDto(Resource resource, IFrontendLinks links) =>
-        new(resource.CheckInCode, links.CheckIn(resource.Id, resource.CheckInCode));
+        new(resource.CheckInCode, links.CheckIn(resource.Id, resource.CheckInCode), resource.DoorScreenSetUpAt);
 }

@@ -37,6 +37,11 @@ public sealed record ReservationDto(
     // The people invited to it (ADR-0032), named like UserDisplayName by WithUserNamesAsync.
     public IReadOnlyList<ReservationAttendeeDto> Attendees { get; init; } = [];
 
+    // Who checked it in, and their name (ADR-0034); null until someone does.
+    public Guid? CheckedInBy { get; init; }
+
+    public string? CheckedInByName { get; init; }
+
     public static readonly Expression<Func<Reservation, ReservationDto>> Projection = r => new ReservationDto(
         r.Id,
         r.ResourceId,
@@ -56,6 +61,7 @@ public sealed record ReservationDto(
         r.ReleasedAt)
     {
         Attendees = r.Attendees.Select(a => new ReservationAttendeeDto(a.UserId, null, a.Response)).ToList(),
+        CheckedInBy = r.CheckedInByUserId,
     };
 }
 

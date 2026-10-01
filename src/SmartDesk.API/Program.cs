@@ -54,6 +54,7 @@ builder.Services.AddScoped<IInboxNotifier, SignalRInboxNotifier>();
 builder.Services.TryAddScoped<IInboxNotifier, NullInboxNotifier>();
 builder.Services.AddHostedService<ReservationReminderWorker>();
 builder.Services.AddHostedService<NoShowReleaseWorker>();
+builder.Services.AddHostedService<ReleaseWarningWorker>();
 builder.Services.AddHostedService<EndingSoonNoticeWorker>();
 // Replaces Infrastructure's no-op fallback: a change to an account cuts its hub connections.
 builder.Services.AddSingleton<HubConnectionRegistry>();

@@ -135,6 +135,9 @@
   <data name="Booking_TakenResource" xml:space="preserve">
     <value>The resource is already reserved for part of that time.</value>
   </data>
+  <data name="CheckIn_CodeExpired" xml:space="preserve">
+    <value>This code has expired. Scan the code on the door screen of {0} again.</value>
+  </data>
   <data name="CheckIn_NotUsed" xml:space="preserve">
     <value>{0} doesn't use check-in.</value>
   </data>
@@ -275,6 +278,12 @@
   </data>
   <data name="Error_TooManyAssistantRequests" xml:space="preserve">
     <value>You've asked the assistant a lot in the last minute. Wait a moment and try again.</value>
+  </data>
+  <data name="Error_TooManyCheckIns" xml:space="preserve">
+    <value>Too many check-in attempts. Wait a minute and try again.</value>
+  </data>
+  <data name="Error_TooManyDoorScreenRequests" xml:space="preserve">
+    <value>The door screen asked too often. It tries again in a minute.</value>
   </data>
   <data name="Error_TooManySignIns" xml:space="preserve">
     <value>Too many sign-in attempts. Please wait a minute and try again.</value>
@@ -482,6 +491,9 @@
   </data>
   <data name="Reservations_EndedCantChange" xml:space="preserve">
     <value>This reservation has already ended and can't be changed.</value>
+  </data>
+  <data name="Reservations_EndNotStarted" xml:space="preserve">
+    <value>It hasn't started yet: cancel it instead.</value>
   </data>
   <data name="Reservations_ExtensionOptions" xml:space="preserve">
     <value>Extend by one of these: {0} minutes.</value>

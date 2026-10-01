@@ -20,6 +20,12 @@ public class Resource
     // Only those who may edit the resource see it; replacing it retires the printed code.
     public string CheckInCode { get; set; } = CheckInRules.NewCode();
 
+    // A screen at its door shows a code that changes every 30 seconds instead (ADR-0034): the
+    // screen proves itself with a token of its own, of which only the hash is kept. While one
+    // is set up, the printed code no longer checks in.
+    public string? DoorScreenTokenHash { get; set; }
+    public DateTime? DoorScreenSetUpAt { get; set; }
+
     public ResourceType ResourceType { get; set; } = null!;
     public ICollection<ResourceFeature> Features { get; set; } = new List<ResourceFeature>();
     public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
