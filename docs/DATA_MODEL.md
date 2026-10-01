@@ -79,7 +79,7 @@ they next sign in.
 | Note | string? | |
 | ReminderMinutes | int? | remind the owner this many minutes before the start: 5, 15, 30 or 60; null = no reminder (ADR-0018) |
 | ReminderSentAt | DateTime? | when that reminder went out; cleared when the start or `ReminderMinutes` changes. A partial index on `StartDateTime` covers the rows still waiting for one |
-| CheckInRequired | bool | whether its resource asked for a check-in when it was booked, or last moved to another time or resource (ADR-0030) |
+| CheckInRequired | bool | whether its resource asked for a check-in when it was booked, or last moved to a new start or another resource (ADR-0030) |
 | CheckedInAt | DateTime? | when the owner checked in; cleared when the start or the resource changes |
 | ReleasedAt | DateTime? | when it was released because nobody checked in; `Status` is then `Cancelled` |
 

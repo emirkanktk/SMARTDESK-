@@ -483,6 +483,46 @@ public sealed class CheckInTests : IDisposable
     }
 
     [Fact]
+    public async Task Moving_to_a_room_that_asks_for_a_check_in_makes_the_booking_need_one()
+    {
+        var plain = await AddRoomAsync(checkIn: false);
+        var withCheckIn = await AddRoomAsync();
+        var id = await BookAsync(plain.Id, bookedWithCheckIn: false);
+        ItIs(-30);
+
+        var moved = await UpdateAsync(id, withCheckIn.Id, Ten, Ten.AddHours(1));
+
+        moved.CheckInRequired.Should().BeTrue("the new room's door asks for one");
+    }
+
+    [Fact]
+    public async Task Staying_longer_in_a_booking_made_before_check_in_was_on_needs_no_check_in()
+    {
+        var room = await AddRoomAsync();
+        var id = await BookAsync(room.Id, bookedWithCheckIn: false);
+        // In the meeting, its check-in window long closed.
+        ItIs(30);
+
+        var longer = await UpdateAsync(id, room.Id, Ten, Ten.AddMinutes(90));
+
+        longer.CheckInRequired.Should().BeFalse("it's the same visit, booked when the door asked for nothing");
+        (await ReleaseAsync()).Should().Be(0);
+        (await ReadAsync(id)).Status.Should().Be(ReservationStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task A_later_end_alone_keeps_what_the_booking_was_made_with()
+    {
+        var room = await AddRoomAsync();
+        var id = await BookAsync(room.Id, bookedWithCheckIn: false);
+        ItIs(-120);
+
+        var longer = await UpdateAsync(id, room.Id, Ten, Ten.AddMinutes(90));
+
+        longer.CheckInRequired.Should().BeFalse("only a new start or another room is a new visit");
+    }
+
+    [Fact]
     public async Task Ending_early_keeps_the_check_in()
     {
         var room = await AddRoomAsync();

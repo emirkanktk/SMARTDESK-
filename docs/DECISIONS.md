@@ -815,7 +815,8 @@ new tables.
   with `ReleasedAt`. A background job looks every 30 seconds. Calendars free the slot through
   the usual `ReservationCancelled`; the owner also gets `ReservationReleased`, a toast saying why.
 - **Knowing at booking time.** A reservation keeps whether its resource asked for a check-in
-  when it was booked or last moved. It's released only while that and the resource's own
+  when it was booked or last moved: a new start, or another resource. Staying longer or ending
+  early is the same visit and keeps it. It's released only while that and the resource's own
   setting are both on.
 - **One rule, both sides.** `CheckInRules` holds the window and the release condition as
   expressions, used by the check-in, the release job and the queries. Their start conditions are

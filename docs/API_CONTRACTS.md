@@ -299,8 +299,10 @@ which opens `/check-in/{id}?code=…` in the app, and checks in there
   (`CheckIn:IntervalSeconds`; `CheckIn:Enabled: false` switches releasing off), so a release
   can be up to one interval late, never early. A booking that's already over is left alone.
 - **Who needs a check-in.** A booking needs one when its resource asked for it when it was booked
-  (or last moved to another time or resource) and still does. That's the `checkInRequired` a
-  reservation carries.
+  (or last moved to a new start or another resource) and still does. That's the `checkInRequired`
+  a reservation carries.
+  - Staying longer, or ending early, keeps it: a meeting that runs over isn't released for a
+    check-in nobody asked of it when it was booked.
   - Switching check-in on doesn't catch bookings made without knowing.
   - Switching it off stops every release at once.
 - **Moving a booking.** A new start, or another resource, undoes the check-in: that's another

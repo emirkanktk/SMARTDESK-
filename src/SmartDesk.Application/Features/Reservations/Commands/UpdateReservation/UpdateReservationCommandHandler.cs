@@ -109,8 +109,14 @@ public sealed class UpdateReservationCommandHandler(
                 reservation.StartDateTime = start;
                 reservation.EndDateTime = end;
 
-                // A new claim is made knowing what the door asks for now (ADR-0030).
-                reservation.CheckInRequired = resource.CheckInRequired;
+                // A new start or another resource is a new visit, claimed knowing what the door
+                // asks for now (ADR-0030). Staying longer is the same visit and keeps what it was
+                // booked with: a meeting that runs over in a room switched on since isn't
+                // released for a check-in its owner never knew about.
+                if (startChanged || resourceChanged)
+                {
+                    reservation.CheckInRequired = resource.CheckInRequired;
+                }
             }
             else
             {

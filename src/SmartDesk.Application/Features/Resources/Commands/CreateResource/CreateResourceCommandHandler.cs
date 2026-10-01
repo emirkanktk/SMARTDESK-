@@ -29,7 +29,7 @@ public sealed class CreateResourceCommandHandler(
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             Status = ResourceStatus.Active,
             CheckInRequired = request.CheckInRequired,
-            Features =ResourceFeatureNames.Normalize(request.Features)
+            Features = ResourceFeatureNames.Normalize(request.Features)
                 .Select(name => new ResourceFeature { Name = name })
                 .ToList(),
             Teams = teamIds.Select(id => new ResourceTeam { TeamId = id }).ToList(),
