@@ -28,3 +28,33 @@ test('the bar on top hides on the way down, and is back on the way up and at the
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await expect.poll(top).toBe(0);
 });
+
+// From 1100px the links are a sidebar, with the user's card at the bottom. The account menu
+// opens upwards from it, over the page when the email is long, and nothing may cut it off. On
+// a screen too short for everything, the links scroll and the card stays in view.
+test('the account menu in the sidebar opens over the page, and the card stays on a short screen', async ({
+  open,
+}) => {
+  const page = await open('ayse');
+  await page.setViewportSize({ width: 1280, height: 480 });
+  await page.goto('/dashboard');
+  await expect(page.locator('header.bar .user')).toBeInViewport({ ratio: 1 });
+
+  await page.getByRole('button', { name: /Account menu/ }).click();
+  const menu = page.getByRole('menu');
+  await expect(menu).toBeVisible();
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.playState !== 'running'),
+  );
+  const box = (await menu.boundingBox())!;
+  const sidebar = (await page.locator('header.bar').boundingBox())!;
+  expect(box.x + box.width, "Ayşe's email takes the menu past the sidebar").toBeGreaterThan(
+    sidebar.x + sidebar.width,
+  );
+  // Just inside its right edge, the page shows the menu itself, not what's under it.
+  const uncut = await page.evaluate(
+    ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[role=menu]'),
+    { x: box.x + box.width - 4, y: box.y + box.height / 2 },
+  );
+  expect(uncut).toBe(true);
+});
