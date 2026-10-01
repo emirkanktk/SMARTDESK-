@@ -20,7 +20,7 @@ reflects reservation changes to every open screen in real time.
 | Auth | ASP.NET Core Identity + JWT bearer tokens |
 | Real-time | SignalR |
 | API docs | Built-in ASP.NET Core OpenAPI (`/openapi/v1.json`) + Swagger UI (`/swagger`), Development only |
-| Local infra | Docker Compose (PostgreSQL) |
+| Local infra | Docker Compose: PostgreSQL and Mailpit; optionally the API, or the API and the app behind nginx (ADR-0031) |
 
 ## 3. Backend: Onion Architecture
 

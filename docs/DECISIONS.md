@@ -798,3 +798,44 @@ new tables.
     panel says to check them.
   - A request that carries a token is now authenticated before it is counted. Sign-in requests
     carry none, so the sign-in limit costs what it did.
+
+## ADR-0031: The whole app in containers: nginx serves the build and passes /api and /hubs to the API
+
+**Decision:**
+- `frontend/Dockerfile` builds the production bundle and serves it with nginx
+  (`nginxinc/nginx-unprivileged`: not root, port 8080, like the API's image). docker-compose's
+  `web` service runs it in a new `app` profile, which starts the API too:
+  `docker compose --profile app up -d --build`, then `http://localhost:4200`.
+- **One origin.** nginx passes `/api` and `/hubs` to the API container, and serves the app
+  for everything else, with `index.html` for its own routes. As with `ng serve`'s proxy, the
+  browser makes no cross-origin call, and the session cookie (ADR-0026: `SameSite=Strict`,
+  path `/api/auth`) works as it is.
+- **The proxy the API trusts.** nginx gets a fixed address on a network of its own (`proxy`,
+  172.28.42.0/24), and the API lists that address in `ForwardedHeaders:KnownProxies`
+  (ADR-0028). Trusting the whole network would also trust whatever reaches the API's
+  published port through Docker's gateway.
+- **What goes through it:**
+  - SignalR gets WebSocket upgrades and no buffering.
+  - Requests may be 8 MB, for photos (ADR-0027).
+  - An answer may take 120 s, for the assistant's 90 s limit (ADR-0029).
+  - Docker's DNS is asked again every 10 s, so a restarted API is found at its new address.
+- **Caching:** hashed scripts, styles and fonts are kept for a year. `index.html`, the
+  pictures and the translations are checked again on every visit, so a new release shows at
+  once.
+- **No secrets in the access log:** it leaves out query strings and the Referer. SignalR sends
+  its access token in the query string, and a password reset link carries its token there.
+- **Port 4200,** the address `ng serve` uses. The API's Development settings (`App:FrontendUrl`,
+  CORS) already name it, so links in emails work in both setups, which can't run at once.
+
+**Why:**
+- Burak's Docker work (#18) put the API in a container, but the app still needed Node.js and
+  `ng serve`. Now anyone with Docker runs the whole app with one command, which is what a demo
+  on someone else's machine needs.
+- nginx in front of the API is the setup ADR-0028 was written for, and this runs it for real.
+- **Trade-offs:**
+  - Like the `api` profile, it's a local stand-in in Development: demo data and no HTTPS. A
+    production setup would add TLS at nginx or a load balancer, and not publish the API's port.
+  - The fixed subnet can clash with a network already on the machine. The compose file says
+    which lines to change.
+  - nginx's error log still shows a failing request's query string. Errors are rare, and that
+    log isn't kept anywhere.
