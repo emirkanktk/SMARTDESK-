@@ -15,6 +15,7 @@ describe('ReservationService', () => {
     endDateTime: '2026-10-07T12:30:00.000Z',
     note: null,
     reminderMinutes: 15,
+    attendeeIds: ['u-mehmet'],
   };
 
   beforeEach(() => {
@@ -33,6 +34,33 @@ describe('ReservationService', () => {
     const req = http.expectOne(`${base}/mine`);
     expect(req.request.method).toBe('GET');
     req.flush([fakeReservation()]);
+  });
+
+  it('gets the meetings the caller is invited to', () => {
+    service.getInvited().subscribe();
+
+    const req = http.expectOne(`${base}/invited`);
+    expect(req.request.method).toBe('GET');
+    req.flush([fakeReservation()]);
+  });
+
+  it('gets who the caller may invite', () => {
+    let names: string[] = [];
+    service.getInvitees().subscribe((people) => (names = people.map((p) => p.name)));
+
+    const req = http.expectOne(`${base}/invitees`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: 'u-mehmet', name: 'Mehmet Demir', email: 'mehmet@company.example' }]);
+    expect(names).toEqual(['Mehmet Demir']);
+  });
+
+  it('answers an invitation with POST to its response', () => {
+    service.respond('rsv-1', { response: 'Declined', reason: 'Off sick' }).subscribe();
+
+    const req = http.expectOne(`${base}/rsv-1/response`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ response: 'Declined', reason: 'Off sick' });
+    req.flush(fakeReservation());
   });
 
   it('cancels with POST to the cancel action, without a body', () => {
@@ -80,7 +108,7 @@ describe('ReservationService', () => {
     req.flush(fakeReservation());
   });
 
-  it('updates with PUT to the reservation', () => {
+  it('updates with PUT to the reservation, the list of who is invited included', () => {
     service.update('rsv-1', body).subscribe();
 
     const req = http.expectOne(`${base}/rsv-1`);

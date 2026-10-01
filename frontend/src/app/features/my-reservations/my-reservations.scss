@@ -108,6 +108,15 @@
     margin: 0;
   }
 
+  .attendees {
+    margin-top: var(--space-1);
+  }
+
+  .answer {
+    display: block;
+    margin-top: var(--space-3);
+  }
+
   // Keep the user's line breaks.
   .note {
     margin-top: var(--space-1);

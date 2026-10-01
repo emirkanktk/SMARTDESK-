@@ -40,8 +40,9 @@ export const CHECK_IN_TICK_MS = 15_000;
 
 /**
  * The page a resource's QR code opens (`/check-in/:resourceId?code=…`, ADR-0030): the
- * caller's booking of it, and a button to check in while that's open. The API decides; this
- * page only shows what it will say, and what it said.
+ * caller's booking of it, or a meeting there they're invited to (ADR-0032), and a button to
+ * check in while that's open. The API decides; this page only shows what it will say, and
+ * what it said.
  */
 @Component({
   imports: [RouterLink, ResourcePhoto],
@@ -63,6 +64,7 @@ export class CheckIn implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly resource = signal<Resource | null>(null);
+  /** The caller's own bookings and the meetings they're invited to. */
   private readonly mine = signal<Reservation[]>([]);
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
@@ -76,12 +78,13 @@ export class CheckIn implements OnInit {
     forkJoin({
       resource: this.resourceService.getResource(this.resourceId()),
       mine: this.reservationService.getMine(),
+      invited: this.reservationService.getInvited(),
     })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: ({ resource, mine }) => {
+        next: ({ resource, mine, invited }) => {
           this.resource.set(resource);
-          this.mine.set(mine);
+          this.mine.set([...mine, ...invited]);
         },
         error: () => this.loadFailed.set(true),
       });
@@ -93,10 +96,18 @@ export class CheckIn implements OnInit {
     merge(this.hub.created$, this.hub.updated$, this.hub.cancelled$)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((reservation) => {
-        if (reservation.userId === this.auth.currentUser()?.id) {
+        if (this.involvesMe(reservation)) {
           this.upsert(reservation);
+        } else {
+          // Taken off a meeting's list: it's no longer the caller's to check in.
+          this.mine.update((list) => list.filter((r) => r.id !== reservation.id));
         }
       });
+  }
+
+  /** Someone else's meeting the caller is invited to, rather than their own booking. */
+  protected invited(reservation: Reservation): boolean {
+    return reservation.userId !== this.auth.currentUser()?.id;
   }
 
   protected checkIn(): void {
@@ -131,15 +142,21 @@ export class CheckIn implements OnInit {
     return formatDate(date, sameDay ? 'HH:mm' : 'EEE d MMM, HH:mm', this.locale);
   }
 
+  private involvesMe(reservation: Reservation): boolean {
+    const userId = this.auth.currentUser()?.id;
+    return reservation.userId === userId || reservation.attendees.some((a) => a.id === userId);
+  }
+
   private upsert(reservation: Reservation): void {
     this.mine.update((list) => [...list.filter((r) => r.id !== reservation.id), reservation]);
   }
 }
 
 /**
- * What to offer for the caller's bookings of `resourceId` at `now`, first match wins: one to
- * check in to now, one checked in and running, one whose check-in closed and that's about to
- * be released, the next one to come, one released today.
+ * What to offer for the caller's bookings of `resourceId` at `now`, the meetings they're
+ * invited to included, first match wins: one to check in to now, one checked in and running,
+ * one whose check-in closed and that's about to be released, the next one to come, one
+ * released today.
  */
 export function visitFor(mine: Reservation[], resourceId: string, now: number): Visit {
   const time = (value: string) => new Date(value).getTime();

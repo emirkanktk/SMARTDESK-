@@ -1,6 +1,21 @@
 <header class="bar" appHideOnScroll>
   <a class="brand" routerLink="/dashboard"><app-logo /></a>
 
+  <!-- On narrower screens the Inbox link may be scrolled out of sight, so the bar has its own. -->
+  <a
+    class="inbox-shortcut"
+    routerLink="/inbox"
+    routerLinkActive="active"
+    ariaCurrentWhenActive="page"
+    [attr.aria-label]="inboxLabel()"
+    [title]="inboxLabel()"
+  >
+    <app-icon name="bell" />
+    @if (inbox.unread(); as count) {
+      <span class="nav-count" aria-hidden="true">{{ count }}</span>
+    }
+  </a>
+
   <nav class="nav" aria-label="Main" i18n-aria-label="@@nav.label">
     @for (item of visibleNavItems(); track item.path) {
       <a
@@ -12,6 +27,11 @@
       >
         <app-icon [name]="item.icon" />
         <span>{{ item.label }}</span>
+        @if (item.count?.(); as count) {
+          <span class="nav-count" i18n="@@nav.unread"
+            >{{ count }}<span class="visually-hidden"> unread</span></span
+          >
+        }
       </a>
     }
   </nav>

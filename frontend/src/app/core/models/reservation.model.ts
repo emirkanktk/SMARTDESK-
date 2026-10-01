@@ -33,7 +33,48 @@ export interface Reservation {
    * resolve the user any more, e.g. a deleted account.
    */
   userDisplayName: string | null;
+  /**
+   * Who the owner invited to it, sorted by name (ADR-0032); empty for most bookings. Each of
+   * them may check it in at the door too.
+   */
+  attendees: ReservationAttendee[];
 }
+
+export const ATTENDEE_RESPONSES = ['Pending', 'Accepted', 'Declined'] as const;
+/**
+ * What someone invited answered: nothing yet (or not since the meeting moved to a new start
+ * or another room), coming, or not.
+ */
+export type AttendeeResponse = (typeof ATTENDEE_RESPONSES)[number];
+
+/** Someone the owner invited to a booking (ADR-0032). */
+export interface ReservationAttendee {
+  id: string;
+  /** "First Last", or the email; null when the API can't resolve the account any more. */
+  name: string | null;
+  /** Why someone can't come isn't here: that's in the organizer's inbox only. */
+  response: AttendeeResponse;
+}
+
+/** Body of `POST /api/reservations/{id}/response`: coming, or not and why. */
+export interface RespondRequest {
+  response: Exclude<AttendeeResponse, 'Pending'>;
+  /** Needed to decline, for the organizer; left out when coming. */
+  reason?: string;
+}
+
+/** Longest reason for not coming the API accepts, as long as a booking's note. */
+export const DECLINE_REASON_MAX_LENGTH = 500;
+
+/** Someone the caller may invite, from `GET /api/reservations/invitees` (ADR-0032). */
+export interface Invitee {
+  id: string;
+  name: string;
+  email: string;
+}
+
+/** Most people one booking may invite; the room's capacity usually stops it sooner. */
+export const MAX_ATTENDEES = 50;
 
 /**
  * The check-in window the API enforces (ADR-0030): from `opensBeforeMinutes` before the start
@@ -86,10 +127,20 @@ export interface CreateReservationRequest {
   note: string | null;
   /** One of REMINDER_OPTIONS, or null for none. Leaving it out of a PUT turns it off. */
   reminderMinutes: number | null;
+  /**
+   * Who's invited (ADR-0032): a Manager may invite their own team, an Admin anyone. Nobody
+   * when left out.
+   */
+  attendeeIds?: string[];
 }
 
-/** Body of `PUT /api/reservations/{id}` - a full replace; the owner never changes. */
-export type UpdateReservationRequest = CreateReservationRequest;
+/**
+ * Body of `PUT /api/reservations/{id}` - a full replace; the owner never changes. The list of
+ * who's invited is part of it: leaving it out would take everyone off.
+ */
+export interface UpdateReservationRequest extends CreateReservationRequest {
+  attendeeIds: string[];
+}
 
 /** Reminder choices the API accepts, in minutes before the start (ADR-0018). */
 export const REMINDER_OPTIONS = [5, 15, 30, 60] as const;

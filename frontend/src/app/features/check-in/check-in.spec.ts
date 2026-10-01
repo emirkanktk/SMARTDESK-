@@ -127,6 +127,7 @@ describe('CheckIn', () => {
   const currentUser = signal<{ id: string } | null>({ id: OWNER_ID });
   let getResource: ReturnType<typeof vi.fn>;
   let getMine: ReturnType<typeof vi.fn>;
+  let getInvited: ReturnType<typeof vi.fn>;
   let checkIn: ReturnType<typeof vi.fn>;
   let updated: Subject<Reservation>;
   let fixture: ComponentFixture<CheckIn>;
@@ -137,6 +138,7 @@ describe('CheckIn', () => {
     vi.setSystemTime(at('09:55'));
     getResource = vi.fn(() => of(fakeResource({ checkInRequired: true })));
     getMine = vi.fn(() => of([booking()]));
+    getInvited = vi.fn(() => of([]));
     checkIn = vi.fn(() => of(booking({ checkedInAt: iso('09:55') })));
     updated = new Subject();
 
@@ -144,7 +146,7 @@ describe('CheckIn', () => {
       providers: [
         provideRouter([]),
         { provide: ResourceService, useValue: { getResource, checkIn } },
-        { provide: ReservationService, useValue: { getMine } },
+        { provide: ReservationService, useValue: { getMine, getInvited } },
         {
           provide: ReservationHubService,
           useValue: { created$: new Subject(), updated$: updated, cancelled$: new Subject() },
@@ -241,7 +243,7 @@ describe('CheckIn', () => {
   it('follows the booking when it changes elsewhere, and only the caller’s', async () => {
     await render();
 
-    updated.next(booking({ userId: 'someone-else', checkedInAt: iso('09:56') }));
+    updated.next(booking({ id: 'rsv-11', userId: 'someone-else', checkedInAt: iso('09:56') }));
     await fixture.whenStable();
     expect(checkInButton()).not.toBeNull();
 
@@ -259,6 +261,89 @@ describe('CheckIn', () => {
     );
     expect(checkInButton()).toBeNull();
     expect(element.querySelector('a.btn')).toBeNull();
+  });
+
+  describe('a meeting the caller is invited to (ADR-0032)', () => {
+    const meeting = (overrides: Partial<Reservation> = {}) =>
+      booking({
+        id: 'rsv-20',
+        userId: 'u-zeynep',
+        userDisplayName: 'Zeynep Kaya',
+        attendees: [{ id: OWNER_ID, name: 'Ayşe Yılmaz', response: 'Pending' }],
+        ...overrides,
+      });
+
+    beforeEach(() => {
+      getMine.mockReturnValue(of([]));
+      getInvited.mockReturnValue(of([meeting()]));
+    });
+
+    it('can be checked in by them too', async () => {
+      checkIn.mockReturnValue(of(meeting({ checkedInAt: iso('09:55') })));
+      await render();
+
+      expect(element.textContent).toContain(
+        "The meeting you're invited to, from 10:00 to 11:00, can be checked in until 10:15.",
+      );
+      checkInButton()!.click();
+      await fixture.whenStable();
+
+      expect(checkIn).toHaveBeenCalledWith('res-1', 'c0de');
+      expect(element.textContent).toContain(
+        'The meeting from 10:00 to 11:00 is checked in, so the room is kept for it.',
+      );
+    });
+
+    it('says when its check-in opens', async () => {
+      getInvited.mockReturnValue(
+        of([meeting({ startDateTime: iso('14:00'), endDateTime: iso('15:00') })]),
+      );
+      await render();
+
+      expect(element.textContent).toContain(
+        "The meeting you're invited to at 14:00 can be checked in from 13:50.",
+      );
+    });
+
+    it('shows when someone else of the meeting checked in first', async () => {
+      await render();
+      updated.next(meeting({ checkedInAt: iso('09:56') }));
+      await fixture.whenStable();
+
+      expect(element.textContent).toContain('is checked in, so the room is kept for it.');
+      expect(checkInButton()).toBeNull();
+    });
+
+    it('goes away when they are taken off the list', async () => {
+      await render();
+      updated.next(meeting({ attendees: [] }));
+      await fixture.whenStable();
+
+      expect(element.textContent).toContain(
+        'You have no booking of Meeting Room A to check in to.',
+      );
+    });
+
+    it('says so when it was released because nobody checked in', async () => {
+      vi.setSystemTime(at('10:20'));
+      await render();
+      updated.next(meeting({ status: 'Cancelled', releasedAt: iso('10:15') }));
+      await fixture.whenStable();
+
+      expect(element.textContent).toContain(
+        'The meeting you were invited to at 10:00 was released at 10:15 because nobody checked in.',
+      );
+    });
+
+    it('says when its check-in closed and it is about to be released', async () => {
+      vi.setSystemTime(at('10:20'));
+      await render();
+
+      expect(element.textContent).toContain(
+        "The check-in for the meeting you're invited to at 10:00 closed at 10:15 with nobody checked in, so it's about to be released.",
+      );
+      expect(checkInButton()).toBeNull();
+    });
   });
 
   it('offers to book when there is nothing to check in to', async () => {

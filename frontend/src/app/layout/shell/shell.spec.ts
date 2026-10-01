@@ -6,11 +6,13 @@ import { Role, Roles } from '../../core/constants/roles';
 import { CurrentUser } from '../../core/models/auth.model';
 import { AssistantService } from '../../core/services/assistant.service';
 import { AuthService } from '../../core/services/auth.service';
+import { InboxService } from '../../core/services/inbox.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { Shell } from './shell';
 
 describe('Shell', () => {
   const currentUser = signal<CurrentUser | null>(null);
+  const unread = signal(0);
   let logout: ReturnType<typeof vi.fn>;
   let assistantEnabled: boolean;
 
@@ -26,6 +28,7 @@ describe('Shell', () => {
 
   beforeEach(async () => {
     signInAs(Roles.Employee);
+    unread.set(0);
     logout = vi.fn();
     assistantEnabled = false;
     const hasRole = (role: Role) => currentUser()?.roles.includes(role) ?? false;
@@ -49,6 +52,7 @@ describe('Shell', () => {
           useValue: { getStatus: () => of({ enabled: assistantEnabled }) },
         },
         { provide: ReservationService, useValue: {} },
+        { provide: InboxService, useValue: { unread } },
       ],
     }).compileComponents();
   });
@@ -92,6 +96,30 @@ describe('Shell', () => {
     expect(navLabels(element)).not.toContain('Admin');
     expect(navLabels(element)).not.toContain('Users');
     expect(badge(element)).toBe('Manager');
+  });
+
+  it("counts unread messages next to the Inbox link and on the bar's bell", async () => {
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    const element: HTMLElement = fixture.nativeElement;
+    const inboxLink = () =>
+      Array.from(element.querySelectorAll<HTMLAnchorElement>('.nav-link')).find((a) =>
+        a.textContent!.includes('Inbox'),
+      )!;
+    const bell = () => element.querySelector<HTMLAnchorElement>('.inbox-shortcut')!;
+
+    expect(inboxLink().getAttribute('href')).toBe('/inbox');
+    expect(inboxLink().querySelector('.nav-count')).toBeNull();
+    expect(bell().getAttribute('aria-label')).toBe('Inbox');
+    expect(bell().querySelector('.nav-count')).toBeNull();
+
+    unread.set(3);
+    await fixture.whenStable();
+
+    expect(inboxLink().querySelector('.nav-count')!.textContent!.trim()).toBe('3 unread');
+    expect(bell().getAttribute('aria-label')).toBe('Inbox, 3 unread');
+    expect(bell().querySelector('.nav-count')!.textContent!.trim()).toBe('3');
+    expect(bell().getAttribute('href')).toBe('/inbox');
   });
 
   it("shows the assistant's button only when the server has an assistant, and keeps room for it", async () => {

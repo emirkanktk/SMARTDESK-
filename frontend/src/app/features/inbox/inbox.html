@@ -1,0 +1,99 @@
+<div class="page-header">
+  <h1 i18n="@@nav.inbox">Inbox</h1>
+  @if (!loading() && !loadFailed() && anyUnread()) {
+    <button
+      type="button"
+      class="btn btn-secondary mark-all"
+      [disabled]="markingAll()"
+      (click)="markAllRead()"
+    >
+      @if (markingAll()) {
+        <ng-container i18n="@@inbox.markingAll">Marking…</ng-container>
+      } @else {
+        <ng-container i18n="@@inbox.markAll">Mark all as read</ng-container>
+      }
+    </button>
+  }
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status" i18n="@@inbox.loading">Loading your messages…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span i18n="@@inbox.loadFailed">Your messages could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="load()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
+  </div>
+} @else if (items().length === 0) {
+  <div class="card empty">
+    <app-icon name="inbox" />
+    <p i18n="@@inbox.empty">
+      No messages yet. When someone invites you to a meeting, it shows up here.
+    </p>
+  </div>
+} @else {
+  <ul class="list" aria-live="polite">
+    @for (item of items(); track item.message.id) {
+      <li class="card message" [class.unread]="item.unread">
+        <span class="kind" aria-hidden="true"><app-icon [name]="item.icon" /></span>
+
+        <div class="body">
+          <p class="headline">
+            @if (item.unread) {
+              <span class="visually-hidden" i18n="@@inbox.unreadLabel">Unread:</span>
+            }
+            {{ item.headline }}
+          </p>
+          <p class="meeting">{{ item.when }}</p>
+          @if (item.quote; as quote) {
+            <p class="note">{{ quote }}</p>
+          }
+          @if (item.meeting; as meeting) {
+            <app-meeting-answer
+              class="answer"
+              [reservation]="meeting"
+              (answered)="onAnswered($event, item)"
+            />
+          }
+          @if (item.link || item.unread) {
+            <div class="actions">
+              @if (item.link; as link) {
+                <a
+                  class="btn btn-secondary btn-sm"
+                  [routerLink]="link"
+                  (click)="markRead(item)"
+                  i18n="@@inbox.openMeeting"
+                  >See the meeting</a
+                >
+              }
+              @if (item.unread) {
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  [disabled]="marking().has(item.message.id)"
+                  (click)="markRead(item)"
+                  i18n="@@inbox.markRead"
+                >
+                  Mark as read
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <time class="text-muted received" [attr.datetime]="item.message.createdAt">{{
+          item.received
+        }}</time>
+      </li>
+    }
+  </ul>
+  @if (capped()) {
+    <p class="text-muted capped" i18n="@@inbox.capped">Only your latest messages are shown.</p>
+  }
+}

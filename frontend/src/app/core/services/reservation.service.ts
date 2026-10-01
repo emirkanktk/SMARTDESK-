@@ -5,6 +5,8 @@ import { environment } from '../../../environments/environment';
 import {
   CalendarQuery,
   CreateReservationRequest,
+  Invitee,
+  RespondRequest,
   Reservation,
   UpdateReservationRequest,
 } from '../models/reservation.model';
@@ -17,6 +19,31 @@ export class ReservationService {
   /** The caller's reservations - upcoming, past and cancelled - oldest start first. */
   getMine(): Observable<Reservation[]> {
     return this.http.get<Reservation[]>(`${this.baseUrl}/mine`);
+  }
+
+  /** Other people's meetings the caller is invited to and that aren't over, soonest first. */
+  getInvited(): Observable<Reservation[]> {
+    return this.http.get<Reservation[]>(`${this.baseUrl}/invited`);
+  }
+
+  /**
+   * The caller's answer to a meeting they're invited to; the organizer gets a message. 400
+   * when declining without a reason, 403 for someone not on the list, 409 once it's cancelled
+   * or over.
+   */
+  respond(id: string, request: RespondRequest): Observable<Reservation> {
+    return this.http.post<Reservation>(
+      `${this.baseUrl}/${encodeURIComponent(id)}/response`,
+      request,
+    );
+  }
+
+  /**
+   * Who the caller may invite to a booking, by name: a Manager's own team, every active
+   * account for an Admin, nobody for an Employee.
+   */
+  getInvitees(): Observable<Invitee[]> {
+    return this.http.get<Invitee[]>(`${this.baseUrl}/invitees`);
   }
 
   /**
