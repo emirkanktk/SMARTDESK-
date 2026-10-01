@@ -36,6 +36,7 @@ const ADMIN: Screen[] = [
   { path: '/calendar?view=month' },
   { path: '/reservations/new' },
   { path: '/reservations/mine' },
+  { path: '/inbox' },
   { path: '/admin' },
   { path: '/admin/users' },
   { path: '/admin/reports' },
@@ -43,7 +44,14 @@ const ADMIN: Screen[] = [
   { path: '/change-password' },
 ];
 
-const MANAGER: Screen[] = [{ path: '/team' }, { path: '/resources' }];
+// A manager's booking form has the list of whom to invite (ADR-0032), and their inbox the
+// answers.
+const MANAGER: Screen[] = [
+  { path: '/team' },
+  { path: '/resources' },
+  { path: '/reservations/new' },
+  { path: '/inbox' },
+];
 
 const PHONE = { width: 390, height: 844 };
 
