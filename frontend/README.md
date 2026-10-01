@@ -44,9 +44,11 @@ the dev certificate yet: `dotnet dev-certs https --trust`.
 npx ng build
 npm run test:time-zones                        # all unit tests, once per time zone
 npx tsc -p tsconfig.spec.json --noEmit         # type-checks the specs too
-npx prettier --check --end-of-line auto src    # formatting
+npm run format:check                           # formatting
 npm run i18n:check                             # every text has its Turkish version
 ```
+
+CI runs all of these on every pull request, and the browser tests too (see Browser tests).
 
 - **`test:time-zones`** runs the whole suite in six zones: Istanbul, New York, Berlin, Tokyo,
   Sydney and Kathmandu (UTC+05:45). Date code that passes in one can fail in another around a
@@ -54,10 +56,10 @@ npm run i18n:check                             # every text has its Turkish vers
   zones given. Setting `TZ=...` in front of `ng test` doesn't work in Git Bash on Windows; the
   script sets it for each run itself. CI runs it on every pull request.
 - **`tsc -p tsconfig.spec.json`:** `ng test` compiles specs without checking their types, so a
-  spec that builds a model with a missing field still runs. CI doesn't run this one, so run it
-  yourself.
-- **`--end-of-line auto`:** Windows checkouts have CRLF line endings, and Prettier would
-  otherwise flag every file.
+  spec that builds a model with a missing field still runs.
+- **`format:check`** checks the code, the configuration and `public/i18n` with Prettier.
+  `.prettierrc` keeps each file's line endings (`endOfLine: auto`), since Windows checkouts
+  have CRLF and Prettier would otherwise flag every file.
 
 ## Screens
 
@@ -199,6 +201,9 @@ npm run e2e                                                     # about a minute
   users are left as seeded.
 - **A failure** keeps a trace in `test-results/`: `npx playwright show-trace <file>` replays it
   step by step.
+- **In CI** they run on every pull request, in Playwright's Chromium against a fresh database
+  (the `e2e` job in `.github/workflows/ci.yml`). A failed run uploads the report, the traces and
+  the API's and `ng serve`'s logs as the `browser-tests` artifact.
 - **Writing one:** use the fixtures in `e2e/support.ts`: `open('ayse')` for a signed-in window,
   `resource` for a fresh resource, and `admin` for the API. Wait on what the user sees
   (`expect(...).toBeVisible()`), never on a timeout. Type-check with
