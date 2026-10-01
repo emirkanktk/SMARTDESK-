@@ -327,7 +327,6 @@
     "password.rule.lowercase": "bir küçük harf",
     "password.rule.symbol": "! ya da - gibi bir simge",
     "password.rule.uppercase": "bir büyük harf",
-    "passwordField.hide": "Parolayı gizle",
     "passwordField.show": "Parolayı göster",
     "profile.account": "Hesap",
     "profile.adminChanges": "E-posta adresinizi ve rolünüzü bir sistem yöneticisi değiştirir.",

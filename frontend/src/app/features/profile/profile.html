@@ -32,9 +32,11 @@
           autocomplete="given-name"
           [maxlength]="maxNameLength"
           [class.invalid]="errorFor('firstName')"
+          [attr.aria-invalid]="!!errorFor('firstName')"
+          aria-describedby="first-name-error"
         />
         @if (errorFor('firstName'); as error) {
-          <span class="field-error">{{ error }}</span>
+          <span id="first-name-error" class="field-error">{{ error }}</span>
         }
       </div>
       <div class="field">
@@ -46,9 +48,11 @@
           autocomplete="family-name"
           [maxlength]="maxNameLength"
           [class.invalid]="errorFor('lastName')"
+          [attr.aria-invalid]="!!errorFor('lastName')"
+          aria-describedby="last-name-error"
         />
         @if (errorFor('lastName'); as error) {
-          <span class="field-error">{{ error }}</span>
+          <span id="last-name-error" class="field-error">{{ error }}</span>
         }
       </div>
     </div>
