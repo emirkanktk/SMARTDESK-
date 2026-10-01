@@ -40,7 +40,26 @@ describe('visitFor', () => {
       closesAt: at('10:15'),
     });
     expect(visitFor([booking()], 'res-1', now('10:14')).kind).toBe('open');
-    expect(visitFor([booking()], 'res-1', now('10:15')).kind).toBe('none');
+    expect(visitFor([booking()], 'res-1', now('10:15')).kind).toBe('closed');
+  });
+
+  it('says the check-in has closed while the booking waits to be released', () => {
+    expect(visitFor([booking()], 'res-1', now('10:16'))).toEqual({
+      kind: 'closed',
+      reservation: booking(),
+      closedAt: at('10:15'),
+    });
+    expect(visitFor([booking()], 'res-1', now('10:59')).kind).toBe('closed');
+    expect(visitFor([booking()], 'res-1', now('11:00')).kind).toBe('none');
+  });
+
+  it('puts a booking whose check-in just closed before the next one', () => {
+    const later = booking({ id: 'later', startDateTime: iso('14:00'), endDateTime: iso('15:00') });
+
+    expect(visitFor([later, booking()], 'res-1', now('10:20'))).toMatchObject({
+      kind: 'closed',
+      reservation: { id: 'rsv-10' },
+    });
   });
 
   it('never keeps it open past the end of a short booking', () => {
@@ -229,6 +248,17 @@ describe('CheckIn', () => {
     updated.next(booking({ checkedInAt: iso('09:56') }));
     await fixture.whenStable();
     expect(element.textContent).toContain("You're checked in");
+  });
+
+  it('says a booking whose check-in closed is about to be released, and offers no way to book', async () => {
+    vi.setSystemTime(at('10:20'));
+    await render();
+
+    expect(element.textContent).toContain(
+      "The check-in for your booking at 10:00 closed at 10:15 with nobody checked in, so it's about to be released.",
+    );
+    expect(checkInButton()).toBeNull();
+    expect(element.querySelector('a.btn')).toBeNull();
   });
 
   it('offers to book when there is nothing to check in to', async () => {

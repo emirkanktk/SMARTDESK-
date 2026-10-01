@@ -159,6 +159,7 @@
     "checkIn.bookAgain": "Yeniden rezerve et",
     "checkIn.button": "Check-in yap",
     "checkIn.checkingIn": "Check-in yapılıyor…",
+    "checkIn.closed": "{$INTERPOLATION} rezervasyonunuzun check-in süresi saat {$INTERPOLATION_1} itibarıyla kimse check-in yapmadan doldu; rezervasyon birazdan iptal edilecek.",
     "checkIn.done": "{$INTERPOLATION} - {$INTERPOLATION_1} rezervasyonunuz için check-in yaptınız. Rezervasyon sizin.",
     "checkIn.failed": "Check-in gönderilemedi. Bağlantınızı kontrol edip tekrar deneyin.",
     "checkIn.later": "{$INTERPOLATION} rezervasyonunuz için check-in, {$INTERPOLATION_1} itibarıyla açılır.",

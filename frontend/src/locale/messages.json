@@ -153,6 +153,7 @@
     "checkIn.button": "Check in",
     "checkIn.noCode": " To check in, scan the QR code at the door with your phone's camera. ",
     "checkIn.done": " You're checked in for {$INTERPOLATION} to {$INTERPOLATION_1}. The booking is yours. ",
+    "checkIn.closed": " The check-in for your booking at {$INTERPOLATION} closed at {$INTERPOLATION_1} with nobody checked in, so it's about to be released. ",
     "checkIn.later": " Your booking at {$INTERPOLATION} can be checked in from {$INTERPOLATION_1}. ",
     "checkIn.released": " Your booking at {$INTERPOLATION} was released at {$INTERPOLATION_1} because nobody checked in. ",
     "checkIn.bookAgain": "Book it again",

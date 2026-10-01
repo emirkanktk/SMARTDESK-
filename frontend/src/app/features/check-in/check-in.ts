@@ -27,6 +27,8 @@ export type Visit =
   | { kind: 'open'; reservation: Reservation; closesAt: Date }
   /** One is checked in and not over yet. */
   | { kind: 'checkedIn'; reservation: Reservation }
+  /** One's check-in closed with nobody checked in; it's released at the next run. */
+  | { kind: 'closed'; reservation: Reservation; closedAt: Date }
   /** The next one's check-in hasn't opened yet. */
   | { kind: 'later'; reservation: Reservation; opensAt: Date }
   /** Nothing else to come, but one was released today because nobody checked in. */
@@ -136,7 +138,8 @@ export class CheckIn implements OnInit {
 
 /**
  * What to offer for the caller's bookings of `resourceId` at `now`, first match wins: one to
- * check in to now, one checked in and running, the next one to come, one released today.
+ * check in to now, one checked in and running, one whose check-in closed and that's about to
+ * be released, the next one to come, one released today.
  */
 export function visitFor(mine: Reservation[], resourceId: string, now: number): Visit {
   const time = (value: string) => new Date(value).getTime();
@@ -161,6 +164,13 @@ export function visitFor(mine: Reservation[], resourceId: string, now: number): 
   const checkedIn = running.find((r) => r.checkedInAt);
   if (checkedIn) {
     return { kind: 'checkedIn', reservation: checkedIn };
+  }
+
+  // Its check-in closed with nobody checked in. The release job cancels it at its next run,
+  // up to CheckIn:IntervalSeconds later; until then it still holds the slot.
+  const missed = running.find((r) => !r.checkedInAt && checkInWindow(r).closesAt.getTime() <= now);
+  if (missed) {
+    return { kind: 'closed', reservation: missed, closedAt: checkInWindow(missed).closesAt };
   }
 
   const next = running.find((r) => !r.checkedInAt && checkInWindow(r).opensAt.getTime() > now);

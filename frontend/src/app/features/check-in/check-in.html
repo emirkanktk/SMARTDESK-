@@ -57,6 +57,11 @@
             You're checked in for {{ when(current.reservation.startDateTime) }} to
             {{ when(current.reservation.endDateTime) }}. The booking is yours.
           </p>
+        } @else if (current.kind === 'closed') {
+          <p class="status released" i18n="@@checkIn.closed">
+            The check-in for your booking at {{ when(current.reservation.startDateTime) }} closed at
+            {{ when(current.closedAt) }} with nobody checked in, so it's about to be released.
+          </p>
         } @else if (current.kind === 'later') {
           <p class="status" i18n="@@checkIn.later">
             Your booking at {{ when(current.reservation.startDateTime) }} can be checked in from
