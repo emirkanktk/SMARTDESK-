@@ -158,12 +158,21 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("CheckInRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("CheckedInAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("EndDateTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("ReminderMinutes")
                         .HasColumnType("integer");
@@ -191,6 +200,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ResourceId", "Status", "StartDateTime", "EndDateTime");
 
+                    b.HasIndex(new[] { "StartDateTime" }, "IX_Reservations_AwaitingCheckIn")
+                        .HasFilter("\"CheckInRequired\" AND \"CheckedInAt\" IS NULL AND \"Status\" = 0");
+
                     b.ToTable("Reservations", t =>
                         {
                             t.HasCheckConstraint("CK_Reservations_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\"");
@@ -205,6 +217,14 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Capacity")
                         .HasColumnType("integer");
+
+                    b.Property<string>("CheckInCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("CheckInRequired")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)

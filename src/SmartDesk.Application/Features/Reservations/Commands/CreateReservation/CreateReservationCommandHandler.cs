@@ -31,7 +31,8 @@ public sealed class CreateReservationCommandHandler(
             await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
             // Exists, Active, not blocked, no overlap (business rules 1, 3, 7).
-            await BookingGuard.EnsureBookableAsync(db, currentUser, request.ResourceId, start, end, null, cancellationToken);
+            var resource = await BookingGuard.EnsureBookableAsync(
+                db, currentUser, request.ResourceId, start, end, null, cancellationToken);
 
             db.Reservations.Add(new Reservation
             {
@@ -43,6 +44,8 @@ public sealed class CreateReservationCommandHandler(
                 Status = ReservationStatus.Confirmed,
                 Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
                 ReminderMinutes = request.ReminderMinutes,
+                // Booked knowing the door asks for a check-in, or not (ADR-0030).
+                CheckInRequired = resource.CheckInRequired,
             });
 
             await db.SaveChangesAsync(cancellationToken);

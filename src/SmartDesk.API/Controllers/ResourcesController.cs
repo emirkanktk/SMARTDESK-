@@ -2,6 +2,11 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
+using SmartDesk.Application.Features.CheckIn.Commands.CheckIn;
+using SmartDesk.Application.Features.CheckIn.Commands.ReplaceCheckInCode;
+using SmartDesk.Application.Features.CheckIn.Common;
+using SmartDesk.Application.Features.CheckIn.Queries.GetCheckInCode;
+using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Resources.Commands.ChangeResourceStatus;
 using SmartDesk.Application.Features.Resources.Commands.CreateResource;
 using SmartDesk.Application.Features.Resources.Commands.RemoveResourcePhoto;
@@ -136,4 +141,33 @@ public sealed class ResourcesController(ISender sender) : ControllerBase
 
         return NoContent();
     }
+
+    // Checks the caller in to their booking of this resource that's open for it now, with the
+    // secret from the resource's QR code (ADR-0030). Checking in twice is fine.
+    [HttpPost("{id:guid}/check-in")]
+    [ProducesResponseType<ReservationDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<ReservationDto> CheckIn(Guid id, CheckInCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command with { ResourceId = id }, cancellationToken);
+
+    // The QR code to print, for whoever may edit the resource. The secret is nowhere else.
+    [HttpGet("{id:guid}/check-in-code")]
+    [Authorize(Roles = Roles.AdminOrManager)]
+    [ProducesResponseType<CheckInCodeDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<CheckInCodeDto> GetCheckInCode(Guid id, CancellationToken cancellationToken) =>
+        sender.Send(new GetCheckInCodeQuery(id), cancellationToken);
+
+    // A new secret: codes already printed stop working at once.
+    [HttpPost("{id:guid}/check-in-code")]
+    [Authorize(Roles = Roles.AdminOrManager)]
+    [ProducesResponseType<CheckInCodeDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<CheckInCodeDto> ReplaceCheckInCode(Guid id, CancellationToken cancellationToken) =>
+        sender.Send(new ReplaceCheckInCodeCommand(id), cancellationToken);
 }

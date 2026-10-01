@@ -15,9 +15,10 @@ namespace SmartDesk.Application.Features.Reservations.Common;
 // LockResourceForBookingAsync, so what it reads can't change before the write (ADR-0011).
 public static class BookingGuard
 {
-    // Returns the resource name for messages. `ignoreReservationId` is the reservation being
-    // moved: its own current slot must not count as a clash.
-    public static async Task<string> EnsureBookableAsync(
+    // Returns what the booking takes on from the resource: its name for messages, and whether
+    // it asks for a check-in, which the booking keeps (ADR-0030). `ignoreReservationId` is the
+    // reservation being moved: its own current slot must not count as a clash.
+    public static async Task<BookableResource> EnsureBookableAsync(
         IApplicationDbContext db,
         ICurrentUserService user,
         Guid resourceId,
@@ -31,7 +32,7 @@ public static class BookingGuard
             .AsNoTracking()
             .UsableBy(user)
             .Where(r => r.Id == resourceId)
-            .Select(r => new { r.Name, r.Status })
+            .Select(r => new { r.Name, r.Status, r.CheckInRequired })
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException(nameof(Resource), resourceId);
 
@@ -71,6 +72,8 @@ public static class BookingGuard
             };
         }
 
-        return resource.Name;
+        return new BookableResource(resource.Name, resource.CheckInRequired);
     }
 }
+
+public sealed record BookableResource(string Name, bool CheckInRequired);
