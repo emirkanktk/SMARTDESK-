@@ -29,13 +29,8 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "@fontsource-variable/plus-jakarta-sans/index.css",
-              "src/styles.scss"
-            ],
-            "polyfills": [
-              "@angular/localize/init"
-            ]
+            "styles": ["@fontsource-variable/plus-jakarta-sans/index.css", "src/styles.scss"],
+            "polyfills": ["@angular/localize/init"]
           },
           "configurations": {
             "production": {

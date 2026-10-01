@@ -1,7 +1,8 @@
 # Builds and tests both halves of the app on every pull request (whatever its base, so
 # stacked PRs are checked too), on every push to main, and on demand. Needs no secrets.
 # Unit tests use in-memory SQLite; integration tests start PostgreSQL with Testcontainers.
-# Frontend tests use jsdom.
+# Frontend tests use jsdom. The browser tests run the whole app - PostgreSQL, the API with the
+# Development seed, ng serve - and drive it in Chromium (#72).
 name: CI
 
 on:
@@ -74,6 +75,21 @@ jobs:
 
       - run: npm ci
 
+      # Cheap, and they'd otherwise only show up in review: a text with no Turkish version
+      # appears in English on a Turkish screen.
+      - name: Every text has its Turkish version
+        run: npm run i18n:check
+
+      - name: Code is formatted with Prettier
+        run: npm run format:check
+
+      # ng test compiles specs without checking their types, so a spec that builds a model
+      # with a missing field would still run.
+      - name: Specs and browser tests type-check
+        run: |
+          npx tsc -p tsconfig.spec.json --noEmit
+          npx tsc -p e2e/tsconfig.json --noEmit
+
       - run: npx ng build
 
       - run: npx ng test --watch=false
@@ -83,3 +99,101 @@ jobs:
       # frontend/scripts/test-time-zones.mjs for the list).
       - name: Unit tests in other time zones
         run: npm run test:time-zones
+
+  e2e:
+    name: Browser tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: smartdesk
+          POSTGRES_USER: smartdesk
+          POSTGRES_PASSWORD: smartdesk_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smartdesk -d smartdesk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      # The https launch profile runs the API in Development, so it seeds the demo users and
+      # resources the tests sign in with, and sends emails to the log instead of SMTP.
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=smartdesk;Username=smartdesk;Password=smartdesk_ci_only
+      Database__MigrateOnStartup: 'true'
+      # Playwright's own Chromium; locally the tests use the installed Edge.
+      E2E_CHANNEL: ''
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # A signing key made for this run only, never stored anywhere.
+      - name: JWT key for this run
+        run: echo "Jwt__Key=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
+
+      # The dev proxy talks to the API over https without checking the certificate, and so do
+      # the tests' own API calls, so the development certificate needn't be trusted.
+      - name: Start the API
+        run: |
+          dotnet dev-certs https
+          dotnet build src/SmartDesk.API --configuration Debug
+          nohup dotnet run --project src/SmartDesk.API --launch-profile https --no-build > api.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -skf https://localhost:7065/health > /dev/null && exit 0
+            sleep 2
+          done
+          cat api.log
+          exit 1
+
+      - name: Install the frontend and Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start the frontend
+        working-directory: frontend
+        run: |
+          nohup npx ng serve --port 4200 > ng.log 2>&1 &
+          for i in $(seq 1 90); do
+            curl -sf http://localhost:4200 > /dev/null && exit 0
+            sleep 2
+          done
+          cat ng.log
+          exit 1
+
+      - name: Browser tests
+        working-directory: frontend
+        run: npm run e2e
+
+      # Traces replay a failed test step by step: npx playwright show-trace <file>.
+      - name: Keep the report, traces and logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-tests
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+            frontend/ng.log
+            api.log
+          retention-days: 7
