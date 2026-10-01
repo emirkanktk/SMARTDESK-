@@ -21,5 +21,9 @@ public sealed class AssistantOptions
     // Rounds of tool calls in one answer before the model has to reply with what it has.
     public int MaxToolRounds { get; init; } = 6;
 
+    // How long one answer may take, all its rounds included. Past that the user is asked to try
+    // again (503) instead of being kept waiting.
+    public int TimeoutSeconds { get; init; } = 90;
+
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey);
 }

@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Resources;
@@ -18,16 +20,22 @@ public sealed class ClaudeAssistantModelTests : IDisposable
     private const string Instructions = "You are the assistant inside SmartDesk.";
     private const string Context = "Now: Monday 2026-10-05 09:00 in UTC (UTC+00:00).";
 
+    // Real time a test waits for an answer that should already have ended, so that a regression
+    // fails the test instead of hanging it.
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(10);
+
     private readonly FakeMessagesApi _api = new();
     private readonly RecordingToolbox _toolbox = new();
+    private readonly FakeTimeProvider _time = new();
     private readonly ClaudeAssistantModel _model;
 
-    public ClaudeAssistantModelTests() => _model = Model(new AssistantOptions { ApiKey = "test-key", MaxToolRounds = 2 });
+    public ClaudeAssistantModelTests() =>
+        _model = Model(new AssistantOptions { ApiKey = "test-key", MaxToolRounds = 2, TimeoutSeconds = 30 });
 
     public void Dispose() => _model.Dispose();
 
     private ClaudeAssistantModel Model(AssistantOptions options) =>
-        new(Options.Create(options), NullLogger<ClaudeAssistantModel>.Instance, new HttpClient(_api));
+        new(Options.Create(options), NullLogger<ClaudeAssistantModel>.Instance, _time, new HttpClient(_api));
 
     private Task<string> AskAsync(params AssistantMessage[] conversation) =>
         _model.AnswerAsync(new AssistantRequest(Instructions, Context, conversation), _toolbox, CancellationToken.None);
@@ -229,6 +237,50 @@ public sealed class ClaudeAssistantModelTests : IDisposable
     }
 
     [Fact]
+    public async Task AnswerAsync_NoAnswerInTime_IsUnavailable()
+    {
+        _api.Hang();
+
+        var asking = AskAsync(User("Hi"));
+        await _api.Waiting;
+        _time.Advance(TimeSpan.FromSeconds(30));
+
+        var act = () => asking.WaitAsync(Patience);
+        await act.Should().ThrowAsync<ServiceUnavailableException>().WithMessage(Messages.Assistant_Unavailable);
+    }
+
+    [Fact]
+    public async Task AnswerAsync_TheTimeLimitIsForTheWholeAnswer_NotEachCall()
+    {
+        _api.Answer(Message("tool_use", ToolUse("toolu_1", RecordingToolbox.ToolName, new { start = "2026-10-06T10:00" })));
+        _api.Hang();
+        // The first round and its tool take 20 s, then the second call hangs for 10.
+        _toolbox.WhileRunning = () => _time.Advance(TimeSpan.FromSeconds(20));
+
+        var asking = AskAsync(User("Anything free tomorrow at 10?"));
+        await _api.Waiting;
+        _time.Advance(TimeSpan.FromSeconds(10));
+
+        var act = () => asking.WaitAsync(Patience);
+        await act.Should().ThrowAsync<ServiceUnavailableException>().WithMessage(Messages.Assistant_Unavailable);
+        _api.Requests.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task AnswerAsync_CallerGone_IsCancelledRatherThanUnavailable()
+    {
+        _api.Hang();
+        using var leaving = new CancellationTokenSource();
+
+        var asking = _model.AnswerAsync(new AssistantRequest(Instructions, Context, [User("Hi")]), _toolbox, leaving.Token);
+        await _api.Waiting;
+        await leaving.CancelAsync();
+
+        var act = () => asking.WaitAsync(Patience);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task AnswerAsync_NoKey_IsUnavailableAndCallsNothing()
     {
         using var model = Model(new AssistantOptions());
@@ -243,18 +295,31 @@ public sealed class ClaudeAssistantModelTests : IDisposable
     // Answers each request with the next queued response, and keeps what was sent.
     private sealed class FakeMessagesApi : HttpMessageHandler
     {
-        private readonly Queue<(string Json, HttpStatusCode Status)> _responses = new();
+        // null: a request that gets no answer until it's cancelled.
+        private readonly Queue<(string Json, HttpStatusCode Status)?> _responses = new();
+        private readonly TaskCompletionSource _waiting = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public List<(HttpRequestMessage Request, JsonElement Body)> Requests { get; } = [];
 
+        // Completes when a request is left hanging.
+        public Task Waiting => _waiting.Task;
+
         public void Answer(string json, HttpStatusCode status = HttpStatusCode.OK) => _responses.Enqueue((json, status));
+
+        public void Hang() => _responses.Enqueue(null);
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var body = await request.Content!.ReadAsStringAsync(cancellationToken);
             Requests.Add((request, JsonSerializer.Deserialize<JsonElement>(body)));
-            var (json, status) = _responses.Dequeue();
-            return new HttpResponseMessage(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+            if (_responses.Dequeue() is not { } response)
+            {
+                _waiting.SetResult();
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                throw new UnreachableException();
+            }
+
+            return new HttpResponseMessage(response.Status) { Content = new StringContent(response.Json, Encoding.UTF8, "application/json") };
         }
     }
 
@@ -264,6 +329,9 @@ public sealed class ClaudeAssistantModelTests : IDisposable
         public const string Result = """{"count":1,"resources":[{"name":"Room A"}]}""";
 
         public List<(string Name, string Input)> Ran { get; } = [];
+
+        // Something that happens while a tool runs, such as time passing.
+        public Action? WhileRunning { get; set; }
 
         public IReadOnlyList<AssistantTool> Tools { get; } =
         [
@@ -275,6 +343,7 @@ public sealed class ClaudeAssistantModelTests : IDisposable
         public Task<string> RunAsync(string name, JsonElement input, CancellationToken cancellationToken)
         {
             Ran.Add((name, input.GetRawText()));
+            WhileRunning?.Invoke();
             return Task.FromResult(Result);
         }
     }
