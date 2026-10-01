@@ -230,6 +230,8 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
 | GET | `/api/reservations/invited` | any authenticated user | `GetMyInvitationsQuery` | other people's `Confirmed` meetings the caller is invited to and that aren't over, soonest first (ADR-0032) |
 | GET | `/api/reservations/invitees` | any authenticated user | `GetInviteesQuery` | who the caller may invite: `[{ id, name, email }]`, by name - a Manager's active team members, every active account for an Admin, nobody for an Employee |
+| GET | `/api/reservations/{id}/extension` | owner or Admin | `GetExtensionOptionsQuery` | `{ minutes: [15, 30, 60] }`: how much longer it can run, only what ends before the resource's next booking or blocked window; empty when it can't (ADR-0033) |
+| POST | `/api/reservations/{id}/extend` | owner or Admin | `ExtendReservationCommand` | body: `{ minutes }` (15, 30 or 60) → 200 with the reservation, its end that much later. See Running over. |
 | POST | `/api/reservations/{id}/response` | someone invited | `RespondToInvitationCommand` | body: `{ response: "Accepted" \| "Declined", reason? }` → 200 with the meeting. Declining needs a `reason` (max 500), which goes to the organizer only. See Meetings. |
 | GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. Only reservations on resources the caller may use (ADR-0022). |
 
@@ -292,6 +294,28 @@ booking can still be shortened or ended early. Other errors: 400 for the
 same shape rules as create, 403 for someone who is neither the owner nor an Admin, 404 for an
 unknown reservation. A PUT that changes nothing returns 200 and sends no event.
 
+## Running over (ADR-0033)
+
+Ten minutes before a booking under way ends, its owner gets `ReservationEndingSoon` (see
+Real-time) and the app asks whether they need longer.
+
+- **How much longer.** `GET /api/reservations/{id}/extension` lists the options, 15, 30 and 60
+  minutes, that end before the resource's next `Confirmed` booking or blocked window. Empty for a
+  resource that isn't `Active`, or that the caller may no longer use. It's a snapshot.
+- **Extending.** `POST /api/reservations/{id}/extend` moves only the end, under the same locks
+  and checks as moving a booking: the extra time must be free, not blocked, and the resource
+  `Active`. The check-in, the reminder and the answers to the invitation stay. Everyone invited
+  gets a `MeetingExtended` message, and screens get `ReservationUpdated`.
+
+**Running over - errors**
+
+| Status | When |
+|---|---|
+| 400 | `minutes` isn't 15, 30 or 60 (`"Extend by one of these: 15, 30, 60 minutes."`) |
+| 403 | neither the owner nor an Admin |
+| 404 | the reservation doesn't exist |
+| 409 | it's cancelled or over; the extra time is taken (`code: "reservation-overlaps"`, `"Board Room is reserved right after, so this can't run 30 minutes longer."`), blocked (`code: "resource-blocked"`), or the resource isn't `Active` (`code: "resource-unavailable"`) |
+
 ## Meetings (ADR-0032)
 
 A booking can invite people. The organizer is the booking's owner; everyone invited gets a
@@ -339,6 +363,7 @@ The signed-in user's own messages; nobody sees anyone else's.
 {
   "id": "…", "recipientId": "…",
   "kind": "MeetingInvitation",   // MeetingInvitation | MeetingChanged | MeetingCancelled | MeetingUninvited
+                                 // | MeetingExtended (ADR-0033)
                                  // | MeetingAccepted | MeetingDeclined (the last two to the organizer)
   "reservationId": "…",          // null once the booking is gone
   "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release, which nobody sent
@@ -527,7 +552,7 @@ Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). `ReservationEndingSoon` - to the owner only: their booking under way ends within ten minutes; do they need longer (ADR-0033)? Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
 
 All three events carry the reservation object shown under Reservations above, as it is after
 the change. For `ReservationUpdated` the resource or the times may be different from
@@ -548,6 +573,12 @@ has passed, so it can be up to one interval late, never early. It isn't sent for
 reservation, or once the reservation has started. Moving the start or changing `reminderMinutes`
 re-arms it for the new moment, while changing only the end or the note doesn't. A reminder that
 finds the owner offline isn't queued or repeated.
+
+**Running over (ADR-0033).** `ReservationEndingSoon` carries the reservation and goes only to
+the owner's open connections, from a job that looks every 30 seconds
+(`EndingSoon:IntervalSeconds`; `EndingSoon:Enabled: false` switches it off): once per end, in
+the last ten minutes of a booking under way. A new end re-arms it. One that finds the owner
+offline isn't repeated.
 
 **Inbox (ADR-0032).** `InboxMessageReceived` carries the message as `GET /api/inbox` returns it,
 sent once its change is committed, to its recipient's connections only. One that finds them

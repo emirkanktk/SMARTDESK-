@@ -82,6 +82,7 @@ they next sign in.
 | CheckInRequired | bool | whether its resource asked for a check-in when it was booked, or last moved to a new start or another resource (ADR-0030) |
 | CheckedInAt | DateTime? | when the owner checked in; cleared when the start or the resource changes |
 | ReleasedAt | DateTime? | when it was released because nobody checked in; `Status` is then `Cancelled` |
+| EndingSoonSentAt | DateTime? | when its owner was asked whether it needs longer; cleared when the end moves (ADR-0033) |
 
 `Reservation.UserId` is stored as a plain `Guid`, not an EF navigation to `ApplicationUser`,
 because `SmartDeskDbContext` treats Identity's own tables as belonging to the Identity
@@ -110,7 +111,7 @@ the booking it's about.
 |---|---|---|
 | Id | Guid | version 7, so ids sort like `CreatedAt` |
 | RecipientId | Guid | an account id; no FK across the Identity boundary |
-| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined |
+| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined / MeetingExtended (ADR-0033) |
 | SenderId | Guid? | who caused it; null for a release |
 | ReservationId | Guid? | FK → `Reservation.Id`, set null when the booking is deleted |
 | ResourceName | string (200) | the meeting when the message was sent: the room's name, |

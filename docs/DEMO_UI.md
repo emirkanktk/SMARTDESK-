@@ -249,6 +249,16 @@ one there's no **Assistant** button anywhere, and nothing else changes.
   to answer again. Point out: the reason is only in the manager's inbox, never on the shared
   calendar, and anyone invited may check the meeting in at the door (ADR-0032).
 
+### 13. Running over
+
+- As Ayşe, book a free room from now until eight minutes from now (the form takes a start up to
+  five minutes back). Within half a minute a card appears in the corner: "… ends at …", with
+  **+15 min**, **+30 min** and **+1 h**, only those the room is free for.
+- Press **+30 min**: the toast says until when, the card goes, and Mehmet's calendar shows the
+  longer booking on its own. **My reservations** has **Extend** on it while it's on.
+- Point out: only the end moves - a check-in still holds, nobody invited has to answer again,
+  and they're told it runs longer (ADR-0033).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in
