@@ -1,28 +1,31 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>SmartDesk</title>
-  <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico" sizes="32x32">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <script>
-    // The colour theme before anything is drawn, so a dark page never flashes white: the
-    // stored choice, or the system's setting (core/theme/theme.service.ts keeps it after).
-    (function () {
-      var theme = null;
-      try {
-        theme = localStorage.getItem('smartdesk_theme');
-      } catch (e) {}
-      if (theme !== 'dark' && theme !== 'light') {
-        theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-      document.documentElement.setAttribute('data-theme', theme);
-    })();
-  </script>
-</head>
-<body>
-  <app-root></app-root>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <title>SmartDesk</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <script>
+      // The colour theme before anything is drawn, so a dark page never flashes white: the
+      // stored choice, or the system's setting (core/theme/theme.service.ts keeps it after).
+      (function () {
+        var theme = null;
+        try {
+          theme = localStorage.getItem('smartdesk_theme');
+        } catch (e) {}
+        if (theme !== 'dark' && theme !== 'light') {
+          theme =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
 </html>

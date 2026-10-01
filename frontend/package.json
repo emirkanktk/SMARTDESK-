@@ -10,6 +10,7 @@
     "test:time-zones": "node scripts/test-time-zones.mjs",
     "i18n:extract": "node scripts/i18n.mjs",
     "i18n:check": "node scripts/i18n.mjs --check",
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\" \"e2e/**/*.ts\" \"scripts/**/*.mjs\" \"*.{ts,json}\" public/i18n",
     "e2e": "playwright test"
   },
   "private": true,
