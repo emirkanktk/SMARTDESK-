@@ -127,6 +127,13 @@
             }
           </span>
         </div>
+        @if (r.checkInRequired) {
+          <p class="check-in-note" i18n="@@reservationForm.checkInNote">
+            Bookings of this one must be checked in: scan the QR code at the door from
+            {{ checkIn.opensBeforeMinutes }} minutes before the start until
+            {{ checkIn.graceMinutes }} minutes after, or the booking is released.
+          </p>
+        }
       }
     </div>
 

@@ -1,0 +1,55 @@
+// Opened from a phone at the door, so it reads first as one column.
+.visit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  max-width: 720px;
+}
+
+.photo {
+  flex: 1 1 14rem;
+  max-width: 20rem;
+  aspect-ratio: 4 / 3;
+}
+
+.body {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.name {
+  margin: 0;
+  font-size: 1.375rem;
+}
+
+.location {
+  margin: var(--space-1) 0 0;
+}
+
+.status {
+  margin: 0;
+}
+
+.done {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.released {
+  color: var(--color-warning);
+}
+
+// Easy to hit with a thumb.
+.check-in-button {
+  min-width: 12rem;
+  min-height: 3rem;
+  font-size: 1.0625rem;
+}
+
+.alert-error {
+  margin: 0;
+}

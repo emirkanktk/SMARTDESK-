@@ -315,4 +315,54 @@ describe('MyReservations', () => {
       expect(names()).toEqual(['Meeting Room A']);
     });
   });
+
+  describe('check-in at the door (ADR-0030)', () => {
+    function itemText(name: string): string {
+      return Array.from(element.querySelectorAll('.item'))
+        .find((i) => i.querySelector('h2')!.textContent!.includes(name))!
+        .textContent!.replace(/\s+/g, ' ');
+    }
+
+    it('says when to check in, until that is done or has passed', async () => {
+      // It's 10:07: Desk 7's check-in is open until 10:25, but done already.
+      const checkedIn = booking('rsv-7', 'Desk 7', '2026-10-05T10:10', '2026-10-05T11:00', {
+        checkInRequired: true,
+        checkedInAt: utc('2026-10-05T10:05'),
+      });
+      getMine.mockReturnValue(
+        of([
+          { ...soon, checkInRequired: true },
+          { ...running, checkInRequired: true },
+          checkedIn,
+          { ...later, checkInRequired: false },
+        ]),
+      );
+      await render();
+
+      expect(itemText('Meeting Room A')).toContain('Check in at the door 13:50-14:15');
+      expect(itemText('Desk 7')).toContain('Checked in');
+      expect(itemText('Desk 7')).not.toContain('Check in at the door');
+      expect(itemText('Board Room')).not.toContain('Check in at the door'); // closed at 09:45
+      expect(itemText('Desk 12')).not.toContain('Check in');
+    });
+
+    it('marks a booking released because nobody checked in, and when', async () => {
+      getMine.mockReturnValue(
+        of([
+          {
+            ...soon,
+            status: 'Cancelled',
+            checkInRequired: true,
+            releasedAt: utc('2026-10-05T09:45'),
+          },
+        ]),
+      );
+      await render();
+      await openTab('Cancelled');
+
+      expect(itemText('Meeting Room A')).toContain('Released');
+      expect(itemText('Meeting Room A')).toContain('Nobody checked in by 09:45');
+      expect(itemText('Meeting Room A')).not.toContain('Check in at the door');
+    });
+  });
 });

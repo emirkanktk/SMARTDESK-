@@ -1,0 +1,50 @@
+.check-in-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+// White in both themes, with a border so it doesn't melt into a light page.
+.qr {
+  flex: none;
+  width: 160px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.details {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.hint {
+  font-size: 0.875rem;
+}
+
+// The link is long and has no spaces; let it break anywhere rather than widen the page.
+.link {
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.text-button {
+  padding-inline: var(--space-2);
+  background: none;
+  color: var(--color-primary);
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

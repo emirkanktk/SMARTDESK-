@@ -32,6 +32,7 @@ describe('ResourceForm', () => {
   let setPhoto: ReturnType<typeof vi.fn>;
   let removePhoto: ReturnType<typeof vi.fn>;
   let getResource: ReturnType<typeof vi.fn>;
+  let getCheckInCode: ReturnType<typeof vi.fn>;
   let getAccounts: ReturnType<typeof vi.fn>;
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
   let fixture: ComponentFixture<ResourceForm>;
@@ -50,6 +51,9 @@ describe('ResourceForm', () => {
       of(fakeResource({ description: 'Big screen', status: 'Maintenance' })),
     );
     getAccounts = vi.fn(() => of([zeynep, okan]));
+    getCheckInCode = vi.fn(() =>
+      of({ code: 'c0de', url: 'http://localhost:4200/check-in/res-1?code=c0de' }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [ResourceForm],
@@ -67,6 +71,7 @@ describe('ResourceForm', () => {
             setTeams,
             setPhoto,
             removePhoto,
+            getCheckInCode,
           },
         },
         RESOURCE_PHOTO_STUB,
@@ -145,6 +150,7 @@ describe('ResourceForm', () => {
       location: '1st Floor',
       description: null,
       features: ['TV', 'Whiteboard'],
+      checkInRequired: false,
       teamIds: [],
     });
     expect(navigateByUrl).toHaveBeenCalledWith('/resources');
@@ -265,9 +271,47 @@ describe('ResourceForm', () => {
       location: '2nd Floor',
       description: 'Big screen',
       features: ['TV', 'Video Conference'],
+      checkInRequired: false,
       status: 'Active',
     });
   });
+
+  it('switches check-in on for a new resource, whose QR code comes once it is saved', async () => {
+    await render();
+    await fillValidForm();
+    await tick('input[formControlName="checkInRequired"]');
+
+    expect(element.textContent).toContain('Its QR code shows here once the resource is saved.');
+    expect(getCheckInCode).not.toHaveBeenCalled();
+
+    await submit();
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ checkInRequired: true }));
+  });
+
+  it('shows the QR code of a resource with check-in, until check-in is switched off', async () => {
+    getResource.mockReturnValue(of(fakeResource({ checkInRequired: true })));
+    await render('res-1');
+
+    expect(getCheckInCode).toHaveBeenCalledWith('res-1');
+    expect(element.querySelector('app-check-in-code svg')!.getAttribute('aria-label')).toBe(
+      'QR code for checking in to Meeting Room A',
+    );
+    expect(element.textContent).toContain('http://localhost:4200/check-in/res-1?code=c0de');
+
+    await tick('input[formControlName="checkInRequired"]');
+    expect(element.querySelector('app-check-in-code')).toBeNull();
+
+    await submit();
+    expect(update).toHaveBeenCalledWith(
+      'res-1',
+      expect.objectContaining({ checkInRequired: false }),
+    );
+  });
+
+  async function tick(selector: string): Promise<void> {
+    element.querySelector<HTMLInputElement>(selector)!.click();
+    await fixture.whenStable();
+  }
 
   it('explains a refused switch-off instead of a generic failure', async () => {
     const message =

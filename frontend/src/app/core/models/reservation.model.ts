@@ -20,10 +20,45 @@ export interface Reservation {
   /** Remind the owner this many minutes before the start; null means no reminder. */
   reminderMinutes: number | null;
   /**
+   * It has to be checked in at the door with the resource's QR code, or it's released: its
+   * resource asked for that when it was booked, and still does (ADR-0030).
+   */
+  checkInRequired: boolean;
+  /** When the owner checked in; null until then. */
+  checkedInAt: string | null;
+  /** When it was released because nobody checked in; its status is then Cancelled. */
+  releasedAt: string | null;
+  /**
    * Who booked it: "First Last", or the email if both are blank. Null when the API can't
    * resolve the user any more, e.g. a deleted account.
    */
   userDisplayName: string | null;
+}
+
+/**
+ * The check-in window the API enforces (ADR-0030): from `opensBeforeMinutes` before the start
+ * until `graceMinutes` after it, and never once the booking is over. A booking nobody checked
+ * in to is released when the window closes.
+ */
+export const CHECK_IN = {
+  opensBeforeMinutes: 10,
+  graceMinutes: 15,
+} as const;
+
+export interface CheckInWindow {
+  opensAt: Date;
+  closesAt: Date;
+}
+
+export function checkInWindow(
+  reservation: Pick<Reservation, 'startDateTime' | 'endDateTime'>,
+): CheckInWindow {
+  const start = new Date(reservation.startDateTime).getTime();
+  const end = new Date(reservation.endDateTime).getTime();
+  return {
+    opensAt: new Date(start - CHECK_IN.opensBeforeMinutes * 60_000),
+    closesAt: new Date(Math.min(start + CHECK_IN.graceMinutes * 60_000, end)),
+  };
 }
 
 /**

@@ -1,0 +1,83 @@
+:host {
+  display: block;
+  padding: var(--space-5) var(--space-4);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+// Paper is white whatever the theme, so the sheet sets its own colours: the logo and the text
+// read from these tokens.
+.sheet {
+  --color-text: #0f172a;
+  --color-text-muted: #475569;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5);
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-lg);
+  background: #fff;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.logo {
+  font-size: 1.25rem;
+}
+
+.title {
+  margin: var(--space-5) 0 var(--space-2);
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.resource-name {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.resource-location {
+  margin: var(--space-1) 0 var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.qr {
+  width: min(20rem, 100%);
+}
+
+.how {
+  max-width: 26rem;
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+@media print {
+  :host {
+    padding: 0;
+  }
+
+  .toolbar {
+    display: none;
+  }
+
+  .sheet {
+    max-width: none;
+    border: 0;
+  }
+
+  .qr {
+    width: 12cm;
+  }
+}

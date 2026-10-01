@@ -26,8 +26,10 @@ class FakeNotification {
 describe('ReminderAlertsService', () => {
   const NOW = new Date('2026-10-07T13:45'); // local time, 15 minutes before 14:00
   let startingSoon: Subject<Reservation>;
+  let released: Subject<Reservation>;
   let info: ReturnType<typeof vi.fn>;
   let navigate: ReturnType<typeof vi.spyOn>;
+  let navigateByUrl: ReturnType<typeof vi.spyOn>;
   let service: ReminderAlertsService;
 
   const meeting = fakeReservation({
@@ -45,16 +47,22 @@ describe('ReminderAlertsService', () => {
     FakeNotification.shown = [];
     vi.stubGlobal('Notification', FakeNotification);
     startingSoon = new Subject();
+    released = new Subject();
     info = vi.fn();
 
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: ReservationHubService, useValue: { startingSoon$: startingSoon } },
+        {
+          provide: ReservationHubService,
+          useValue: { startingSoon$: startingSoon, released$: released },
+        },
         { provide: NotificationService, useValue: { info } },
       ],
     });
-    navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const router = TestBed.inject(Router);
+    navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    navigateByUrl = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     service = TestBed.inject(ReminderAlertsService);
   });
 
@@ -79,6 +87,36 @@ describe('ReminderAlertsService', () => {
     startingSoon.next(meeting);
 
     expect(info).toHaveBeenCalledWith('Meeting Room A starts now, at 14:00.', REMINDER_TOAST_MS);
+  });
+
+  it('reminds a booking that needs a check-in to have it done, and by when', () => {
+    service.start();
+    startingSoon.next({
+      ...meeting,
+      endDateTime: new Date('2026-10-07T15:00').toISOString(),
+      checkInRequired: true,
+    });
+
+    expect(info).toHaveBeenCalledExactlyOnceWith(
+      "Meeting Room A starts in 15 min, at 14:00. Check in at the door with the QR code by 14:15, or it's released.",
+      REMINDER_TOAST_MS,
+    );
+  });
+
+  it('tells the owner when a booking was released because nobody checked in', () => {
+    FakeNotification.permission = 'granted';
+    service.start();
+    released.next({ ...meeting, status: 'Cancelled', releasedAt: '2026-10-07T11:15:00Z' });
+
+    const message =
+      'Your booking of Meeting Room A at 14:00 was released because nobody checked in.';
+    expect(info).toHaveBeenCalledExactlyOnceWith(message, REMINDER_TOAST_MS);
+    const [desktop] = FakeNotification.shown;
+    expect(desktop.title).toBe('Booking released');
+    expect(desktop.options).toEqual({ body: message, tag: 'released-rsv-7' });
+
+    desktop.onclick!();
+    expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
   });
 
   it('adds a desktop notification when allowed, which opens the reservation', () => {

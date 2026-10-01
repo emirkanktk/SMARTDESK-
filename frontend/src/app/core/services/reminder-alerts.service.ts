@@ -1,7 +1,7 @@
 import { formatDate } from '@angular/common';
 import { Injectable, LOCALE_ID, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Reservation } from '../models/reservation.model';
+import { Reservation, checkInWindow } from '../models/reservation.model';
 import { NotificationService } from './notification.service';
 import { ReservationHubService } from './reservation-hub.service';
 
@@ -11,9 +11,10 @@ export const REMINDER_TOAST_MS = 15_000;
 export type DesktopPermission = NotificationPermission | 'unsupported';
 
 /**
- * Shows the signed-in user's reservation reminders (ADR-0018): a toast in the app, and a
+ * Shows the signed-in user's reservation reminders (ADR-0018), and tells them when a booking
+ * of theirs was released because nobody checked in (ADR-0030): a toast in the app, and a
  * desktop notification when the browser allows one, so it's seen from another tab too.
- * Clicking the desktop notification opens the reservation.
+ * Clicking the desktop notification opens the reservation, or the list for a released one.
  */
 @Injectable({ providedIn: 'root' })
 export class ReminderAlertsService {
@@ -30,6 +31,7 @@ export class ReminderAlertsService {
     }
     this.started = true;
     this.hub.startingSoon$.subscribe((reservation) => this.show(reservation));
+    this.hub.released$.subscribe((reservation) => this.showReleased(reservation));
   }
 
   permission(): DesktopPermission {
@@ -50,10 +52,14 @@ export class ReminderAlertsService {
     const start = new Date(reservation.startDateTime);
     const minutes = Math.round((start.getTime() - Date.now()) / 60_000);
     const at = formatDate(start, 'HH:mm', this.locale);
-    const message =
+    const startsWhen =
       minutes > 0
         ? $localize`:@@reminder.startsIn:${reservation.resourceName}:resource: starts in ${minutes}:minutes: min, at ${at}:time:.`
         : $localize`:@@reminder.startsNow:${reservation.resourceName}:resource: starts now, at ${at}:time:.`;
+    const closesAt = formatDate(checkInWindow(reservation).closesAt, 'HH:mm', this.locale);
+    const message = reservation.checkInRequired
+      ? `${startsWhen} ${$localize`:@@reminder.checkIn:Check in at the door with the QR code by ${closesAt}:time:, or it's released.`}`
+      : startsWhen;
 
     this.notifications.info(message, REMINDER_TOAST_MS);
 
@@ -66,6 +72,25 @@ export class ReminderAlertsService {
       desktop.onclick = () => {
         window.focus();
         void this.router.navigate(['/reservations', reservation.id, 'edit']);
+        desktop.close();
+      };
+    }
+  }
+
+  private showReleased(reservation: Reservation): void {
+    const at = formatDate(new Date(reservation.startDateTime), 'HH:mm', this.locale);
+    const message = $localize`:@@reminder.released:Your booking of ${reservation.resourceName}:resource: at ${at}:time: was released because nobody checked in.`;
+
+    this.notifications.info(message, REMINDER_TOAST_MS);
+
+    if (this.permission() === 'granted') {
+      const desktop = new Notification($localize`:@@reminder.releasedTitle:Booking released`, {
+        body: message,
+        tag: `released-${reservation.id}`,
+      });
+      desktop.onclick = () => {
+        window.focus();
+        void this.router.navigateByUrl('/reservations/mine');
         desktop.close();
       };
     }

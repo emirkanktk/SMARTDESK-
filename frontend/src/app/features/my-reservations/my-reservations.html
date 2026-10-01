@@ -77,16 +77,27 @@
                 <h2>{{ item.reservation.resourceName }}</h2>
                 @if (item.inProgress) {
                   <span class="pill in-progress" i18n="@@mine.inProgress">In progress</span>
+                } @else if (item.releasedNote) {
+                  <span class="pill cancelled-pill" i18n="@@mine.released">Released</span>
                 } @else if (item.reservation.status === 'Cancelled') {
                   <span class="pill cancelled-pill" i18n="@@status.reservation.cancelled"
                     >Cancelled</span
                   >
+                }
+                @if (item.checkedIn) {
+                  <span class="pill checked-in" i18n="@@mine.checkedIn">Checked in</span>
                 }
               </div>
               <p class="text-muted meta">
                 {{ item.reservation.resourceTypeName }} · {{ item.reservation.resourceLocation }}
                 @if (item.reminder; as reminder) {
                   · <span class="reminder">{{ reminder }}</span>
+                }
+                @if (item.checkInHint; as hint) {
+                  · <span class="check-in-hint">{{ hint }}</span>
+                }
+                @if (item.releasedNote; as note) {
+                  · <span>{{ note }}</span>
                 }
               </p>
               @if (item.reservation.note) {

@@ -1,0 +1,96 @@
+<div class="page-header">
+  <h1 i18n="@@checkIn.title">Check in</h1>
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status" i18n="@@common.loading">Loading…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error" role="alert" i18n="@@checkIn.loadFailed">
+    This resource could not be loaded. It may have been removed, or it isn't one you can use.
+  </div>
+} @else if (resource(); as room) {
+  <section class="card visit" aria-labelledby="resource-name">
+    <app-resource-photo
+      class="photo"
+      [resourceId]="room.id"
+      [typeName]="room.resourceTypeName"
+      [photoUpdatedAt]="room.photoUpdatedAt"
+    />
+    <div class="body" aria-live="polite">
+      <div>
+        <h2 id="resource-name" class="name">{{ room.name }}</h2>
+        <p class="text-muted location">{{ room.location }}</p>
+      </div>
+
+      @if (!room.checkInRequired) {
+        <p i18n="@@checkIn.notUsed">
+          {{ room.name }} doesn't use check-in, so there's nothing to do here.
+        </p>
+      } @else {
+        @let current = visit();
+        @if (current.kind === 'open') {
+          <p class="status" i18n="@@checkIn.open">
+            Your booking from {{ when(current.reservation.startDateTime) }} to
+            {{ when(current.reservation.endDateTime) }} can be checked in until
+            {{ when(current.closesAt) }}. If nobody checks in by then, it's released.
+          </p>
+          @if (code()) {
+            <button
+              type="button"
+              class="btn btn-primary check-in-button"
+              [disabled]="checkingIn()"
+              (click)="checkIn()"
+            >
+              @if (checkingIn()) {
+                <ng-container i18n="@@checkIn.checkingIn">Checking in…</ng-container>
+              } @else {
+                <ng-container i18n="@@checkIn.button">Check in</ng-container>
+              }
+            </button>
+          } @else {
+            <p class="alert-error" role="alert" i18n="@@checkIn.noCode">
+              To check in, scan the QR code at the door with your phone's camera.
+            </p>
+          }
+        } @else if (current.kind === 'checkedIn') {
+          <p class="status done" i18n="@@checkIn.done">
+            You're checked in for {{ when(current.reservation.startDateTime) }} to
+            {{ when(current.reservation.endDateTime) }}. The booking is yours.
+          </p>
+        } @else if (current.kind === 'later') {
+          <p class="status" i18n="@@checkIn.later">
+            Your booking at {{ when(current.reservation.startDateTime) }} can be checked in from
+            {{ when(current.opensAt) }}.
+          </p>
+        } @else if (current.kind === 'released') {
+          <p class="status released" i18n="@@checkIn.released">
+            Your booking at {{ when(current.reservation.startDateTime) }} was released at
+            {{ when(current.reservation.releasedAt!) }} because nobody checked in.
+          </p>
+          <a
+            class="btn btn-secondary"
+            routerLink="/reservations/new"
+            [queryParams]="{ resourceId: room.id }"
+            i18n="@@checkIn.bookAgain"
+            >Book it again</a
+          >
+        } @else {
+          <p class="status" i18n="@@checkIn.none">
+            You have no booking of {{ room.name }} to check in to.
+          </p>
+          <a
+            class="btn btn-secondary"
+            routerLink="/reservations/new"
+            [queryParams]="{ resourceId: room.id }"
+            i18n="@@checkIn.book"
+            >Book it</a
+          >
+        }
+      }
+
+      @if (error(); as message) {
+        <div class="alert-error" role="alert">{{ message }}</div>
+      }
+    </div>
+  </section>
+}
