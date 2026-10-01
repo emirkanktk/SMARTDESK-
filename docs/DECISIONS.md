@@ -843,7 +843,7 @@ new tables.
 - **Trade-offs:**
   - A printed code proves someone was at the door once, not now: whoever has the link can
     check in from elsewhere until the code is replaced. A screen at the door with a changing
-    code would close that, and is out of scope.
+    code would close that, and is out of scope. (ADR-0034 adds that screen.)
   - The release can be up to one job interval late, never early.
   - Only the owner can check in. A colleague who arrives first can't keep the room for them.
 
@@ -970,3 +970,53 @@ new tables.
     that finds the owner offline isn't repeated. The **Extend** button is always there.
   - Only the owner (or an Admin) can extend, not someone invited.
   - 15, 30 or 60 minutes; anything else goes through the edit form.
+
+## ADR-0034: A door screen with a changing code, and more to do at the door
+
+**Decision:**
+- **A door screen.** Those who may edit a resource can set up a screen at its door: a tablet
+  that opens `/door/{id}` from a link shown once. The link carries the screen's own token
+  after `#`, so it never reaches a server or its logs; the page keeps it and takes it out of
+  the address. Only the token's SHA-256 is stored. A new link cuts off the old screen; turning
+  the screen off goes back to the printed code.
+- **A changing code.** While a screen is set up, only its code checks in: an HMAC-SHA256 of the
+  current 30-second step, keyed by the resource's secret, 20 hex digits. The step before is
+  still taken, so a code scanned as it changes works. The printed code is refused, saying why.
+- **What the screen shows.** It asks `GET /api/door/{id}` with its token in a header, without
+  a user: the room, today's bookings as times only (a corridor is no place for names), blocked
+  windows, and the check-in link with the current code. It asks again just after the code
+  changes, at least every 10 seconds.
+- **At the door.** The check-in page takes the code out of the address as soon as it's read. A
+  booking remembers who checked it in (`CheckedInByUserId`). Its owner can make it run longer
+  (ADR-0033) or end it there (`POST /api/reservations/{id}/end`). Someone with nothing to check
+  in to sees whether the room is free, and can book 30 or 60 minutes on the spot, checked in at
+  once.
+- **A warning before the release.** Five minutes before a booking nobody checked in to is
+  released, its owner and those invited get `ReservationReleaseWarning`, once
+  (`ReleaseWarningSentAt`), from its own job on the check-in schedule.
+- **Rate limits.** Checking in: 20 a minute per user. The door screen: 600 a minute per
+  address.
+
+**Why:**
+- ADR-0030's own trade-off: a printed code proves someone was at the door once. A photo of it,
+  or its link, checks in from anywhere until it's replaced. A code that changes every 30 seconds
+  is only good to someone standing in front of the screen, for a minute at most.
+- The step before is taken so that scanning a code just as it changes isn't refused; anything
+  older is a photo.
+- The screen proves itself with a token rather than a user's sign-in: nobody should stay signed
+  in on a tablet in a corridor, and the token can do nothing but show that one room's screen.
+  Keeping only its hash means a copy of the database can't drive a screen.
+- Turning a screen on is what switches to changing codes, rather than a separate setting, so
+  there's no state where check-in needs a screen nobody set up.
+- A booking at the door is checked in at once because the person making it is standing there.
+- The warning, because a released booking is a surprise to someone running late; five minutes
+  is enough to get to the door.
+- The limits: a person scans a few times at most, a script guessing codes far more. A screen
+  asks about six times a minute, and a building's screens usually reach the API from one
+  address, so theirs leaves room for a hundred.
+- **Trade-offs:**
+  - A photo of the screen sent to someone elsewhere works for up to a minute.
+  - Whoever has the screen's link can show its codes anywhere until it's replaced. The link is
+    shown once and meant to be opened on the tablet only.
+  - With the screen off or broken, nobody can check in until someone turns it off or replaces
+    the link; the warning still goes out, and the release follows as usual.

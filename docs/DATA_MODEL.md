@@ -57,6 +57,8 @@ they next sign in.
 | Description | string? | |
 | CheckInRequired | bool | bookings must be checked in at the door with its QR code, or they're released (ADR-0030) |
 | CheckInCode | string | the secret in its QR code: 32 hex digits, random, required. Only those who may edit the resource see it; replacing it retires the printed code |
+| DoorScreenTokenHash | string? (64) | SHA-256 of the door screen's token, as hex; while set, only the screen's changing code checks in (ADR-0034) |
+| DoorScreenSetUpAt | DateTime? | when that screen was set up |
 
 ### ResourceFeature
 
@@ -83,6 +85,8 @@ they next sign in.
 | CheckedInAt | DateTime? | when the owner checked in; cleared when the start or the resource changes |
 | ReleasedAt | DateTime? | when it was released because nobody checked in; `Status` is then `Cancelled` |
 | EndingSoonSentAt | DateTime? | when its owner was asked whether it needs longer; cleared when the end moves (ADR-0033) |
+| CheckedInByUserId | Guid? | who checked it in: the owner or someone invited; cleared with `CheckedInAt` (ADR-0034) |
+| ReleaseWarningSentAt | DateTime? | when the owner and those invited were warned, five minutes before the release (ADR-0034) |
 
 `Reservation.UserId` is stored as a plain `Guid`, not an EF navigation to `ApplicationUser`,
 because `SmartDeskDbContext` treats Identity's own tables as belonging to the Identity
@@ -262,6 +266,9 @@ InboxMessage * ── 0..1 Reservation (set null when it's deleted)
       conditions are exact opposites, so a booking is never both checked in and released.
     - The single definition lives in `SmartDesk.Domain.Rules.CheckInRules`.
     - Anyone invited to the booking may check it in too (ADR-0032).
+    - While a door screen is set up, only its code checks in: this 30-second step's or the
+      last one's (ADR-0034). Five minutes before a release, the owner and those invited are
+      warned.
 11. **Meetings (ADR-0032).** A Manager invites their own team's active members, an Admin any
     active account, an Employee nobody. Each person added must be able to use the resource, and
     the resource's `Capacity` must hold everyone, the organizer included. A new start or another
