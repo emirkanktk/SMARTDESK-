@@ -64,6 +64,15 @@ export class ReservationHubService {
       this.startingSoon.next(reservation),
     );
     connection.onreconnected(() => this.reconnected.next());
+    // The server ends a user's connections when their account or sessions change - a sign-in
+    // on another device does (ADR-0021, ADR-0026) - for the app to come back through the token
+    // checks. SignalR doesn't reconnect after a close the server asked for, so start again
+    // while still signed in; screens catch up once it's back.
+    connection.onclose(() => {
+      if (!this.stopped && this.connection === connection) {
+        this.startWithRetry(connection, 1);
+      }
+    });
 
     this.connection = connection;
     this.startWithRetry(connection, 0);

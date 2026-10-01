@@ -66,3 +66,38 @@ test("another person's booking and its cancellation reach an open calendar witho
   await expect(row.locator('a.entry')).toHaveCount(0);
   await ayse.dispose();
 });
+
+test('an open calendar stays live after a sign-in on another device', async ({
+  open,
+  resource,
+}) => {
+  const when = slot(1, 16);
+  const mehmet = await open('mehmet');
+  await mehmet.goto(`/calendar?week=${day(when.start)}`);
+  const row = mehmet.locator('tr', { hasText: resource.name });
+  await expect(row).toBeVisible();
+
+  // Signing in elsewhere ends the user's open live connections (ADR-0026); the app connects
+  // again and catches up.
+  const elsewhere = await apiAs('mehmet');
+  await elsewhere.dispose();
+
+  const ayse = await apiAs('ayse');
+  const booked = await ayse.post('reservations', {
+    data: {
+      resourceId: resource.id,
+      startDateTime: when.start.toISOString(),
+      endDateTime: when.end.toISOString(),
+      note: null,
+      reminderMinutes: null,
+    },
+  });
+  expect(booked.status()).toBe(201);
+  const reservation = (await booked.json()) as { id: string };
+
+  await expect(row.locator('a.entry', { hasText: 'Ayşe' })).toBeVisible();
+
+  await ayse.post(`reservations/${reservation.id}/cancel`);
+  await expect(row.locator('a.entry')).toHaveCount(0);
+  await ayse.dispose();
+});
