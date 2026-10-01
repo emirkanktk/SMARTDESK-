@@ -19,7 +19,7 @@ browser, with two windows side by side so the audience sees changes arrive live.
    ```bash
    cd frontend && npm install && ng serve
    ```
-   On a machine with only Docker, steps 1 and 2 are one command instead (README, "the whole
+   On a machine with only Docker, this replaces steps 1 and 2 (README, "the whole
    app in Docker"). It serves the same app at the same address:
    ```bash
    export JWT_KEY="<a long random string>"
