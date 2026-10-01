@@ -1,6 +1,6 @@
 # SmartDesk UI Demo
 
-A 15-minute walkthrough of the Angular app, the companion to [DEMO.md](DEMO.md) (the backend
+A 20-minute walkthrough of the Angular app, the companion to [DEMO.md](DEMO.md) (the backend
 through Swagger UI). It follows the same scenario, the brief's conflict example, but in the
 browser, with two windows side by side so the audience sees changes arrive live.
 
@@ -22,7 +22,8 @@ browser, with two windows side by side so the audience sees changes arrive live.
 3. Open two windows side by side at `http://localhost:4200`: a normal one for **Ayşe**
    (`employee1@smartdesk.local`) and a private one for **Mehmet** (`employee2@smartdesk.local`).
    All passwords are `SmartDesk123!`. Both open on the front page. In Mehmet's window, **Sign
-   in** and open **Calendar**.
+   in** and open **Calendar**. On a wide screen the links run down the left side. The language
+   switch, the light/dark switch and the menu under your name are at the bottom of it.
 4. The app opens in Turkish. The steps below name the English labels, so press **EN** on the
    front page in both windows, or follow along in Turkish. Step 10 shows the switch.
 5. Pick a working day in the current week as `DAY` (or next week, then press **›** in the
@@ -38,16 +39,21 @@ browser, with two windows side by side so the audience sees changes arrive live.
   Mailpit at `http://localhost:8025`.)
 - Sign Ayşe in with a wrong password first: "Invalid email or password." appears under the
   form - the same answer for an unknown email or a locked account.
-- Then sign in properly. The dashboard shows today's date and four counts (7 active resources on
-  a freshly seeded database - Camera C-1 is in maintenance), then **Today**, **In use now** and
-  **Your next reservations**.
+- Then sign in properly. The dashboard opens with "Welcome, Ayşe Yılmaz", today's date and
+  **Find a free resource**. Then come four counts (7 active resources on a freshly seeded
+  database - Camera C-1 is in maintenance), then **Today**, **In use now** and **Your next
+  reservations**.
 - Point out: "today" is the browser's day. Its time zone is sent to the API (ADR-0012), so the
   day boundary is right in Istanbul and on daylight-saving days.
+- Point out: nobody gets signed out mid-demo. The token lives in memory for 15 minutes, and the
+  app renews it in the background from an HttpOnly session cookie, which no script can read
+  (ADR-0026). A reload keeps you signed in, and signing out in one tab signs out the others.
 
 ### 2. Find a free room and book it
 
 - **Availability** as Ayşe: `DAY` 13:00 to 14:30, type Meeting Room → Search. Only Active
-  resources are listed; Camera C-1 never is. The search is in the URL, so reload keeps it.
+  resources are listed; Camera C-1 never is. Each card shows the resource's photo, or its type's
+  picture until someone uploads one (step 7). The search is in the URL, so reload keeps it.
 - **Book** on Meeting Room A → the booking form opens with the room and times filled in. Add the
   note "Sprint planning", leave **Reminder** at its default, 15 minutes before → **Book** →
   toast, then My reservations. On this first booking with a reminder, the browser asks whether
@@ -99,12 +105,16 @@ browser, with two windows side by side so the audience sees changes arrive live.
 
 ### 7. Admin
 
-- In the private window, sign Mehmet out (back to the front page) and sign in as
-  `admin@smartdesk.local`. The nav now shows **Admin**. (An employee who types `/admin` lands
-  on the dashboard.)
+- In the private window, open the menu under Mehmet's name → **Sign out** (back to the front
+  page), then sign in as `admin@smartdesk.local`. The nav now shows **Admin** and **Users**. (An
+  employee who types `/admin` lands on the dashboard.)
 - **Resources** → **New resource**: required fields and limits show inline, and a duplicate
   feature is refused ignoring case. **Deactivate** Meeting Room B → it no longer appears in
   Availability or the booking form, and the Calendar flags it.
+- **Edit** Meeting Room A → **Choose a photo** (any JPEG, PNG or WebP on the laptop) → **Save
+  changes**. From then on, the list and Ayşe's Availability cards show it. Point out: the app
+  shrinks the picture before uploading it, which also drops its location data, and the API checks
+  that it really is an image (ADR-0027).
 - **Admin**: resource counts by status, and every reservation in a date range.
 - **Usage report**, in the Admin page's header: the last 30 days by default, with quick ranges.
   Four tiles (the share of office hours booked, hours booked, reservations, cancellations), then
@@ -159,33 +169,66 @@ browser, with two windows side by side so the audience sees changes arrive live.
   Zeynep Kaya". Okan's **Edit** is gone: a resource that other teams use too is the admins' to
   change.
 
-### 10. Turkish and English
+### 10. Turkish and English, light and dark
 
-- In Ayşe's window, press **TR** in the top bar. The page reloads in Turkish: the navigation
-  ("Panel", "Kaynaklar", "Rezervasyonlarım"), the dashboard date (e.g. "Salı 29 Eylül") and
-  the durations ("1 sa 30 dk").
+- In Ayşe's window, press **TR** (at the bottom of the sidebar, or in the top bar in a narrow
+  window). The page reloads in Turkish: the navigation ("Panel", "Kaynaklar",
+  "Rezervasyonlarım"), the dashboard date (e.g. "Salı 29 Eylül") and the durations ("1 sa 30 dk").
 - **Yeni rezervasyon** → pick a time that overlaps one of Mehmet's bookings. The conflict
   comes back in Turkish too: the app asks the API in the language on screen. Mehmet's window
   is still in English, because the choice is kept per browser.
 - **EN** switches Ayşe back. The choice stays after signing out.
+- The switch next to it turns on **Dark mode**, and every screen follows at once. A first visit
+  follows the system's setting. A reload never flashes white, because the theme is set before
+  anything is drawn. Like the language, it's kept per browser.
+
+### 11. Your profile
+
+- In Ayşe's window, the menu under her name has **My profile**, **Change password** and **Sign
+  out**. It's a proper menu: the arrow keys move through it, and Escape closes it.
+- **My profile** shows her email and role, which an administrator changes, and her name. Change
+  the first name to "Ayşe Nur" → **Save changes** → "Your name was saved." The new name shows in
+  the menu and on the dashboard at once. Point out: the token is renewed with the new name in it,
+  so nobody has to sign in again.
+- **Change password**: the eye on a password field shows what's been typed, and hides it again
+  when the form is sent. Set the name back to "Ayşe" afterwards.
+
+### 12. The booking assistant (optional)
+
+This step needs an Anthropic API key on the API (`Assistant:ApiKey`, see the README). Without
+one there's no **Assistant** button anywhere, and nothing else changes.
+
+- As Ayşe, **Assistant** in the corner → "A room for 4 people tomorrow at 10 for an hour". It
+  looks up what's free as Ayşe, and answers with a card: the room, the time and **Reserve**.
+- **Reserve** → the card says it's booked and links to My reservations, and the booking appears
+  live in Mehmet's Calendar.
+- Ask it to cancel that booking → a card with **Cancel reservation**, which asks first, as
+  cancelling does everywhere else.
+- Point out: the model can only look things up and propose. The server checks each card first,
+  and nothing is booked until a person presses its button, through the same endpoint and rules
+  as the booking form (ADR-0029).
 
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in
   `core/services` returning the DTOs from `docs/API_CONTRACTS.md` as-is.
 - **Cross-cutting in one place:** two interceptors attach the token and turn every failure into
-  one error shape; 0/403/404/5xx raise a toast, 400/409 go to the screen that knows what to say,
-  and any 401 ends the session. Route guards hide admin screens, but the API re-checks roles.
+  one error shape; 0/403/404/5xx raise a toast, 400/409 go to the screen that knows what to say.
+  A 401 renews the token once and tries again; only the API saying the session is over signs
+  out (ADR-0026). Route guards hide admin screens, but the API re-checks roles.
 - **Live updates:** one hub connection per session (`ReservationHubService`). The dashboard
   refetches on an event, since its numbers come from the server; the Calendar, My reservations
   and Admin patch their lists by id, keep events that arrive mid-load, and refetch after a
   reconnect. Reminders come over the same connection, addressed to the owner only.
 - **Times:** picked in local time, sent as UTC, shown back in local time. An unchanged time is
   sent back exactly as the API gave it, since the pickers drop seconds.
-- **Tests:** over 400 unit tests, also run in six time zones (`npm run test:time-zones`) - that
-  is how a UTC+05:45 half-hour bug was found.
-- **Accessibility:** every screen passes an axe-core WCAG 2.1 AA scan. Text colours keep 4.5:1
-  contrast on their backgrounds, and the signed-out pages have a main landmark.
+- **Tests:** over 500 unit tests, also run in six time zones (`npm run test:time-zones`) - that
+  is how a UTC+05:45 half-hour bug was found. The browser tests (Playwright) sign in, book,
+  clash, watch live updates and scan every screen with axe. CI runs both, and the backend's
+  tests, on every pull request.
+- **Accessibility:** every screen passes an axe-core WCAG 2.1 AA scan, in both themes. Text
+  colours keep 4.5:1 contrast on their backgrounds, and the signed-out pages have a main
+  landmark.
 
 ## If something goes wrong
 
@@ -196,5 +239,6 @@ browser, with two windows side by side so the audience sees changes arrive live.
 | No reminder toast | The reservation had already started when the reminder came due, or no window was signed in as the owner at that moment - reminders aren't queued for later. |
 | Toast but no desktop notification | The browser's notification permission is blocked for `localhost:4200`; allow it in the site settings. The form's hint says so too. |
 | A new block doesn't show in the Calendar | Blocks send no live events - reload, or move to another week and back. |
-| "Your session has expired" | Tokens last 60 minutes - sign in again. |
+| "Your session has expired" | The session ended: 14 days without use (30 days at most), a password change, or an admin's change to the account. Sign in again. |
+| No **Assistant** button | The API has no `Assistant:ApiKey`. The assistant is optional, and everything else works without it. |
 | Old bookings from rehearsals | Clear them as in DEMO.md, step 3. |
