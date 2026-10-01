@@ -23,12 +23,18 @@ public sealed class RespondToInvitationCommandHandler(
         var userId = currentUser.UserId ?? throw new UnauthorizedException();
         var reason = request.Response == AttendeeResponse.Declined ? request.Reason?.Trim() : null;
         IReadOnlyList<InboxMessage> messages = [];
+        IReadOnlyList<Guid> answered = [];
 
-        // Under the reservation's lock, like update and cancel: an answer never lands on a
+        // Under the reservations' locks, like update and cancel: an answer never lands on a
         // meeting that's just been moved or cancelled, or that has just lost them from its list.
         await using (var transaction = await db.BeginTransactionAsync(cancellationToken))
         {
-            await db.LockReservationAsync(request.Id, cancellationToken);
+            // In one order - by id - as every command that locks several dates of a series does.
+            var dates = await DatesAsync(request, userId, cancellationToken);
+            foreach (var id in dates.Order())
+            {
+                await db.LockReservationAsync(id, cancellationToken);
+            }
 
             var reservation = await db.Reservations.SingleOrDefaultAsync(r => r.Id == request.Id, cancellationToken)
                 ?? throw new NotFoundException(nameof(Reservation), request.Id);
@@ -47,42 +53,106 @@ public sealed class RespondToInvitationCommandHandler(
                 throw new ConflictException(Messages.Meetings_AnswerEnded);
             }
 
+            // With Following, the later dates of its series too (ADR-0035): those still on, not
+            // over, and that they're still invited to.
+            var forSeries = request.Following && reservation.SeriesId is not null;
+            var later = forSeries
+                ? await db.ReservationAttendees
+                    .Where(a => a.UserId == userId
+                        && a.ReservationId != reservation.Id
+                        && dates.Contains(a.ReservationId)
+                        && a.Reservation.Status == ReservationStatus.Confirmed
+                        && a.Reservation.EndDateTime > now)
+                    .ToListAsync(cancellationToken)
+                : [];
+
             // The same answer again (a double click, or a retry) changes nothing and tells nobody.
-            if (attendee.Response != request.Response || attendee.DeclineReason != reason)
+            var changing = later
+                .Prepend(attendee)
+                .Where(a => a.Response != request.Response || a.DeclineReason != reason)
+                .ToList();
+            if (changing.Count > 0)
             {
-                attendee.Response = request.Response;
-                attendee.DeclineReason = reason;
-                attendee.RespondedAt = now;
+                foreach (var answer in changing)
+                {
+                    answer.Response = request.Response;
+                    answer.DeclineReason = reason;
+                    answer.RespondedAt = now;
+                }
 
                 var resourceName = await db.Resources
                     .Where(r => r.Id == reservation.ResourceId)
                     .Select(r => r.Name)
                     .SingleAsync(cancellationToken);
-                var kind = request.Response == AttendeeResponse.Accepted
-                    ? InboxMessageKind.MeetingAccepted
-                    : InboxMessageKind.MeetingDeclined;
-                messages = invitations.Write(kind, [reservation.UserId], reservation, resourceName, userId, reason);
+                var accepted = request.Response == AttendeeResponse.Accepted;
+                if (forSeries)
+                {
+                    // One message for the dates answered, from this one on.
+                    var series = await db.ReservationSeries.SingleAsync(s => s.Id == reservation.SeriesId, cancellationToken);
+                    var kind = accepted ? InboxMessageKind.SeriesAccepted : InboxMessageKind.SeriesDeclined;
+                    messages = invitations.Write(kind, [reservation.UserId], reservation, resourceName, userId, reason, series);
+                }
+                else
+                {
+                    var kind = accepted ? InboxMessageKind.MeetingAccepted : InboxMessageKind.MeetingDeclined;
+                    messages = invitations.Write(kind, [reservation.UserId], reservation, resourceName, userId, reason);
+                }
 
+                answered = changing.Select(a => a.ReservationId).ToList();
                 await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
             }
         }
 
-        var dto = await db.Reservations
+        var dtos = await db.Reservations
             .AsNoTracking()
-            .Where(r => r.Id == request.Id)
+            .Where(r => r.Id == request.Id || answered.Contains(r.Id))
+            .OrderBy(r => r.StartDateTime)
             .Select(ReservationDto.Projection)
-            .SingleAsync(cancellationToken);
-        dto = await identityService.WithUserNameAsync(dto, cancellationToken);
+            .ToListAsync(cancellationToken);
+        var named = await identityService.WithUserNamesAsync(dtos, cancellationToken);
 
         if (messages.Count > 0)
         {
-            // Every screen showing the meeting gets the new answer; the organizer also gets
-            // the message, with the reason.
-            await notifier.ReservationUpdatedAsync(dto, cancellationToken);
+            // Every screen showing one of the meetings gets the new answer; the organizer also
+            // gets the message, with the reason.
+            foreach (var dto in named)
+            {
+                await notifier.ReservationUpdatedAsync(dto, cancellationToken);
+            }
+
             await invitations.SendAsync(messages, cancellationToken);
         }
 
-        return dto;
+        return named.Single(r => r.Id == request.Id);
+    }
+
+    // The reservations the answer may touch, to lock: this one, and with Following the later
+    // dates of its series the caller is invited to. Read before the locks; what's read under
+    // them decides.
+    private async Task<IReadOnlyList<Guid>> DatesAsync(RespondToInvitationCommand request, Guid userId, CancellationToken cancellationToken)
+    {
+        if (!request.Following)
+        {
+            return [request.Id];
+        }
+
+        var reservation = await db.Reservations
+            .AsNoTracking()
+            .Where(r => r.Id == request.Id)
+            .Select(r => new { r.SeriesId, r.StartDateTime })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (reservation?.SeriesId is not { } seriesId)
+        {
+            return [request.Id];
+        }
+
+        var later = await db.Reservations
+            .Where(r => r.SeriesId == seriesId
+                && r.StartDateTime >= reservation.StartDateTime
+                && r.Attendees.Any(a => a.UserId == userId))
+            .Select(r => r.Id)
+            .ToListAsync(cancellationToken);
+        return later.Append(request.Id).Distinct().ToList();
     }
 }

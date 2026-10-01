@@ -80,14 +80,17 @@ public sealed class MeetingInvitations(
 
     // Messages of one kind about `reservation` as it is now, to each of `recipients`, added to
     // the context for the caller's save. `senderId` is null when nobody caused it (a release);
-    // `reason` is why someone can't come, for a MeetingDeclined.
+    // `reason` is why someone can't come, for a MeetingDeclined or SeriesDeclined. `series`, for
+    // a Series* message: the repeating meeting it's about, from `reservation`'s date on
+    // (ADR-0035).
     public IReadOnlyList<InboxMessage> Write(
         InboxMessageKind kind,
         IEnumerable<Guid> recipients,
         Reservation reservation,
         string resourceName,
         Guid? senderId,
-        string? reason = null)
+        string? reason = null,
+        ReservationSeries? series = null)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var messages = recipients
@@ -103,6 +106,8 @@ public sealed class MeetingInvitations(
                 EndDateTime = reservation.EndDateTime,
                 Note = reservation.Note,
                 Reason = reason,
+                SeriesId = series?.Id,
+                Series = series,
                 CreatedAt = now,
             })
             .ToList();

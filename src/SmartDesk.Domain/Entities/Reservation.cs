@@ -43,6 +43,11 @@ public class Reservation
     // When it was released because nobody checked in; its Status is Cancelled from then on.
     public DateTime? ReleasedAt { get; set; }
 
+    // The repeating booking it's one date of (ADR-0035); null for a booking made on its own.
+    public Guid? SeriesId { get; set; }
+
+    public ReservationSeries? Series { get; set; }
+
     public Resource Resource { get; set; } = null!;
 
     // The people the organizer invited to it (ADR-0032); usually none.

@@ -24,4 +24,17 @@ public enum InboxMessageKind
 
     // It runs longer: its end moved later from the ending-soon notice (ADR-0033).
     MeetingExtended = 6,
+
+    // A meeting that repeats (ADR-0035): one message for all its dates, not one each.
+    // They were invited to every date of it.
+    SeriesInvitation = 7,
+
+    // Its organizer cancelled it from one date on.
+    SeriesCancelled = 8,
+
+    // To the organizer: someone invited is coming, from one date on.
+    SeriesAccepted = 9,
+
+    // To the organizer: someone invited can't come from one date on, and why.
+    SeriesDeclined = 10,
 }

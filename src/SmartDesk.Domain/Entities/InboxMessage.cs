@@ -23,8 +23,14 @@ public class InboxMessage
     public DateTime EndDateTime { get; set; }
     public string? Note { get; set; }
 
-    // Why someone can't come, in a MeetingDeclined message to the organizer.
+    // Why someone can't come, in a MeetingDeclined or SeriesDeclined message to the organizer.
     public string? Reason { get; set; }
+
+    // The repeating meeting a Series* message is about (ADR-0035): its rule, which never
+    // changes, says which dates. The times above are then its first date the message covers.
+    public Guid? SeriesId { get; set; }
+
+    public ReservationSeries? Series { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime? ReadAt { get; set; }

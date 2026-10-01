@@ -42,6 +42,10 @@ public sealed record ReservationDto(
 
     public string? CheckedInByName { get; init; }
 
+    // The rule of the repeating booking it's one date of (ADR-0035); null for a booking made
+    // on its own.
+    public ReservationSeriesDto? Series { get; init; }
+
     public static readonly Expression<Func<Reservation, ReservationDto>> Projection = r => new ReservationDto(
         r.Id,
         r.ResourceId,
@@ -62,6 +66,9 @@ public sealed record ReservationDto(
     {
         Attendees = r.Attendees.Select(a => new ReservationAttendeeDto(a.UserId, null, a.Response)).ToList(),
         CheckedInBy = r.CheckedInByUserId,
+        Series = r.Series == null
+            ? null
+            : new ReservationSeriesDto(r.Series.Id, r.Series.Frequency, r.Series.Interval, r.Series.DaysOfWeek, r.Series.Until, r.Series.TimeZone),
     };
 }
 
