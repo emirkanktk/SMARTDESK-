@@ -40,6 +40,12 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Reminders** - the owner can ask to be reminded 5, 15, 30 or 60 minutes before a reservation
   starts. The reminder arrives in the app, and as a desktop notification when allowed
   ([ADR-0018](docs/DECISIONS.md)).
+- **Check-in with a QR code** - a room can ask for its bookings to be checked in: whoever
+  booked it scans the QR code at the door from 10 minutes before the start until 15 minutes
+  after. A booking nobody checks in to is released, so the room goes back to people who are
+  there. The resource form shows the code and a sheet to print; switched off, nothing changes
+  ([ADR-0030](docs/DECISIONS.md)). To try it on one machine, switch it on for a room, book the
+  room for a few minutes from now, and open the link under its QR code.
 - **Usage report** - for Admins: how much each resource, type and person booked over up to
   92 days, and how full the office day was (Monday to Friday, 09:00-18:00, in the admin's
   time zone - [ADR-0017](docs/DECISIONS.md)).

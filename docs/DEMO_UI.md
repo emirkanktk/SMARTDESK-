@@ -215,6 +215,24 @@ one there's no **Assistant** button anywhere, and nothing else changes.
   and nothing is booked until a person presses its button, through the same endpoint and rules
   as the booking form (ADR-0029).
 
+### 11. Check-in with a QR code
+
+- In a third window, sign in as the admin (`admin@smartdesk.local`), open **Resources** →
+  **Board Room** → **Edit**, tick **Bookings must be checked in at the door with a QR code**
+  and save. The QR code appears under the box, with **Print QR code** (a sheet with only the
+  code, the room and how to use it) and the link it holds.
+- As Ayşe, book Board Room for the next half hour. The booking form says the room needs a
+  check-in, and **My reservations** shows "Check in at the door" with the times.
+- Scanning is opening the link: paste it into Ayşe's window. The page shows her booking and a
+  **Check in** button; press it. **My reservations** now says **Checked in**, and Mehmet's
+  calendar updates on its own.
+- Paste the same link into Mehmet's window: he has no booking there, so the page says so and
+  offers to book.
+- Point out: a booking nobody checks in to within 15 minutes of its start is released, and
+  the owner gets a toast saying why. Switching check-in on doesn't catch bookings made before,
+  and switching it off stops releases at once. **Replace code** retires a printed code that
+  has got around (ADR-0030).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

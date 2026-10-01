@@ -55,6 +55,8 @@ they next sign in.
 | Location | string | e.g. "2nd Floor" |
 | Status | ResourceStatus | Active / Inactive / Maintenance |
 | Description | string? | |
+| CheckInRequired | bool | bookings must be checked in at the door with its QR code, or they're released (ADR-0030) |
+| CheckInCode | string | the secret in its QR code: 32 hex digits, random, required. Only those who may edit the resource see it; replacing it retires the printed code |
 
 ### ResourceFeature
 
@@ -77,6 +79,9 @@ they next sign in.
 | Note | string? | |
 | ReminderMinutes | int? | remind the owner this many minutes before the start: 5, 15, 30 or 60; null = no reminder (ADR-0018) |
 | ReminderSentAt | DateTime? | when that reminder went out; cleared when the start or `ReminderMinutes` changes. A partial index on `StartDateTime` covers the rows still waiting for one |
+| CheckInRequired | bool | whether its resource asked for a check-in when it was booked, or last moved to another time or resource (ADR-0030) |
+| CheckedInAt | DateTime? | when the owner checked in; cleared when the start or the resource changes |
+| ReleasedAt | DateTime? | when it was released because nobody checked in; `Status` is then `Cancelled` |
 
 `Reservation.UserId` is stored as a plain `Guid`, not an EF navigation to `ApplicationUser`,
 because `SmartDeskDbContext` treats Identity's own tables as belonging to the Identity
@@ -149,6 +154,10 @@ Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
 - `Reservations(ResourceId, Status, StartDateTime, EndDateTime)` - composite index backing
   the overlap-check query every `CreateReservationCommand` runs (same resource, active
   reservations, does the new range intersect an existing one).
+- `IX_Reservations_PendingReminders` on `Reservations(StartDateTime)`, only rows with a reminder
+  still to send - what the reminder job scans every 30 seconds.
+- `IX_Reservations_AwaitingCheckIn` on `Reservations(StartDateTime)`, only `Confirmed` rows that
+  need a check-in nobody has made yet - what the release job scans every 30 seconds (ADR-0030).
 
 ## Constraints
 
@@ -201,6 +210,16 @@ Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
    A resource with no teams is shared by everyone. A Manager manages only resources that
    belong to their team alone. A Manager whose team has resources keeps the role until they're
    shared or given to another team.
+10. **Check-in (ADR-0030).** A booking of a resource with `CheckInRequired` is checked in by its
+    owner at the door, from 10 minutes before its start until 15 minutes after (never once it's
+    over), with the resource's current `CheckInCode`. One nobody checked in to by then is
+    released: `Cancelled`, with `ReleasedAt`.
+    - This applies only when the booking's own `CheckInRequired` and its resource's are both
+      set, so switching check-in on doesn't catch bookings made without knowing, and switching
+      it off frees them all.
+    - A check-in and a release are decided under the reservation's lock, and their time
+      conditions are exact opposites, so a booking is never both checked in and released.
+    - The single definition lives in `SmartDesk.Domain.Rules.CheckInRules`.
 
 ## Concurrency (formerly an open question)
 

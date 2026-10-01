@@ -168,13 +168,16 @@ first come, first served, under the usual overlap rule.
 | GET | `/api/resources` | any authenticated user | `GetResourcesQuery` | optional query params `resourceTypeId`, `status`. Every status unless filtered (the Resources screen shows inactive ones greyed out), but only resources the caller may use. |
 | GET | `/api/resources/{id}` | any authenticated user | `GetResourceByIdQuery` | 404 if it doesn't exist or belongs to other teams. For the edit form. |
 | GET | `/api/resources/available` | any authenticated user | `GetAvailableResourcesQuery` | query params: `startDateTime`, `endDateTime`, optional `resourceTypeId`, `minCapacity`. Rules below. |
-| POST | `/api/resources` | Admin or Manager | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[], teamIds?: guid[] }` → 201 with `Location` header. Always created `Active`. An Admin chooses `teamIds` (none: shared; each must be an active Manager's, 400 otherwise). A Manager's resource always belongs to their own team only; naming another team is 403. |
-| PUT | `/api/resources/{id}` | Admin or Manager | `UpdateResourceCommand` | body: the POST fields (without `teamIds`) plus `status`. Full replace: omitting `features` removes them all. A Manager may edit only a resource that belongs to their team alone; a shared resource, or one other teams share, is 403. Teams don't change here. A `status` other than `Active` follows the PATCH rule below (409 while bookings are still to come). |
+| POST | `/api/resources` | Admin or Manager | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[], teamIds?: guid[], checkInRequired?: bool }` → 201 with `Location` header. Always created `Active`. An Admin chooses `teamIds` (none: shared; each must be an active Manager's, 400 otherwise). A Manager's resource always belongs to their own team only; naming another team is 403. `checkInRequired`: see Check-in below. |
+| PUT | `/api/resources/{id}` | Admin or Manager | `UpdateResourceCommand` | body: the POST fields (without `teamIds`) plus `status`. Full replace: omitting `features` removes them all, and omitting `checkInRequired` switches check-in off. A Manager may edit only a resource that belongs to their team alone; a shared resource, or one other teams share, is 403. Teams don't change here. A `status` other than `Active` follows the PATCH rule below (409 while bookings are still to come). |
 | PATCH | `/api/resources/{id}/status` | Admin or Manager | `ChangeResourceStatusCommand` | body: `{ "status": "Inactive" }` → 200 with the resource. Changes only the status, so an Activate/Deactivate button can't overwrite another admin's edit the way a full PUT can. Same status again is a no-op. `Maintenance` or `Inactive` is refused with 409 (`code: "resource-has-reservations"`, `"2 confirmed reservation(s) on Camera C-1 from now on. Cancel or move them first."`) while `Confirmed` reservations on it are still to start; past and running ones don't count, and going back to `Active` is always allowed (issue #41, ADR-0024). A Manager, as for PUT. |
 | PATCH | `/api/resources/{id}/teams` | Admin | `SetResourceTeamsCommand` | body: `{ "teamIds": ["…"] }` → 200 with the resource. Replaces its teams; `[]` makes it shared. Each id must be an active Manager's (400 otherwise), at most 20. Existing reservations are kept. |
 | GET | `/api/resources/{id}/photo` | any authenticated user | `GetResourcePhotoQuery` | The photo's bytes, as `image/jpeg`, `image/png` or `image/webp`. 404 when it has none, or for another team's resource. `Cache-Control: private, no-cache` with an `ETag`: send `If-None-Match` and an unchanged photo is a 304. The app adds `?v={photoUpdatedAt}`, which the API ignores, so a browser never offers an older photo (ADR-0027). |
 | PUT | `/api/resources/{id}/photo` | Admin or Manager | `SetResourcePhotoCommand` | `multipart/form-data` with the file in the field `photo` → 200 with the resource. Sets or replaces it. A JPEG, PNG or WebP of at most 2 MB, recognised by its first bytes, whatever name or type the upload gives (400 on `Photo` otherwise; no SVG). The request itself may be up to 8 MB, so a photo a little over the limit still gets that message. Who may: as for PUT. |
 | DELETE | `/api/resources/{id}/photo` | Admin or Manager | `RemoveResourcePhotoCommand` | 204. Its type's picture shows instead; removing a photo that isn't there is fine. Who may: as for PUT. |
+| POST | `/api/resources/{id}/check-in` | any authenticated user | `CheckInCommand` | body: `{ "code": "…" }`, the secret from the resource's QR code → 200 with the reservation, `checkedInAt` set. Checks in the caller's own booking of this resource whose check-in is open now; checking in twice is fine. Errors under Check-in below. |
+| GET | `/api/resources/{id}/check-in-code` | Admin or Manager | `GetCheckInCodeQuery` | → 200 `{ "code": "…", "url": "https://…/check-in/{id}?code=…" }`: the QR code to print. `url` is built from `App:FrontendUrl`, like the links in emails. Every resource has a code, check-in on or off. Who may: as for PUT (403 otherwise). The secret appears nowhere else. |
+| POST | `/api/resources/{id}/check-in-code` | Admin or Manager | `ReplaceCheckInCodeCommand` | → 200 with a new `{ code, url }`. The printed code stops working at once. Who may: as for PUT. |
 
 Every resource endpoint returns the same shape:
 
@@ -187,7 +190,8 @@ Every resource endpoint returns the same shape:
   "description": null,
   "features": ["TV", "Video Conference"],
   "teams": [{ "id": "…", "managerName": "Zeynep Kaya" }],  // [] = shared by everyone
-  "photoUpdatedAt": "2026-10-05T08:00:00.123456Z"          // null = no photo of its own
+  "photoUpdatedAt": "2026-10-05T08:00:00.123456Z",         // null = no photo of its own
+  "checkInRequired": false                                 // bookings must be checked in at the door
 }
 ```
 
@@ -238,6 +242,9 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
   "status": "Confirmed",          // "Confirmed" | "Cancelled"
   "note": "Sprint planning",
   "reminderMinutes": 15,           // null when no reminder is set
+  "checkInRequired": true,         // has to be checked in at the door, or it's released
+  "checkedInAt": null,             // when the owner checked in
+  "releasedAt": null,              // when it was released because nobody did (status is then "Cancelled")
   "userDisplayName": "Ayşe Yılmaz"  // who booked it: "First Last", or the email if both are blank
 }
 ```
@@ -278,6 +285,37 @@ nothing new. So after the resource went into maintenance, a note can still be ed
 booking can still be shortened or ended early. Other errors: 400 for the
 same shape rules as create, 403 for someone who is neither the owner nor an Admin, 404 for an
 unknown reservation. A PUT that changes nothing returns 200 and sends no event.
+
+## Check-in (ADR-0030)
+
+A resource with `checkInRequired` has a QR code at its door. Whoever booked it scans the code,
+which opens `/check-in/{id}?code=…` in the app, and checks in there
+(`POST /api/resources/{id}/check-in`).
+
+- **The window.** From 10 minutes before the start until 15 minutes after, and never once the
+  booking is over. Only the owner checks in, and only a `Confirmed` booking.
+- **Release.** A booking nobody checked in to by then is released: its `status` becomes
+  `Cancelled` and `releasedAt` is set. A background job looks every 30 seconds
+  (`CheckIn:IntervalSeconds`; `CheckIn:Enabled: false` switches releasing off), so a release
+  can be up to one interval late, never early. A booking that's already over is left alone.
+- **Who needs a check-in.** A booking needs one when its resource asked for it when it was booked
+  (or last moved to another time or resource) and still does. That's the `checkInRequired` a
+  reservation carries.
+  - Switching check-in on doesn't catch bookings made without knowing.
+  - Switching it off stops every release at once.
+- **Moving a booking.** A new start, or another resource, undoes the check-in: that's another
+  visit. Ending early keeps it.
+- **Several bookings.** When two of the caller's bookings are open at once (back to back), the
+  one still waiting goes first.
+
+**Check-in - errors**
+
+| Status | When |
+|---|---|
+| 400 | no `code`, or longer than a code |
+| 403 | the code isn't the resource's current one: printed before it was replaced (`"This QR code is no longer valid. Scan the current code for Board Room."`) |
+| 404 | the resource doesn't exist, or belongs to other teams |
+| 409 | the resource doesn't use check-in (`code: "check-in-not-used"`), or none of the caller's bookings of it is open for one now (`code: "nothing-to-check-in"`, `"You have no booking of Board Room to check in to right now. Check-in opens 10 minutes before the start and closes 15 minutes after it."`) |
 
 ## Resource blocks
 
@@ -419,7 +457,7 @@ Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
 
 All three events carry the reservation object shown under Reservations above, as it is after
 the change. For `ReservationUpdated` the resource or the times may be different from
@@ -440,6 +478,11 @@ has passed, so it can be up to one interval late, never early. It isn't sent for
 reservation, or once the reservation has started. Moving the start or changing `reminderMinutes`
 re-arms it for the new moment, while changing only the end or the note doesn't. A reminder that
 finds the owner offline isn't queued or repeated.
+
+**Check-in (ADR-0030).** A check-in is a `ReservationUpdated` with `checkedInAt` set. A release
+reaches everyone who may see the resource as `ReservationCancelled`, with `releasedAt` set, so
+calendars free the slot; the owner also gets `ReservationReleased` with the same reservation,
+to be told why it's gone.
 
 ## Conventions
 
@@ -469,7 +512,8 @@ finds the owner offline isn't queued or repeated.
   - A 409 a screen may need to act on also carries a stable `code`, since its wording depends
     on the language: `resource-unavailable`, `resource-blocked`, `reservation-overlaps`,
     `resource-has-reservations`,
-    `block-overlaps-block`, `block-overlaps-reservations`. The 403 for a pending password
+    `block-overlaps-block`, `block-overlaps-reservations`, `check-in-not-used`,
+    `nothing-to-check-in`. The 403 for a pending password
     change has `code: "password-change-required"` (ADR-0021).
   - Emails are written in the recipient's language: the one they last signed in with, saved
     on their account. Until then, the language of the request that sends the email (for a new
