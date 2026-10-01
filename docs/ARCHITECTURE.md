@@ -166,6 +166,21 @@ A failed start and a dropped connection both retry forever, at 0s, 2s, 5s, 10s, 
 every 30s. Logout cancels a pending retry. Screens subscribe to `created$`, `updated$`,
 `cancelled$` and `reconnected$` on `ReservationHubService` rather than the raw connection.
 
+### 6.1 The booking assistant (optional)
+
+ADR-0029. `POST /api/assistant/messages` → `AskAssistantCommand` → `IAssistantModel`, which
+Application defines and Infrastructure implements with Claude (`ClaudeAssistantModel`,
+Anthropic's SDK). One answer is a loop: the model replies, or asks for tools. The
+`AssistantToolbox` runs them, and their results go back until it replies or runs out of rounds
+(`Assistant:MaxToolRounds`).
+
+The toolbox only sends MediatR queries, in the request's scope and so as the signed-in user:
+`GetAvailableResourcesQuery`, `GetResourcesQuery`, `GetResourceTypesQuery`,
+`GetMyReservationsQuery` and `GetResourceByIdQuery`. The two `propose_*` tools add a card to
+the answer and nothing else. The frontend's `Assistant` component (in the shell) shows the
+conversation, and a card's button calls `ReservationService` like any screen. Without
+`Assistant:ApiKey` the model reports itself not configured, and the app shows nothing.
+
 ## 7. Frontend architecture
 
 Angular 22, standalone components throughout (no NgModules), feature-based folders under

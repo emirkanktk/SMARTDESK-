@@ -47,6 +47,12 @@ public class GlobalExceptionHandler(
                 Detail = exception.Message,
             },
             ConflictException conflict => ConflictProblem(conflict),
+            ServiceUnavailableException => new ProblemDetails
+            {
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Title = Messages.Problem_ServiceUnavailable,
+                Detail = exception.Message,
+            },
             _ => null,
         };
 

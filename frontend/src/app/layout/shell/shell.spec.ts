@@ -1,14 +1,18 @@
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { Role, Roles } from '../../core/constants/roles';
 import { CurrentUser } from '../../core/models/auth.model';
+import { AssistantService } from '../../core/services/assistant.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ReservationService } from '../../core/services/reservation.service';
 import { Shell } from './shell';
 
 describe('Shell', () => {
   const currentUser = signal<CurrentUser | null>(null);
   let logout: ReturnType<typeof vi.fn>;
+  let assistantEnabled: boolean;
 
   function signInAs(role: Role): void {
     currentUser.set({
@@ -23,6 +27,7 @@ describe('Shell', () => {
   beforeEach(async () => {
     signInAs(Roles.Employee);
     logout = vi.fn();
+    assistantEnabled = false;
     const hasRole = (role: Role) => currentUser()?.roles.includes(role) ?? false;
     await TestBed.configureTestingModule({
       imports: [Shell],
@@ -39,6 +44,11 @@ describe('Shell', () => {
             logout,
           },
         },
+        {
+          provide: AssistantService,
+          useValue: { getStatus: () => of({ enabled: assistantEnabled }) },
+        },
+        { provide: ReservationService, useValue: {} },
       ],
     }).compileComponents();
   });
@@ -82,6 +92,17 @@ describe('Shell', () => {
     expect(navLabels(element)).not.toContain('Admin');
     expect(navLabels(element)).not.toContain('Users');
     expect(badge(element)).toBe('Manager');
+  });
+
+  it("shows the assistant's button only when the server has an assistant, and keeps room for it", async () => {
+    const without = await render();
+    expect(without.querySelector('.launcher')).toBeNull();
+    expect(without.querySelector('main')!.classList).not.toContain('with-assistant');
+
+    assistantEnabled = true;
+    const withIt = await render();
+    expect(withIt.querySelector('.launcher')!.textContent).toContain('Assistant');
+    expect(withIt.querySelector('main')!.classList).toContain('with-assistant');
   });
 
   it('signs out from the user menu and goes to the front page', async () => {

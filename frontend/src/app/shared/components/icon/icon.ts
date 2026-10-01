@@ -24,6 +24,8 @@ const ICONS = {
     rect(9, 3, 6, 4, 1) +
     'M9 12h6M9 16h4',
   clock: circle(12, 12, 9) + 'M12 7v5l3.2 2',
+  close: 'M6 6l12 12M18 6L6 18',
+  compose: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z',
   dashboard:
     rect(3, 3, 7, 9, 1.5) +
     rect(14, 3, 7, 5, 1.5) +
@@ -37,6 +39,7 @@ const ICONS = {
   logout: 'M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9',
   'map-pin': 'M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z' + circle(12, 9.5, 2.5),
   search: circle(11, 11, 7) + 'M20 20l-3.9-3.9',
+  send: 'M21.5 2.5L10.5 13.5M21.5 2.5l-7 19-4-8-8-4 19-7z',
   shield: 'M12 3L4.5 6v5.5c0 4.5 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5 7.5-9.5V6L12 3zM9 12l2 2 4-4',
   sliders: 'M4 7h9M17 7h3M4 17h3M11 17h9' + circle(15, 7, 2) + circle(9, 17, 2),
   sparkles:

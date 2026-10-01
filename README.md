@@ -49,6 +49,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Turkish and English** - the whole app, in Turkish unless the user picks English. The
   API's messages follow the language on screen, and emails go out in the recipient's
   language ([ADR-0023](docs/DECISIONS.md), [ADR-0025](docs/DECISIONS.md)).
+- **Booking assistant (optional)** - with an Anthropic API key, a conversation in the corner of
+  every screen: "a room for 4 tomorrow at 10". It looks things up as the user and offers
+  bookings and cancellations as cards. Nothing is booked until the user presses a card's button
+  ([ADR-0029](docs/DECISIONS.md)).
 
 | Layer | Stack |
 |---|---|
@@ -56,6 +60,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 | Backend | .NET 10 Web API, Onion Architecture, CQRS with MediatR, FluentValidation |
 | Data | PostgreSQL via EF Core; ASP.NET Core Identity for users and roles |
 | Real-time | SignalR |
+| Assistant (optional) | Claude, through Anthropic's official .NET SDK |
 
 ### Design highlights
 
@@ -189,6 +194,21 @@ The Development seed also creates eight sample resources (meeting rooms, desks, 
 car, a projector, and a camera under maintenance) when the database has none. The five
 resource types come from a migration and exist in every environment (ADR-0010).
 
+### Optional: the booking assistant
+
+The assistant is off until the API has an Anthropic API key (ADR-0029). Without one the app
+shows no assistant, and everything else works as usual. To turn it on locally:
+
+```bash
+dotnet user-secrets set "Assistant:ApiKey" "<your Anthropic API key>" --project src/SmartDesk.API
+```
+
+Elsewhere, set the environment variable `Assistant__ApiKey`; never put the key in
+`appsettings`. The other settings are in `appsettings.json` under `Assistant`: `Model`
+(`claude-opus-5-5`), `Effort` (`low`), `MaxTokens` and `MaxToolRounds`. Each question is a
+paid call to the model. A user can ask 20 a minute (`RateLimiting:AssistantPermitsPerMinute`),
+and the API log shows the tokens each answer used.
+
 ### Behind a reverse proxy
 
 In production the API sits behind a reverse proxy that terminates HTTPS (nginx, a load
@@ -214,6 +234,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
 | Reports | `GET /api/reports/usage?from=&to=&timeZone=` (Admin) |
+| Assistant | `GET /api/assistant`, `POST /api/assistant/messages` (optional, ADR-0029) |
 | Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` |
 | Ops | `GET /health` |
 
@@ -259,7 +280,7 @@ src/
                              DTO side by side (CQRS + MediatR); Common/ for the pipeline,
                              exceptions and interfaces Infrastructure implements
   SmartDesk.Infrastructure/  EF Core + PostgreSQL (DbContext, migrations, seed data),
-                             ASP.NET Identity, JWT
+                             ASP.NET Identity, JWT, email, the assistant's Claude client
   SmartDesk.API/             composition root, controllers, SignalR hub, error handling,
                              rate limiting, health check
 tests/

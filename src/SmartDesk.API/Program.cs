@@ -175,12 +175,14 @@ app.UseHttpsRedirection();
 
 app.UseCors(FrontendCorsPolicy);
 
-// After CORS so a 429 still carries the CORS headers the browser needs to read it; before
-// authentication so rejected requests cost as little as possible.
-app.UseRateLimiter();
-
 app.UseAuthentication();
 app.UseAuthorization();
+
+// After CORS so a 429 still carries the CORS headers the browser needs to read it, and after
+// authentication so the assistant's limit counts per user (ADR-0029). Sign-in requests carry
+// no token, so authenticating them first costs nothing.
+app.UseRateLimiter();
+
 app.UsePasswordChangeGate();
 
 app.MapControllers();
