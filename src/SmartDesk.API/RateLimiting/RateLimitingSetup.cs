@@ -18,7 +18,10 @@ public static class RateLimitingSetup
     // codes far more.
     public const string CheckInPolicy = "check-in";
 
-    // A door screen asks every few seconds without a user, so it's limited by its address.
+    // A door screen asks without a user, so it's limited by its address. One screen asks about
+    // six times a minute (just after each 30-second code change, and every 10 seconds), and a
+    // building's screens usually reach the API from one address: the default leaves room for a
+    // hundred of them.
     public const string DoorScreenPolicy = "door-screen";
 
     // Identity's lockout (5 failures -> 5 minutes) protects one account at a time; this caps
@@ -32,7 +35,7 @@ public static class RateLimitingSetup
         var permitsPerMinute = configuration.GetValue("RateLimiting:LoginPermitsPerMinute", 10);
         var assistantPermitsPerMinute = configuration.GetValue("RateLimiting:AssistantPermitsPerMinute", 20);
         var checkInPermitsPerMinute = configuration.GetValue("RateLimiting:CheckInPermitsPerMinute", 20);
-        var doorScreenPermitsPerMinute = configuration.GetValue("RateLimiting:DoorScreenPermitsPerMinute", 60);
+        var doorScreenPermitsPerMinute = configuration.GetValue("RateLimiting:DoorScreenPermitsPerMinute", 600);
 
         services.AddRateLimiter(options =>
         {

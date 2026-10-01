@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence.Seed;
 
@@ -87,6 +88,46 @@ public sealed class DoorScreenTests(PostgresApiFixture fixture)
         (await mehmet.DeleteAsync($"/api/resources/{room}/door-screen")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    [Fact]
+    public async Task Checking_in_and_door_screens_have_limits_of_their_own()
+    {
+        await using var app = fixture.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("RateLimiting:CheckInPermitsPerMinute", "2");
+            builder.UseSetting("RateLimiting:DoorScreenPermitsPerMinute", "2");
+        });
+        var admin = await ClientAsync(app, "admin@smartdesk.local");
+        var ayse = await ClientAsync(app, "employee1@smartdesk.local");
+        var mehmet = await ClientAsync(app, "employee2@smartdesk.local");
+        var room = await AddRoomAsync(admin);
+
+        // Guessing codes: refused as wrong, then not even tried; someone else still may.
+        (await CheckInAsync(ayse, room, "0000")).StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
+        (await CheckInAsync(ayse, room, "1111")).StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
+        var limited = await CheckInAsync(ayse, room, "2222");
+        limited.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        limited.Headers.RetryAfter.Should().NotBeNull();
+        (await DetailAsync(limited)).Should().Be("Too many check-in attempts. Wait a minute and try again.");
+        (await CheckInAsync(mehmet, room, "3333")).StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests, "another user has a limit of their own");
+
+        // A screen, or anyone else at that address, asking too often.
+        var screen = app.CreateClient();
+        (await screen.GetAsync($"/api/door/{room}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await screen.GetAsync($"/api/door/{room}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var flooded = await screen.GetAsync($"/api/door/{room}");
+        flooded.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        (await DetailAsync(flooded)).Should().Be("The door screen asked too often. It tries again in a minute.");
+    }
+
+    private static Task<HttpResponseMessage> CheckInAsync(HttpClient client, Guid room, string code) =>
+        client.PostAsJsonAsync($"/api/resources/{room}/check-in", new { code });
+
+    private static async Task<string?> DetailAsync(HttpResponseMessage response)
+    {
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return problem.RootElement.GetProperty("detail").GetString();
+    }
+
     private static async Task<Guid> AddRoomAsync(HttpClient admin)
     {
         var response = await admin.PostAsJsonAsync("/api/resources", new
@@ -101,13 +142,17 @@ public sealed class DoorScreenTests(PostgresApiFixture fixture)
         return (await response.Content.ReadFromJsonAsync<Room>())!.Id;
     }
 
-    private async Task<HttpClient> ClientAsync(string email, string? acceptLanguage = null)
+    private Task<HttpClient> ClientAsync(string email, string? acceptLanguage = null) =>
+        ClientAsync(fixture, email, acceptLanguage);
+
+    private static async Task<HttpClient> ClientAsync(
+        WebApplicationFactory<Program> app, string email, string? acceptLanguage = null)
     {
-        var response = await fixture.CreateClient().PostAsJsonAsync(
+        var response = await app.CreateClient().PostAsJsonAsync(
             "/api/auth/login", new { email, password = IdentityDataSeeder.DemoPassword });
         response.EnsureSuccessStatusCode();
         var login = (await response.Content.ReadFromJsonAsync<LoginBody>())!;
-        var client = fixture.CreateClient();
+        var client = app.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
         if (acceptLanguage is not null)
         {
