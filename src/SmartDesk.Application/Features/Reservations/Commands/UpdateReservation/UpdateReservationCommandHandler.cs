@@ -60,6 +60,7 @@ public sealed class UpdateReservationCommandHandler(
             var resourceChanged = request.ResourceId != reservation.ResourceId;
             var timeChanged = start != reservation.StartDateTime || end != reservation.EndDateTime;
             var startChanged = start != reservation.StartDateTime;
+            var endChanged = end != reservation.EndDateTime;
             var reminderChanged = request.ReminderMinutes != reservation.ReminderMinutes;
 
             // Shortening it on the same resource claims nothing new: the reservation already
@@ -135,6 +136,12 @@ public sealed class UpdateReservationCommandHandler(
             if (startChanged || reminderChanged)
             {
                 reservation.ReminderSentAt = null;
+            }
+
+            // Likewise a new end is asked about again before it comes (ADR-0033).
+            if (endChanged)
+            {
+                reservation.EndingSoonSentAt = null;
             }
 
             // Likewise a check-in made for the old start or at the old resource's door is for a

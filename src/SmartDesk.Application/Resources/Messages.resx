@@ -405,6 +405,9 @@
   <data name="Property_MinCapacity" xml:space="preserve">
     <value>Min Capacity</value>
   </data>
+  <data name="Property_Minutes" xml:space="preserve">
+    <value>Minutes</value>
+  </data>
   <data name="Property_Name" xml:space="preserve">
     <value>Name</value>
   </data>
@@ -479,6 +482,12 @@
   </data>
   <data name="Reservations_EndedCantChange" xml:space="preserve">
     <value>This reservation has already ended and can't be changed.</value>
+  </data>
+  <data name="Reservations_ExtensionOptions" xml:space="preserve">
+    <value>Extend by one of these: {0} minutes.</value>
+  </data>
+  <data name="Reservations_ExtensionTaken" xml:space="preserve">
+    <value>{0} is reserved right after, so this can't run {1} minutes longer.</value>
   </data>
   <data name="Reservations_MaxDuration" xml:space="preserve">
     <value>A reservation can last at most {0} days.</value>

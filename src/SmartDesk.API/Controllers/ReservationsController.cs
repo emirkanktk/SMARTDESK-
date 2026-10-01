@@ -6,8 +6,10 @@ using SmartDesk.Application.Features.Meetings.Queries.GetInvitees;
 using SmartDesk.Application.Features.Meetings.Queries.GetMyInvitations;
 using SmartDesk.Application.Features.Reservations.Commands.CancelReservation;
 using SmartDesk.Application.Features.Reservations.Commands.CreateReservation;
+using SmartDesk.Application.Features.Reservations.Commands.ExtendReservation;
 using SmartDesk.Application.Features.Reservations.Commands.UpdateReservation;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Application.Features.Reservations.Queries.GetExtensionOptions;
 using SmartDesk.Application.Features.Reservations.Queries.GetMyReservations;
 using SmartDesk.Application.Features.Reservations.Queries.GetReservationById;
 using SmartDesk.Application.Features.Reservations.Queries.GetReservations;
@@ -53,6 +55,25 @@ public sealed class ReservationsController(ISender sender) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<ReservationDto> Cancel(Guid id, CancellationToken cancellationToken) =>
         sender.Send(new CancelReservationCommand(id), cancellationToken);
+
+    // How much longer the booking can run (ADR-0033): the extension options that still fit.
+    [HttpGet("{id:guid}/extension")]
+    [ProducesResponseType<ExtensionOptionsDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<ExtensionOptionsDto> ExtensionOptions(Guid id, CancellationToken cancellationToken) =>
+        sender.Send(new GetExtensionOptionsQuery(id), cancellationToken);
+
+    // Lets the booking run longer by 15, 30 or 60 minutes (ADR-0033), for the owner or an Admin.
+    [HttpPost("{id:guid}/extend")]
+    [ProducesResponseType<ReservationDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<ReservationDto> Extend(Guid id, ExtendReservationCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command with { Id = id }, cancellationToken);
 
     // The caller's answer to a meeting they're invited to (ADR-0032): Accepted, or Declined with
     // a reason for the organizer.

@@ -222,6 +222,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("EndDateTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("EndingSoonSentAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
