@@ -85,7 +85,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - `dotnet tool install --global dotnet-ef` (EF Core CLI - not bundled with the SDK)
 - Node.js 22.22+ or 24.15+ (what Angular 22 supports; CI uses 24) and Angular CLI 22
   (`npm i -g @angular/cli`)
-- Docker Desktop (for local PostgreSQL)
+- Docker Desktop (for local PostgreSQL, or to run the whole app in containers)
 - Trust the local HTTPS dev certificate once per machine: `dotnet dev-certs https --trust`
   (skip this and the Angular dev server's calls to the API will fail with a cert error, not
   a CORS one - the symptoms look similar in the browser console, don't confuse them)
@@ -194,6 +194,33 @@ The Development seed also creates eight sample resources (meeting rooms, desks, 
 car, a projector, and a camera under maintenance) when the database has none. The five
 resource types come from a migration and exist in every environment (ADR-0010).
 
+### Optional: the whole app in Docker
+
+The `app` profile runs everything in containers: PostgreSQL, Mailpit, the API, and the
+app's production build behind nginx (ADR-0031). No .NET SDK or Node.js needed, only Docker:
+
+```bash
+export JWT_KEY="<a long random string>"
+docker compose --profile app up -d --build
+```
+
+Then open `http://localhost:4200` and sign in as one of the demo users above (a production
+build doesn't list them on the front page). That's the address `ng serve` uses, so stop
+`ng serve` first. The API's Development settings name it too, so links in emails work.
+
+- nginx serves the app and passes `/api` and `/hubs` (SignalR's WebSocket) to the API, so
+  the browser sees one origin, as with `ng serve`. The session cookie needs that (ADR-0026).
+- The API believes nginx's `X-Forwarded-For` (ADR-0028), so each user has their own sign-in
+  limit. For that, nginx has a fixed address on a network of its own, `172.28.42.0/24` in
+  `docker-compose.yml`. If that subnet is taken on your machine, change it and the two
+  addresses that go with it.
+- nginx's access log leaves out query strings, which carry SignalR's token and a password
+  reset link's.
+- Like the `api` profile, this is a local stand-in in Development with the demo data, not a
+  production setup: there's no HTTPS, and the API's port 8080 is open too.
+
+`docker compose --profile app down` stops it; add `-v` to drop the database as well.
+
 ### Optional: the booking assistant
 
 The assistant is off until the API has an Anthropic API key (ADR-0029). Without one the app
@@ -275,6 +302,8 @@ The same checks run on GitHub Actions for every pull request and every push to `
 - the browser tests (`npm run e2e`, see `frontend/README.md`): PostgreSQL, the API with the
   Development seed and `ng serve`, driven in Chromium. A failed run keeps the Playwright report,
   the traces and both logs as an artifact for a week.
+- the whole app in Docker (`docker compose --profile app`, ADR-0031): both images are built,
+  and some of the browser tests run through nginx.
 
 A PR's status checks show the result, so a reviewer can see "still builds and passes tests"
 before merging.
@@ -303,7 +332,8 @@ frontend/
   src/app/core/               interceptors, guards, shared services
 docs/
   ARCHITECTURE.md, DATA_MODEL.md, API_CONTRACTS.md, DECISIONS.md, TEAM_SYNC.md
-docker-compose.yml            local PostgreSQL; optional API via the `api` profile
+docker-compose.yml            local PostgreSQL and Mailpit; the API (`api` profile), or the API
+                             and the app behind nginx (`app` profile, frontend/Dockerfile)
 ```
 
 See `docs/TEAM_SYNC.md` for who owns which part of this structure.

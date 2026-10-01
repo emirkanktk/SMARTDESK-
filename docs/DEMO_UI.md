@@ -19,6 +19,13 @@ browser, with two windows side by side so the audience sees changes arrive live.
    ```bash
    cd frontend && npm install && ng serve
    ```
+   On a machine with only Docker, this replaces steps 1 and 2 (README, "the whole
+   app in Docker"). It serves the same app at the same address:
+   ```bash
+   export JWT_KEY="<a long random string>"
+   docker compose --profile app up -d --build
+   ```
+   That's a production build, so the front page doesn't list the demo accounts; step 3 does.
 3. Open two windows side by side at `http://localhost:4200`: a normal one for **Ayşe**
    (`employee1@smartdesk.local`) and a private one for **Mehmet** (`employee2@smartdesk.local`).
    All passwords are `SmartDesk123!`. Both open on the front page. In Mehmet's window, **Sign

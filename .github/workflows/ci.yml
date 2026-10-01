@@ -3,6 +3,7 @@
 # Unit tests use in-memory SQLite; integration tests start PostgreSQL with Testcontainers.
 # Frontend tests use jsdom. The browser tests run the whole app - PostgreSQL, the API with the
 # Development seed, ng serve - and drive it in Chromium (#72).
+# The docker job builds both images and runs docker-compose.yml's app profile (ADR-0031).
 name: CI
 
 on:
@@ -196,4 +197,64 @@ jobs:
             frontend/test-results/
             frontend/ng.log
             api.log
+          retention-days: 7
+
+  docker:
+    name: Docker - the whole app in containers
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # The browser and the tests' own API calls both go through nginx (ADR-0031).
+      E2E_BASE_URL: http://localhost:4200
+      E2E_API_URL: http://localhost:4200/api
+      E2E_CHANNEL: ''
+    steps:
+      - uses: actions/checkout@v7
+
+      # A signing key made for this run only; docker-compose.yml hands it to the API.
+      - name: JWT key for this run
+        run: echo "JWT_KEY=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
+
+      # Both images, then PostgreSQL, Mailpit, the API and nginx, until each is healthy.
+      - name: Build and start the app profile
+        run: docker compose --profile app up -d --build --wait --wait-timeout 300
+
+      - name: nginx serves the app and passes the API on
+        run: |
+          curl -fsS http://localhost:4200/ | grep -q '<app-root>'
+          curl -fsS http://localhost:4200/reservations/mine | grep -q '<app-root>'
+          curl -fsS http://localhost:4200/i18n/tr.json > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4200/api/assistant)" = 401
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install the browser tests and Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # Signing in, a booking with a conflict, one showing up live in another window over
+      # SignalR's WebSocket, and the language switch, all through nginx.
+      - name: Browser tests through nginx
+        working-directory: frontend
+        run: npx playwright test e2e/booking.spec.ts e2e/language.spec.ts
+
+      - name: Keep the containers' logs of a failed run
+        if: failure()
+        run: docker compose --profile app logs --no-color > compose.log
+
+      - name: Keep the report, traces and logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker
+          path: |
+            compose.log
+            frontend/playwright-report/
+            frontend/test-results/
           retention-days: 7

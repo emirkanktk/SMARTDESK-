@@ -35,6 +35,11 @@ so the session cookie is a same-site cookie in development too (ADR-0026):
 | `docker` (`ng serve --configuration docker`) | `http://localhost:8080` (`proxy.docker.json`) | the API container from `docker compose --profile api up` |
 | `production` (`ng build`) | nothing - `/api` on the same host | served behind the API or a reverse proxy |
 
+`frontend/Dockerfile` serves the `production` build with nginx, which passes `/api` and `/hubs` on
+to the API container: `docker compose --profile app up -d --build` runs the whole app at
+`http://localhost:4200` (ADR-0031, and "the whole app in Docker" in the main README).
+`nginx.conf` is its configuration.
+
 If the lists stay empty and the console shows a certificate error, the browser doesn't trust
 the dev certificate yet: `dotnet dev-certs https --trust`.
 
