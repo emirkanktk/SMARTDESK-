@@ -4,7 +4,7 @@ namespace SmartDesk.Application.Features.Reservations.Common;
 
 public static class ReservationDtoExtensions
 {
-    // One lookup for the whole list, however many reservations share an owner.
+    // One lookup for the whole list, however many reservations share an owner or an attendee.
     public static async Task<IReadOnlyList<ReservationDto>> WithUserNamesAsync(
         this IIdentityService identityService,
         IReadOnlyList<ReservationDto> reservations,
@@ -16,10 +16,21 @@ public static class ReservationDtoExtensions
         }
 
         var names = await identityService.GetDisplayNamesAsync(
-            reservations.Select(r => r.UserId).Distinct().ToList(), cancellationToken);
+            reservations
+                .SelectMany(r => r.Attendees.Select(a => a.Id).Append(r.UserId))
+                .Distinct()
+                .ToList(),
+            cancellationToken);
 
         return reservations
-            .Select(r => r with { UserDisplayName = names.GetValueOrDefault(r.UserId) })
+            .Select(r => r with
+            {
+                UserDisplayName = names.GetValueOrDefault(r.UserId),
+                Attendees = r.Attendees
+                    .Select(a => a with { Name = names.GetValueOrDefault(a.Id) })
+                    .OrderBy(a => a.Name ?? string.Empty, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList(),
+            })
             .ToList();
     }
 

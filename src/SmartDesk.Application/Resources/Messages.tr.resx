@@ -249,6 +249,9 @@
   <data name="Entity_Account" xml:space="preserve">
     <value>Hesap</value>
   </data>
+  <data name="Entity_InboxMessage" xml:space="preserve">
+    <value>Mesaj</value>
+  </data>
   <data name="Entity_Reservation" xml:space="preserve">
     <value>Rezervasyon</value>
   </data>
@@ -297,6 +300,39 @@
   <data name="Identity_PasswordTooShort" xml:space="preserve">
     <value>Parola en az {0} karakter olmalı.</value>
   </data>
+  <data name="Meetings_AnswerCancelled" xml:space="preserve">
+    <value>Bu toplantı iptal edildi; yanıtlanacak bir şey yok.</value>
+  </data>
+  <data name="Meetings_AnswerEnded" xml:space="preserve">
+    <value>Bu toplantı sona erdi.</value>
+  </data>
+  <data name="Meetings_AnswerInvalid" xml:space="preserve">
+    <value>Yanıt Accepted ya da Declined olmalıdır.</value>
+  </data>
+  <data name="Meetings_CantUseResource" xml:space="preserve">
+    <value>{1} başka bir ekibe ait; {0} bu kaynağı kullanamaz.</value>
+  </data>
+  <data name="Meetings_NotInvitable" xml:space="preserve">
+    <value>Yalnızca kendi ekibinizin etkin üyelerini davet edebilirsiniz.</value>
+  </data>
+  <data name="Meetings_NotInvitableByAdmin" xml:space="preserve">
+    <value>Yalnızca etkin hesaplar davet edilebilir.</value>
+  </data>
+  <data name="Meetings_NotInvited" xml:space="preserve">
+    <value>Bu toplantının davetli listesinde değilsiniz.</value>
+  </data>
+  <data name="Meetings_OnlyManagersInvite" xml:space="preserve">
+    <value>Yalnızca ekip yöneticileri ve sistem yöneticileri kişi davet edebilir.</value>
+  </data>
+  <data name="Meetings_ReasonRequired" xml:space="preserve">
+    <value>Neden katılamayacağınızı yazın.</value>
+  </data>
+  <data name="Meetings_RoomTooSmall" xml:space="preserve">
+    <value>{0} {1} kişilik; sizinle birlikte {2} kişi olursunuz.</value>
+  </data>
+  <data name="Meetings_TooManyAttendees" xml:space="preserve">
+    <value>En fazla {0} kişi davet edilebilir.</value>
+  </data>
   <data name="Problem_Conflict" xml:space="preserve">
     <value>Çakışma</value>
   </data>
@@ -323,6 +359,9 @@
   </data>
   <data name="Problem_Validation" xml:space="preserve">
     <value>Bir veya daha fazla doğrulama hatası oluştu.</value>
+  </data>
+  <data name="Property_AttendeeIds" xml:space="preserve">
+    <value>Katılımcılar</value>
   </data>
   <data name="Property_Capacity" xml:space="preserve">
     <value>Kapasite</value>
@@ -389,6 +428,9 @@
   </data>
   <data name="Property_ResourceTypeId" xml:space="preserve">
     <value>Kaynak türü</value>
+  </data>
+  <data name="Property_Response" xml:space="preserve">
+    <value>Yanıt</value>
   </data>
   <data name="Property_Role" xml:space="preserve">
     <value>Rol</value>

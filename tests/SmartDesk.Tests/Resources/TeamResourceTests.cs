@@ -89,7 +89,7 @@ public sealed class TeamResourceTests : IDisposable
     private async Task<Guid> BookAsync(FakeCurrentUser user, Resource resource, int from, int to)
     {
         await using var context = _database.CreateContext();
-        var dto = await new CreateReservationCommandHandler(context, user, Names, _notifier.Object)
+        var dto = await new CreateReservationCommandHandler(context, user, Names, _notifier.Object, TestInvitations.For(context, user))
             .Handle(new CreateReservationCommand(resource.Id, At(from), At(to), null), CancellationToken.None);
         return dto.Id;
     }

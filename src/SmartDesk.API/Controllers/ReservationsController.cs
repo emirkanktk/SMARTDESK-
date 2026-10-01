@@ -1,6 +1,9 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SmartDesk.Application.Features.Meetings.Commands.RespondToInvitation;
+using SmartDesk.Application.Features.Meetings.Queries.GetInvitees;
+using SmartDesk.Application.Features.Meetings.Queries.GetMyInvitations;
 using SmartDesk.Application.Features.Reservations.Commands.CancelReservation;
 using SmartDesk.Application.Features.Reservations.Commands.CreateReservation;
 using SmartDesk.Application.Features.Reservations.Commands.UpdateReservation;
@@ -51,6 +54,17 @@ public sealed class ReservationsController(ISender sender) : ControllerBase
     public Task<ReservationDto> Cancel(Guid id, CancellationToken cancellationToken) =>
         sender.Send(new CancelReservationCommand(id), cancellationToken);
 
+    // The caller's answer to a meeting they're invited to (ADR-0032): Accepted, or Declined with
+    // a reason for the organizer.
+    [HttpPost("{id:guid}/response")]
+    [ProducesResponseType<ReservationDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<ReservationDto> Respond(Guid id, RespondToInvitationCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command with { Id = id }, cancellationToken);
+
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<ReservationDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -63,4 +77,17 @@ public sealed class ReservationsController(ISender sender) : ControllerBase
     [ProducesResponseType<IReadOnlyList<ReservationDto>>(StatusCodes.Status200OK)]
     public Task<IReadOnlyList<ReservationDto>> Mine(CancellationToken cancellationToken) =>
         sender.Send(new GetMyReservationsQuery(), cancellationToken);
+
+    // Other people's meetings the caller is invited to and that aren't over (ADR-0032).
+    [HttpGet("invited")]
+    [ProducesResponseType<IReadOnlyList<ReservationDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<ReservationDto>> Invited(CancellationToken cancellationToken) =>
+        sender.Send(new GetMyInvitationsQuery(), cancellationToken);
+
+    // Who the caller may put on a booking's list: a Manager's team, everyone for an Admin, nobody
+    // for an Employee.
+    [HttpGet("invitees")]
+    [ProducesResponseType<IReadOnlyList<InviteeDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<InviteeDto>> Invitees(CancellationToken cancellationToken) =>
+        sender.Send(new GetInviteesQuery(), cancellationToken);
 }

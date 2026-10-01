@@ -104,7 +104,7 @@ public sealed class CheckInTests : IDisposable
     private async Task<int> ReleaseAsync()
     {
         await using var context = _database.CreateContext();
-        return await new ReleaseNoShowsCommandHandler(context, new FakeIdentityService(), _notifier.Object, _clock)
+        return await new ReleaseNoShowsCommandHandler(context, new FakeIdentityService(), _notifier.Object, _clock, TestInvitations.For(context, new FakeCurrentUser(null), clock: _clock))
             .Handle(new ReleaseNoShowsCommand(), CancellationToken.None);
     }
 
@@ -432,7 +432,7 @@ public sealed class CheckInTests : IDisposable
         ReservationDto dto;
         await using (var context = _database.CreateContext())
         {
-            dto = await new CreateReservationCommandHandler(context, Ayse, new FakeIdentityService(), _notifier.Object)
+            dto = await new CreateReservationCommandHandler(context, Ayse, new FakeIdentityService(), _notifier.Object, TestInvitations.For(context, Ayse))
                 .Handle(new CreateReservationCommand(room.Id, Ten, Ten.AddHours(1), null), CancellationToken.None);
         }
 
@@ -569,7 +569,7 @@ public sealed class CheckInTests : IDisposable
     private async Task<ReservationDto> UpdateAsync(Guid id, Guid roomId, DateTime start, DateTime end)
     {
         await using var context = _database.CreateContext();
-        return await new UpdateReservationCommandHandler(context, Ayse, new FakeIdentityService(), _notifier.Object, _clock)
+        return await new UpdateReservationCommandHandler(context, Ayse, new FakeIdentityService(), _notifier.Object, _clock, TestInvitations.For(context, Ayse, clock: _clock))
             .Handle(new UpdateReservationCommand(roomId, start, end, null) { Id = id }, CancellationToken.None);
     }
 

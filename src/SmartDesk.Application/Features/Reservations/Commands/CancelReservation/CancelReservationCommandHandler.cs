@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
@@ -15,12 +16,14 @@ public sealed class CancelReservationCommandHandler(
     ICurrentUserService currentUser,
     IIdentityService identityService,
     IReservationNotifier notifier,
-    TimeProvider timeProvider) : IRequestHandler<CancelReservationCommand, ReservationDto>
+    TimeProvider timeProvider,
+    MeetingInvitations invitations) : IRequestHandler<CancelReservationCommand, ReservationDto>
 {
     public async Task<ReservationDto> Handle(CancelReservationCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId ?? throw new UnauthorizedException();
         bool cancelledNow;
+        IReadOnlyList<InboxMessage> messages = [];
 
         // Locked so a concurrent update of the same reservation can't interleave with this.
         await using (var transaction = await db.BeginTransactionAsync(cancellationToken))
@@ -47,6 +50,7 @@ public sealed class CancelReservationCommandHandler(
                 }
 
                 reservation.Status = ReservationStatus.Cancelled;
+                messages = await invitations.WriteCancellationAsync(reservation, userId, cancellationToken);
                 await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
             }
@@ -56,6 +60,7 @@ public sealed class CancelReservationCommandHandler(
         if (cancelledNow)
         {
             await notifier.ReservationCancelledAsync(dto, cancellationToken);
+            await invitations.SendAsync(messages, cancellationToken);
         }
 
         return dto;

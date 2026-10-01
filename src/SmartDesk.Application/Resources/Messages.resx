@@ -249,6 +249,9 @@
   <data name="Entity_Account" xml:space="preserve">
     <value>Account</value>
   </data>
+  <data name="Entity_InboxMessage" xml:space="preserve">
+    <value>Message</value>
+  </data>
   <data name="Entity_Reservation" xml:space="preserve">
     <value>Reservation</value>
   </data>
@@ -297,6 +300,39 @@
   <data name="Identity_PasswordTooShort" xml:space="preserve">
     <value>Passwords must be at least {0} characters.</value>
   </data>
+  <data name="Meetings_AnswerCancelled" xml:space="preserve">
+    <value>This meeting was cancelled, so there's nothing to answer.</value>
+  </data>
+  <data name="Meetings_AnswerEnded" xml:space="preserve">
+    <value>This meeting is over.</value>
+  </data>
+  <data name="Meetings_AnswerInvalid" xml:space="preserve">
+    <value>Answer Accepted or Declined.</value>
+  </data>
+  <data name="Meetings_CantUseResource" xml:space="preserve">
+    <value>{0} can't use {1}: it belongs to another team.</value>
+  </data>
+  <data name="Meetings_NotInvitable" xml:space="preserve">
+    <value>You can invite only your own team's active members.</value>
+  </data>
+  <data name="Meetings_NotInvitableByAdmin" xml:space="preserve">
+    <value>Only active accounts can be invited.</value>
+  </data>
+  <data name="Meetings_NotInvited" xml:space="preserve">
+    <value>You're not on this meeting's list.</value>
+  </data>
+  <data name="Meetings_OnlyManagersInvite" xml:space="preserve">
+    <value>Only team managers and administrators can invite people.</value>
+  </data>
+  <data name="Meetings_ReasonRequired" xml:space="preserve">
+    <value>Say why you can't come.</value>
+  </data>
+  <data name="Meetings_RoomTooSmall" xml:space="preserve">
+    <value>{0} has room for {1}; with you, {2} people would come.</value>
+  </data>
+  <data name="Meetings_TooManyAttendees" xml:space="preserve">
+    <value>At most {0} people can be invited.</value>
+  </data>
   <data name="Problem_Conflict" xml:space="preserve">
     <value>Conflict</value>
   </data>
@@ -323,6 +359,9 @@
   </data>
   <data name="Problem_Validation" xml:space="preserve">
     <value>One or more validation errors occurred.</value>
+  </data>
+  <data name="Property_AttendeeIds" xml:space="preserve">
+    <value>Attendee Ids</value>
   </data>
   <data name="Property_Capacity" xml:space="preserve">
     <value>Capacity</value>
@@ -389,6 +428,9 @@
   </data>
   <data name="Property_ResourceTypeId" xml:space="preserve">
     <value>Resource Type Id</value>
+  </data>
+  <data name="Property_Response" xml:space="preserve">
+    <value>Response</value>
   </data>
   <data name="Property_Role" xml:space="preserve">
     <value>Role</value>

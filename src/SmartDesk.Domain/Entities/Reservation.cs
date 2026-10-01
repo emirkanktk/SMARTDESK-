@@ -31,4 +31,7 @@ public class Reservation
     public DateTime? ReleasedAt { get; set; }
 
     public Resource Resource { get; set; } = null!;
+
+    // The people the organizer invited to it (ADR-0032); usually none.
+    public ICollection<ReservationAttendee> Attendees { get; set; } = new List<ReservationAttendee>();
 }
