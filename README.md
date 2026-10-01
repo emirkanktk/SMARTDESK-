@@ -302,6 +302,8 @@ The same checks run on GitHub Actions for every pull request and every push to `
 - the browser tests (`npm run e2e`, see `frontend/README.md`): PostgreSQL, the API with the
   Development seed and `ng serve`, driven in Chromium. A failed run keeps the Playwright report,
   the traces and both logs as an artifact for a week.
+- the whole app in Docker (`docker compose --profile app`, ADR-0031): both images are built,
+  and some of the browser tests run through nginx.
 
 A PR's status checks show the result, so a reviewer can see "still builds and passes tests"
 before merging.
