@@ -357,6 +357,14 @@ describe('Inbox', () => {
       expect(answers().some(Boolean)).toBe(false);
     });
 
+    it('asks on news that the meeting runs longer, too', async () => {
+      list.mockReturnValue(of([inboxMessage({ id: 'm-9', kind: 'MeetingExtended' }), invitation]));
+      await render();
+
+      expect(headlines()[0]).toBe("Zeynep Kaya extended a meeting you're invited to");
+      expect(answers()).toEqual([true, false]);
+    });
+
     it('tells the organizer who is coming, and who can not and why', async () => {
       list.mockReturnValue(
         of([

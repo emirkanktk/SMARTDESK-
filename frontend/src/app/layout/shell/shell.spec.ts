@@ -1,12 +1,13 @@
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { Role, Roles } from '../../core/constants/roles';
 import { CurrentUser } from '../../core/models/auth.model';
 import { AssistantService } from '../../core/services/assistant.service';
 import { AuthService } from '../../core/services/auth.service';
 import { InboxService } from '../../core/services/inbox.service';
+import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { Shell } from './shell';
 
@@ -53,6 +54,14 @@ describe('Shell', () => {
         },
         { provide: ReservationService, useValue: {} },
         { provide: InboxService, useValue: { unread } },
+        {
+          provide: ReservationHubService,
+          useValue: {
+            endingSoon$: new Subject(),
+            updated$: new Subject(),
+            cancelled$: new Subject(),
+          },
+        },
       ],
     }).compileComponents();
   });

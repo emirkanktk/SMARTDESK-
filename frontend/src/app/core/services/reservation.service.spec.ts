@@ -54,6 +54,25 @@ describe('ReservationService', () => {
     expect(names).toEqual(['Mehmet Demir']);
   });
 
+  it('asks how much longer a booking can run', () => {
+    let minutes: number[] = [];
+    service.getExtensionOptions('rsv-1').subscribe((options) => (minutes = options.minutes));
+
+    const req = http.expectOne(`${base}/rsv-1/extension`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ minutes: [15, 30] });
+    expect(minutes).toEqual([15, 30]);
+  });
+
+  it('extends with POST to extend, saying by how much', () => {
+    service.extend('rsv-1', 30).subscribe();
+
+    const req = http.expectOne(`${base}/rsv-1/extend`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ minutes: 30 });
+    req.flush(fakeReservation());
+  });
+
   it('answers an invitation with POST to its response', () => {
     service.respond('rsv-1', { response: 'Declined', reason: 'Off sick' }).subscribe();
 

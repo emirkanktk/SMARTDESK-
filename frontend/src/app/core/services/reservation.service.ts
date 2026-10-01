@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import {
   CalendarQuery,
   CreateReservationRequest,
+  ExtensionOptions,
   Invitee,
   RespondRequest,
   Reservation,
@@ -24,6 +25,21 @@ export class ReservationService {
   /** Other people's meetings the caller is invited to and that aren't over, soonest first. */
   getInvited(): Observable<Reservation[]> {
     return this.http.get<Reservation[]>(`${this.baseUrl}/invited`);
+  }
+
+  /** How much longer the booking can run: the extension options that still fit (ADR-0033). */
+  getExtensionOptions(id: string): Observable<ExtensionOptions> {
+    return this.http.get<ExtensionOptions>(`${this.baseUrl}/${encodeURIComponent(id)}/extension`);
+  }
+
+  /**
+   * Lets the booking run `minutes` longer, for the owner or an Admin. 409 when the resource
+   * isn't free for the extra time, its detail written to be shown as-is.
+   */
+  extend(id: string, minutes: number): Observable<Reservation> {
+    return this.http.post<Reservation>(`${this.baseUrl}/${encodeURIComponent(id)}/extend`, {
+      minutes,
+    });
   }
 
   /**

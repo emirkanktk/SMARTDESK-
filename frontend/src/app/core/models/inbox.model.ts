@@ -7,6 +7,7 @@ export const INBOX_MESSAGE_KINDS = [
   'MeetingUninvited',
   'MeetingAccepted',
   'MeetingDeclined',
+  'MeetingExtended',
 ] as const;
 export type InboxMessageKind = (typeof INBOX_MESSAGE_KINDS)[number];
 

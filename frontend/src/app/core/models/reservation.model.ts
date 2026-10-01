@@ -142,6 +142,14 @@ export interface UpdateReservationRequest extends CreateReservationRequest {
   attendeeIds: string[];
 }
 
+/** How much longer a booking can be made to run with a click, in minutes (ADR-0033). */
+export const EXTENSION_OPTIONS = [15, 30, 60] as const;
+
+/** Body of `GET /api/reservations/{id}/extension`: the options that still fit, shortest first. */
+export interface ExtensionOptions {
+  minutes: number[];
+}
+
 /** Reminder choices the API accepts, in minutes before the start (ADR-0018). */
 export const REMINDER_OPTIONS = [5, 15, 30, 60] as const;
 

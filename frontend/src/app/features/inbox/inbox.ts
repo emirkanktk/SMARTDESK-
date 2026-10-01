@@ -21,10 +21,15 @@ const KIND_ICONS: Record<InboxMessageKind, IconName> = {
   MeetingUninvited: 'logout',
   MeetingAccepted: 'calendar-check',
   MeetingDeclined: 'close',
+  MeetingExtended: 'clock',
 };
 
 /** News of a meeting the reader is still invited to, which they can answer. */
-const ABOUT_AN_INVITATION: readonly InboxMessageKind[] = ['MeetingInvitation', 'MeetingChanged'];
+const ABOUT_AN_INVITATION: readonly InboxMessageKind[] = [
+  'MeetingInvitation',
+  'MeetingChanged',
+  'MeetingExtended',
+];
 /** Answers to the reader's own invitations. */
 const ABOUT_AN_ANSWER: readonly InboxMessageKind[] = ['MeetingAccepted', 'MeetingDeclined'];
 

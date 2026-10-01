@@ -50,6 +50,7 @@ describe('ReservationHubService', () => {
     hub.cancelled$.subscribe((r) => seen.push(`cancelled ${r.id}`));
     hub.startingSoon$.subscribe((r) => seen.push(`starting soon ${r.id}`));
     hub.released$.subscribe((r) => seen.push(`released ${r.id}`));
+    hub.endingSoon$.subscribe((r) => seen.push(`ending soon ${r.id}`));
     hub.inboxMessage$.subscribe((m) => seen.push(`message ${m.id} ${m.kind}`));
 
     handlers.get('ReservationCreated')!(fakeReservation({ id: 'a' }));
@@ -57,6 +58,7 @@ describe('ReservationHubService', () => {
     handlers.get('ReservationCancelled')!(fakeReservation({ id: 'c' }));
     handlers.get('ReservationStartingSoon')!(fakeReservation({ id: 'd' }));
     handlers.get('ReservationReleased')!(fakeReservation({ id: 'e' }));
+    handlers.get('ReservationEndingSoon')!(fakeReservation({ id: 'g' }));
     handlers.get('InboxMessageReceived')!({ id: 'f', kind: 'MeetingInvitation' } as InboxMessage);
 
     expect(seen).toEqual([
@@ -65,6 +67,7 @@ describe('ReservationHubService', () => {
       'cancelled c',
       'starting soon d',
       'released e',
+      'ending soon g',
       'message f MeetingInvitation',
     ]);
   });
@@ -117,7 +120,7 @@ describe('ReservationHubService', () => {
 
   it('returns nothing to the server from a handler', () => {
     // SignalR treats a returned value as an answer the server didn't ask for and logs an error.
-    expect(handlers.size).toBe(6);
+    expect(handlers.size).toBe(7);
     for (const handler of handlers.values()) {
       expect(handler(fakeReservation())).toBeUndefined();
     }

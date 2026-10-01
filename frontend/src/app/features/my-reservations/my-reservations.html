@@ -114,6 +114,13 @@
               @if (item.reservation.note) {
                 <p class="note">{{ item.reservation.note }}</p>
               }
+              @if (extendingId() === item.reservation.id) {
+                <app-extend-booking
+                  class="extend"
+                  [reservation]="item.reservation"
+                  (extended)="onExtended($event)"
+                />
+              }
               @if (activeTab() === 'invited') {
                 <app-meeting-answer
                   class="answer"
@@ -134,6 +141,17 @@
               </div>
             } @else if (activeTab() === 'upcoming') {
               <div class="actions">
+                @if (item.inProgress) {
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm extend-toggle"
+                    [attr.aria-expanded]="extendingId() === item.reservation.id"
+                    (click)="toggleExtend(item)"
+                    i18n="@@mine.extend"
+                  >
+                    Extend
+                  </button>
+                }
                 <a
                   class="btn btn-secondary btn-sm"
                   [routerLink]="['/reservations', item.reservation.id, 'edit']"
