@@ -97,7 +97,8 @@ public sealed class ExtendReservationTests : IDisposable
     [Fact]
     public async Task Nobody_is_asked_about_a_booking_that_has_not_started_is_cancelled_or_is_over()
     {
-        var (_, later) = await MeetingAsync(startMinutes: 55, endMinutes: 65);
+        // Five minutes from 10:55: it ends within ten minutes, but hasn't started.
+        var (_, later) = await MeetingAsync(startMinutes: 55, endMinutes: 60);
         var (_, cancelled) = await MeetingAsync();
         await using (var context = _database.CreateContext())
         {
