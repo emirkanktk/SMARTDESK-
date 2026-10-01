@@ -771,6 +771,10 @@ new tables.
 - **Limits.** 20 questions a minute per user (`RateLimiting:AssistantPermitsPerMinute`), at most
   6 rounds of tool calls per answer (`Assistant:MaxToolRounds`), at most 3 cards per answer. So
   that the limit can count per user, the rate limiter now runs after authentication.
+- **One time limit per answer.** 90 seconds in all (`Assistant:TimeoutSeconds`), every round,
+  retry and tool included. An answer that runs out of time gets the same 503 as a model that
+  can't be reached: try again in a moment. A limit per call wouldn't bound the wait: an answer
+  can make 7 calls, and the SDK tries each one up to 3 times.
 
 **Why:**
 - The brief lists an optional LLM assistant. It was Burak's; the team took it over when he left

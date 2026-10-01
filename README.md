@@ -205,7 +205,8 @@ dotnet user-secrets set "Assistant:ApiKey" "<your Anthropic API key>" --project 
 
 Elsewhere, set the environment variable `Assistant__ApiKey`; never put the key in
 `appsettings`. The other settings are in `appsettings.json` under `Assistant`: `Model`
-(`claude-opus-5-5`), `Effort` (`low`), `MaxTokens` and `MaxToolRounds`. Each question is a
+(`claude-opus-5-5`), `Effort` (`low`), `MaxTokens`, `MaxToolRounds` and `TimeoutSeconds` (`90`,
+the most one answer may take before the user is asked to try again). Each question is a
 paid call to the model. A user can ask 20 a minute (`RateLimiting:AssistantPermitsPerMinute`),
 and the API log shows the tokens each answer used.
 
@@ -266,9 +267,17 @@ Run the time-zone variant after touching date or time code: it sets `TZ` for eac
 itself, which a `TZ=...` prefix in Git Bash on Windows silently doesn't.
 
 The same checks run on GitHub Actions for every pull request and every push to `main`
-(`.github/workflows/ci.yml`): backend build + tests + a check that model changes come with a
-migration, and frontend build + tests. A PR's status checks show the result, so a reviewer
-can see "still builds and passes tests" before merging.
+(`.github/workflows/ci.yml`):
+- backend build + tests + a check that model changes come with a migration;
+- frontend: every text has its Turkish version (`npm run i18n:check`), the code is formatted
+  (`npm run format:check`), the specs and the browser tests type-check, build, tests, and the
+  tests again in other time zones;
+- the browser tests (`npm run e2e`, see `frontend/README.md`): PostgreSQL, the API with the
+  Development seed and `ng serve`, driven in Chromium. A failed run keeps the Playwright report,
+  the traces and both logs as an artifact for a week.
+
+A PR's status checks show the result, so a reviewer can see "still builds and passes tests"
+before merging.
 
 ## Project structure
 

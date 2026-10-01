@@ -412,8 +412,8 @@ Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
     (20 by default), with `Retry-After` and "You've asked the assistant a lot in the last
     minute. Wait a moment and try again.".
   - 503 "The assistant isn't set up on this server." without a key, and "The assistant can't
-    answer right now. Try again in a moment." when the model can't be reached or refuses the
-    key.
+    answer right now. Try again in a moment." when the model can't be reached, refuses the
+    key, or the answer takes longer than `Assistant:TimeoutSeconds` (90 by default).
 
 ## Real-time (SignalR)
 

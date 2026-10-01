@@ -120,8 +120,8 @@ public static class DependencyInjection
         // off, and nothing else notices.
         services.AddOptions<AssistantOptions>()
             .Bind(configuration.GetSection(AssistantOptions.SectionName))
-            .Validate(o => o.MaxTokens > 0 && o.MaxToolRounds > 0,
-                "Assistant:MaxTokens and Assistant:MaxToolRounds must be positive.")
+            .Validate(o => o.MaxTokens > 0 && o.MaxToolRounds > 0 && o.TimeoutSeconds > 0,
+                "Assistant:MaxTokens, Assistant:MaxToolRounds and Assistant:TimeoutSeconds must be positive.")
             .ValidateOnStart();
         services.AddSingleton<IAssistantModel, ClaudeAssistantModel>();
 
