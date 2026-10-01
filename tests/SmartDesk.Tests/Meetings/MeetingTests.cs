@@ -279,9 +279,10 @@ public sealed class MeetingTests : IDisposable
         _people.Remove(Ayse);
         _people.Add(Ayse with { ManagerId = OkanId });
 
-        var changed = await UpdateAsync(Zeynep, booking, [Ayse.Id], start: Ten.AddHours(1));
+        // Mehmet is added in the same change: only he has to be someone Zeynep may invite.
+        var changed = await UpdateAsync(Zeynep, booking, [Ayse.Id, Mehmet.Id], start: Ten.AddHours(1));
 
-        changed.Attendees.Should().ContainSingle();
+        changed.Attendees.Select(a => a.Id).Should().BeEquivalentTo([Ayse.Id, Mehmet.Id]);
     }
 
     [Fact]
