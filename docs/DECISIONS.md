@@ -839,3 +839,42 @@ new tables.
     which lines to change.
   - nginx's error log still shows a failing request's query string. Errors are rare, and that
     log isn't kept anywhere.
+
+## ADR-0036: The assistant can run on Gemini as well as Claude
+
+**Decision:**
+- `Assistant:Provider` chooses the model behind the assistant: `Anthropic` (Claude, the
+  default) or `Gemini`. `Assistant:ApiKey` is that provider's key; an unknown provider stops the
+  API at startup.
+- `GeminiAssistantModel` is a second `IAssistantModel`, beside `ClaudeAssistantModel`. It calls
+  Gemini's REST `generateContent` endpoint through `HttpClient`, with no SDK. The key goes in the
+  `x-goog-api-key` header, never in the address.
+- The same loop as Claude's: the toolbox's tools become function declarations, their input as a
+  plain JSON Schema (`parametersJsonSchema`); a function call is run as the signed-in user and its
+  result goes back as a `functionResponse`, after the model's turn exactly as it came, thought
+  signatures and all. The last round sets the function-calling mode to `NONE`, so it answers
+  with what it has. One time limit for the whole answer.
+- The same answers to the user: a refused key, a rate limit, a failure or no connection is the
+  503 "can't answer right now"; an answer withheld on safety grounds is the refusal message. The
+  log has Google's own reason, which never contains the key.
+- `Assistant:GeminiModel` is `gemini-flash-latest`, the alias of Google's newest Flash model.
+  `Effort` is Claude's alone; Gemini thinks as its model does by default.
+
+**Why:**
+- The team asked for Gemini too, and Google AI Studio gives a key with a free tier, so the
+  assistant can be shown without a paid Anthropic account.
+- The Application never knew the provider (`IAssistantModel`, ADR-0029): the instructions, the
+  tools, what they may do and how a proposal becomes a booking stay the same whichever model
+  answers, and so do the tests of those.
+- REST rather than an SDK: one endpoint and a handful of fields, no new dependency to keep up to
+  date, and a stand-in API in the tests is just an `HttpMessageHandler`.
+- `parametersJsonSchema` takes the tools' schemas as they are; the older `parameters` field takes
+  only an OpenAPI subset, without `format: uuid` for one.
+- Echoing the model's turn unchanged is what thinking models require between function calls;
+  rebuilding it would drop the signatures.
+- **Trade-offs:**
+  - Claude caches the instructions between rounds; this Gemini call doesn't use context caching,
+    so a long conversation costs a little more per round.
+  - The `-latest` alias moves when Google ships a new Flash; pin a model in
+    `Assistant:GeminiModel` to keep the same one.
+  - The provider is one setting for the whole server; nobody chooses per question.

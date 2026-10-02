@@ -60,7 +60,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 | Backend | .NET 10 Web API, Onion Architecture, CQRS with MediatR, FluentValidation |
 | Data | PostgreSQL via EF Core; ASP.NET Core Identity for users and roles |
 | Real-time | SignalR |
-| Assistant (optional) | Claude, through Anthropic's official .NET SDK |
+| Assistant (optional) | Claude, through Anthropic's official .NET SDK, or Gemini over its REST API (ADR-0036) |
 
 ### Design highlights
 
@@ -223,12 +223,22 @@ build doesn't list them on the front page). That's the address `ng serve` uses, 
 
 ### Optional: the booking assistant
 
-The assistant is off until the API has an Anthropic API key (ADR-0029). Without one the app
-shows no assistant, and everything else works as usual. To turn it on locally:
+The assistant is off until the API has a key for its model (ADR-0029). Without one the app
+shows no assistant, and everything else works as usual. To turn it on locally with Claude:
 
 ```bash
 dotnet user-secrets set "Assistant:ApiKey" "<your Anthropic API key>" --project src/SmartDesk.API
 ```
+
+Or with Google's Gemini (ADR-0036), with a key from Google AI Studio:
+
+```bash
+dotnet user-secrets set "Assistant:Provider" "Gemini" --project src/SmartDesk.API
+dotnet user-secrets set "Assistant:ApiKey" "<your Gemini API key>" --project src/SmartDesk.API
+```
+
+Restart the API after changing either. The model is `Assistant:Model` for Claude and
+`Assistant:GeminiModel` for Gemini (`gemini-flash-latest`, Google's newest Flash).
 
 Elsewhere, set the environment variable `Assistant__ApiKey`; never put the key in
 `appsettings`. The other settings are in `appsettings.json` under `Assistant`: `Model`
