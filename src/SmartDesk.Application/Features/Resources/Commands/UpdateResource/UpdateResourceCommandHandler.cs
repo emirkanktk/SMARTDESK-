@@ -34,6 +34,7 @@ public sealed class UpdateResourceCommandHandler(
             resource.Location = request.Location.Trim();
             resource.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
             resource.Status = request.Status;
+            resource.CheckInRequired = request.CheckInRequired;
 
             ReplaceFeatures(resource, ResourceFeatureNames.Normalize(request.Features));
 

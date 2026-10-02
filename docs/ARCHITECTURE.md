@@ -96,7 +96,8 @@ src/
     Entities/          Resource, ResourceType, ResourceFeature, Reservation
     Enums/              ResourceStatus, ReservationStatus
     Constants/          Roles (Admin, Employee)
-    Rules/              ReservationOverlap - the one definition of "time range taken"
+    Rules/              ReservationOverlap - the one definition of "time range taken";
+                          CheckInRules - the check-in window and when a booking is released
   SmartDesk.Application/
     Common/             Behaviors/ (ValidationBehavior), Exceptions/, Extensions/,
                           Interfaces/ (incl. IApplicationDbContext), Models/
@@ -115,7 +116,9 @@ src/
     Controllers/          thin - build a command/query, send it through MediatR
     Services/             CurrentUserService (reads the caller from the JWT),
                           SignalRReservationNotifier (NullReservationNotifier remains
-                          only as an unused fallback)
+                          only as an unused fallback), and the timed jobs:
+                          ReservationReminderWorker and NoShowReleaseWorker, each sending
+                          one command every 30 seconds (PeriodicCommandWorker)
     OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
 tests/
@@ -158,6 +161,10 @@ Handlers don't know about SignalR. After a committed create, update or cancel th
 `Clients.All` (ADR-0014). A failed broadcast is logged and swallowed, so a down socket
 cannot turn a saved reservation into an HTTP error. `NullReservationNotifier` is still
 registered with `TryAdd` and only applies if the SignalR notifier is not registered.
+
+Two events go to the reservation's owner alone: the reminder (`ReservationStartingSoon`,
+ADR-0018) and the notice that a booking was released because nobody checked in
+(`ReservationReleased`, ADR-0030). Both come from timed jobs rather than a request.
 
 The Angular app opens the connection when a session exists and closes it on logout.
 Negotiate does not send cookies (`withCredentials: false`); the hub uses the bearer token,
@@ -304,6 +311,14 @@ picker drops seconds and any difference would count as a change.
   fetches a photo with the token and keeps an object URL per version (`photoUpdatedAt`). The
   resource form makes a chosen picture smaller (`shared/utils/photo.ts`) and uploads it after
   the details are saved.
+- **Check-in at the door (ADR-0030).** A resource's QR code leads to `/check-in/:resourceId?code=…`
+  inside the shell, so a signed-out phone signs in first and comes back with the code. The page
+  shows the caller's booking of that resource and a **Check in** button while it's open, and
+  follows the clock and live events. The resource form switches check-in on and shows the code
+  (`<app-check-in-code>`, drawn by `<app-qr-code>` from `qrcode-generator`), and
+  `/resources/:id/check-in-poster`, outside the shell, is the sheet to print. The booking form
+  and **My reservations** say when to check in, and `ReminderAlertsService` tells the owner when
+  a booking was released.
 - **Styling.** Plain SCSS. Design tokens (colors, the brand's gradients, spacing, radius,
   shadows) and shared building blocks (`.btn`, `.field`, `.input`, `.card`, `.alert-error`,
   `.brand-panel`, `.empty`) live in `src/styles.scss`. Component styles use those variables

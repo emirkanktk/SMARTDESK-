@@ -1,0 +1,38 @@
+<div class="toolbar">
+  <a class="btn btn-secondary" [routerLink]="['/resources', id(), 'edit']" i18n="@@poster.back"
+    >Back to the resource</a
+  >
+  <button
+    type="button"
+    class="btn btn-primary"
+    [disabled]="!code()"
+    (click)="print()"
+    i18n="@@poster.print"
+  >
+    Print
+  </button>
+</div>
+
+@if (resource(); as room) {
+  @if (code(); as current) {
+    <article class="sheet">
+      <app-logo class="logo" />
+      <h1 class="title" i18n="@@poster.title">Check in here</h1>
+      <p class="resource-name">{{ room.name }}</p>
+      <p class="resource-location">{{ room.location }}</p>
+      <app-qr-code class="qr" [value]="current.url" [label]="qrLabel()" />
+      <p class="how" i18n="@@poster.how">
+        Booked it? Scan the code with your phone's camera, from
+        {{ checkIn.opensBeforeMinutes }} minutes before your start until
+        {{ checkIn.graceMinutes }} minutes after. A booking nobody checks in to is released for
+        others to use.
+      </p>
+    </article>
+  }
+} @else if (failed()) {
+  <div class="alert-error" role="alert" i18n="@@poster.failed">
+    The QR code could not be loaded.
+  </div>
+} @else {
+  <p class="text-muted" role="status" i18n="@@common.loading">Loading…</p>
+}

@@ -799,6 +799,53 @@ new tables.
   - A request that carries a token is now authenticated before it is counted. Sign-in requests
     carry none, so the sign-in limit costs what it did.
 
+## ADR-0030: Checking in at the door with a QR code, and releasing bookings nobody used
+
+**Decision:**
+- **Per resource, off by default.** An Admin, or a Manager for a resource of their team alone,
+  can switch on "bookings must be checked in" (`Resource.CheckInRequired`). Resources without
+  it work exactly as before.
+- **A QR code at the door.** Every resource has a random 128-bit secret (`CheckInCode`). Its QR
+  code opens the app's check-in page with the secret in the address, and the signed-in owner
+  checks in there. Only those who may edit the resource see the code: its own endpoint, never
+  in resource responses. Replacing it retires the printed one.
+- **The window.** From 10 minutes before the start until 15 minutes after, and never once the
+  booking is over. Only the owner checks in, only a `Confirmed` booking.
+- **Release.** A booking nobody checked in to when its window closes is released: `Cancelled`,
+  with `ReleasedAt`. A background job looks every 30 seconds. Calendars free the slot through
+  the usual `ReservationCancelled`; the owner also gets `ReservationReleased`, a toast saying why.
+- **Knowing at booking time.** A reservation keeps whether its resource asked for a check-in
+  when it was booked or last moved: a new start, or another resource. Staying longer or ending
+  early is the same visit and keeps it. It's released only while that and the resource's own
+  setting are both on.
+- **One rule, both sides.** `CheckInRules` holds the window and the release condition as
+  expressions, used by the check-in, the release job and the queries. Their start conditions are
+  exact opposites, and both act under the reservation's row lock, like update and cancel
+  (ADR-0013).
+
+**Why:**
+- The brief lists QR check-in as a bonus. What it's worth is the rooms held by meetings that
+  never happen: without a check-in, nothing tells the booking apart from a real one, so the room
+  stays empty and blocked.
+- Per resource, because not everything has a door to put a code on: a camera or a car booked for
+  the day can't be "checked in" the same way. Off by default, so switching the feature on
+  changes nothing until someone asks for it.
+- The secret, because resource ids show up in the app's own addresses. With only the id,
+  anyone could check in from their desk without going to the room.
+- Remembering the setting on the booking, because switching check-in on for a room shouldn't
+  release a booking made yesterday by someone who couldn't know. Requiring the resource's
+  setting as well lets an Admin switch it off, e.g. when the printed code is gone, and stop
+  every release at once.
+- Releasing as a cancellation, with `ReleasedAt` beside it, keeps every existing rule, query and
+  screen right: a released booking frees its slot exactly like a cancelled one. The timestamp
+  is what tells them apart for the owner.
+- **Trade-offs:**
+  - A printed code proves someone was at the door once, not now: whoever has the link can
+    check in from elsewhere until the code is replaced. A screen at the door with a changing
+    code would close that, and is out of scope.
+  - The release can be up to one job interval late, never early.
+  - Only the owner can check in. A colleague who arrives first can't keep the room for them.
+
 ## ADR-0031: The whole app in containers: nginx serves the build and passes /api and /hubs to the API
 
 **Decision:**

@@ -15,6 +15,7 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize, map } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import {
+  CHECK_IN,
   DEFAULT_REMINDER_MINUTES,
   REMINDER_OPTIONS,
   RESERVATION_LIMITS,
@@ -65,6 +66,8 @@ interface ResourceOption {
   capacity: number | null;
   features: string[];
   photoUpdatedAt: string | null;
+  /** Its bookings must be checked in at the door (ADR-0030). */
+  checkInRequired: boolean;
 }
 
 /** Book a resource (`/reservations/new`) or change a booking (`/reservations/:id/edit`). */
@@ -92,6 +95,7 @@ export class ReservationForm implements OnInit {
   readonly end = input<string>();
 
   protected readonly limits = L;
+  protected readonly checkIn = CHECK_IN;
   protected readonly reminderOptions = REMINDER_OPTIONS;
   /** Desktop notifications turned off in the browser: the reminder then only shows in the app. */
   protected readonly desktopBlocked = this.reminderAlerts.permission() === 'denied';
@@ -142,6 +146,7 @@ export class ReservationForm implements OnInit {
         capacity: null,
         features: [],
         photoUpdatedAt: null,
+        checkInRequired: reservation.checkInRequired,
       },
     ];
   });
@@ -495,6 +500,7 @@ function toOption(resource: Resource): ResourceOption {
     capacity: resource.capacity,
     features: resource.features,
     photoUpdatedAt: resource.photoUpdatedAt,
+    checkInRequired: resource.checkInRequired,
   };
 }
 

@@ -24,6 +24,7 @@ export class ReservationHubService {
   private readonly updated = new Subject<Reservation>();
   private readonly cancelled = new Subject<Reservation>();
   private readonly startingSoon = new Subject<Reservation>();
+  private readonly released = new Subject<Reservation>();
   private readonly reconnected = new Subject<void>();
 
   readonly created$: Observable<Reservation> = this.created.asObservable();
@@ -31,6 +32,11 @@ export class ReservationHubService {
   readonly cancelled$: Observable<Reservation> = this.cancelled.asObservable();
   /** The signed-in user's own reminders; the API sends them to the owner only. */
   readonly startingSoon$: Observable<Reservation> = this.startingSoon.asObservable();
+  /**
+   * The signed-in user's own bookings released because nobody checked in (ADR-0030), to the
+   * owner only. Everyone, the owner included, also gets the booking in `cancelled$`.
+   */
+  readonly released$: Observable<Reservation> = this.released.asObservable();
   readonly reconnected$: Observable<void> = this.reconnected.asObservable();
 
   connect(): void {
@@ -62,6 +68,9 @@ export class ReservationHubService {
     );
     connection.on('ReservationStartingSoon', (reservation: Reservation) =>
       this.startingSoon.next(reservation),
+    );
+    connection.on('ReservationReleased', (reservation: Reservation) =>
+      this.released.next(reservation),
     );
     connection.onreconnected(() => this.reconnected.next());
 

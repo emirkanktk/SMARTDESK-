@@ -77,7 +77,9 @@ CI runs all of these on every pull request, and the browser tests too (see Brows
 | `/profile` | signed in | Your own name, which you can change, and your email and role, which an admin changes. Open it, the password page or sign out from the menu under your name: at the bottom of the sidebar, or in the top right on narrower screens |
 | `/dashboard` | signed in | Today's reservations, what's in use now, your next bookings |
 | `/resources` | signed in | Your team's resources and the shared ones; admins see every resource. Each row says whose team it belongs to, or "Shared" |
-| `/resources/new`, `/resources/:id/edit` | Admin, Manager | Admins create and edit any resource and pick the teams that may use it (none: shared by everyone). A manager adds resources to their own team, and edits, activates and deactivates only the ones that belong to their team alone (ADR-0022) |
+| `/resources/new`, `/resources/:id/edit` | Admin, Manager | Admins create and edit any resource and pick the teams that may use it (none: shared by everyone). A manager adds resources to their own team, and edits, activates and deactivates only the ones that belong to their team alone (ADR-0022). Switching on check-in shows the resource's QR code here (ADR-0030) |
+| `/resources/:id/check-in-poster` | Admin, Manager | The QR code on a sheet to print and put up at the door. Outside the shell, so only the sheet prints |
+| `/check-in/:resourceId?code=…` | signed in | Where a resource's QR code leads: your booking of it, and a button to check in while that's open |
 | `/availability` | signed in | What's free for a time range, by type and capacity |
 | `/calendar` | signed in | The shared office calendar: who booked what |
 | `/reservations/new`, `/reservations/:id/edit` | signed in | Book, change or cancel. Read-only for anyone but the owner or an admin |

@@ -102,12 +102,21 @@ public sealed class UpdateReservationCommandHandler(
 
                 // Excluding itself: shifting 10:00-11:00 to 10:30-11:30 must not clash with its
                 // own old slot.
-                await BookingGuard.EnsureBookableAsync(
+                var resource = await BookingGuard.EnsureBookableAsync(
                     db, currentUser, request.ResourceId, start, end, reservation.Id, cancellationToken);
 
                 reservation.ResourceId = request.ResourceId;
                 reservation.StartDateTime = start;
                 reservation.EndDateTime = end;
+
+                // A new start or another resource is a new visit, claimed knowing what the door
+                // asks for now (ADR-0030). Staying longer is the same visit and keeps what it was
+                // booked with: a meeting that runs over in a room switched on since isn't
+                // released for a check-in its owner never knew about.
+                if (startChanged || resourceChanged)
+                {
+                    reservation.CheckInRequired = resource.CheckInRequired;
+                }
             }
             else
             {
@@ -123,6 +132,14 @@ public sealed class UpdateReservationCommandHandler(
             if (startChanged || reminderChanged)
             {
                 reservation.ReminderSentAt = null;
+            }
+
+            // Likewise a check-in made for the old start or at the old resource's door is for a
+            // visit that's no longer happening. Only a booking that hasn't started can be moved,
+            // so this undoes at most a check-in from the few minutes before its start.
+            if (startChanged || resourceChanged)
+            {
+                reservation.CheckedInAt = null;
             }
 
             reservation.ReminderMinutes = request.ReminderMinutes;

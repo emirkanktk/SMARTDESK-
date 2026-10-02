@@ -1,9 +1,12 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
+import { Reservation } from '../models/reservation.model';
 import {
   AvailabilityQuery,
+  CheckInCode,
   CreateResourceRequest,
   Resource,
   ResourceFilter,
@@ -88,5 +91,30 @@ export class ResourceService {
     return this.http.patch<Resource>(`${this.baseUrl}/${encodeURIComponent(id)}/status`, {
       status,
     });
+  }
+
+  /** Its QR code to print (ADR-0030). For whoever may edit the resource. */
+  getCheckInCode(id: string): Observable<CheckInCode> {
+    return this.http.get<CheckInCode>(`${this.baseUrl}/${encodeURIComponent(id)}/check-in-code`);
+  }
+
+  /** A new QR code; the one already printed stops working at once. */
+  replaceCheckInCode(id: string): Observable<CheckInCode> {
+    return this.http.post<CheckInCode>(
+      `${this.baseUrl}/${encodeURIComponent(id)}/check-in-code`,
+      null,
+    );
+  }
+
+  /**
+   * Checks the caller in to their booking of the resource that's open for it now, with the
+   * secret from its QR code. The check-in page shows why when it can't, so no toast.
+   */
+  checkIn(id: string, code: string): Observable<Reservation> {
+    return this.http.post<Reservation>(
+      `${this.baseUrl}/${encodeURIComponent(id)}/check-in`,
+      { code },
+      { context: new HttpContext().set(SKIP_ERROR_NOTIFICATION, true) },
+    );
   }
 }

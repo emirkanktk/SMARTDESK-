@@ -28,6 +28,8 @@ export interface Resource {
   teams: ResourceTeam[];
   /** When its photo last changed; null when it has none and its type's picture shows (ADR-0027). */
   photoUpdatedAt: string | null;
+  /** Bookings of it must be checked in at the door with its QR code, or they're released (ADR-0030). */
+  checkInRequired: boolean;
 }
 
 export interface ResourceFilter {
@@ -53,6 +55,7 @@ interface ResourceFields {
   location: string;
   description: string | null;
   features: string[];
+  checkInRequired: boolean;
 }
 
 /**
@@ -89,3 +92,12 @@ export const RESOURCE_PHOTO = {
   maxBytes: 2 * 1024 * 1024,
   maxSide: 1600,
 } as const;
+
+/**
+ * What a resource's QR code holds (ADR-0030): its secret, and the check-in page's address with
+ * the secret in it. Only those who may edit the resource get it.
+ */
+export interface CheckInCode {
+  code: string;
+  url: string;
+}

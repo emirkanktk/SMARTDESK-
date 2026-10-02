@@ -33,11 +33,11 @@ public class AssistantToolboxTests
     private static DateTime Utc(int day, int hour, int minute = 0) => new(2026, 10, day, hour, minute, 0, DateTimeKind.Utc);
 
     private static ResourceDto Room(string name, int capacity = 8, string location = "2nd Floor", params string[] features) =>
-        new(Guid.NewGuid(), name, Guid.NewGuid(), "Meeting Room", capacity, location, ResourceStatus.Active, null, features, [], null);
+        new(Guid.NewGuid(), name, Guid.NewGuid(), "Meeting Room", capacity, location, ResourceStatus.Active, null, features, [], null, false);
 
     private static ReservationDto Booking(ResourceDto room, DateTime start, DateTime end, ReservationStatus status = ReservationStatus.Confirmed) =>
         new(Guid.NewGuid(), room.Id, room.Name, room.ResourceTypeId, room.ResourceTypeName, room.Location, Guid.NewGuid(),
-            start, end, status, "Weekly sync", null);
+            start, end, status, "Weekly sync", null, false, null, null);
 
     private static async Task<JsonElement> RunAsync(AssistantToolbox toolbox, string tool, object input) =>
         JsonSerializer.Deserialize<JsonElement>(
@@ -78,6 +78,19 @@ public class AssistantToolboxTests
         // The smallest room that fits first.
         result.GetProperty("resources").EnumerateArray().Select(r => r.GetProperty("name").GetString())
             .Should().Equal("Room A", "Room B");
+    }
+
+    [Fact]
+    public async Task FindFreeResources_SaysWhichRoomsAskForACheckIn()
+    {
+        AnswerFreeWith(Room("Room A") with { CheckInRequired = true }, Room("Room B"));
+
+        var result = await RunAsync(AssistantToolbox.FindFreeResources, new { start = "2026-10-06T10:00", end = "2026-10-06T11:00" });
+
+        // So the assistant can tell the user about the QR code at the door (ADR-0030).
+        result.GetProperty("resources").EnumerateArray()
+            .ToDictionary(r => r.GetProperty("name").GetString()!, r => r.GetProperty("checkInRequired").GetBoolean())
+            .Should().Equal(new Dictionary<string, bool> { ["Room A"] = true, ["Room B"] = false });
     }
 
     [Fact]

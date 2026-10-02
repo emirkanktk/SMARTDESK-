@@ -51,6 +51,14 @@ export const routes: Routes = [
       import('./features/password/change-password').then((m) => m.ChangePassword),
   },
   {
+    // Outside the shell, so only the sheet with the QR code prints (ADR-0030).
+    path: 'resources/:id/check-in-poster',
+    canActivate: [authGuard, resourceEditorGuard],
+    title: $localize`:@@title.checkInPoster:QR code for checking in · SmartDesk`,
+    loadComponent: () =>
+      import('./features/check-in-poster/check-in-poster').then((m) => m.CheckInPoster),
+  },
+  {
     // Every signed-in screen renders inside the shell. canActivateChild re-checks the
     // session on each navigation, so an expired token is caught before the screen loads.
     path: '',
@@ -105,6 +113,13 @@ export const routes: Routes = [
         title: $localize`:@@title.editReservation:Change reservation · SmartDesk`,
         loadComponent: () =>
           import('./features/reservation/reservation-form').then((m) => m.ReservationForm),
+      },
+      {
+        // Where a resource's QR code leads (ADR-0030). Signed out, the guard sends the phone
+        // to sign in first and back here afterwards, code and all.
+        path: 'check-in/:resourceId',
+        title: $localize`:@@title.checkIn:Check in · SmartDesk`,
+        loadComponent: () => import('./features/check-in/check-in').then((m) => m.CheckIn),
       },
       {
         path: 'reservations/mine',

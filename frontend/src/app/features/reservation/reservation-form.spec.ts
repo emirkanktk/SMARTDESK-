@@ -150,6 +150,22 @@ describe('ReservationForm', () => {
       ).toBe(`type-picture:${room.resourceTypeName}`);
     });
 
+    it('says when a resource must be checked in at the door, and only then', async () => {
+      getResources.mockReturnValue(of([{ ...room, checkInRequired: true }, desk]));
+      await render({ resourceId: room.id });
+
+      expect(element.querySelector('.check-in-note')!.textContent).toContain(
+        'scan the QR code at the door from 10 minutes before the start until 15 minutes after',
+      );
+
+      const select = field<HTMLSelectElement>('#resource');
+      select.value = desk.id;
+      select.dispatchEvent(new Event('change'));
+      await fixture.whenStable();
+
+      expect(element.querySelector('.check-in-note')).toBeNull();
+    });
+
     it('starts at the next half hour for one hour without a link', async () => {
       await render();
 

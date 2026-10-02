@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import { fakeResource } from '../../../testing/resource-fixtures';
+import { SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
 import { ResourceService } from './resource.service';
 
 describe('ResourceService', () => {
@@ -105,5 +106,25 @@ describe('ResourceService', () => {
     const req = http.expectOne({ method: 'PATCH', url: `${base}/res%2F1/status` });
     expect(req.request.body).toEqual({ status: 'Maintenance' });
     req.flush(fakeResource({ status: 'Maintenance' }));
+  });
+
+  it('gets the QR code with GET and replaces it with POST', () => {
+    const code = { code: 'c0de', url: 'http://localhost:4200/check-in/res-1?code=c0de' };
+    service.getCheckInCode('res/1').subscribe();
+    service.replaceCheckInCode('res/1').subscribe();
+
+    http.expectOne({ method: 'GET', url: `${base}/res%2F1/check-in-code` }).flush(code);
+    const replace = http.expectOne({ method: 'POST', url: `${base}/res%2F1/check-in-code` });
+    expect(replace.request.body).toBeNull();
+    replace.flush(code);
+  });
+
+  it('checks in with the code, and leaves explaining a refusal to the page', () => {
+    service.checkIn('res/1', 'c0de').subscribe();
+
+    const req = http.expectOne({ method: 'POST', url: `${base}/res%2F1/check-in` });
+    expect(req.request.body).toEqual({ code: 'c0de' });
+    expect(req.request.context.get(SKIP_ERROR_NOTIFICATION)).toBe(true);
+    req.flush(null);
   });
 });

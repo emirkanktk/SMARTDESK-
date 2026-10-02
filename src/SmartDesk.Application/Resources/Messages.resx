@@ -135,6 +135,15 @@
   <data name="Booking_TakenResource" xml:space="preserve">
     <value>The resource is already reserved for part of that time.</value>
   </data>
+  <data name="CheckIn_NotUsed" xml:space="preserve">
+    <value>{0} doesn't use check-in.</value>
+  </data>
+  <data name="CheckIn_NothingToCheckIn" xml:space="preserve">
+    <value>You have no booking of {0} to check in to right now. Check-in opens {1} minutes before the start and closes {2} minutes after it.</value>
+  </data>
+  <data name="CheckIn_WrongCode" xml:space="preserve">
+    <value>This QR code is no longer valid. Scan the current code for {0}.</value>
+  </data>
   <data name="Email_AccountCreated_Body" xml:space="preserve">
     <value>{0} created a SmartDesk account for you, to book meeting rooms, desks and equipment. {0} will give you a temporary password; when you first sign in, you'll choose your own.</value>
   </data>
@@ -317,6 +326,9 @@
   </data>
   <data name="Property_Capacity" xml:space="preserve">
     <value>Capacity</value>
+  </data>
+  <data name="Property_Code" xml:space="preserve">
+    <value>Code</value>
   </data>
   <data name="Property_CurrentPassword" xml:space="preserve">
     <value>Current Password</value>

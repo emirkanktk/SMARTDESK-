@@ -44,7 +44,8 @@ textarea.input {
 }
 
 .teams,
-.photo {
+.photo,
+.check-in {
   margin: 0 0 var(--space-4);
   padding: 0;
   border: 0;
@@ -63,7 +64,8 @@ textarea.input {
   margin-top: var(--space-2);
 }
 
-.team-option {
+.team-option,
+.check-option {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);

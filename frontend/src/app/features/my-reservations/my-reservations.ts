@@ -15,7 +15,7 @@ import {
   tap,
 } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
-import { Reservation } from '../../core/models/reservation.model';
+import { Reservation, checkInWindow } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
@@ -34,6 +34,11 @@ interface Item {
   inProgress: boolean;
   /** "Reminder 15 min before", while it can still come: Confirmed and not started. */
   reminder: string | null;
+  /** "Check in at the door 09:50-10:15", while that's still to do (ADR-0030). */
+  checkInHint: string | null;
+  checkedIn: boolean;
+  /** "Nobody checked in by 10:15", for a booking released because of it. */
+  releasedNote: string | null;
 }
 
 /**
@@ -80,6 +85,9 @@ export class MyReservations implements OnInit {
       const start = new Date(reservation.startDateTime);
       const end = new Date(reservation.endDateTime);
       const minutes = reservation.reminderMinutes;
+      const confirmed = reservation.status === 'Confirmed';
+      const { opensAt, closesAt } = checkInWindow(reservation);
+      const time = (date: Date | string) => formatDate(date, 'HH:mm', this.locale);
       return {
         reservation,
         start,
@@ -92,6 +100,17 @@ export class MyReservations implements OnInit {
           minutes != null && reservation.status === 'Confirmed' && start.getTime() > now
             ? $localize`:@@mine.reminder:Reminder ${minutes}:minutes: min before`
             : null,
+        checkInHint:
+          confirmed &&
+          reservation.checkInRequired &&
+          !reservation.checkedInAt &&
+          closesAt.getTime() > now
+            ? $localize`:@@mine.checkInHint:Check in at the door ${time(opensAt)}:from:-${time(closesAt)}:until:`
+            : null,
+        checkedIn: confirmed && reservation.checkedInAt !== null,
+        releasedNote: reservation.releasedAt
+          ? $localize`:@@mine.releasedNote:Nobody checked in by ${time(reservation.releasedAt)}:time:`
+          : null,
       };
     });
   });

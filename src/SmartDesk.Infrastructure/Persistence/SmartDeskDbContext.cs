@@ -7,6 +7,7 @@ using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Entities;
+using SmartDesk.Domain.Rules;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence.Seed;
 
@@ -55,6 +56,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Location).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.CheckInCode).IsRequired().HasMaxLength(CheckInRules.CodeLength);
 
             entity.HasOne(e => e.ResourceType)
                 .WithMany(rt => rt.Resources)
@@ -131,6 +133,12 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.HasIndex(e => e.StartDateTime)
                 .HasDatabaseName("IX_Reservations_PendingReminders")
                 .HasFilter("\"ReminderMinutes\" IS NOT NULL AND \"ReminderSentAt\" IS NULL");
+
+            // Likewise for the release job (ADR-0030): confirmed bookings that need a check-in
+            // nobody has made yet. A booking leaves it when checked in, released or cancelled.
+            // Named, because an unnamed HasIndex on the same column would be the index above.
+            entity.HasIndex(e => e.StartDateTime, "IX_Reservations_AwaitingCheckIn")
+                .HasFilter("\"CheckInRequired\" AND \"CheckedInAt\" IS NULL AND \"Status\" = 0");
 
             // Business rule 2, enforced by the database as well as the validator.
             entity.ToTable(t => t.HasCheckConstraint(

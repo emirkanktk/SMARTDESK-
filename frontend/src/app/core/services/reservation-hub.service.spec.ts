@@ -47,13 +47,21 @@ describe('ReservationHubService', () => {
     hub.updated$.subscribe((r) => seen.push(`updated ${r.id}`));
     hub.cancelled$.subscribe((r) => seen.push(`cancelled ${r.id}`));
     hub.startingSoon$.subscribe((r) => seen.push(`starting soon ${r.id}`));
+    hub.released$.subscribe((r) => seen.push(`released ${r.id}`));
 
     handlers.get('ReservationCreated')!(fakeReservation({ id: 'a' }));
     handlers.get('ReservationUpdated')!(fakeReservation({ id: 'b' }));
     handlers.get('ReservationCancelled')!(fakeReservation({ id: 'c' }));
     handlers.get('ReservationStartingSoon')!(fakeReservation({ id: 'd' }));
+    handlers.get('ReservationReleased')!(fakeReservation({ id: 'e' }));
 
-    expect(seen).toEqual(['created a', 'updated b', 'cancelled c', 'starting soon d']);
+    expect(seen).toEqual([
+      'created a',
+      'updated b',
+      'cancelled c',
+      'starting soon d',
+      'released e',
+    ]);
   });
 
   describe('catching up', () => {
@@ -104,7 +112,7 @@ describe('ReservationHubService', () => {
 
   it('returns nothing to the server from a handler', () => {
     // SignalR treats a returned value as an answer the server didn't ask for and logs an error.
-    expect(handlers.size).toBe(4);
+    expect(handlers.size).toBe(5);
     for (const handler of handlers.values()) {
       expect(handler(fakeReservation())).toBeUndefined();
     }

@@ -1,0 +1,44 @@
+@if (code(); as current) {
+  <div class="check-in-code">
+    <app-qr-code class="qr" [value]="current.url" [label]="qrLabel()" />
+    <div class="details">
+      <span class="text-muted hint" i18n="@@checkInCode.hint"
+        >Print it and put it up at the door. Anyone with the link below can check in, so share it
+        only with whoever puts the code up.</span
+      >
+      <a class="link" [href]="current.url" target="_blank" rel="noopener">{{ current.url }}</a>
+      <div class="actions">
+        <a
+          class="btn btn-secondary"
+          [routerLink]="['/resources', resourceId(), 'check-in-poster']"
+          target="_blank"
+          i18n="@@checkInCode.print"
+          >Print QR code</a
+        >
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="copy(current.url)"
+          i18n="@@checkInCode.copy"
+        >
+          Copy link
+        </button>
+        <button
+          type="button"
+          class="btn text-button"
+          [disabled]="replacing()"
+          (click)="replace()"
+          i18n="@@checkInCode.replace"
+        >
+          Replace code
+        </button>
+      </div>
+    </div>
+  </div>
+} @else if (failed()) {
+  <span class="field-error" i18n="@@checkInCode.failed">The QR code could not be loaded.</span>
+} @else {
+  <span class="text-muted hint" role="status" i18n="@@checkInCode.loading"
+    >Loading the QR code…</span
+  >
+}

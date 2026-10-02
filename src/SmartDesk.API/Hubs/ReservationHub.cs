@@ -18,6 +18,10 @@ public class ReservationHub(HubConnectionRegistry connections) : Hub
     // Sent only to the reservation's owner, not to everyone (ADR-0018).
     public const string StartingSoon = "ReservationStartingSoon";
 
+    // Also only to the owner: their booking was released because nobody checked in (ADR-0030).
+    // Everyone else hears ReservationCancelled, which frees the slot on their screens.
+    public const string Released = "ReservationReleased";
+
     // Events about a team's resource go to its teams and the Admins only (ADR-0022).
     public const string AdminsGroup = "admins";
 
