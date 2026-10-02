@@ -145,6 +145,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/profile/profile').then((m) => m.Profile),
       },
       {
+        path: 'guide',
+        title: $localize`:@@title.guide:How SmartDesk works · SmartDesk`,
+        loadComponent: () => import('./features/guide/guide').then((m) => m.Guide),
+      },
+      {
         path: 'admin',
         title: $localize`:@@title.admin:Admin · SmartDesk`,
         canActivate: [adminGuard],

@@ -1,0 +1,37 @@
+<div class="page-header">
+  <h1 i18n="@@guide.heading">How SmartDesk works</h1>
+</div>
+<p class="intro" i18n="@@guide.intro">
+  Everything you can do here, in the order you'll need it. Each part links to the page where you do
+  it.
+</p>
+
+<nav class="card toc" aria-labelledby="guide-toc">
+  <h2 id="guide-toc" i18n="@@guide.toc">On this page</h2>
+  <ol>
+    @for (section of sections(); track section.id) {
+      <li>
+        <a [routerLink]="[]" [fragment]="section.id" (click)="jump(section.id)">{{
+          section.title
+        }}</a>
+      </li>
+    }
+  </ol>
+</nav>
+
+@for (section of sections(); track section.id) {
+  <section class="card part" [id]="section.id" [attr.aria-labelledby]="section.id + '-title'">
+    <span class="icon" aria-hidden="true"><app-icon [name]="section.icon" /></span>
+    <div class="body">
+      <h2 [id]="section.id + '-title'" tabindex="-1">{{ section.title }}</h2>
+      <ul>
+        @for (step of section.steps; track $index) {
+          <li>{{ step }}</li>
+        }
+      </ul>
+      @if (section.link; as link) {
+        <a class="btn btn-secondary btn-sm" [routerLink]="link.path">{{ link.label }}</a>
+      }
+    </div>
+  </section>
+}

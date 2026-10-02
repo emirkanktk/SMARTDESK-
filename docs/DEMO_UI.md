@@ -289,6 +289,12 @@ one there's no **Assistant** button anywhere, and nothing else changes.
   every later one"); in **My reservations** each date says how it repeats, and **Cancel this
   and later dates** ends the series early, with one message to Ayşe (ADR-0035).
 
+### 18. The guide
+
+- **Guide** at the bottom of the menu: the app in ten short parts, each with a link to its page.
+  Sign in as Zeynep and then as the admin: each sees the part for their role, and the assistant's
+  part appears only on a server with an assistant.
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

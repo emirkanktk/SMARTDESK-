@@ -85,6 +85,7 @@ CI runs all of these on every pull request, and the browser tests too (see Brows
 | `/calendar` | signed in | The shared office calendar: who booked what |
 | `/reservations/new`, `/reservations/:id/edit` | signed in | Book, change or cancel; managers and admins invite people (ADR-0032). A new booking can repeat, its dates listed first (ADR-0035). Read-only for anyone but the owner or an admin, where someone invited answers |
 | `/reservations/mine` | signed in | Your upcoming, past and cancelled reservations, and the meetings you're invited to. A booking in progress can be extended here (ADR-0033) |
+| `/guide` | signed in | How SmartDesk works: each part of the app in a few steps, with a link to where it's done; a manager's and an admin's parts for them only, the assistant's only when the server has one. Each part has its own address (`/guide#door`) |
 | `/inbox` | signed in | Your messages: invitations to answer, meetings moved or cancelled, and who's coming to yours. The **Inbox** link counts the unread ones |
 | `/admin` | Admin | Resource counts, and every reservation in a date range to change or cancel |
 | `/admin/reports` | Admin | Usage report |

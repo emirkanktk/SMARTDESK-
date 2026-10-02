@@ -1,0 +1,135 @@
+import { Role, Roles } from '../../core/constants/roles';
+import { CHECK_IN, EXTENSION_OPTIONS } from '../../core/models/reservation.model';
+import { IconName } from '../../shared/components/icon/icon';
+
+/** How long before the release everyone on a booking is warned (ADR-0034). */
+export const WARNED_BEFORE_RELEASE_MINUTES = 5;
+/** How long before its end a booking under way asks whether it needs longer (ADR-0033). */
+export const ASKED_BEFORE_END_MINUTES = 10;
+
+/** One part of the guide: what to do, step by step, and where. */
+export interface GuideSection {
+  id: string;
+  icon: IconName;
+  title: string;
+  steps: readonly string[];
+  /** The page where it's done. */
+  link?: { path: string; label: string };
+  /** Only for these roles; for everyone when absent. */
+  roles?: readonly Role[];
+  /** Only when the server has the assistant (ADR-0029). */
+  needsAssistant?: boolean;
+}
+
+/** Everything the app does, in the order a new user needs it. */
+export const GUIDE_SECTIONS: readonly GuideSection[] = [
+  {
+    id: 'find',
+    icon: 'search',
+    title: $localize`:@@guide.find.title:Find a free resource`,
+    steps: [
+      $localize`:@@guide.find.when:Open Availability and say when you need it, and what kind of resource.`,
+      $localize`:@@guide.find.listed:Only what's free for the whole time is listed, with its capacity, features and photo.`,
+      $localize`:@@guide.find.book:Book opens the booking form, already filled in.`,
+    ],
+    link: { path: '/availability', label: $localize`:@@guide.find.link:Find a free resource` },
+  },
+  {
+    id: 'book',
+    icon: 'calendar-plus',
+    title: $localize`:@@guide.book.title:Book it`,
+    steps: [
+      $localize`:@@guide.book.form:Check the times, add a note if you like, and choose a reminder.`,
+      $localize`:@@guide.book.repeat:To repeat it, choose how often and the last day. The dates are listed first, any that aren't free with why, and booking skips those.`,
+      $localize`:@@guide.book.taken:If someone took it a moment before you, you're told so, with a link to what else is free then.`,
+    ],
+    link: { path: '/reservations/new', label: $localize`:@@guide.book.link:Book a resource` },
+  },
+  {
+    id: 'door',
+    icon: 'map-pin',
+    title: $localize`:@@guide.door.title:Check in at the door`,
+    steps: [
+      $localize`:@@guide.door.window:Some rooms ask for a check-in: scan the QR code at the door from ${CHECK_IN.opensBeforeMinutes}:before: minutes before the start until ${CHECK_IN.graceMinutes}:after: minutes after.`,
+      $localize`:@@guide.door.released:If nobody checks in by then, the booking is released so others can use the room. Everyone on it is warned ${WARNED_BEFORE_RELEASE_MINUTES}:minutes: minutes before.`,
+      $localize`:@@guide.door.screen:A room with a screen at the door shows a code that changes every 30 seconds: scan the screen itself, not a photo of it.`,
+      $localize`:@@guide.door.end:Done early? End the booking from the check-in page, and the room is free again.`,
+    ],
+  },
+  {
+    id: 'meetings',
+    icon: 'team',
+    title: $localize`:@@guide.meetings.title:Meetings and your inbox`,
+    steps: [
+      $localize`:@@guide.meetings.invite:Team managers and admins can invite people when they book; each gets a message in their inbox.`,
+      $localize`:@@guide.meetings.answer:Answer from the inbox: coming, or not and why. Only the organizer sees the reason.`,
+      $localize`:@@guide.meetings.news:If a meeting moves or is cancelled, everyone invited is told. A meeting that repeats is one message, answered once for all its dates.`,
+    ],
+    link: { path: '/inbox', label: $localize`:@@guide.meetings.link:Open your inbox` },
+  },
+  {
+    id: 'longer',
+    icon: 'clock',
+    title: $localize`:@@guide.longer.title:Running over`,
+    steps: [
+      $localize`:@@guide.longer.asked:${ASKED_BEFORE_END_MINUTES}:minutes: minutes before a booking ends, you're asked whether you need longer.`,
+      $localize`:@@guide.longer.extend:Make it run ${EXTENSION_OPTIONS[0]}:short:, ${EXTENSION_OPTIONS[1]}:medium: or ${EXTENSION_OPTIONS[2]}:long: minutes longer with a click, as far as the room is free. My reservations has the same for a booking under way.`,
+    ],
+  },
+  {
+    id: 'mine',
+    icon: 'clipboard',
+    title: $localize`:@@guide.mine.title:Your reservations`,
+    steps: [
+      $localize`:@@guide.mine.tabs:My reservations has what's coming, what's past, what was cancelled, and the meetings you're invited to.`,
+      $localize`:@@guide.mine.change:Change or cancel a booking that hasn't started. For one that repeats, cancel a single date, or that date and every later one.`,
+    ],
+    link: { path: '/reservations/mine', label: $localize`:@@guide.mine.link:My reservations` },
+  },
+  {
+    id: 'team',
+    icon: 'team',
+    title: $localize`:@@guide.team.title:Your team`,
+    steps: [
+      $localize`:@@guide.team.requests:People who sign up with your email ask to join your team: approve them, or turn them down, in My team.`,
+      $localize`:@@guide.team.add:Add members yourself with a temporary password; they choose their own when they first sign in.`,
+      $localize`:@@guide.team.resources:A resource you add belongs to your team: only your team sees and books it.`,
+    ],
+    link: { path: '/team', label: $localize`:@@guide.team.link:My team` },
+    roles: [Roles.Manager],
+  },
+  {
+    id: 'admin',
+    icon: 'sliders',
+    title: $localize`:@@guide.admin.title:Running the office`,
+    steps: [
+      $localize`:@@guide.admin.overview:Admin shows every reservation, and the resources out of use.`,
+      $localize`:@@guide.admin.blocks:Block a resource for cleaning or repairs under Blocked windows; bookings already there have to go first.`,
+      $localize`:@@guide.admin.users:Approve sign-ups, change roles and disable accounts in Users; see how the resources are used in the usage report.`,
+    ],
+    link: { path: '/admin', label: $localize`:@@guide.admin.link:Open Admin` },
+    roles: [Roles.Admin],
+  },
+  {
+    id: 'you',
+    icon: 'user',
+    title: $localize`:@@guide.you.title:Make it yours`,
+    steps: [
+      $localize`:@@guide.you.switches:Switch between Türkçe and English, and between light and dark, at the top of the page.`,
+      $localize`:@@guide.you.profile:Change your name or password from the menu under your name.`,
+      $localize`:@@guide.you.notifications:Allow desktop notifications to see reminders and messages when SmartDesk isn't in front of you.`,
+    ],
+    link: { path: '/profile', label: $localize`:@@guide.you.link:My profile` },
+  },
+  {
+    id: 'assistant',
+    icon: 'sparkles',
+    title: $localize`:@@guide.assistant.title:The assistant`,
+    steps: [
+      $localize`:@@guide.assistant.ask:Ask in your own words, like "a room for 4 on Friday afternoon".`,
+      $localize`:@@guide.assistant.confirm:It suggests bookings and you confirm them: it never books by itself.`,
+      $localize`:@@guide.assistant.open:Open it with the button in the corner.`,
+    ],
+    needsAssistant: true,
+  },
+];
