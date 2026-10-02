@@ -74,6 +74,7 @@ import {
   describeSeries,
   weekDayOf,
 } from '../../shared/utils/recurrence';
+import { searchKey } from '../../shared/utils/search';
 import { applyServerErrors } from '../../shared/utils/server-errors';
 import {
   DateRangeOptions,
@@ -278,10 +279,11 @@ export class ReservationForm implements OnInit {
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, this.locale));
   });
   protected readonly visiblePeople = computed(() => {
-    const term = this.attendeeSearch().trim().toLowerCase();
+    const term = searchKey(this.attendeeSearch().trim());
     return term
       ? this.people().filter(
-          (p) => p.name.toLowerCase().includes(term) || p.email?.toLowerCase().includes(term),
+          (p) =>
+            searchKey(p.name).includes(term) || (!!p.email && searchKey(p.email).includes(term)),
         )
       : this.people();
   });

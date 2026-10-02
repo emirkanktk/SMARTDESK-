@@ -11,6 +11,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { AccountStatusBadge } from '../../shared/components/account-status-badge/account-status-badge';
 import { TemporaryPasswordForm } from '../../shared/components/temporary-password-form/temporary-password-form';
 import { accountActionError } from '../../shared/utils/account-errors';
+import { searchKey } from '../../shared/utils/search';
 import { applyServerErrors } from '../../shared/utils/server-errors';
 import { generateTemporaryPassword } from '../../shared/utils/temporary-password';
 import { missingRulesMessage, passwordValidator } from '../../shared/validators/password.validator';
@@ -64,13 +65,13 @@ export class Users {
   protected readonly rows = computed(() => {
     const status = this.statusFilter();
     const role = this.roleFilter();
-    const term = this.search().trim().toLowerCase();
+    const term = searchKey(this.search().trim());
     return this.accounts()
       .filter(
         (a) =>
           (!status || a.status === status) &&
           (!role || a.role === role) &&
-          (!term || `${a.displayName} ${a.email}`.toLowerCase().includes(term)),
+          (!term || searchKey(`${a.displayName} ${a.email}`).includes(term)),
       )
       .sort(compareAccounts);
   });

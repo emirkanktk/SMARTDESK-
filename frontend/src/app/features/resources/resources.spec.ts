@@ -142,6 +142,17 @@ describe('Resources', () => {
     }
   });
 
+  it('finds a place with a capital İ by a plain i ("istanbul" finds "İstanbul")', async () => {
+    getResources.mockReturnValue(of([room, { ...desk, location: 'İstanbul Ofisi' }]));
+    await render();
+    const search = element.querySelector<HTMLInputElement>('#search')!;
+    search.value = 'istanbul';
+    search.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+
+    expect(rowNames()).toEqual(['Desk 12']);
+  });
+
   it('shows an error when loading fails', async () => {
     getResources.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
     await render();

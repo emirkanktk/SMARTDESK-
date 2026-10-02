@@ -16,6 +16,7 @@ import { ResourceService } from '../../core/services/resource.service';
 import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { canManageResource, teamLabel } from '../../shared/utils/resource-access';
+import { searchKey } from '../../shared/utils/search';
 import { resourceStatusLabel } from '../../core/i18n/labels';
 
 /** Resource list for everyone; admins also get create, edit and activate/deactivate. */
@@ -55,15 +56,15 @@ export class Resources {
   });
 
   protected readonly visibleResources = computed(() => {
-    const term = foldCase(this.search().trim());
+    const term = searchKey(this.search().trim());
     if (!term) {
       return this.resources();
     }
     return this.resources().filter(
       (r) =>
-        foldCase(r.name).includes(term) ||
-        foldCase(r.location).includes(term) ||
-        r.features.some((f) => foldCase(f).includes(term)),
+        searchKey(r.name).includes(term) ||
+        searchKey(r.location).includes(term) ||
+        r.features.some((f) => searchKey(f).includes(term)),
     );
   });
 
@@ -151,11 +152,4 @@ export class Resources {
         },
       });
   }
-}
-
-// Locale-independent on purpose: toLocaleLowerCase() follows the browser's locale, and in
-// Turkish that can turn "I" into dotless "ı", so "hdmi" would not match "HDMI". Same rule
-// as the API's OrdinalIgnoreCase.
-function foldCase(value: string): string {
-  return value.toLowerCase();
 }
