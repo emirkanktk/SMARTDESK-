@@ -1,0 +1,213 @@
+// A screen at the door, read from a few steps away: big type, one look, works on a tablet held
+// either way.
+:host {
+  display: block;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.door {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: 100vh;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+
+  .name {
+    margin: 0;
+    font-size: clamp(1.75rem, 4vw, 3rem);
+  }
+
+  .where {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-muted);
+    font-size: clamp(1rem, 1.8vw, 1.25rem);
+  }
+}
+
+.clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+
+  .time {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .date {
+    color: var(--color-text-muted);
+  }
+}
+
+.body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-5);
+  align-items: stretch;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: clamp(1rem, 3vw, 2rem);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border-left: 0.5rem solid var(--color-border-strong);
+
+  &.free {
+    border-left-color: var(--color-success);
+  }
+
+  &.busy {
+    border-left-color: var(--color-danger);
+  }
+
+  &.unavailable {
+    border-left-color: var(--color-warning);
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .big {
+    font-size: clamp(2.5rem, 7vw, 5rem);
+    font-weight: 800;
+    line-height: 1.05;
+  }
+
+  .detail {
+    font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  }
+
+  .waiting {
+    margin-top: var(--space-2);
+    padding: var(--space-3);
+    border-radius: var(--radius);
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+    font-weight: 600;
+  }
+
+  .checked {
+    color: var(--color-success);
+    font-weight: 700;
+  }
+}
+
+.today {
+  margin-top: auto;
+  padding-top: var(--space-4);
+
+  h2 {
+    margin: 0 0 var(--space-2);
+    color: var(--color-text-muted);
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    padding: var(--space-1) var(--space-3);
+    border-radius: 999px;
+    background: var(--color-surface-2);
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .none {
+    color: var(--color-text-muted);
+  }
+}
+
+.scan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: clamp(14rem, 30vw, 22rem);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  text-align: center;
+
+  @media (max-width: 760px) {
+    justify-self: center;
+  }
+
+  .qr {
+    width: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .scan-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .scan-note {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+}
+
+// How long the code on screen has left.
+.left {
+  width: 100%;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--gradient-brand);
+    transition: width 1s linear;
+  }
+}
+
+.offline {
+  margin: 0;
+  color: var(--color-warning);
+  font-weight: 600;
+  text-align: center;
+}
+
+.setup,
+.loading {
+  margin: auto;
+  max-width: 36rem;
+  text-align: center;
+}

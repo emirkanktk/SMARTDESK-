@@ -77,11 +77,16 @@ CI runs all of these on every pull request, and the browser tests too (see Brows
 | `/profile` | signed in | Your own name, which you can change, and your email and role, which an admin changes. Open it, the password page or sign out from the menu under your name: at the bottom of the sidebar, or in the top right on narrower screens |
 | `/dashboard` | signed in | Today's reservations, what's in use now, your next bookings |
 | `/resources` | signed in | Your team's resources and the shared ones; admins see every resource. Each row says whose team it belongs to, or "Shared" |
-| `/resources/new`, `/resources/:id/edit` | Admin, Manager | Admins create and edit any resource and pick the teams that may use it (none: shared by everyone). A manager adds resources to their own team, and edits, activates and deactivates only the ones that belong to their team alone (ADR-0022) |
+| `/resources/new`, `/resources/:id/edit` | Admin, Manager | Admins create and edit any resource and pick the teams that may use it (none: shared by everyone). A manager adds resources to their own team, and edits, activates and deactivates only the ones that belong to their team alone (ADR-0022). Switching on check-in shows the resource's QR code here (ADR-0030) |
+| `/resources/:id/check-in-poster` | Admin, Manager | The QR code on a sheet to print and put up at the door. Outside the shell, so only the sheet prints |
+| `/check-in/:resourceId?code=…` | signed in | Where a resource's QR code leads: your booking of it, and a button to check in while that's open. The code leaves the address once read; at a free room, book it on the spot; checked in, run longer or end it (ADR-0034) |
+| `/door/:resourceId#<token>` | the door screen, no sign-in | The tablet at a resource's door: free or in use, today's bookings as times, and a QR code that changes every 30 seconds (ADR-0034) |
 | `/availability` | signed in | What's free for a time range, by type and capacity |
 | `/calendar` | signed in | The shared office calendar: who booked what |
-| `/reservations/new`, `/reservations/:id/edit` | signed in | Book, change or cancel. Read-only for anyone but the owner or an admin |
-| `/reservations/mine` | signed in | Your upcoming, past and cancelled reservations |
+| `/reservations/new`, `/reservations/:id/edit` | signed in | Book, change or cancel; managers and admins invite people (ADR-0032). A new booking can repeat, its dates listed first (ADR-0035). Read-only for anyone but the owner or an admin, where someone invited answers |
+| `/reservations/mine` | signed in | Your upcoming, past and cancelled reservations, and the meetings you're invited to. A booking in progress can be extended here (ADR-0033) |
+| `/guide` | signed in | How SmartDesk works: each part of the app in a few steps, with a link to where it's done; a manager's and an admin's parts for them only, the assistant's only when the server has one. Each part has its own address (`/guide#door`) |
+| `/inbox` | signed in | Your messages: invitations to answer, meetings moved or cancelled, and who's coming to yours. The **Inbox** link counts the unread ones |
 | `/admin` | Admin | Resource counts, and every reservation in a date range to change or cancel |
 | `/admin/reports` | Admin | Usage report |
 | `/admin/blocks` | Admin | Blocked windows: take a resource out of booking for a while |

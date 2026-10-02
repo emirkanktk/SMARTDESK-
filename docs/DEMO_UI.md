@@ -215,6 +215,86 @@ one there's no **Assistant** button anywhere, and nothing else changes.
   and nothing is booked until a person presses its button, through the same endpoint and rules
   as the booking form (ADR-0029).
 
+### 13. Check-in with a QR code
+
+- In a third window, sign in as the admin (`admin@smartdesk.local`), open **Resources** →
+  **Board Room** → **Edit**, tick **Bookings must be checked in at the door with a QR code**
+  and save. The QR code appears under the box, with **Print QR code** (a sheet with only the
+  code, the room and how to use it) and the link it holds.
+- As Ayşe, book Board Room for the next half hour. The booking form says the room needs a
+  check-in, and **My reservations** shows "Check in at the door" with the times.
+- Scanning is opening the link: paste it into Ayşe's window. The page shows her booking and a
+  **Check in** button; press it. **My reservations** now says **Checked in**, and Mehmet's
+  calendar updates on its own.
+- Paste the same link into Mehmet's window: he has no booking there, so the page says so and
+  offers to book.
+- Point out: a booking nobody checks in to within 15 minutes of its start is released, and
+  the owner gets a toast saying why. Switching check-in on doesn't catch bookings made before,
+  and switching it off stops releases at once. **Replace code** retires a printed code that
+  has got around (ADR-0030).
+
+### 14. Meetings and the inbox
+
+- As the manager (`manager@smartdesk.local`), open **New reservation**, pick Board Room for
+  tomorrow, and under **Invite people** tick Ayşe and Mehmet. The hint counts them and says
+  each gets a message. **Book**: the toast adds "Your invitations were sent", and **My
+  reservations** shows "No answer yet: Ayşe Yılmaz, Mehmet Demir".
+- In Ayşe's window the toast arrives at once, and the **Inbox** link (the bell on a narrow
+  screen) counts it. Open **Inbox**: "Zeynep Kaya invited you to a meeting", the room and the
+  time. Press **I'm coming**. In Mehmet's, press **I can't come**, write why, and **Send**.
+- Back as the manager: two messages, "Ayşe Yılmaz is coming to your meeting" and "Mehmet Demir
+  can't come to your meeting" with his reason, and **My reservations** says "Coming: Ayşe
+  Yılmaz · Can't come: Mehmet Demir".
+- Move the meeting to another hour: both get "changed a meeting you're invited to" and are asked
+  to answer again. Point out: the reason is only in the manager's inbox, never on the shared
+  calendar, and anyone invited may check the meeting in at the door (ADR-0032).
+
+### 15. Running over
+
+- As Ayşe, book a free room from now until eight minutes from now (the form takes a start up to
+  five minutes back). Within half a minute a card appears in the corner: "… ends at …", with
+  **+15 min**, **+30 min** and **+1 h**, only those the room is free for.
+- Press **+30 min**: the toast says until when, the card goes, and Mehmet's calendar shows the
+  longer booking on its own. **My reservations** has **Extend** on it while it's on.
+- Point out: only the end moves - a check-in still holds, nobody invited has to answer again,
+  and they're told it runs longer (ADR-0033).
+
+### 16. A door screen
+
+- As the admin, **Edit** Board Room (check-in on) → **Set up a door screen**. The link appears
+  once: open it in a third window, as if on a tablet at the door. The address loses its token,
+  and the screen shows the room, free or in use, the rest of today and a QR code, with a bar
+  that runs down to its change every 30 seconds.
+- As Ayşe, book Board Room from now. The screen shows "In use", waiting for a check-in. Open
+  the printed code's link (still on the resource form, now greyed out): **Check in** is refused,
+  "Scan the code on the door screen". Now open the link in the screen's QR code: on one
+  machine, `document.querySelector('.scan').dataset.url` in the screen window's console gives
+  it. **Check in** works, and the screen shows **Checked in** on its next look. A link older
+  than a minute is refused, "This code has expired".
+- On her check-in page, **We're done: free the room** ends the booking, and the screen turns
+  **Free**. Point out: a photo of the screen is good for a minute at most; five minutes before
+  a release everyone on the booking is warned; and at a free room the page books it on the
+  spot (ADR-0034).
+
+### 17. A weekly meeting
+
+- As Zeynep, **Find a free resource** → Board Room next Monday 10:00-11:00 → **Book**. Under
+  **Repeat** choose **Every week**: the last day is four weeks on, and the five Mondays appear
+  below, each free. Tick Thursday too: nine dates.
+- As Mehmet, book Board Room on one of those Thursdays. Back as Zeynep, change the last day and
+  back again: that Thursday is crossed out with why, and the button says **Book the 8 free
+  dates**. Invite Ayşe and book.
+- Point out: one transaction, under the room's lock, so nothing half-booked; Ayşe's inbox has one
+  invitation for the series, answered once for every date ("Your answer is for this date and
+  every later one"); in **My reservations** each date says how it repeats, and **Cancel this
+  and later dates** ends the series early, with one message to Ayşe (ADR-0035).
+
+### 18. The guide
+
+- **Guide** at the bottom of the menu: the app in ten short parts, each with a link to its page.
+  Sign in as Zeynep and then as the admin: each sees the part for their role, and the assistant's
+  part appears only on a server with an assistant.
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

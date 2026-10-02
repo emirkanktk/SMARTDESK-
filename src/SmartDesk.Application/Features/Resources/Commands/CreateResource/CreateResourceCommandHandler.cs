@@ -28,6 +28,7 @@ public sealed class CreateResourceCommandHandler(
             Location = request.Location.Trim(),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             Status = ResourceStatus.Active,
+            CheckInRequired = request.CheckInRequired,
             Features = ResourceFeatureNames.Normalize(request.Features)
                 .Select(name => new ResourceFeature { Name = name })
                 .ToList(),

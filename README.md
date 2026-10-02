@@ -40,6 +40,29 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Reminders** - the owner can ask to be reminded 5, 15, 30 or 60 minutes before a reservation
   starts. The reminder arrives in the app, and as a desktop notification when allowed
   ([ADR-0018](docs/DECISIONS.md)).
+- **Check-in with a QR code** - a room can ask for its bookings to be checked in: whoever
+  booked it scans the QR code at the door from 10 minutes before the start until 15 minutes
+  after. A booking nobody checks in to is released, so the room goes back to people who are
+  there. The resource form shows the code and a sheet to print; switched off, nothing changes
+  ([ADR-0030](docs/DECISIONS.md)). To try it on one machine, switch it on for a room, book the
+  room for a few minutes from now, and open the link under its QR code.
+- **A door screen** - a tablet at the door shows the room's day and a QR code that changes every
+  30 seconds, so only someone standing there can check in. At the door you can also book a free
+  room on the spot, make a booking run longer or end it, and five minutes before a release
+  everyone on the booking is warned ([ADR-0034](docs/DECISIONS.md)).
+- **Bookings that repeat** - every day, every weekday, every week or every 2 weeks until a last
+  day: the form lists the dates first, those that aren't free with why, and books them all at
+  once or only the free ones. Each date is a booking of its own; the rest of a series can be
+  cancelled from any date, and those invited answer once for every date
+  ([ADR-0035](docs/DECISIONS.md)).
+- **Running over** - ten minutes before a booking ends, its owner is asked whether they need
+  longer, and extends it by 15, 30 or 60 minutes with a click, only as far as the room is free;
+  everyone invited is told ([ADR-0033](docs/DECISIONS.md)). A booking in progress also has
+  **Extend** in My reservations.
+- **Meetings and an inbox** - a manager books a room and ticks whom of the team to meet; an
+  admin may invite anyone. Each person gets a message in their SmartDesk inbox, and another if
+  the meeting moves or is cancelled, and answers there: coming, or not and why. The organizer
+  sees every answer, and the reason only they read ([ADR-0032](docs/DECISIONS.md)).
 - **Usage report** - for Admins: how much each resource, type and person booked over up to
   92 days, and how full the office day was (Monday to Friday, 09:00-18:00, in the admin's
   time zone - [ADR-0017](docs/DECISIONS.md)).
@@ -270,10 +293,15 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin), `PATCH /api/resources/{id}/status` (Admin) |
 | Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
+| Series | `GET /api/reservations/series/preview`, `POST /api/reservations/series`, `POST /api/reservations/{id}/cancel-following` (ADR-0035) |
+| Running over | `GET /api/reservations/{id}/extension`, `POST /api/reservations/{id}/extend` (ADR-0033) |
+| Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |
+| Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |
+| Inbox | `GET /api/inbox`, `GET /api/inbox/unread-count`, `POST /api/inbox/{id}/read`, `POST /api/inbox/read-all` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
 | Reports | `GET /api/reports/usage?from=&to=&timeZone=` (Admin) |
 | Assistant | `GET /api/assistant`, `POST /api/assistant/messages` (optional, ADR-0029) |
-| Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` |
+| Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled`; to one user: `ReservationStartingSoon`, `ReservationReleased`, `ReservationReleaseWarning`, `ReservationEndingSoon`, `InboxMessageReceived` |
 | Ops | `GET /health` |
 
 ## Frontend setup

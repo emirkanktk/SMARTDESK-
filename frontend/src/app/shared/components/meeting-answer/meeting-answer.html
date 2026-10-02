@@ -1,0 +1,93 @@
+@if (response(); as current) {
+  <div class="answer">
+    @if (declining()) {
+      <form class="decline" (submit)="decline($event)" novalidate>
+        <label [for]="reasonId" i18n="@@answer.reasonLabel">Why can't you come?</label>
+        <textarea
+          [id]="reasonId"
+          class="input"
+          rows="2"
+          [attr.maxlength]="maxLength"
+          [value]="reason()"
+          (input)="onReason($event)"
+          [class.invalid]="error()"
+          placeholder="I'm with a customer until 11:00"
+          i18n-placeholder="@@answer.reasonPlaceholder"
+        ></textarea>
+        <span class="text-muted hint" i18n="@@answer.reasonHint"
+          >Only the organizer sees this.</span
+        >
+        <div class="buttons">
+          <button type="submit" class="btn btn-primary btn-sm" [disabled]="sending()">
+            @if (sending()) {
+              <ng-container i18n="@@answer.sending">Sending…</ng-container>
+            } @else {
+              <ng-container i18n="@@answer.send">Send</ng-container>
+            }
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            [disabled]="sending()"
+            (click)="back()"
+            i18n="@@common.back"
+          >
+            Back
+          </button>
+        </div>
+      </form>
+    } @else if (current === 'Pending' || changing()) {
+      <p class="question" i18n="@@answer.question">Will you come?</p>
+      @if (following()) {
+        <p class="text-muted hint" i18n="@@answer.following">
+          Your answer is for this date and every later one.
+        </p>
+      }
+      <div class="buttons">
+        <button
+          type="button"
+          class="btn btn-primary btn-sm accept"
+          [disabled]="sending() || current === 'Accepted'"
+          (click)="accept()"
+          i18n="@@answer.accept"
+        >
+          I'm coming
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm decline-button"
+          [disabled]="sending()"
+          (click)="startDeclining()"
+          i18n="@@answer.decline"
+        >
+          I can't come
+        </button>
+        @if (changing()) {
+          <button
+            type="button"
+            class="btn-link"
+            [disabled]="sending()"
+            (click)="back()"
+            i18n="@@common.back"
+          >
+            Back
+          </button>
+        }
+      </div>
+    } @else {
+      <p class="given" [class.declined]="current === 'Declined'">
+        @if (current === 'Accepted') {
+          <ng-container i18n="@@answer.coming">You said you're coming.</ng-container>
+        } @else {
+          <ng-container i18n="@@answer.notComing">You said you can't come.</ng-container>
+        }
+        <button type="button" class="btn-link" (click)="changing.set(true)" i18n="@@answer.change">
+          Change your answer
+        </button>
+      </p>
+    }
+    @if (error(); as message) {
+      <p class="field-error" role="alert">{{ message }}</p>
+    }
+  </div>
+}

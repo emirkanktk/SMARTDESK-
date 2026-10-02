@@ -135,6 +135,18 @@
   <data name="Booking_TakenResource" xml:space="preserve">
     <value>The resource is already reserved for part of that time.</value>
   </data>
+  <data name="CheckIn_CodeExpired" xml:space="preserve">
+    <value>This code has expired. Scan the code on the door screen of {0} again.</value>
+  </data>
+  <data name="CheckIn_NotUsed" xml:space="preserve">
+    <value>{0} doesn't use check-in.</value>
+  </data>
+  <data name="CheckIn_NothingToCheckIn" xml:space="preserve">
+    <value>You have no booking of {0} to check in to right now. Check-in opens {1} minutes before the start and closes {2} minutes after it.</value>
+  </data>
+  <data name="CheckIn_WrongCode" xml:space="preserve">
+    <value>This QR code is no longer valid. Scan the current code for {0}.</value>
+  </data>
   <data name="Email_AccountCreated_Body" xml:space="preserve">
     <value>{0} created a SmartDesk account for you, to book meeting rooms, desks and equipment. {0} will give you a temporary password; when you first sign in, you'll choose your own.</value>
   </data>
@@ -240,6 +252,9 @@
   <data name="Entity_Account" xml:space="preserve">
     <value>Account</value>
   </data>
+  <data name="Entity_InboxMessage" xml:space="preserve">
+    <value>Message</value>
+  </data>
   <data name="Entity_Reservation" xml:space="preserve">
     <value>Reservation</value>
   </data>
@@ -264,6 +279,12 @@
   <data name="Error_TooManyAssistantRequests" xml:space="preserve">
     <value>You've asked the assistant a lot in the last minute. Wait a moment and try again.</value>
   </data>
+  <data name="Error_TooManyCheckIns" xml:space="preserve">
+    <value>Too many check-in attempts. Wait a minute and try again.</value>
+  </data>
+  <data name="Error_TooManyDoorScreenRequests" xml:space="preserve">
+    <value>The door screen asked too often. It tries again in a minute.</value>
+  </data>
   <data name="Error_TooManySignIns" xml:space="preserve">
     <value>Too many sign-in attempts. Please wait a minute and try again.</value>
   </data>
@@ -287,6 +308,39 @@
   </data>
   <data name="Identity_PasswordTooShort" xml:space="preserve">
     <value>Passwords must be at least {0} characters.</value>
+  </data>
+  <data name="Meetings_AnswerCancelled" xml:space="preserve">
+    <value>This meeting was cancelled, so there's nothing to answer.</value>
+  </data>
+  <data name="Meetings_AnswerEnded" xml:space="preserve">
+    <value>This meeting is over.</value>
+  </data>
+  <data name="Meetings_AnswerInvalid" xml:space="preserve">
+    <value>Answer Accepted or Declined.</value>
+  </data>
+  <data name="Meetings_CantUseResource" xml:space="preserve">
+    <value>{0} can't use {1}: it belongs to another team.</value>
+  </data>
+  <data name="Meetings_NotInvitable" xml:space="preserve">
+    <value>You can invite only your own team's active members.</value>
+  </data>
+  <data name="Meetings_NotInvitableByAdmin" xml:space="preserve">
+    <value>Only active accounts can be invited.</value>
+  </data>
+  <data name="Meetings_NotInvited" xml:space="preserve">
+    <value>You're not on this meeting's list.</value>
+  </data>
+  <data name="Meetings_OnlyManagersInvite" xml:space="preserve">
+    <value>Only team managers and administrators can invite people.</value>
+  </data>
+  <data name="Meetings_ReasonRequired" xml:space="preserve">
+    <value>Say why you can't come.</value>
+  </data>
+  <data name="Meetings_RoomTooSmall" xml:space="preserve">
+    <value>{0} has room for {1}; with you, {2} people would come.</value>
+  </data>
+  <data name="Meetings_TooManyAttendees" xml:space="preserve">
+    <value>At most {0} people can be invited.</value>
   </data>
   <data name="Problem_Conflict" xml:space="preserve">
     <value>Conflict</value>
@@ -315,11 +369,20 @@
   <data name="Problem_Validation" xml:space="preserve">
     <value>One or more validation errors occurred.</value>
   </data>
+  <data name="Property_AttendeeIds" xml:space="preserve">
+    <value>Attendee Ids</value>
+  </data>
   <data name="Property_Capacity" xml:space="preserve">
     <value>Capacity</value>
   </data>
+  <data name="Property_Code" xml:space="preserve">
+    <value>Code</value>
+  </data>
   <data name="Property_CurrentPassword" xml:space="preserve">
     <value>Current Password</value>
+  </data>
+  <data name="Property_DaysOfWeek" xml:space="preserve">
+    <value>Days Of Week</value>
   </data>
   <data name="Property_Description" xml:space="preserve">
     <value>Description</value>
@@ -336,8 +399,14 @@
   <data name="Property_FirstName" xml:space="preserve">
     <value>First Name</value>
   </data>
+  <data name="Property_Frequency" xml:space="preserve">
+    <value>Frequency</value>
+  </data>
   <data name="Property_From" xml:space="preserve">
     <value>From</value>
+  </data>
+  <data name="Property_Interval" xml:space="preserve">
+    <value>Interval</value>
   </data>
   <data name="Property_LastName" xml:space="preserve">
     <value>Last Name</value>
@@ -354,6 +423,9 @@
   <data name="Property_MinCapacity" xml:space="preserve">
     <value>Min Capacity</value>
   </data>
+  <data name="Property_Minutes" xml:space="preserve">
+    <value>Minutes</value>
+  </data>
   <data name="Property_Name" xml:space="preserve">
     <value>Name</value>
   </data>
@@ -369,6 +441,9 @@
   <data name="Property_Reason" xml:space="preserve">
     <value>Reason</value>
   </data>
+  <data name="Property_Recurrence" xml:space="preserve">
+    <value>Recurrence</value>
+  </data>
   <data name="Property_ReminderMinutes" xml:space="preserve">
     <value>Reminder Minutes</value>
   </data>
@@ -377,6 +452,9 @@
   </data>
   <data name="Property_ResourceTypeId" xml:space="preserve">
     <value>Resource Type Id</value>
+  </data>
+  <data name="Property_Response" xml:space="preserve">
+    <value>Response</value>
   </data>
   <data name="Property_Role" xml:space="preserve">
     <value>Role</value>
@@ -402,6 +480,9 @@
   <data name="Property_Token" xml:space="preserve">
     <value>Token</value>
   </data>
+  <data name="Property_Until" xml:space="preserve">
+    <value>Until</value>
+  </data>
   <data name="Reports_MaxRange" xml:space="preserve">
     <value>The report can cover at most {0} days.</value>
   </data>
@@ -425,6 +506,15 @@
   </data>
   <data name="Reservations_EndedCantChange" xml:space="preserve">
     <value>This reservation has already ended and can't be changed.</value>
+  </data>
+  <data name="Reservations_EndNotStarted" xml:space="preserve">
+    <value>It hasn't started yet: cancel it instead.</value>
+  </data>
+  <data name="Reservations_ExtensionOptions" xml:space="preserve">
+    <value>Extend by one of these: {0} minutes.</value>
+  </data>
+  <data name="Reservations_ExtensionTaken" xml:space="preserve">
+    <value>{0} is reserved right after, so this can't run {1} minutes longer.</value>
   </data>
   <data name="Reservations_MaxDuration" xml:space="preserve">
     <value>A reservation can last at most {0} days.</value>
@@ -482,6 +572,36 @@
   </data>
   <data name="Resources_UnknownType" xml:space="preserve">
     <value>Resource type does not exist.</value>
+  </data>
+  <data name="Series_Conflicts" xml:space="preserve">
+    <value>{0} of the {1} dates aren't free in {2}. Look at the dates again, then book the others or choose another time.</value>
+  </data>
+  <data name="Series_DaysMustIncludeFirst" xml:space="preserve">
+    <value>The series has to include the day it starts on ({0}).</value>
+  </data>
+  <data name="Series_IntervalRange" xml:space="preserve">
+    <value>Repeat it every 1 to {0} days or weeks.</value>
+  </data>
+  <data name="Series_NoneFree" xml:space="preserve">
+    <value>None of the dates is free in {0}.</value>
+  </data>
+  <data name="Series_NotASeries" xml:space="preserve">
+    <value>This booking doesn't repeat.</value>
+  </data>
+  <data name="Series_Overlapping" xml:space="preserve">
+    <value>Each date would run into the next: make it shorter, or repeat it less often.</value>
+  </data>
+  <data name="Series_TooFarAhead" xml:space="preserve">
+    <value>A series can run at most {0} days ahead: end it sooner.</value>
+  </data>
+  <data name="Series_TooFewDates" xml:space="preserve">
+    <value>That's only one date: pick a later end, or more days, for it to repeat.</value>
+  </data>
+  <data name="Series_UnknownDay" xml:space="preserve">
+    <value>Unknown day of the week.</value>
+  </data>
+  <data name="Series_UntilBeforeStart" xml:space="preserve">
+    <value>The series has to end on or after the day it starts.</value>
   </data>
   <data name="Status_Active" xml:space="preserve">
     <value>Active</value>

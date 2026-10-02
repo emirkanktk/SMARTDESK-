@@ -1,0 +1,225 @@
+<div class="page-header">
+  <h1 i18n="@@checkIn.title">Check in</h1>
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status" i18n="@@common.loading">Loading…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error" role="alert" i18n="@@checkIn.loadFailed">
+    This resource could not be loaded. It may have been removed, or it isn't one you can use.
+  </div>
+} @else if (resource(); as room) {
+  <section class="card visit" aria-labelledby="resource-name">
+    <app-resource-photo
+      class="photo"
+      [resourceId]="room.id"
+      [typeName]="room.resourceTypeName"
+      [photoUpdatedAt]="room.photoUpdatedAt"
+    />
+    <div class="body" aria-live="polite">
+      <div>
+        <h2 id="resource-name" class="name">{{ room.name }}</h2>
+        <p class="text-muted location">{{ room.location }}</p>
+      </div>
+
+      @if (!room.checkInRequired) {
+        <p i18n="@@checkIn.notUsed">
+          {{ room.name }} doesn't use check-in, so there's nothing to do here.
+        </p>
+      } @else {
+        @let current = visit();
+        @if (current.kind === 'open') {
+          @if (invited(current.reservation)) {
+            <p class="status" i18n="@@checkIn.openInvited">
+              The meeting you're invited to, from {{ when(current.reservation.startDateTime) }} to
+              {{ when(current.reservation.endDateTime) }}, can be checked in until
+              {{ when(current.closesAt) }}. If nobody checks in by then, it's released.
+            </p>
+          } @else {
+            <p class="status" i18n="@@checkIn.open">
+              Your booking from {{ when(current.reservation.startDateTime) }} to
+              {{ when(current.reservation.endDateTime) }} can be checked in until
+              {{ when(current.closesAt) }}. If nobody checks in by then, it's released.
+            </p>
+          }
+          @if (secret()) {
+            <button
+              type="button"
+              class="btn btn-primary check-in-button"
+              [disabled]="checkingIn()"
+              (click)="checkIn()"
+            >
+              @if (checkingIn()) {
+                <ng-container i18n="@@checkIn.checkingIn">Checking in…</ng-container>
+              } @else {
+                <ng-container i18n="@@checkIn.button">Check in</ng-container>
+              }
+            </button>
+          } @else {
+            <p class="alert-error" role="alert" i18n="@@checkIn.noCode">
+              To check in, scan the QR code at the door with your phone's camera.
+            </p>
+          }
+        } @else if (current.kind === 'checkedIn') {
+          @if (invited(current.reservation)) {
+            <p class="status done" i18n="@@checkIn.doneInvited">
+              The meeting from {{ when(current.reservation.startDateTime) }} to
+              {{ when(current.reservation.endDateTime) }} is checked in, so the room is kept for it.
+            </p>
+          } @else {
+            <p class="status done" i18n="@@checkIn.done">
+              You're checked in for {{ when(current.reservation.startDateTime) }} to
+              {{ when(current.reservation.endDateTime) }}. The booking is yours.
+            </p>
+          }
+          @if (checkedInBy(current.reservation); as by) {
+            <p class="text-muted by">{{ by }}</p>
+          }
+          @if (underWay(current.reservation)) {
+            <div class="door-actions">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                [attr.aria-expanded]="extendOpen()"
+                (click)="extendOpen.set(!extendOpen())"
+                i18n="@@checkIn.needLonger"
+              >
+                Need longer?
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary end-now"
+                [disabled]="ending()"
+                (click)="endNow(current.reservation)"
+                i18n="@@checkIn.endNow"
+              >
+                We're done: free the room
+              </button>
+            </div>
+            @if (extendOpen()) {
+              <app-extend-booking
+                [reservation]="current.reservation"
+                (extended)="onExtended($event)"
+              />
+            }
+          }
+        } @else if (current.kind === 'closed') {
+          @if (invited(current.reservation)) {
+            <p class="status released" i18n="@@checkIn.closedInvited">
+              The check-in for the meeting you're invited to at
+              {{ when(current.reservation.startDateTime) }} closed at {{ when(current.closedAt) }}
+              with nobody checked in, so it's about to be released.
+            </p>
+          } @else {
+            <p class="status released" i18n="@@checkIn.closed">
+              The check-in for your booking at {{ when(current.reservation.startDateTime) }} closed
+              at {{ when(current.closedAt) }} with nobody checked in, so it's about to be released.
+            </p>
+          }
+        } @else if (current.kind === 'later') {
+          @if (invited(current.reservation)) {
+            <p class="status" i18n="@@checkIn.laterInvited">
+              The meeting you're invited to at {{ when(current.reservation.startDateTime) }} can be
+              checked in from {{ when(current.opensAt) }}.
+            </p>
+          } @else {
+            <p class="status" i18n="@@checkIn.later">
+              Your booking at {{ when(current.reservation.startDateTime) }} can be checked in from
+              {{ when(current.opensAt) }}.
+            </p>
+          }
+        } @else if (current.kind === 'released') {
+          @if (invited(current.reservation)) {
+            <p class="status released" i18n="@@checkIn.releasedInvited">
+              The meeting you were invited to at {{ when(current.reservation.startDateTime) }} was
+              released at {{ when(current.reservation.releasedAt!) }} because nobody checked in.
+            </p>
+          } @else {
+            <p class="status released" i18n="@@checkIn.released">
+              Your booking at {{ when(current.reservation.startDateTime) }} was released at
+              {{ when(current.reservation.releasedAt!) }} because nobody checked in.
+            </p>
+          }
+          <a
+            class="btn btn-secondary"
+            routerLink="/reservations/new"
+            [queryParams]="{ resourceId: room.id }"
+            i18n="@@checkIn.bookAgain"
+            >Book it again</a
+          >
+        } @else {
+          <p class="status" i18n="@@checkIn.none">
+            You have no booking of {{ room.name }} to check in to.
+          </p>
+        }
+      }
+
+      @let visitNow = visit();
+      @if (visitNow.kind === 'none' || visitNow.kind === 'released' || !room.checkInRequired) {
+        @let state = roomNow();
+        @if (state?.kind === 'busy' && state; as busy) {
+          @if (busy.kind === 'busy') {
+            <p class="room-now busy" i18n="@@checkIn.roomBusy">
+              {{ room.name }} is in use until {{ when(busy.until) }}.
+            </p>
+          }
+        } @else if (state?.kind === 'free' && state; as free) {
+          @if (free.kind === 'free') {
+            <p class="room-now free">
+              @if (free.until) {
+                <ng-container i18n="@@checkIn.roomFreeUntil"
+                  >{{ room.name }} is free until {{ when(free.until) }}.</ng-container
+                >
+              } @else {
+                <ng-container i18n="@@checkIn.roomFreeDay"
+                  >{{ room.name }} is free for the rest of the day.</ng-container
+                >
+              }
+            </p>
+            @if (bookNowOptions().length > 0) {
+              <div
+                class="door-actions"
+                role="group"
+                aria-label="Book it now"
+                i18n-aria-label="@@checkIn.bookNowGroup"
+              >
+                <span class="book-now-label" i18n="@@checkIn.bookNow">Book it now:</span>
+                @for (minutes of bookNowOptions(); track minutes) {
+                  <button
+                    type="button"
+                    class="btn btn-primary book-now"
+                    [disabled]="booking() !== null"
+                    (click)="bookNow(minutes)"
+                  >
+                    @if (booking() === minutes) {
+                      <ng-container i18n="@@checkIn.booking">Booking…</ng-container>
+                    } @else if (minutes === 60) {
+                      <ng-container i18n="@@checkIn.oneHour">1 hour</ng-container>
+                    } @else {
+                      <ng-container i18n="@@checkIn.minutes">{{ minutes }} min</ng-container>
+                    }
+                  </button>
+                }
+              </div>
+            }
+          }
+        } @else if (state?.kind === 'unavailable') {
+          <p class="room-now busy" i18n="@@checkIn.roomUnavailable">
+            {{ room.name }} can't be booked right now.
+          </p>
+        }
+        <a
+          class="btn btn-secondary"
+          routerLink="/reservations/new"
+          [queryParams]="{ resourceId: room.id }"
+          i18n="@@checkIn.bookLater"
+          >Book it for another time</a
+        >
+      }
+
+      @if (error(); as message) {
+        <div class="alert-error" role="alert">{{ message }}</div>
+      }
+    </div>
+  </section>
+}

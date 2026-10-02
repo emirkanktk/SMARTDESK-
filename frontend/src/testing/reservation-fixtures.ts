@@ -17,7 +17,11 @@ export function fakeReservation(overrides: Partial<Reservation> = {}): Reservati
     status: 'Confirmed',
     note: 'Sprint planning',
     reminderMinutes: null,
+    checkInRequired: false,
+    checkedInAt: null,
+    releasedAt: null,
     userDisplayName: 'Ayşe Yılmaz',
+    attendees: [],
     ...overrides,
   };
 }

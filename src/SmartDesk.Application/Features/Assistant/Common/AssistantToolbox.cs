@@ -271,6 +271,7 @@ public sealed class AssistantToolbox(ISender sender, TimeZoneInfo zone, TimeProv
         capacity = r.Capacity,
         location = r.Location,
         features = r.Features,
+        checkInRequired = r.CheckInRequired,
     };
 
     private static bool Mentions(ResourceDto r, string search)

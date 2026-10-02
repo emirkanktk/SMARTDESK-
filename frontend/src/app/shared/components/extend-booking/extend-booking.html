@@ -1,0 +1,29 @@
+@if (options(); as minutes) {
+  @if (minutes.length > 0) {
+    <div class="options" role="group" aria-label="Run longer" i18n-aria-label="@@extend.group">
+      @for (option of minutes; track option) {
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          [disabled]="extending() !== null"
+          (click)="extend(option)"
+        >
+          @if (extending() === option) {
+            <ng-container i18n="@@extend.extending">Extending…</ng-container>
+          } @else {
+            {{ label(option) }}
+          }
+        </button>
+      }
+    </div>
+  } @else if (!error()) {
+    <p class="text-muted none" i18n="@@extend.none">
+      {{ reservation().resourceName }} is taken right after, so this can't run any longer.
+    </p>
+  }
+} @else {
+  <p class="text-muted" role="status" i18n="@@extend.loading">Checking how long it can run…</p>
+}
+@if (error(); as message) {
+  <p class="field-error" role="alert">{{ message }}</p>
+}

@@ -21,4 +21,17 @@ public interface IReservationNotifier
 
     // The owner's reminder (ADR-0018): sent to that user's open sessions only, not broadcast.
     Task ReservationStartingSoonAsync(ReservationDto reservation, CancellationToken cancellationToken);
+
+    // Tells the owner, and only them, that their booking was released because nobody checked
+    // in (ADR-0030). The release itself reaches everyone as ReservationCancelledAsync.
+    Task ReservationReleasedAsync(ReservationDto reservation, CancellationToken cancellationToken);
+
+    // Warns the owner and those invited, and only them, that nobody has checked in yet and the
+    // booking is about to be released (ADR-0034).
+    Task ReservationReleaseWarningAsync(
+        ReservationDto reservation, IReadOnlyCollection<Guid> recipients, CancellationToken cancellationToken);
+
+    // Asks the owner, and only them, whether their booking that's about to end needs longer
+    // (ADR-0033).
+    Task ReservationEndingSoonAsync(ReservationDto reservation, CancellationToken cancellationToken);
 }

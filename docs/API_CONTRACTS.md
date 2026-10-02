@@ -168,13 +168,18 @@ first come, first served, under the usual overlap rule.
 | GET | `/api/resources` | any authenticated user | `GetResourcesQuery` | optional query params `resourceTypeId`, `status`. Every status unless filtered (the Resources screen shows inactive ones greyed out), but only resources the caller may use. |
 | GET | `/api/resources/{id}` | any authenticated user | `GetResourceByIdQuery` | 404 if it doesn't exist or belongs to other teams. For the edit form. |
 | GET | `/api/resources/available` | any authenticated user | `GetAvailableResourcesQuery` | query params: `startDateTime`, `endDateTime`, optional `resourceTypeId`, `minCapacity`. Rules below. |
-| POST | `/api/resources` | Admin or Manager | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[], teamIds?: guid[] }` → 201 with `Location` header. Always created `Active`. An Admin chooses `teamIds` (none: shared; each must be an active Manager's, 400 otherwise). A Manager's resource always belongs to their own team only; naming another team is 403. |
-| PUT | `/api/resources/{id}` | Admin or Manager | `UpdateResourceCommand` | body: the POST fields (without `teamIds`) plus `status`. Full replace: omitting `features` removes them all. A Manager may edit only a resource that belongs to their team alone; a shared resource, or one other teams share, is 403. Teams don't change here. A `status` other than `Active` follows the PATCH rule below (409 while bookings are still to come). |
+| POST | `/api/resources` | Admin or Manager | `CreateResourceCommand` | body: `{ name, resourceTypeId, capacity, location, description?, features?: string[], teamIds?: guid[], checkInRequired?: bool }` → 201 with `Location` header. Always created `Active`. An Admin chooses `teamIds` (none: shared; each must be an active Manager's, 400 otherwise). A Manager's resource always belongs to their own team only; naming another team is 403. `checkInRequired`: see Check-in below. |
+| PUT | `/api/resources/{id}` | Admin or Manager | `UpdateResourceCommand` | body: the POST fields (without `teamIds`) plus `status`. Full replace: omitting `features` removes them all, and omitting `checkInRequired` switches check-in off. A Manager may edit only a resource that belongs to their team alone; a shared resource, or one other teams share, is 403. Teams don't change here. A `status` other than `Active` follows the PATCH rule below (409 while bookings are still to come). |
 | PATCH | `/api/resources/{id}/status` | Admin or Manager | `ChangeResourceStatusCommand` | body: `{ "status": "Inactive" }` → 200 with the resource. Changes only the status, so an Activate/Deactivate button can't overwrite another admin's edit the way a full PUT can. Same status again is a no-op. `Maintenance` or `Inactive` is refused with 409 (`code: "resource-has-reservations"`, `"2 confirmed reservation(s) on Camera C-1 from now on. Cancel or move them first."`) while `Confirmed` reservations on it are still to start; past and running ones don't count, and going back to `Active` is always allowed (issue #41, ADR-0024). A Manager, as for PUT. |
 | PATCH | `/api/resources/{id}/teams` | Admin | `SetResourceTeamsCommand` | body: `{ "teamIds": ["…"] }` → 200 with the resource. Replaces its teams; `[]` makes it shared. Each id must be an active Manager's (400 otherwise), at most 20. Existing reservations are kept. |
 | GET | `/api/resources/{id}/photo` | any authenticated user | `GetResourcePhotoQuery` | The photo's bytes, as `image/jpeg`, `image/png` or `image/webp`. 404 when it has none, or for another team's resource. `Cache-Control: private, no-cache` with an `ETag`: send `If-None-Match` and an unchanged photo is a 304. The app adds `?v={photoUpdatedAt}`, which the API ignores, so a browser never offers an older photo (ADR-0027). |
 | PUT | `/api/resources/{id}/photo` | Admin or Manager | `SetResourcePhotoCommand` | `multipart/form-data` with the file in the field `photo` → 200 with the resource. Sets or replaces it. A JPEG, PNG or WebP of at most 2 MB, recognised by its first bytes, whatever name or type the upload gives (400 on `Photo` otherwise; no SVG). The request itself may be up to 8 MB, so a photo a little over the limit still gets that message. Who may: as for PUT. |
 | DELETE | `/api/resources/{id}/photo` | Admin or Manager | `RemoveResourcePhotoCommand` | 204. Its type's picture shows instead; removing a photo that isn't there is fine. Who may: as for PUT. |
+| POST | `/api/resources/{id}/check-in` | any authenticated user | `CheckInCommand` | body: `{ "code": "…" }`, the secret from the resource's QR code → 200 with the reservation, `checkedInAt` set. Checks in the caller's own booking of this resource whose check-in is open now; checking in twice is fine. Errors under Check-in below. |
+| GET | `/api/resources/{id}/check-in-code` | Admin or Manager | `GetCheckInCodeQuery` | → 200 `{ "code": "…", "url": "https://…/check-in/{id}?code=…", "doorScreenSince": null }`: the QR code to print, and since when a door screen is set up (ADR-0034), when one is. `url` is built from `App:FrontendUrl`, like the links in emails. Every resource has a code, check-in on or off. Who may: as for PUT (403 otherwise). The secret appears nowhere else. |
+| POST | `/api/resources/{id}/check-in-code` | Admin or Manager | `ReplaceCheckInCodeCommand` | → 200 with a new `{ code, url }`. The printed code stops working at once. Who may: as for PUT. |
+| POST | `/api/resources/{id}/door-screen` | Admin or Manager | `SetUpDoorScreenCommand` | → 200 `{ "url": "https://…/door/{id}#<token>", "setUpAt": "…" }`: a link for the screen at the door, shown this once (only the token's hash is kept). From now on only the screen's changing code checks in. Again: a new link, and the old screen stops. Who may: as for PUT. See Door screen. |
+| DELETE | `/api/resources/{id}/door-screen` | Admin or Manager | `TurnOffDoorScreenCommand` | → 204. The screen's link stops working, and the printed code checks in again. Twice: nothing to do. |
 
 Every resource endpoint returns the same shape:
 
@@ -187,7 +192,8 @@ Every resource endpoint returns the same shape:
   "description": null,
   "features": ["TV", "Video Conference"],
   "teams": [{ "id": "…", "managerName": "Zeynep Kaya" }],  // [] = shared by everyone
-  "photoUpdatedAt": "2026-10-05T08:00:00.123456Z"          // null = no photo of its own
+  "photoUpdatedAt": "2026-10-05T08:00:00.123456Z",         // null = no photo of its own
+  "checkInRequired": false                                 // bookings must be checked in at the door
 }
 ```
 
@@ -219,11 +225,20 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` → 201. The owner is always the caller. `reminderMinutes`: 5, 15, 30 or 60, or null / omitted for no reminder (see Real-time). Another team's resource is 404 (ADR-0022). |
+| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes?, attendeeIds? }` → 201. The owner is always the caller. `reminderMinutes`: 5, 15, 30 or 60, or null / omitted for no reminder (see Real-time). `attendeeIds`: who's invited (see Meetings). Another team's resource is 404 (ADR-0022). |
+| POST | `/api/reservations/series` | any authenticated user | `CreateReservationSeriesCommand` | body: create's fields plus `{ recurrence: { frequency, interval, daysOfWeek?, until, timeZone }, skipConflicts? }` → 201 `{ series, booked, skipped }`: a booking that repeats, every date at once (ADR-0035). See Series. |
+| GET | `/api/reservations/series/preview?resourceId=&startDateTime=&endDateTime=&frequency=&interval=&daysOfWeek=&until=&timeZone=` | any authenticated user | `GetSeriesPreviewQuery` | → 200 `{ dates: [{ startDateTime, endDateTime, free, code, reason }] }`: the dates a series would have, and which are free. `daysOfWeek` once for each day. Same rules as booking it; nothing is held. |
 | GET | `/api/reservations/{id}` | any authenticated user | `GetReservationByIdQuery` | one reservation, any status; 404 if it doesn't exist. For the edit form and for opening a calendar entry. Your own reservation always; anyone else's only on a resource you may use (404 otherwise, ADR-0022). |
-| PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` - full replace → 200, so leaving `reminderMinutes` out turns the reminder off. Rules below. |
+| PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes?, attendeeIds? }` - full replace → 200, so leaving `reminderMinutes` out turns the reminder off, and leaving `attendeeIds` out takes everyone off the list. Rules below. |
+| POST | `/api/reservations/{id}/end` | owner or Admin | `EndReservationCommand` | → 200: a booking under way ends now, so the room is free at once (ADR-0034). 409 for one that hasn't started (cancel it instead), is cancelled or is over. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
+| POST | `/api/reservations/{id}/cancel-following` | owner or Admin | `CancelFollowingCommand` | → 200 with the dates cancelled now: this date of a series and every later one still to come; dates already cancelled or over stay as they are, so again it's `[]`. 409 for a booking that doesn't repeat (`"This booking doesn't repeat."`) or is over. See Series. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
+| GET | `/api/reservations/invited` | any authenticated user | `GetMyInvitationsQuery` | other people's `Confirmed` meetings the caller is invited to and that aren't over, soonest first (ADR-0032) |
+| GET | `/api/reservations/invitees` | any authenticated user | `GetInviteesQuery` | who the caller may invite: `[{ id, name, email }]`, by name - a Manager's active team members, every active account for an Admin, nobody for an Employee |
+| GET | `/api/reservations/{id}/extension` | owner or Admin | `GetExtensionOptionsQuery` | `{ minutes: [15, 30, 60] }`: how much longer it can run, only what ends before the resource's next booking or blocked window; empty when it can't (ADR-0033) |
+| POST | `/api/reservations/{id}/extend` | owner or Admin | `ExtendReservationCommand` | body: `{ minutes }` (15, 30 or 60) → 200 with the reservation, its end that much later. See Running over. |
+| POST | `/api/reservations/{id}/response` | someone invited | `RespondToInvitationCommand` | body: `{ response: "Accepted" \| "Declined", reason?, following? }` → 200 with the meeting. Declining needs a `reason` (max 500), which goes to the organizer only. `following: true` on a date of a series answers it and every later date the caller is invited to (ADR-0035). See Meetings. |
 | GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. Only reservations on resources the caller may use (ADR-0022). |
 
 Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
@@ -238,7 +253,16 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
   "status": "Confirmed",          // "Confirmed" | "Cancelled"
   "note": "Sprint planning",
   "reminderMinutes": 15,           // null when no reminder is set
-  "userDisplayName": "Ayşe Yılmaz"  // who booked it: "First Last", or the email if both are blank
+  "checkInRequired": true,         // has to be checked in at the door, or it's released
+  "checkedInAt": null,             // when the owner checked in
+  "releasedAt": null,              // when it was released because nobody did (status is then "Cancelled")
+  "checkedInBy": null,             // who checked it in: the owner or someone invited (ADR-0034)
+  "checkedInByName": null,
+  "userDisplayName": "Ayşe Yılmaz", // who booked it: "First Last", or the email if both are blank
+  "attendees": [                   // who's invited, by name (ADR-0032); usually empty
+    { "id": "…", "name": "Mehmet Demir", "response": "Accepted" }  // "Pending" | "Accepted" | "Declined"
+  ],
+  "series": null                   // the rule of the series it's one date of (ADR-0035), see Series
 }
 ```
 
@@ -278,6 +302,202 @@ nothing new. So after the resource went into maintenance, a note can still be ed
 booking can still be shortened or ended early. Other errors: 400 for the
 same shape rules as create, 403 for someone who is neither the owner nor an Admin, 404 for an
 unknown reservation. A PUT that changes nothing returns 200 and sends no event.
+
+## Running over (ADR-0033)
+
+Ten minutes before a booking under way ends, its owner gets `ReservationEndingSoon` (see
+Real-time) and the app asks whether they need longer.
+
+- **How much longer.** `GET /api/reservations/{id}/extension` lists the options, 15, 30 and 60
+  minutes, that end before the resource's next `Confirmed` booking or blocked window. Empty for a
+  resource that isn't `Active`, or that the caller may no longer use. It's a snapshot.
+- **Extending.** `POST /api/reservations/{id}/extend` moves only the end, under the same locks
+  and checks as moving a booking: the extra time must be free, not blocked, and the resource
+  `Active`. The check-in, the reminder and the answers to the invitation stay. Everyone invited
+  gets a `MeetingExtended` message, and screens get `ReservationUpdated`.
+
+**Running over - errors**
+
+| Status | When |
+|---|---|
+| 400 | `minutes` isn't 15, 30 or 60 (`"Extend by one of these: 15, 30, 60 minutes."`) |
+| 403 | neither the owner nor an Admin |
+| 404 | the reservation doesn't exist |
+| 409 | it's cancelled or over; the extra time is taken (`code: "reservation-overlaps"`, `"Board Room is reserved right after, so this can't run 30 minutes longer."`), blocked (`code: "resource-blocked"`), or the resource isn't `Active` (`code: "resource-unavailable"`) |
+
+## Series (ADR-0035)
+
+A booking that repeats: one rule, and one ordinary reservation a date, each with the series'
+rule as `series`. Each date can be moved, extended, checked in or cancelled like any booking.
+
+```json
+"recurrence": {
+  "frequency": "Weekly",          // "Daily" | "Weekly"
+  "interval": 1,                  // every 1 to 4 days or weeks
+  "daysOfWeek": ["Monday"],       // a weekly one's days; it has to include the day it starts on,
+                                  // and is that day alone when left out. Ignored for a daily one
+  "until": "2026-11-30",          // the last day it may come back on, inclusive
+  "timeZone": "Europe/Istanbul"   // IANA; the dates keep the first one's local time in it
+}
+```
+
+- **The dates.** The first is the booking asked for; the others keep its local time of day and
+  its length. Weeks count from Monday: every 2 weeks is the first date's week, the one two weeks
+  later, and so on. A time the clocks skip moves to the first minute after it.
+- **Limits.** The first date follows the rules of any booking. The last may start at most 180
+  days ahead. At least two dates, none running into the next.
+- **Booking.** All the dates in one transaction, under the resource's lock. A date that's
+  blocked or taken stops the lot (409 `series-conflicts`), unless `skipConflicts: true`, which
+  books the others and lists the rest under `skipped`. With none free it's 409 either way.
+- **Invitations.** Everyone on `attendeeIds` is invited to every date and gets one
+  `SeriesInvitation`. One answer with `following` covers the rest of the series
+  (`SeriesAccepted` / `SeriesDeclined` to the organizer); cancelling the rest sends one
+  `SeriesCancelled`.
+
+```json
+{
+  "series": { "id": "…", "frequency": "Weekly", "interval": 1, "daysOfWeek": ["Monday"],
+              "until": "2026-11-30", "timeZone": "Europe/Istanbul" },
+  "booked": [ /* reservations, earliest first */ ],
+  "skipped": [
+    { "startDateTime": "2026-10-19T07:00:00Z", "endDateTime": "2026-10-19T08:00:00Z", "free": false,
+      "code": "reservation-overlaps", "reason": "Board Room is already reserved for part of that time." }
+  ]
+}
+```
+
+**Series - errors**
+
+| Status | When |
+|---|---|
+| 400 | the first date breaks a booking's rules (`StartDateTime`, `EndDateTime`, ...); `Recurrence.Interval` isn't 1 to 4, or the dates would run into each other (`"Each date would run into the next: make it shorter, or repeat it less often."`); `Recurrence.DaysOfWeek` leaves out the day it starts on (`"The series has to include the day it starts on (Monday)."`); `Recurrence.Until` is before the first date, gives a single date (`"That's only one date: pick a later end, or more days, for it to repeat."`) or goes past 180 days; `Recurrence.TimeZone` is unknown |
+| 404 | the resource doesn't exist, or belongs to other teams |
+| 409 | the resource isn't `Active` (`code: "resource-unavailable"`); dates aren't free (`code: "series-conflicts"`, `"1 of the 4 dates aren't free in Board Room. Look at the dates again, then book the others or choose another time."`), or none is |
+
+## Meetings (ADR-0032)
+
+A booking can invite people. The organizer is the booking's owner; everyone invited gets a
+message in their inbox and answers it.
+
+- **Who may invite.** A Manager their own team's active members, an Admin any active account,
+  an Employee nobody (`GET /api/reservations/invitees` lists them). Each person added must be
+  able to use the resource (ADR-0022), and the room's `capacity` must hold everyone, the
+  organizer included. At most 50 people. The organizer is never on their own list, and nobody
+  is on it twice.
+- **Changing the list.** `attendeeIds` on create and update is the whole list. Whoever is added
+  is invited; whoever is taken off is told; someone already on it stays even after leaving the
+  team. A new time or room tells everyone still invited and asks them to answer again (a new
+  start or another room; a longer meeting keeps the answers). Changing only the note tells
+  nobody. Cancelling, or a release, tells everyone.
+- **Answers.** `POST /api/reservations/{id}/response`, by someone on the list, while the meeting
+  is `Confirmed` and not over. `Declined` needs a `reason`. The organizer gets a message with
+  the answer, and the reason; every screen showing the meeting gets it as `ReservationUpdated`.
+  The same answer again changes nothing and tells nobody. A reason is never part of a
+  reservation: only the organizer's message has it.
+- **Check-in.** Anyone invited may check the meeting in (ADR-0030): whoever is first keeps the
+  room for everyone.
+
+**Meetings - errors**
+
+| Status | When |
+|---|---|
+| 400 | on create or update: an Employee adds someone (`"Only team managers and administrators can invite people."`), someone added isn't one the caller may invite, can't use the resource (`"Mehmet Demir can't use Board Room: it belongs to another team."`), the room is too small (`"Board Room has room for 6; with you, 8 people would come."`), more than 50 people. On an answer: `response` isn't `Accepted` or `Declined`, or declining without a `reason` (`"Say why you can't come."`). All under `AttendeeIds`, `Response` or `Reason` |
+| 403 | answering a meeting the caller isn't invited to (`"You're not on this meeting's list."`) |
+| 404 | the meeting doesn't exist |
+| 409 | answering a meeting that was cancelled, or is over |
+
+## Inbox (ADR-0032)
+
+The signed-in user's own messages; nobody sees anyone else's.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/inbox` | any authenticated user | `GetInboxQuery` | the newest 100 messages, read or not, newest first |
+| GET | `/api/inbox/unread-count` | any authenticated user | `GetUnreadInboxCountQuery` | `{ unread }`, for the badge |
+| POST | `/api/inbox/{id}/read` | the recipient | `MarkInboxMessageReadCommand` | → 204; again changes nothing; someone else's message is 404 |
+| POST | `/api/inbox/read-all` | any authenticated user | `MarkAllInboxMessagesReadCommand` | → 204 |
+
+```json
+{
+  "id": "…", "recipientId": "…",
+  "kind": "MeetingInvitation",   // MeetingInvitation | MeetingChanged | MeetingCancelled | MeetingUninvited
+                                 // | MeetingExtended (ADR-0033)
+                                 // | MeetingAccepted | MeetingDeclined (the last two to the organizer)
+                                 // | SeriesInvitation | SeriesCancelled | SeriesAccepted | SeriesDeclined
+                                 //   (ADR-0035: one message for the dates of a series)
+  "reservationId": "…",          // null once the booking is gone
+  "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release, which nobody sent
+  "resourceName": "Board Room",  // the meeting as it was when the message was sent
+  "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:00:00Z",
+  "note": "Sprint planning",
+  "reason": null,                // why someone can't come, in a MeetingDeclined or SeriesDeclined
+  "series": null,                // for a Series* message: the rule; the times are then its first
+                                 // date the message covers ("from Mon 5 Oct, every Monday ...")
+  "createdAt": "2026-10-01T09:00:00Z",
+  "readAt": null                 // null while unread
+}
+```
+
+The app writes the sentence from `kind`, in the reader's language.
+
+## Check-in (ADR-0030)
+
+A resource with `checkInRequired` has a QR code at its door. Whoever booked it scans the code,
+which opens `/check-in/{id}?code=…` in the app, and checks in there
+(`POST /api/resources/{id}/check-in`).
+
+- **The window.** From 10 minutes before the start until 15 minutes after, and never once the
+  booking is over. The owner checks in, or anyone invited to it (ADR-0032), and only a
+  `Confirmed` booking.
+- **Release.** A booking nobody checked in to by then is released: its `status` becomes
+  `Cancelled` and `releasedAt` is set. A background job looks every 30 seconds
+  (`CheckIn:IntervalSeconds`; `CheckIn:Enabled: false` switches releasing off), so a release
+  can be up to one interval late, never early. A booking that's already over is left alone.
+- **Who needs a check-in.** A booking needs one when its resource asked for it when it was booked
+  (or last moved to a new start or another resource) and still does. That's the `checkInRequired`
+  a reservation carries.
+  - Staying longer, or ending early, keeps it: a meeting that runs over isn't released for a
+    check-in nobody asked of it when it was booked.
+  - Switching check-in on doesn't catch bookings made without knowing.
+  - Switching it off stops every release at once.
+- **Moving a booking.** A new start, or another resource, undoes the check-in: that's another
+  visit. Ending early keeps it.
+- **Several bookings.** When two of the caller's bookings are open at once (back to back), the
+  one still waiting goes first.
+
+**Door screen (ADR-0034).** A screen at the door shows a code that changes every 30 seconds:
+an HMAC-SHA256 of the 30-second step, keyed by the resource's secret, as 20 hex digits. While
+one is set up, only that code checks in, and the step before is still taken; the printed code
+is refused.
+
+| Method | Path | Auth | Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/door/{resourceId}?timeZone=` | the screen's token, in `X-Door-Token` (no user) | `GetDoorScreenQuery` | the room, today's bookings that aren't over (times only, at most 8), blocked windows, and the check-in link with the current code until `changesAt`; `checkIn` is null when the resource uses no check-in. "Today" is in `timeZone` (UTC when left out). A wrong or old token is the same 404 as no resource. 429 after 600 a minute from one address (`RateLimiting:DoorScreenPermitsPerMinute`): a screen asks about six times a minute, and a building's screens usually share an address. |
+
+```json
+{
+  "resourceName": "Board Room", "location": "5th Floor", "capacity": 8, "status": "Active",
+  "now": "2026-10-05T10:02:00Z",
+  "bookings": [{ "startDateTime": "…", "endDateTime": "…", "checkInNeeded": true, "checkedIn": false }],
+  "blocks": [{ "startDateTime": "…", "endDateTime": "…", "reason": "Cleaning" }],
+  "checkIn": { "url": "https://…/check-in/{id}?code=0f3a…", "changesAt": "2026-10-05T10:02:30Z" }
+}
+```
+
+- **The warning.** Five minutes before a booking nobody checked in to is released, its owner
+  and those invited get `ReservationReleaseWarning` (see Real-time), once.
+- **Who checked in.** A reservation carries `checkedInBy` and `checkedInByName`; moving it to a
+  new start or another resource clears them with `checkedInAt`.
+
+**Check-in - errors**
+
+| Status | When |
+|---|---|
+| 400 | no `code`, or longer than a code |
+| 403 | the code isn't the resource's current one: printed before it was replaced (`"This QR code is no longer valid. Scan the current code for Board Room."`), or, with a door screen, not this step's or the last one's (`"This code has expired. Scan the code on the door screen of Board Room again."`) |
+| 404 | the resource doesn't exist, or belongs to other teams |
+| 409 | the resource doesn't use check-in (`code: "check-in-not-used"`), or none of the caller's bookings of it is open for one now (`code: "nothing-to-check-in"`, `"You have no booking of Board Room to check in to right now. Check-in opens 10 minutes before the start and closes 15 minutes after it."`) |
+| 429 | more than 20 check-ins a minute from one user (`RateLimiting:CheckInPermitsPerMinute`) |
 
 ## Resource blocks
 
@@ -419,7 +639,7 @@ Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). `ReservationReleaseWarning` - to the owner and those invited: nobody has checked in yet, and it's released in five minutes (ADR-0034). `ReservationEndingSoon` - to the owner only: their booking under way ends within ten minutes; do they need longer (ADR-0033)? Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
 
 All three events carry the reservation object shown under Reservations above, as it is after
 the change. For `ReservationUpdated` the resource or the times may be different from
@@ -440,6 +660,21 @@ has passed, so it can be up to one interval late, never early. It isn't sent for
 reservation, or once the reservation has started. Moving the start or changing `reminderMinutes`
 re-arms it for the new moment, while changing only the end or the note doesn't. A reminder that
 finds the owner offline isn't queued or repeated.
+
+**Running over (ADR-0033).** `ReservationEndingSoon` carries the reservation and goes only to
+the owner's open connections, from a job that looks every 30 seconds
+(`EndingSoon:IntervalSeconds`; `EndingSoon:Enabled: false` switches it off): once per end, in
+the last ten minutes of a booking under way. A new end re-arms it. One that finds the owner
+offline isn't repeated.
+
+**Inbox (ADR-0032).** `InboxMessageReceived` carries the message as `GET /api/inbox` returns it,
+sent once its change is committed, to its recipient's connections only. One that finds them
+offline isn't repeated: the inbox and `unread-count` have it.
+
+**Check-in (ADR-0030).** A check-in is a `ReservationUpdated` with `checkedInAt` set. A release
+reaches everyone who may see the resource as `ReservationCancelled`, with `releasedAt` set, so
+calendars free the slot; the owner also gets `ReservationReleased` with the same reservation,
+to be told why it's gone.
 
 ## Conventions
 
@@ -469,7 +704,8 @@ finds the owner offline isn't queued or repeated.
   - A 409 a screen may need to act on also carries a stable `code`, since its wording depends
     on the language: `resource-unavailable`, `resource-blocked`, `reservation-overlaps`,
     `resource-has-reservations`,
-    `block-overlaps-block`, `block-overlaps-reservations`. The 403 for a pending password
+    `block-overlaps-block`, `block-overlaps-reservations`, `check-in-not-used`,
+    `nothing-to-check-in`. The 403 for a pending password
     change has `code: "password-change-required"` (ADR-0021).
   - Emails are written in the recipient's language: the one they last signed in with, saved
     on their account. Until then, the language of the request that sends the email (for a new

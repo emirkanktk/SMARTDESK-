@@ -1,5 +1,6 @@
 using FluentValidation;
 using SmartDesk.Application.Common.Extensions;
+using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
 
@@ -35,5 +36,9 @@ public sealed class CreateReservationCommandValidator : AbstractValidator<Create
         RuleFor(x => x.ReminderMinutes)
             .Must(ReservationRules.IsValidReminder)
             .WithMessage(_ => ReservationRules.ReminderMessage);
+
+        RuleFor(x => x.AttendeeIds)
+            .Must(ids => ids is null || ids.Count <= MeetingRules.MaxAttendees)
+            .WithMessage(_ => string.Format(Messages.Meetings_TooManyAttendees, MeetingRules.MaxAttendees));
     }
 }

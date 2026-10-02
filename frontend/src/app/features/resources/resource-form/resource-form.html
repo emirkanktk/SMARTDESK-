@@ -256,6 +256,31 @@
       </div>
     </fieldset>
 
+    <fieldset class="field check-in" aria-describedby="check-in-hint">
+      <legend i18n="@@resourceForm.checkIn">Check-in</legend>
+      <label class="check-option">
+        <input type="checkbox" formControlName="checkInRequired" />
+        <span i18n="@@resourceForm.checkInRequired"
+          >Bookings must be checked in at the door with a QR code</span
+        >
+      </label>
+      <span id="check-in-hint" class="text-muted hint" i18n="@@resourceForm.checkInHint"
+        >Whoever booked it scans the code from {{ checkIn.opensBeforeMinutes }} minutes before the
+        start until {{ checkIn.graceMinutes }} minutes after. A booking nobody checks in to is
+        released, so others can use it. Bookings made before this was switched on don't need
+        one.</span
+      >
+      @if (checkInOn()) {
+        @if (id(); as resourceId) {
+          <app-check-in-code [resourceId]="resourceId" [resourceName]="loadedName()" />
+        } @else {
+          <span class="text-muted hint" i18n="@@resourceForm.checkInCodeAfterSave"
+            >Its QR code shows here once the resource is saved.</span
+          >
+        }
+      }
+    </fieldset>
+
     @if (isAdmin()) {
       <fieldset class="field teams" aria-describedby="teams-hint">
         <legend i18n="@@resourceForm.teams">

@@ -101,6 +101,25 @@ public sealed class SignalRReservationNotifierTests : IDisposable
     }
 
     [Fact]
+    public async Task A_release_notice_goes_to_the_owner_only()
+    {
+        var resource = await _database.AddResourceAsync();
+        var reservation = Sample(resource.Id);
+
+        await _notifier.ReservationReleasedAsync(reservation, CancellationToken.None);
+
+        _hubClients.Verify(c => c.User(reservation.UserId.ToString()), Times.Once);
+        _ownerClients.Verify(
+            c => c.SendCoreAsync(
+                ReservationHub.Released,
+                It.Is<object[]>(args => args.Length == 1 && ReferenceEquals(args[0], reservation)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _everyone.VerifyNoOtherCalls();
+        _groups.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public async Task A_failed_broadcast_does_not_escape()
     {
         var resource = await _database.AddResourceAsync();
@@ -133,5 +152,8 @@ public sealed class SignalRReservationNotifierTests : IDisposable
         new DateTime(2026, 10, 5, 11, 0, 0, DateTimeKind.Utc),
         ReservationStatus.Confirmed,
         null,
-        15);
+        15,
+        false,
+        null,
+        null);
 }

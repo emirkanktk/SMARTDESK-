@@ -55,6 +55,10 @@ they next sign in.
 | Location | string | e.g. "2nd Floor" |
 | Status | ResourceStatus | Active / Inactive / Maintenance |
 | Description | string? | |
+| CheckInRequired | bool | bookings must be checked in at the door with its QR code, or they're released (ADR-0030) |
+| CheckInCode | string | the secret in its QR code: 32 hex digits, random, required. Only those who may edit the resource see it; replacing it retires the printed code |
+| DoorScreenTokenHash | string? (64) | SHA-256 of the door screen's token, as hex; while set, only the screen's changing code checks in (ADR-0034) |
+| DoorScreenSetUpAt | DateTime? | when that screen was set up |
 
 ### ResourceFeature
 
@@ -77,12 +81,67 @@ they next sign in.
 | Note | string? | |
 | ReminderMinutes | int? | remind the owner this many minutes before the start: 5, 15, 30 or 60; null = no reminder (ADR-0018) |
 | ReminderSentAt | DateTime? | when that reminder went out; cleared when the start or `ReminderMinutes` changes. A partial index on `StartDateTime` covers the rows still waiting for one |
+| CheckInRequired | bool | whether its resource asked for a check-in when it was booked, or last moved to a new start or another resource (ADR-0030) |
+| CheckedInAt | DateTime? | when the owner checked in; cleared when the start or the resource changes |
+| ReleasedAt | DateTime? | when it was released because nobody checked in; `Status` is then `Cancelled` |
+| EndingSoonSentAt | DateTime? | when its owner was asked whether it needs longer; cleared when the end moves (ADR-0033) |
+| CheckedInByUserId | Guid? | who checked it in: the owner or someone invited; cleared with `CheckedInAt` (ADR-0034) |
+| ReleaseWarningSentAt | DateTime? | when the owner and those invited were warned, five minutes before the release (ADR-0034) |
+| SeriesId | Guid? | FK → `ReservationSeries.Id` (restrict), indexed: the repeating booking it's one date of (ADR-0035) |
 
 `Reservation.UserId` is stored as a plain `Guid`, not an EF navigation to `ApplicationUser`,
 because `SmartDeskDbContext` treats Identity's own tables as belonging to the Identity
 schema it manages; a direct FK is unnecessary since Identity guarantees the user row
 exists at reservation-creation time, and the query direction we need (reservations for the
 current user) is fully satisfiable filtering by a scalar `UserId`.
+
+### ReservationSeries
+
+A booking that repeats (ADR-0035): the rule it was made with, never edited. Each date is a
+`Reservation` pointing here.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | |
+| UserId | Guid | who made it, the owner of every date; no FK across the Identity boundary |
+| Frequency | RecurrenceFrequency | Daily / Weekly |
+| Interval | int | every 1 to 4 days or weeks (check constraint) |
+| DaysOfWeek | WeekDays | the days of a weekly series, as flags (Monday = 1 ... Sunday = 64); none for a daily one |
+| Until | DateOnly | the last day it may come back on, inclusive, in its time zone |
+| TimeZone | string (100) | IANA id the dates were worked out in |
+| CreatedAt | DateTime | |
+
+### ReservationAttendee
+
+Someone invited to a booking (ADR-0032). Key (`ReservationId`, `UserId`).
+
+| Field | Type | Notes |
+|---|---|---|
+| ReservationId | Guid | FK → `Reservation.Id`, cascade delete |
+| UserId | Guid | an account id; no FK across the Identity boundary. Indexed, for "the meetings I'm invited to" |
+| Response | AttendeeResponse | Pending / Accepted / Declined; back to Pending when the meeting gets a new start or another resource |
+| RespondedAt | DateTime? | when they answered |
+| DeclineReason | string? (500) | why they can't come; for the organizer only, never in a reservation response |
+
+### InboxMessage
+
+A message in someone's inbox (ADR-0032). It keeps its own copy of the meeting, so it outlives
+the booking it's about.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | version 7, so ids sort like `CreatedAt` |
+| RecipientId | Guid | an account id; no FK across the Identity boundary |
+| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined / MeetingExtended (ADR-0033) / SeriesInvitation / SeriesCancelled / SeriesAccepted / SeriesDeclined (ADR-0035) |
+| SenderId | Guid? | who caused it; null for a release |
+| ReservationId | Guid? | FK → `Reservation.Id`, set null when the booking is deleted |
+| ResourceName | string (200) | the meeting when the message was sent: the room's name, |
+| StartDateTime, EndDateTime | DateTime | its times, |
+| Note | string? (500) | and the organizer's note |
+| Reason | string? (500) | why someone can't come, in a MeetingDeclined or SeriesDeclined |
+| SeriesId | Guid? | FK → `ReservationSeries.Id` (set null), for a Series* message: which series; its times are then the first date it covers |
+| CreatedAt | DateTime | |
+| ReadAt | DateTime? | null while unread |
 
 ### ResourceTeam
 
@@ -121,22 +180,117 @@ A resource without a row here shows its type's picture, which ships with the app
 
 ## Relationships
 
+Solid lines are foreign keys in the database. Dotted lines are account ids kept as plain values,
+with no foreign key across the Identity boundary (see `Reservation.UserId` above). Only the
+keys and the fields that explain a relationship are drawn; the tables above have the rest.
+
+```mermaid
+erDiagram
+    ApplicationUser {
+        uuid Id PK
+        string Email UK
+        string FirstName
+        string LastName
+        int Status "Active, PendingApproval, Disabled"
+        uuid ManagerId FK "an Employee's manager"
+    }
+    UserSession {
+        uuid Id PK
+        uuid UserId FK
+        string TokenHash UK "SHA-256 of the refresh token"
+        datetime ExpiresAt
+    }
+    ResourceType {
+        uuid Id PK
+        string Name UK
+    }
+    Resource {
+        uuid Id PK
+        uuid ResourceTypeId FK
+        string Name
+        int Capacity
+        int Status "Active, Inactive, Maintenance"
+        bool CheckInRequired
+        string DoorScreenTokenHash "null without a door screen"
+    }
+    ResourceFeature {
+        uuid Id PK
+        uuid ResourceId FK
+        string Name
+    }
+    ResourceTeam {
+        uuid ResourceId PK, FK
+        uuid TeamId PK "a Manager's account id"
+    }
+    ResourcePhoto {
+        uuid ResourceId PK, FK
+        string ContentType
+        bytes Data "at most 2 MB"
+    }
+    ResourceBlock {
+        uuid Id PK
+        uuid ResourceId FK
+        datetime StartDateTime
+        datetime EndDateTime
+        string Reason
+    }
+    Reservation {
+        uuid Id PK
+        uuid ResourceId FK
+        uuid UserId "the owner"
+        uuid SeriesId FK "null for a booking on its own"
+        datetime StartDateTime
+        datetime EndDateTime
+        int Status "Confirmed, Cancelled"
+        bool CheckInRequired
+        datetime CheckedInAt
+    }
+    ReservationSeries {
+        uuid Id PK
+        uuid UserId "the owner"
+        int Frequency "Daily, Weekly"
+        int Interval "1 to 4"
+        int DaysOfWeek "flags"
+        date Until
+        string TimeZone
+    }
+    ReservationAttendee {
+        uuid ReservationId PK, FK
+        uuid UserId PK "who is invited"
+        int Response "Pending, Accepted, Declined"
+    }
+    InboxMessage {
+        uuid Id PK
+        uuid RecipientId "whose inbox"
+        int Kind
+        uuid ReservationId FK "null once it's gone"
+        uuid SeriesId FK "for Series messages"
+        string ResourceName "the meeting as it was"
+    }
+
+    ApplicationUser |o--o{ ApplicationUser : manages
+    ApplicationUser ||--o{ UserSession : "signs in with"
+    ResourceType ||--o{ Resource : types
+    Resource ||--o{ ResourceFeature : has
+    Resource ||--o| ResourcePhoto : "pictured by"
+    Resource ||--o{ ResourceTeam : "belongs to"
+    Resource ||--o{ ResourceBlock : "blocked by"
+    Resource ||--o{ Reservation : "booked by"
+    ReservationSeries |o--|{ Reservation : "dates of"
+    Reservation ||--o{ ReservationAttendee : invites
+    Reservation |o--o{ InboxMessage : "told about in"
+    ReservationSeries |o--o{ InboxMessage : "told about in"
+    ApplicationUser ||..o{ Reservation : owns
+    ApplicationUser ||..o{ ReservationSeries : owns
+    ApplicationUser ||..o{ ReservationAttendee : "invited as"
+    ApplicationUser ||..o{ InboxMessage : receives
+    ApplicationUser ||..o{ ResourceTeam : "manages the team of"
 ```
-ResourceType 1 ── * Resource 1 ── * ResourceFeature
-                          │
-                          1
-                          │
-                          *
-                    Reservation ── (UserId, scalar) ──→ ApplicationUser
 
-Resource 1 ── * ResourceBlock
-
-Resource 1 ── 0..1 ResourcePhoto
-
-ApplicationUser (Manager) 1 ── * ApplicationUser (Employee, via ManagerId)
-
-Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
-```
+- A resource with no `ResourceTeam` rows is shared by everyone (ADR-0022).
+- A reservation, a block or a series is never deleted, only cancelled or ended, so nothing
+  cascades from them; a resource's own rows (features, photo, teams, blocks, reservations)
+  go with it.
 
 ## Indexes
 
@@ -149,6 +303,14 @@ Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
 - `Reservations(ResourceId, Status, StartDateTime, EndDateTime)` - composite index backing
   the overlap-check query every `CreateReservationCommand` runs (same resource, active
   reservations, does the new range intersect an existing one).
+- `IX_Reservations_PendingReminders` on `Reservations(StartDateTime)`, only rows with a reminder
+  still to send - what the reminder job scans every 30 seconds.
+- `IX_Reservations_AwaitingCheckIn` on `Reservations(StartDateTime)`, only `Confirmed` rows that
+  need a check-in nobody has made yet - what the release job scans every 30 seconds (ADR-0030).
+- `ReservationAttendees(UserId)` - the meetings someone is invited to (ADR-0032).
+- `InboxMessages(RecipientId, CreatedAt)` - someone's inbox, newest first; and
+  `IX_InboxMessages_Unread` on `InboxMessages(RecipientId)`, only unread rows - the count the app
+  asks for on every page.
 
 ## Constraints
 
@@ -201,6 +363,30 @@ Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
    A resource with no teams is shared by everyone. A Manager manages only resources that
    belong to their team alone. A Manager whose team has resources keeps the role until they're
    shared or given to another team.
+10. **Check-in (ADR-0030).** A booking of a resource with `CheckInRequired` is checked in by its
+    owner at the door, from 10 minutes before its start until 15 minutes after (never once it's
+    over), with the resource's current `CheckInCode`. One nobody checked in to by then is
+    released: `Cancelled`, with `ReleasedAt`.
+    - This applies only when the booking's own `CheckInRequired` and its resource's are both
+      set, so switching check-in on doesn't catch bookings made without knowing, and switching
+      it off frees them all.
+    - A check-in and a release are decided under the reservation's lock, and their time
+      conditions are exact opposites, so a booking is never both checked in and released.
+    - The single definition lives in `SmartDesk.Domain.Rules.CheckInRules`.
+    - Anyone invited to the booking may check it in too (ADR-0032).
+    - While a door screen is set up, only its code checks in: this 30-second step's or the
+      last one's (ADR-0034). Five minutes before a release, the owner and those invited are
+      warned.
+11. **Meetings (ADR-0032).** A Manager invites their own team's active members, an Admin any
+    active account, an Employee nobody. Each person added must be able to use the resource, and
+    the resource's `Capacity` must hold everyone, the organizer included. A new start or another
+    resource puts every answer back to Pending. A reason for not coming is only ever in the
+    organizer's message.
+12. **Series (ADR-0035).** Every date of a series follows the rules of any booking, and they're
+    booked together, in one transaction under the resource's lock: one date that isn't free
+    stops them all unless the booker chose to skip such dates. The dates keep the first one's
+    local time in the booker's time zone; the last starts at most 180 days ahead; a weekly
+    series includes the day it starts on; no date runs into the next.
 
 ## Concurrency (formerly an open question)
 

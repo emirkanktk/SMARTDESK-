@@ -19,6 +19,11 @@ public sealed class FrontendLinks(IOptions<AppOptions> options) : IFrontendLinks
 {
     private string Base => options.Value.FrontendUrl.TrimEnd('/');
 
+    public string CheckIn(Guid resourceId, string code) =>
+        $"{Base}/check-in/{resourceId}?code={Uri.EscapeDataString(code)}";
+
+    public string DoorScreen(Guid resourceId, string token) => $"{Base}/door/{resourceId}#{token}";
+
     public string ResetPassword(string email, string token) =>
         $"{Base}/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
 
