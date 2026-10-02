@@ -180,30 +180,117 @@ A resource without a row here shows its type's picture, which ships with the app
 
 ## Relationships
 
+Solid lines are foreign keys in the database. Dotted lines are account ids kept as plain values,
+with no foreign key across the Identity boundary (see `Reservation.UserId` above). Only the
+keys and the fields that explain a relationship are drawn; the tables above have the rest.
+
+```mermaid
+erDiagram
+    ApplicationUser {
+        uuid Id PK
+        string Email UK
+        string FirstName
+        string LastName
+        int Status "Active, PendingApproval, Disabled"
+        uuid ManagerId FK "an Employee's manager"
+    }
+    UserSession {
+        uuid Id PK
+        uuid UserId FK
+        string TokenHash UK "SHA-256 of the refresh token"
+        datetime ExpiresAt
+    }
+    ResourceType {
+        uuid Id PK
+        string Name UK
+    }
+    Resource {
+        uuid Id PK
+        uuid ResourceTypeId FK
+        string Name
+        int Capacity
+        int Status "Active, Inactive, Maintenance"
+        bool CheckInRequired
+        string DoorScreenTokenHash "null without a door screen"
+    }
+    ResourceFeature {
+        uuid Id PK
+        uuid ResourceId FK
+        string Name
+    }
+    ResourceTeam {
+        uuid ResourceId PK, FK
+        uuid TeamId PK "a Manager's account id"
+    }
+    ResourcePhoto {
+        uuid ResourceId PK, FK
+        string ContentType
+        bytes Data "at most 2 MB"
+    }
+    ResourceBlock {
+        uuid Id PK
+        uuid ResourceId FK
+        datetime StartDateTime
+        datetime EndDateTime
+        string Reason
+    }
+    Reservation {
+        uuid Id PK
+        uuid ResourceId FK
+        uuid UserId "the owner"
+        uuid SeriesId FK "null for a booking on its own"
+        datetime StartDateTime
+        datetime EndDateTime
+        int Status "Confirmed, Cancelled"
+        bool CheckInRequired
+        datetime CheckedInAt
+    }
+    ReservationSeries {
+        uuid Id PK
+        uuid UserId "the owner"
+        int Frequency "Daily, Weekly"
+        int Interval "1 to 4"
+        int DaysOfWeek "flags"
+        date Until
+        string TimeZone
+    }
+    ReservationAttendee {
+        uuid ReservationId PK, FK
+        uuid UserId PK "who is invited"
+        int Response "Pending, Accepted, Declined"
+    }
+    InboxMessage {
+        uuid Id PK
+        uuid RecipientId "whose inbox"
+        int Kind
+        uuid ReservationId FK "null once it's gone"
+        uuid SeriesId FK "for Series messages"
+        string ResourceName "the meeting as it was"
+    }
+
+    ApplicationUser |o--o{ ApplicationUser : manages
+    ApplicationUser ||--o{ UserSession : "signs in with"
+    ResourceType ||--o{ Resource : types
+    Resource ||--o{ ResourceFeature : has
+    Resource ||--o| ResourcePhoto : "pictured by"
+    Resource ||--o{ ResourceTeam : "belongs to"
+    Resource ||--o{ ResourceBlock : "blocked by"
+    Resource ||--o{ Reservation : "booked by"
+    ReservationSeries |o--|{ Reservation : "dates of"
+    Reservation ||--o{ ReservationAttendee : invites
+    Reservation |o--o{ InboxMessage : "told about in"
+    ReservationSeries |o--o{ InboxMessage : "told about in"
+    ApplicationUser ||..o{ Reservation : owns
+    ApplicationUser ||..o{ ReservationSeries : owns
+    ApplicationUser ||..o{ ReservationAttendee : "invited as"
+    ApplicationUser ||..o{ InboxMessage : receives
+    ApplicationUser ||..o{ ResourceTeam : "manages the team of"
 ```
-ResourceType 1 ── * Resource 1 ── * ResourceFeature
-                          │
-                          1
-                          │
-                          *
-                    Reservation ── (UserId, scalar) ──→ ApplicationUser
 
-Resource 1 ── * ResourceBlock
-
-Resource 1 ── 0..1 ResourcePhoto
-
-ApplicationUser (Manager) 1 ── * ApplicationUser (Employee, via ManagerId)
-
-Resource * ── * team (ResourceTeam.TeamId = a Manager's id; none = shared)
-
-Reservation 1 ── * ReservationAttendee ── (UserId, scalar) ──→ ApplicationUser
-
-InboxMessage ── (RecipientId, SenderId, scalar) ──→ ApplicationUser
-InboxMessage * ── 0..1 Reservation (set null when it's deleted)
-
-ReservationSeries 1 ── * Reservation (its dates)
-ReservationSeries 1 ── * InboxMessage (Series* messages)
-```
+- A resource with no `ResourceTeam` rows is shared by everyone (ADR-0022).
+- A reservation, a block or a series is never deleted, only cancelled or ended, so nothing
+  cascades from them; a resource's own rows (features, photo, teams, blocks, reservations)
+  go with it.
 
 ## Indexes
 
