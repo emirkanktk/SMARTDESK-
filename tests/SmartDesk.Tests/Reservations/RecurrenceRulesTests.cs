@@ -153,6 +153,9 @@ public sealed class RecurrenceRulesTests
     {
         Problems(Weekly(new DateOnly(2026, 10, 11)))
             .Should().Equal(("Recurrence.Until", "The series has to end on or after the day it starts."));
+        // Ending on its first day is allowed; it just isn't a series.
+        Problems(Weekly(new DateOnly(2026, 10, 12)))
+            .Should().Equal(("Recurrence.Until", "That's only one date: pick a later end, or more days, for it to repeat."));
         Problems(Weekly(new DateOnly(2026, 10, 18)))
             .Should().Equal(("Recurrence.Until", "That's only one date: pick a later end, or more days, for it to repeat."));
         Problems(Weekly(new DateOnly(2026, 10, 19))).Should().BeEmpty();
