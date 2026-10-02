@@ -12,10 +12,12 @@ describe('ReservationHubService', () => {
   // test can play the part of the server. Spying on the prototype, rather than mocking the
   // module, can't be defeated by another test file having loaded the real module first.
   const handlers = new Map<string, (payload: Reservation | InboxMessage) => void>();
+  let closed: (() => void) | null = null;
   const connection = {
     on: (event: string, handler: (payload: Reservation | InboxMessage) => void) =>
       handlers.set(event, handler),
     onreconnected: vi.fn(),
+    onclose: (handler: () => void) => (closed = handler),
     start: vi.fn(() => Promise.resolve()),
     stop: vi.fn(() => Promise.resolve()),
   };
@@ -108,6 +110,40 @@ describe('ReservationHubService', () => {
 
       expect(connection.start).toHaveBeenCalledTimes(1);
       expect(catchUps).toBe(0);
+    });
+
+    it('starts again when the server ends the connection, and asks screens to catch up', async () => {
+      reconnectWithFailures(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      closed!(); // e.g. the user signed in on another device
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(connection.start).toHaveBeenCalledTimes(2);
+      expect(catchUps).toBe(1);
+    });
+
+    it('keeps trying when the server is not there to start again', async () => {
+      reconnectWithFailures(0);
+      await vi.advanceTimersByTimeAsync(0);
+      connection.start.mockImplementationOnce(() => Promise.reject(new Error('offline')));
+
+      closed!();
+      await vi.advanceTimersByTimeAsync(2_000); // tried at once, then after 2 s
+
+      expect(connection.start).toHaveBeenCalledTimes(3);
+      expect(catchUps).toBe(1);
+    });
+
+    it('does not start again once signed out', async () => {
+      reconnectWithFailures(0);
+      await vi.advanceTimersByTimeAsync(0);
+      hub.disconnect();
+
+      closed!();
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(connection.start).toHaveBeenCalledTimes(1);
     });
 
     it('does not after a sign-out while it was still retrying', async () => {
