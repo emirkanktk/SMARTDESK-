@@ -41,6 +41,7 @@ const ADMIN: Screen[] = [
   { path: '/admin/users' },
   { path: '/admin/reports' },
   { path: '/admin/blocks' },
+  { path: '/guide' },
   { path: '/change-password' },
 ];
 
@@ -51,6 +52,7 @@ const MANAGER: Screen[] = [
   { path: '/resources' },
   { path: '/reservations/new' },
   { path: '/inbox' },
+  { path: '/guide' },
 ];
 
 const PHONE = { width: 390, height: 844 };

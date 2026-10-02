@@ -85,6 +85,7 @@ export class Shell {
       icon: 'id-card',
       roles: [Roles.Admin],
     },
+    { path: '/guide', label: $localize`:@@nav.guide:Guide`, icon: 'help' },
   ];
 
   /** What a screen reader says for the bar's inbox button, which shows only a bell. */
