@@ -343,6 +343,12 @@ picker drops seconds and any difference would count as a change.
   room's state (`doorState`) and the QR code. The resource form's `<app-check-in-code>` sets
   the screen up. The check-in page reads the code once and drops it from the address, and
   offers what can be done at the door: run longer, end, or book on the spot.
+- **Bookings that repeat (ADR-0035).** The booking form's Repeat section is part of its
+  reactive form (`repeat`, `repeatDays`, `until`). From them it works out the rule
+  (`recurrence`), asks `GET /api/reservations/series/preview` as the form changes - after a
+  pause (`SERIES_PREVIEW_DEBOUNCE`), the newest answer only - and lists the dates with
+  `<app-series-dates>`. `shared/utils/recurrence.ts` says a rule in the reader's words ("every
+  Monday until 2 Nov 2026"); My reservations and the inbox use it too.
 - **Styling.** Plain SCSS. Design tokens (colors, the brand's gradients, spacing, radius,
   shadows) and shared building blocks (`.btn`, `.field`, `.input`, `.card`, `.alert-error`,
   `.brand-panel`, `.empty`) live in `src/styles.scss`. Component styles use those variables

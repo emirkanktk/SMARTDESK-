@@ -226,16 +226,19 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
 | POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes?, attendeeIds? }` → 201. The owner is always the caller. `reminderMinutes`: 5, 15, 30 or 60, or null / omitted for no reminder (see Real-time). `attendeeIds`: who's invited (see Meetings). Another team's resource is 404 (ADR-0022). |
+| POST | `/api/reservations/series` | any authenticated user | `CreateReservationSeriesCommand` | body: create's fields plus `{ recurrence: { frequency, interval, daysOfWeek?, until, timeZone }, skipConflicts? }` → 201 `{ series, booked, skipped }`: a booking that repeats, every date at once (ADR-0035). See Series. |
+| GET | `/api/reservations/series/preview?resourceId=&startDateTime=&endDateTime=&frequency=&interval=&daysOfWeek=&until=&timeZone=` | any authenticated user | `GetSeriesPreviewQuery` | → 200 `{ dates: [{ startDateTime, endDateTime, free, code, reason }] }`: the dates a series would have, and which are free. `daysOfWeek` once for each day. Same rules as booking it; nothing is held. |
 | GET | `/api/reservations/{id}` | any authenticated user | `GetReservationByIdQuery` | one reservation, any status; 404 if it doesn't exist. For the edit form and for opening a calendar entry. Your own reservation always; anyone else's only on a resource you may use (404 otherwise, ADR-0022). |
 | PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes?, attendeeIds? }` - full replace → 200, so leaving `reminderMinutes` out turns the reminder off, and leaving `attendeeIds` out takes everyone off the list. Rules below. |
 | POST | `/api/reservations/{id}/end` | owner or Admin | `EndReservationCommand` | → 200: a booking under way ends now, so the room is free at once (ADR-0034). 409 for one that hasn't started (cancel it instead), is cancelled or is over. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
+| POST | `/api/reservations/{id}/cancel-following` | owner or Admin | `CancelFollowingCommand` | → 200 with the dates cancelled now: this date of a series and every later one still to come; dates already cancelled or over stay as they are, so again it's `[]`. 409 for a booking that doesn't repeat (`"This booking doesn't repeat."`) or is over. See Series. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
 | GET | `/api/reservations/invited` | any authenticated user | `GetMyInvitationsQuery` | other people's `Confirmed` meetings the caller is invited to and that aren't over, soonest first (ADR-0032) |
 | GET | `/api/reservations/invitees` | any authenticated user | `GetInviteesQuery` | who the caller may invite: `[{ id, name, email }]`, by name - a Manager's active team members, every active account for an Admin, nobody for an Employee |
 | GET | `/api/reservations/{id}/extension` | owner or Admin | `GetExtensionOptionsQuery` | `{ minutes: [15, 30, 60] }`: how much longer it can run, only what ends before the resource's next booking or blocked window; empty when it can't (ADR-0033) |
 | POST | `/api/reservations/{id}/extend` | owner or Admin | `ExtendReservationCommand` | body: `{ minutes }` (15, 30 or 60) → 200 with the reservation, its end that much later. See Running over. |
-| POST | `/api/reservations/{id}/response` | someone invited | `RespondToInvitationCommand` | body: `{ response: "Accepted" \| "Declined", reason? }` → 200 with the meeting. Declining needs a `reason` (max 500), which goes to the organizer only. See Meetings. |
+| POST | `/api/reservations/{id}/response` | someone invited | `RespondToInvitationCommand` | body: `{ response: "Accepted" \| "Declined", reason?, following? }` → 200 with the meeting. Declining needs a `reason` (max 500), which goes to the organizer only. `following: true` on a date of a series answers it and every later date the caller is invited to (ADR-0035). See Meetings. |
 | GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. Only reservations on resources the caller may use (ADR-0022). |
 
 Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
@@ -258,7 +261,8 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
   "userDisplayName": "Ayşe Yılmaz", // who booked it: "First Last", or the email if both are blank
   "attendees": [                   // who's invited, by name (ADR-0032); usually empty
     { "id": "…", "name": "Mehmet Demir", "response": "Accepted" }  // "Pending" | "Accepted" | "Declined"
-  ]
+  ],
+  "series": null                   // the rule of the series it's one date of (ADR-0035), see Series
 }
 ```
 
@@ -321,6 +325,55 @@ Real-time) and the app asks whether they need longer.
 | 404 | the reservation doesn't exist |
 | 409 | it's cancelled or over; the extra time is taken (`code: "reservation-overlaps"`, `"Board Room is reserved right after, so this can't run 30 minutes longer."`), blocked (`code: "resource-blocked"`), or the resource isn't `Active` (`code: "resource-unavailable"`) |
 
+## Series (ADR-0035)
+
+A booking that repeats: one rule, and one ordinary reservation a date, each with the series'
+rule as `series`. Each date can be moved, extended, checked in or cancelled like any booking.
+
+```json
+"recurrence": {
+  "frequency": "Weekly",          // "Daily" | "Weekly"
+  "interval": 1,                  // every 1 to 4 days or weeks
+  "daysOfWeek": ["Monday"],       // a weekly one's days; it has to include the day it starts on,
+                                  // and is that day alone when left out. Ignored for a daily one
+  "until": "2026-11-30",          // the last day it may come back on, inclusive
+  "timeZone": "Europe/Istanbul"   // IANA; the dates keep the first one's local time in it
+}
+```
+
+- **The dates.** The first is the booking asked for; the others keep its local time of day and
+  its length. Weeks count from Monday: every 2 weeks is the first date's week, the one two weeks
+  later, and so on. A time the clocks skip moves to the first minute after it.
+- **Limits.** The first date follows the rules of any booking. The last may start at most 180
+  days ahead. At least two dates, none running into the next.
+- **Booking.** All the dates in one transaction, under the resource's lock. A date that's
+  blocked or taken stops the lot (409 `series-conflicts`), unless `skipConflicts: true`, which
+  books the others and lists the rest under `skipped`. With none free it's 409 either way.
+- **Invitations.** Everyone on `attendeeIds` is invited to every date and gets one
+  `SeriesInvitation`. One answer with `following` covers the rest of the series
+  (`SeriesAccepted` / `SeriesDeclined` to the organizer); cancelling the rest sends one
+  `SeriesCancelled`.
+
+```json
+{
+  "series": { "id": "…", "frequency": "Weekly", "interval": 1, "daysOfWeek": ["Monday"],
+              "until": "2026-11-30", "timeZone": "Europe/Istanbul" },
+  "booked": [ /* reservations, earliest first */ ],
+  "skipped": [
+    { "startDateTime": "2026-10-19T07:00:00Z", "endDateTime": "2026-10-19T08:00:00Z", "free": false,
+      "code": "reservation-overlaps", "reason": "Board Room is already reserved for part of that time." }
+  ]
+}
+```
+
+**Series - errors**
+
+| Status | When |
+|---|---|
+| 400 | the first date breaks a booking's rules (`StartDateTime`, `EndDateTime`, ...); `Recurrence.Interval` isn't 1 to 4, or the dates would run into each other (`"Each date would run into the next: make it shorter, or repeat it less often."`); `Recurrence.DaysOfWeek` leaves out the day it starts on (`"The series has to include the day it starts on (Monday)."`); `Recurrence.Until` is before the first date, gives a single date (`"That's only one date: pick a later end, or more days, for it to repeat."`) or goes past 180 days; `Recurrence.TimeZone` is unknown |
+| 404 | the resource doesn't exist, or belongs to other teams |
+| 409 | the resource isn't `Active` (`code: "resource-unavailable"`); dates aren't free (`code: "series-conflicts"`, `"1 of the 4 dates aren't free in Board Room. Look at the dates again, then book the others or choose another time."`), or none is |
+
 ## Meetings (ADR-0032)
 
 A booking can invite people. The organizer is the booking's owner; everyone invited gets a
@@ -370,12 +423,16 @@ The signed-in user's own messages; nobody sees anyone else's.
   "kind": "MeetingInvitation",   // MeetingInvitation | MeetingChanged | MeetingCancelled | MeetingUninvited
                                  // | MeetingExtended (ADR-0033)
                                  // | MeetingAccepted | MeetingDeclined (the last two to the organizer)
+                                 // | SeriesInvitation | SeriesCancelled | SeriesAccepted | SeriesDeclined
+                                 //   (ADR-0035: one message for the dates of a series)
   "reservationId": "…",          // null once the booking is gone
   "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release, which nobody sent
   "resourceName": "Board Room",  // the meeting as it was when the message was sent
   "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:00:00Z",
   "note": "Sprint planning",
-  "reason": null,                // why someone can't come, in a MeetingDeclined
+  "reason": null,                // why someone can't come, in a MeetingDeclined or SeriesDeclined
+  "series": null,                // for a Series* message: the rule; the times are then its first
+                                 // date the message covers ("from Mon 5 Oct, every Monday ...")
   "createdAt": "2026-10-01T09:00:00Z",
   "readAt": null                 // null while unread
 }

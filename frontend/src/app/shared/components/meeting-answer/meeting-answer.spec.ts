@@ -195,4 +195,38 @@ describe('MeetingAnswer', () => {
 
     expect(success).toHaveBeenCalledWith('Your answer was sent.');
   });
+  describe('for the dates of a meeting that repeats (ADR-0035)', () => {
+    it('answers for this date and every later one, and says so', async () => {
+      fixture = TestBed.createComponent(MeetingAnswer);
+      fixture.componentRef.setInput('reservation', meeting());
+      fixture.componentRef.setInput('following', true);
+      element = fixture.nativeElement;
+      await fixture.whenStable();
+
+      expect(text()).toContain('Your answer is for this date and every later one.');
+      button("I can't come")!.click();
+      await fixture.whenStable();
+      const reason = element.querySelector<HTMLTextAreaElement>('textarea')!;
+      reason.value = 'On leave';
+      reason.dispatchEvent(new Event('input'));
+      element.querySelector('form')!.dispatchEvent(new Event('submit'));
+      await fixture.whenStable();
+
+      expect(respond).toHaveBeenCalledWith('rsv-20', {
+        response: 'Declined',
+        reason: 'On leave',
+        following: true,
+      });
+    });
+
+    it('answers for one date only, unless asked for more', async () => {
+      await render(meeting());
+
+      expect(text()).not.toContain('every later one');
+      button("I'm coming")!.click();
+      await fixture.whenStable();
+
+      expect(respond).toHaveBeenCalledWith('rsv-20', { response: 'Accepted' });
+    });
+  });
 });

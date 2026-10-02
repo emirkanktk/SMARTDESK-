@@ -1,0 +1,50 @@
+:host {
+  display: block;
+}
+
+.summary {
+  margin: 0 0 var(--space-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+
+  &.problem {
+    color: var(--color-warning);
+  }
+}
+
+// A long series scrolls inside its own box rather than pushing the form's buttons away.
+.dates {
+  max-height: 14rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    font-size: 0.875rem;
+
+    & + li {
+      border-top: 1px solid var(--color-border);
+    }
+  }
+
+  .taken {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+
+    .date {
+      text-decoration: line-through;
+    }
+  }
+}
+
+.date {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

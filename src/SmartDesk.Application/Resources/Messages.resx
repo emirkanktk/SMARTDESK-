@@ -381,6 +381,9 @@
   <data name="Property_CurrentPassword" xml:space="preserve">
     <value>Current Password</value>
   </data>
+  <data name="Property_DaysOfWeek" xml:space="preserve">
+    <value>Days Of Week</value>
+  </data>
   <data name="Property_Description" xml:space="preserve">
     <value>Description</value>
   </data>
@@ -396,8 +399,14 @@
   <data name="Property_FirstName" xml:space="preserve">
     <value>First Name</value>
   </data>
+  <data name="Property_Frequency" xml:space="preserve">
+    <value>Frequency</value>
+  </data>
   <data name="Property_From" xml:space="preserve">
     <value>From</value>
+  </data>
+  <data name="Property_Interval" xml:space="preserve">
+    <value>Interval</value>
   </data>
   <data name="Property_LastName" xml:space="preserve">
     <value>Last Name</value>
@@ -431,6 +440,9 @@
   </data>
   <data name="Property_Reason" xml:space="preserve">
     <value>Reason</value>
+  </data>
+  <data name="Property_Recurrence" xml:space="preserve">
+    <value>Recurrence</value>
   </data>
   <data name="Property_ReminderMinutes" xml:space="preserve">
     <value>Reminder Minutes</value>
@@ -467,6 +479,9 @@
   </data>
   <data name="Property_Token" xml:space="preserve">
     <value>Token</value>
+  </data>
+  <data name="Property_Until" xml:space="preserve">
+    <value>Until</value>
   </data>
   <data name="Reports_MaxRange" xml:space="preserve">
     <value>The report can cover at most {0} days.</value>
@@ -557,6 +572,36 @@
   </data>
   <data name="Resources_UnknownType" xml:space="preserve">
     <value>Resource type does not exist.</value>
+  </data>
+  <data name="Series_Conflicts" xml:space="preserve">
+    <value>{0} of the {1} dates aren't free in {2}. Look at the dates again, then book the others or choose another time.</value>
+  </data>
+  <data name="Series_DaysMustIncludeFirst" xml:space="preserve">
+    <value>The series has to include the day it starts on ({0}).</value>
+  </data>
+  <data name="Series_IntervalRange" xml:space="preserve">
+    <value>Repeat it every 1 to {0} days or weeks.</value>
+  </data>
+  <data name="Series_NoneFree" xml:space="preserve">
+    <value>None of the dates is free in {0}.</value>
+  </data>
+  <data name="Series_NotASeries" xml:space="preserve">
+    <value>This booking doesn't repeat.</value>
+  </data>
+  <data name="Series_Overlapping" xml:space="preserve">
+    <value>Each date would run into the next: make it shorter, or repeat it less often.</value>
+  </data>
+  <data name="Series_TooFarAhead" xml:space="preserve">
+    <value>A series can run at most {0} days ahead: end it sooner.</value>
+  </data>
+  <data name="Series_TooFewDates" xml:space="preserve">
+    <value>That's only one date: pick a later end, or more days, for it to repeat.</value>
+  </data>
+  <data name="Series_UnknownDay" xml:space="preserve">
+    <value>Unknown day of the week.</value>
+  </data>
+  <data name="Series_UntilBeforeStart" xml:space="preserve">
+    <value>The series has to end on or after the day it starts.</value>
   </data>
   <data name="Status_Active" xml:space="preserve">
     <value>Active</value>

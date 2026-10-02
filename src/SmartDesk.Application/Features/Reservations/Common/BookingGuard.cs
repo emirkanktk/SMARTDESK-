@@ -10,9 +10,10 @@ using SmartDesk.Domain.Rules;
 
 namespace SmartDesk.Application.Features.Reservations.Common;
 
-// The checks a [start, end) claim on a resource must pass, shared by creating a reservation
-// and moving one, so the two can't drift apart. Call it inside the transaction, after
-// LockResourceForBookingAsync, so what it reads can't change before the write (ADR-0011).
+// The checks a [start, end) claim on a resource must pass, shared by creating a reservation,
+// moving one and booking a series (ADR-0035), so they can't drift apart. Call it inside the
+// transaction, after LockResourceForBookingAsync, so what it reads can't change before the
+// write (ADR-0011).
 public static class BookingGuard
 {
     // Returns what the booking takes on from the resource: its name for messages, and whether
@@ -25,6 +26,23 @@ public static class BookingGuard
         DateTime start,
         DateTime end,
         Guid? ignoreReservationId,
+        CancellationToken cancellationToken)
+    {
+        var resource = await EnsureResourceBookableAsync(db, user, resourceId, cancellationToken);
+        var conflicts = await FindConflictsAsync(db, resourceId, resource.Name, [new Occurrence(start, end)], ignoreReservationId, cancellationToken);
+        if (conflicts[0] is { } conflict)
+        {
+            throw new ConflictException(conflict.Reason) { Code = conflict.Code };
+        }
+
+        return resource;
+    }
+
+    // The resource can be booked at all: the caller may use it, and it's Active.
+    public static async Task<BookableResource> EnsureResourceBookableAsync(
+        IApplicationDbContext db,
+        ICurrentUserService user,
+        Guid resourceId,
         CancellationToken cancellationToken)
     {
         // Another team's resource can't be booked, and isn't even there for the caller (ADR-0022).
@@ -45,35 +63,59 @@ public static class BookingGuard
             };
         }
 
-        // Business rule 7: blocked windows (ADR-0015).
-        var blockReason = await db.ResourceBlocks
-            .Where(b => b.ResourceId == resourceId)
-            .Where(ResourceBlockOverlap.Overlapping(start, end))
-            .OrderBy(b => b.StartDateTime)
-            .Select(b => b.Reason)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (blockReason is not null)
-        {
-            throw new ConflictException(string.Format(Messages.Booking_Blocked, resource.Name, blockReason))
-            {
-                Code = ConflictCodes.ResourceBlocked,
-            };
-        }
-
-        // Business rule 1.
-        var overlaps = await db.Reservations
-            .Where(r => r.ResourceId == resourceId && r.Id != ignoreReservationId)
-            .AnyAsync(ReservationOverlap.ConfirmedOverlapping(start, end), cancellationToken);
-        if (overlaps)
-        {
-            throw new ConflictException(string.Format(Messages.Booking_Taken, resource.Name))
-            {
-                Code = ConflictCodes.ReservationOverlaps,
-            };
-        }
-
         return new BookableResource(resource.Name, resource.CheckInRequired);
+    }
+
+    // For each slot, why it can't be booked, or null when it can: a blocked window over part
+    // of it (business rule 7, ADR-0015) - the earliest one's reason - or another Confirmed
+    // booking (business rule 1). Two queries whatever the number of slots.
+    public static async Task<IReadOnlyList<SlotConflict?>> FindConflictsAsync(
+        IApplicationDbContext db,
+        Guid resourceId,
+        string resourceName,
+        IReadOnlyList<Occurrence> slots,
+        Guid? ignoreReservationId,
+        CancellationToken cancellationToken)
+    {
+        if (slots.Count == 0)
+        {
+            return [];
+        }
+
+        var from = slots.Min(s => s.Start);
+        var to = slots.Max(s => s.End);
+        var blocks = await db.ResourceBlocks
+            .AsNoTracking()
+            .Where(b => b.ResourceId == resourceId)
+            .Where(ResourceBlockOverlap.Overlapping(from, to))
+            .OrderBy(b => b.StartDateTime)
+            .Select(b => new { b.StartDateTime, b.EndDateTime, b.Reason })
+            .ToListAsync(cancellationToken);
+        var taken = await db.Reservations
+            .AsNoTracking()
+            .Where(r => r.ResourceId == resourceId && r.Id != ignoreReservationId)
+            .Where(ReservationOverlap.ConfirmedOverlapping(from, to))
+            .Select(r => new { r.StartDateTime, r.EndDateTime })
+            .ToListAsync(cancellationToken);
+
+        return slots
+            .Select(slot =>
+            {
+                var block = blocks.FirstOrDefault(b => ReservationOverlap.Overlaps(b.StartDateTime, b.EndDateTime, slot.Start, slot.End));
+                if (block is not null)
+                {
+                    return new SlotConflict(ConflictCodes.ResourceBlocked, string.Format(Messages.Booking_Blocked, resourceName, block.Reason));
+                }
+
+                return taken.Any(r => ReservationOverlap.Overlaps(r.StartDateTime, r.EndDateTime, slot.Start, slot.End))
+                    ? new SlotConflict(ConflictCodes.ReservationOverlaps, string.Format(Messages.Booking_Taken, resourceName))
+                    : null;
+            })
+            .ToList();
     }
 }
 
 public sealed record BookableResource(string Name, bool CheckInRequired);
+
+// Why a slot can't be booked: the ConflictCodes value, and the message to show.
+public sealed record SlotConflict(string Code, string Reason);

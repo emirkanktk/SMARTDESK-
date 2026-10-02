@@ -1,5 +1,7 @@
 // Shapes of the inbox endpoints - see docs/API_CONTRACTS.md, Inbox (ADR-0032).
 
+import { ReservationSeries } from './reservation.model';
+
 export const INBOX_MESSAGE_KINDS = [
   'MeetingInvitation',
   'MeetingChanged',
@@ -8,6 +10,10 @@ export const INBOX_MESSAGE_KINDS = [
   'MeetingAccepted',
   'MeetingDeclined',
   'MeetingExtended',
+  'SeriesInvitation',
+  'SeriesCancelled',
+  'SeriesAccepted',
+  'SeriesDeclined',
 ] as const;
 export type InboxMessageKind = (typeof INBOX_MESSAGE_KINDS)[number];
 
@@ -32,8 +38,13 @@ export interface InboxMessage {
   startDateTime: string;
   endDateTime: string;
   note: string | null;
-  /** Why someone can't come, in a MeetingDeclined message to the organizer. */
+  /** Why someone can't come, in a MeetingDeclined or SeriesDeclined message to the organizer. */
   reason: string | null;
+  /**
+   * The repeating meeting a Series* message is about (ADR-0035); the times above are then its
+   * first date the message covers.
+   */
+  series?: ReservationSeries | null;
   createdAt: string;
   /** When the reader marked it read; null while it's unread. */
   readAt: string | null;

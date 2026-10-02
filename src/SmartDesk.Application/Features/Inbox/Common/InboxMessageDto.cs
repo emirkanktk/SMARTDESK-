@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
 
@@ -25,8 +26,18 @@ public sealed record InboxMessageDto(
     // afterwards, like ReservationDto.UserDisplayName: accounts live in Identity.
     public string? SenderName { get; init; }
 
+    // The rule of the repeating meeting a Series* message is about (ADR-0035): with the times,
+    // which are its first date the message covers, it says "every Monday, 10:00-11:00, until
+    // 30 Nov".
+    public ReservationSeriesDto? Series { get; init; }
+
     public static readonly Expression<Func<InboxMessage, InboxMessageDto>> Projection = m => new InboxMessageDto(
-        m.Id, m.RecipientId, m.Kind, m.ReservationId, m.SenderId, m.ResourceName, m.StartDateTime, m.EndDateTime, m.Note, m.Reason, m.CreatedAt, m.ReadAt);
+        m.Id, m.RecipientId, m.Kind, m.ReservationId, m.SenderId, m.ResourceName, m.StartDateTime, m.EndDateTime, m.Note, m.Reason, m.CreatedAt, m.ReadAt)
+    {
+        Series = m.Series == null
+            ? null
+            : new ReservationSeriesDto(m.Series.Id, m.Series.Frequency, m.Series.Interval, m.Series.DaysOfWeek, m.Series.Until, m.Series.TimeZone),
+    };
 
     // For messages just written, compiled once (after Projection, which it needs).
     private static readonly Func<InboxMessage, InboxMessageDto> Map = Projection.Compile();

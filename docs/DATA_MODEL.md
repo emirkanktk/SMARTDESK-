@@ -87,12 +87,29 @@ they next sign in.
 | EndingSoonSentAt | DateTime? | when its owner was asked whether it needs longer; cleared when the end moves (ADR-0033) |
 | CheckedInByUserId | Guid? | who checked it in: the owner or someone invited; cleared with `CheckedInAt` (ADR-0034) |
 | ReleaseWarningSentAt | DateTime? | when the owner and those invited were warned, five minutes before the release (ADR-0034) |
+| SeriesId | Guid? | FK → `ReservationSeries.Id` (restrict), indexed: the repeating booking it's one date of (ADR-0035) |
 
 `Reservation.UserId` is stored as a plain `Guid`, not an EF navigation to `ApplicationUser`,
 because `SmartDeskDbContext` treats Identity's own tables as belonging to the Identity
 schema it manages; a direct FK is unnecessary since Identity guarantees the user row
 exists at reservation-creation time, and the query direction we need (reservations for the
 current user) is fully satisfiable filtering by a scalar `UserId`.
+
+### ReservationSeries
+
+A booking that repeats (ADR-0035): the rule it was made with, never edited. Each date is a
+`Reservation` pointing here.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | |
+| UserId | Guid | who made it, the owner of every date; no FK across the Identity boundary |
+| Frequency | RecurrenceFrequency | Daily / Weekly |
+| Interval | int | every 1 to 4 days or weeks (check constraint) |
+| DaysOfWeek | WeekDays | the days of a weekly series, as flags (Monday = 1 ... Sunday = 64); none for a daily one |
+| Until | DateOnly | the last day it may come back on, inclusive, in its time zone |
+| TimeZone | string (100) | IANA id the dates were worked out in |
+| CreatedAt | DateTime | |
 
 ### ReservationAttendee
 
@@ -115,13 +132,14 @@ the booking it's about.
 |---|---|---|
 | Id | Guid | version 7, so ids sort like `CreatedAt` |
 | RecipientId | Guid | an account id; no FK across the Identity boundary |
-| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined / MeetingExtended (ADR-0033) |
+| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined / MeetingExtended (ADR-0033) / SeriesInvitation / SeriesCancelled / SeriesAccepted / SeriesDeclined (ADR-0035) |
 | SenderId | Guid? | who caused it; null for a release |
 | ReservationId | Guid? | FK → `Reservation.Id`, set null when the booking is deleted |
 | ResourceName | string (200) | the meeting when the message was sent: the room's name, |
 | StartDateTime, EndDateTime | DateTime | its times, |
 | Note | string? (500) | and the organizer's note |
-| Reason | string? (500) | why someone can't come, in a MeetingDeclined |
+| Reason | string? (500) | why someone can't come, in a MeetingDeclined or SeriesDeclined |
+| SeriesId | Guid? | FK → `ReservationSeries.Id` (set null), for a Series* message: which series; its times are then the first date it covers |
 | CreatedAt | DateTime | |
 | ReadAt | DateTime? | null while unread |
 
@@ -182,6 +200,9 @@ Reservation 1 ── * ReservationAttendee ── (UserId, scalar) ──→ App
 
 InboxMessage ── (RecipientId, SenderId, scalar) ──→ ApplicationUser
 InboxMessage * ── 0..1 Reservation (set null when it's deleted)
+
+ReservationSeries 1 ── * Reservation (its dates)
+ReservationSeries 1 ── * InboxMessage (Series* messages)
 ```
 
 ## Indexes
@@ -274,6 +295,11 @@ InboxMessage * ── 0..1 Reservation (set null when it's deleted)
     the resource's `Capacity` must hold everyone, the organizer included. A new start or another
     resource puts every answer back to Pending. A reason for not coming is only ever in the
     organizer's message.
+12. **Series (ADR-0035).** Every date of a series follows the rules of any booking, and they're
+    booked together, in one transaction under the resource's lock: one date that isn't free
+    stops them all unless the booker chose to skip such dates. The dates keep the first one's
+    local time in the booker's time zone; the last starts at most 180 days ahead; a weekly
+    series includes the day it starts on; no date runs into the next.
 
 ## Concurrency (formerly an open question)
 

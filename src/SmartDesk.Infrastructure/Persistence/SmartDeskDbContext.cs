@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Rules;
@@ -25,6 +26,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<ResourcePhoto> ResourcePhotos => Set<ResourcePhoto>();
     public DbSet<ReservationAttendee> ReservationAttendees => Set<ReservationAttendee>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
+    public DbSet<ReservationSeries> ReservationSeries => Set<ReservationSeries>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -151,6 +153,21 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             // Business rule 1's hard guarantee is a PostgreSQL exclusion constraint
             // (ReservationConstraints.NoOverlap). EF can't model it, so it's created in raw SQL
             // by the AddReservationOverlapConstraint migration - see ADR-0011.
+
+            // The dates of a series (ADR-0035), e.g. to cancel the rest of it. Bookings are
+            // cancelled rather than deleted, and so are series, so nothing cascades.
+            entity.HasOne(e => e.Series)
+                .WithMany()
+                .HasForeignKey(e => e.SeriesId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.SeriesId);
+        });
+
+        builder.Entity<ReservationSeries>(entity =>
+        {
+            entity.Property(e => e.TimeZone).IsRequired().HasMaxLength(100);
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_ReservationSeries_Interval", $"\"Interval\" BETWEEN 1 AND {RecurrenceRules.MaxInterval}"));
         });
 
         builder.Entity<ResourceBlock>(entity =>
@@ -192,6 +209,10 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.HasOne<Reservation>()
                 .WithMany()
                 .HasForeignKey(e => e.ReservationId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Series)
+                .WithMany()
+                .HasForeignKey(e => e.SeriesId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             // Someone's inbox, newest first; and how many they haven't read, which the app asks

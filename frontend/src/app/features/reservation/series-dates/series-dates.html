@@ -1,0 +1,27 @@
+<p class="summary" [class.problem]="taken() > 0">
+  @if (taken() === 0) {
+    <ng-container i18n="@@series.allFree">{{ dates().length }} dates, all free.</ng-container>
+  } @else if (free() === 0) {
+    <ng-container i18n="@@series.noneFree"
+      >None of these {{ dates().length }} dates is free.</ng-container
+    >
+  } @else {
+    <ng-container i18n="@@series.someTaken"
+      >{{ taken() }} of the {{ dates().length }} dates aren't free; booking skips
+      them.</ng-container
+    >
+  }
+</p>
+<ul class="dates">
+  @for (date of dates(); track date.startDateTime) {
+    <li [class.taken]="!date.free">
+      <span class="date">{{ date.startDateTime | date: 'EEE d MMM y' }}</span>
+      @if (!date.free) {
+        <span class="reason">
+          <span class="visually-hidden" i18n="@@series.notFree">Not free:</span>
+          {{ date.reason }}
+        </span>
+      }
+    </li>
+  }
+</ul>

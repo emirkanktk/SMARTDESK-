@@ -381,6 +381,9 @@
   <data name="Property_CurrentPassword" xml:space="preserve">
     <value>Mevcut parola</value>
   </data>
+  <data name="Property_DaysOfWeek" xml:space="preserve">
+    <value>Haftanın günleri</value>
+  </data>
   <data name="Property_Description" xml:space="preserve">
     <value>Açıklama</value>
   </data>
@@ -396,8 +399,14 @@
   <data name="Property_FirstName" xml:space="preserve">
     <value>Ad</value>
   </data>
+  <data name="Property_Frequency" xml:space="preserve">
+    <value>Sıklık</value>
+  </data>
   <data name="Property_From" xml:space="preserve">
     <value>Başlangıç</value>
+  </data>
+  <data name="Property_Interval" xml:space="preserve">
+    <value>Aralık</value>
   </data>
   <data name="Property_LastName" xml:space="preserve">
     <value>Soyad</value>
@@ -431,6 +440,9 @@
   </data>
   <data name="Property_Reason" xml:space="preserve">
     <value>Neden</value>
+  </data>
+  <data name="Property_Recurrence" xml:space="preserve">
+    <value>Tekrar</value>
   </data>
   <data name="Property_ReminderMinutes" xml:space="preserve">
     <value>Hatırlatma</value>
@@ -467,6 +479,9 @@
   </data>
   <data name="Property_Token" xml:space="preserve">
     <value>Bağlantı</value>
+  </data>
+  <data name="Property_Until" xml:space="preserve">
+    <value>Bitiş günü</value>
   </data>
   <data name="Reports_MaxRange" xml:space="preserve">
     <value>Rapor en fazla {0} günü kapsayabilir.</value>
@@ -557,6 +572,36 @@
   </data>
   <data name="Resources_UnknownType" xml:space="preserve">
     <value>Böyle bir kaynak türü yok.</value>
+  </data>
+  <data name="Series_Conflicts" xml:space="preserve">
+    <value>{2} için {1} tarihin {0} tanesi boş değil. Tarihlere yeniden bakın; ötekileri rezerve edin ya da başka bir saat seçin.</value>
+  </data>
+  <data name="Series_DaysMustIncludeFirst" xml:space="preserve">
+    <value>Seri, başladığı günü de içermeli ({0}).</value>
+  </data>
+  <data name="Series_IntervalRange" xml:space="preserve">
+    <value>1 ile {0} gün ya da hafta arasında bir aralıkla tekrarlayın.</value>
+  </data>
+  <data name="Series_NoneFree" xml:space="preserve">
+    <value>{0} için tarihlerin hiçbiri boş değil.</value>
+  </data>
+  <data name="Series_NotASeries" xml:space="preserve">
+    <value>Bu rezervasyon tekrarlamıyor.</value>
+  </data>
+  <data name="Series_Overlapping" xml:space="preserve">
+    <value>Her tarih bir sonrakine taşıyor: süreyi kısaltın ya da daha seyrek tekrarlayın.</value>
+  </data>
+  <data name="Series_TooFarAhead" xml:space="preserve">
+    <value>Bir seri en fazla {0} gün ileriye uzanabilir: daha erken bitirin.</value>
+  </data>
+  <data name="Series_TooFewDates" xml:space="preserve">
+    <value>Bu yalnızca bir tarih: tekrarlaması için daha geç bir bitiş ya da daha fazla gün seçin.</value>
+  </data>
+  <data name="Series_UnknownDay" xml:space="preserve">
+    <value>Bilinmeyen bir gün.</value>
+  </data>
+  <data name="Series_UntilBeforeStart" xml:space="preserve">
+    <value>Seri, başladığı gün ya da daha sonra bitmeli.</value>
   </data>
   <data name="Status_Active" xml:space="preserve">
     <value>Etkin</value>

@@ -3,6 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import { fakeReservation } from '../../../testing/reservation-fixtures';
+import { SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
+import { Recurrence } from '../models/reservation.model';
 import { ReservationService } from './reservation.service';
 
 describe('ReservationService', () => {
@@ -143,5 +145,61 @@ describe('ReservationService', () => {
     expect(req.request.method).toBe('PUT');
     expect(req.request.body).toEqual(body);
     req.flush(fakeReservation());
+  });
+
+  describe('bookings that repeat (ADR-0035)', () => {
+    const recurrence: Recurrence = {
+      frequency: 'Weekly',
+      interval: 2,
+      daysOfWeek: ['Monday', 'Thursday'],
+      until: '2026-11-30',
+      timeZone: 'Europe/Istanbul',
+    };
+
+    it('asks for the dates of a series with the rule in the query, each day on its own, quietly', () => {
+      service
+        .previewSeries({
+          resourceId: 'res-1',
+          startDateTime: body.startDateTime,
+          endDateTime: body.endDateTime,
+          recurrence,
+        })
+        .subscribe();
+
+      const req = http.expectOne((r) => r.url === `${base}/series/preview`);
+      expect(req.request.method).toBe('GET');
+      const params = req.request.params;
+      expect(params.get('resourceId')).toBe('res-1');
+      expect(params.get('startDateTime')).toBe(body.startDateTime);
+      expect(params.get('endDateTime')).toBe(body.endDateTime);
+      expect(params.get('frequency')).toBe('Weekly');
+      expect(params.get('interval')).toBe('2');
+      expect(params.getAll('daysOfWeek')).toEqual(['Monday', 'Thursday']);
+      expect(params.get('until')).toBe('2026-11-30');
+      expect(params.get('timeZone')).toBe('Europe/Istanbul');
+      expect(req.request.context.get(SKIP_ERROR_NOTIFICATION)).toBe(true);
+      req.flush({ dates: [] });
+    });
+
+    it('books a series with POST', () => {
+      const request = { ...body, recurrence, skipConflicts: true };
+      service.createSeries(request).subscribe();
+
+      const req = http.expectOne(`${base}/series`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(request);
+      req.flush({ series: { id: 's-1', ...recurrence }, booked: [], skipped: [] });
+    });
+
+    it('cancels a date and the later ones with POST to cancel-following, without a body', () => {
+      let cancelled: string[] = [];
+      service.cancelFollowing('rsv-2').subscribe((dates) => (cancelled = dates.map((d) => d.id)));
+
+      const req = http.expectOne(`${base}/rsv-2/cancel-following`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toBeNull();
+      req.flush([fakeReservation({ id: 'rsv-2' }), fakeReservation({ id: 'rsv-3' })]);
+      expect(cancelled).toEqual(['rsv-2', 'rsv-3']);
+    });
   });
 });

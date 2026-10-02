@@ -28,4 +28,8 @@ public static class ConflictCodes
 
     // A check-in, but none of the caller's bookings of that resource is open for one now.
     public const string NothingToCheckIn = "nothing-to-check-in";
+
+    // Booking a series, some of its dates aren't free (ADR-0035): look at them again
+    // (GET /api/reservations/series/preview), then book the others or choose another time.
+    public const string SeriesConflicts = "series-conflicts";
 }

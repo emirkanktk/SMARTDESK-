@@ -2,6 +2,7 @@ import { DatePipe, formatDate } from '@angular/common';
 import {
   Component,
   DestroyRef,
+  InjectionToken,
   LOCALE_ID,
   OnInit,
   computed,
@@ -9,21 +10,39 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { finalize, map } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  map,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import {
   AttendeeResponse,
   CHECK_IN,
+  CreateSeriesRequest,
   DEFAULT_REMINDER_MINUTES,
   Invitee,
   MAX_ATTENDEES,
   REMINDER_OPTIONS,
   RESERVATION_LIMITS,
+  Recurrence,
   Reservation,
+  ReservationSeries,
+  SERIES_CONFLICTS,
+  SeriesDate,
+  SeriesPreviewQuery,
+  SeriesResult,
   UpdateReservationRequest,
+  WEEK_DAYS,
+  WeekDay,
 } from '../../core/models/reservation.model';
 import { Resource } from '../../core/models/resource.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -33,16 +52,28 @@ import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { MeetingAnswer } from '../../shared/components/meeting-answer/meeting-answer';
 import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
+import { SeriesDates } from './series-dates/series-dates';
 import {
+  addDays,
   addMinutes,
   floorToQuarterHour,
   formatDuration,
   fromDateTimeLocal,
   nextHalfHour,
+  parseDateParam,
   parseIso,
+  startOfDay,
+  toDateParam,
   toDateTimeLocal,
 } from '../../shared/utils/date-time';
 import { keepDurationWhenStartMoves } from '../../shared/utils/keep-duration';
+import {
+  WORKING_DAYS,
+  browserTimeZone,
+  dayName,
+  describeSeries,
+  weekDayOf,
+} from '../../shared/utils/recurrence';
 import { applyServerErrors } from '../../shared/utils/server-errors';
 import {
   DateRangeOptions,
@@ -56,6 +87,22 @@ const DEFAULT_DURATION_MIN = 60;
 const RANGE_FORMAT = 'EEE d MMM, HH:mm';
 /** From this many people on, the list of who to invite gets a search box. */
 export const ATTENDEE_SEARCH_FROM = 8;
+/** How a new booking repeats, as the form offers it (ADR-0035). */
+export type RepeatChoice = 'none' | 'daily' | 'weekdays' | 'weekly' | 'biweekly';
+/** How long a new series runs unless the booker picks another last day. */
+export const SERIES_DEFAULT_DAYS = 28;
+/** How long the form waits after a change before asking which dates are free, in ms. */
+export const SERIES_PREVIEW_DEBOUNCE = new InjectionToken<number>('SERIES_PREVIEW_DEBOUNCE', {
+  factory: () => 300,
+});
+
+/** The dates a repeating booking would have, as the form knows them. */
+type SeriesPreviewState =
+  | { state: 'idle' }
+  | { state: 'loading' }
+  | { state: 'ready'; dates: SeriesDate[] }
+  | { state: 'invalid'; message: string }
+  | { state: 'failed' };
 
 /**
  * What the form allows, following the API's update rules. `inProgress`: started, not ended -
@@ -88,11 +135,12 @@ interface Person {
 
 /**
  * Book a resource (`/reservations/new`) or change a booking (`/reservations/:id/edit`). Managers
- * and Admins can invite people to it, who get a message in their inbox (ADR-0032). Anyone else
- * who opens a booking, e.g. someone invited to it, sees it read-only.
+ * and Admins can invite people to it, who get a message in their inbox (ADR-0032). A new booking
+ * can repeat; the form then shows its dates, and which are free, before booking them all
+ * (ADR-0035). Anyone else who opens a booking, e.g. someone invited to it, sees it read-only.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, MeetingAnswer, ResourcePhoto],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, MeetingAnswer, ResourcePhoto, SeriesDates],
   selector: 'app-reservation-form',
   styleUrl: './reservation-form.scss',
   templateUrl: './reservation-form.html',
@@ -128,6 +176,10 @@ export class ReservationForm implements OnInit {
       note: ['', Validators.maxLength(L.noteMaxLength)],
       reminderMinutes: [DEFAULT_REMINDER_MINUTES as number | null],
       attendeeIds: [[] as string[]],
+      // A new booking only: how it repeats (ADR-0035).
+      repeat: ['none' as RepeatChoice],
+      repeatDays: [[] as WeekDay[]],
+      until: [''],
     },
     { validators: dateRangeValidator(rangeRules('create')) },
   );
@@ -257,6 +309,106 @@ export class ReservationForm implements OnInit {
   /** Earliest value offered by the start picker, on the quarter-hour grid its step expects. */
   protected readonly minStart = toDateTimeLocal(floorToQuarterHour());
 
+  protected readonly weekDays = WEEK_DAYS;
+  /** The latest last day the date picker offers: as far ahead as a booking may start. */
+  protected readonly maxUntil = toDateParam(addDays(startOfDay(new Date()), L.maxAdvanceDays));
+  private readonly formStatus = toSignal(this.form.statusChanges, {
+    initialValue: this.form.status,
+  });
+  /** The day the booking starts on, which a weekly series has to include. */
+  protected readonly startDay = computed(() => {
+    const start = fromDateTimeLocal(this.formValue().startDateTime);
+    return start ? weekDayOf(start) : null;
+  });
+  /** The first day a series may end on: the day it starts. */
+  protected readonly minUntil = computed(() => {
+    const start = fromDateTimeLocal(this.formValue().startDateTime);
+    return start ? toDateParam(start) : null;
+  });
+  /** The rule as the API takes it; null when the booking doesn't repeat. */
+  protected readonly recurrence = computed<Recurrence | null>(() => {
+    const value = this.formValue();
+    const startDay = this.startDay();
+    if (this.mode() !== 'create' || value.repeat === 'none' || !startDay) {
+      return null;
+    }
+    const weekly = value.repeat === 'weekly' || value.repeat === 'biweekly';
+    return {
+      frequency: value.repeat === 'daily' ? 'Daily' : 'Weekly',
+      interval: value.repeat === 'biweekly' ? 2 : 1,
+      daysOfWeek:
+        value.repeat === 'weekdays'
+          ? [...WORKING_DAYS]
+          : weekly
+            ? WEEK_DAYS.filter((day) => day === startDay || value.repeatDays.includes(day))
+            : [],
+      until: value.until,
+      timeZone: browserTimeZone(),
+    };
+  });
+  /** What's wrong with how it repeats, found before asking the API. */
+  protected readonly repeatError = computed(() => {
+    const value = this.formValue();
+    if (!this.recurrence()) return null;
+    const start = fromDateTimeLocal(value.startDateTime);
+    if (value.repeat === 'weekdays' && start && !WORKING_DAYS.includes(weekDayOf(start))) {
+      return $localize`:@@series.weekdayStart:Start on a weekday for a booking that repeats on weekdays.`;
+    }
+    const until = parseDateParam(value.until);
+    if (!until) {
+      return $localize`:@@series.chooseUntil:Choose the last day it may repeat on.`;
+    }
+    if (start && until < startOfDay(start)) {
+      return $localize`:@@series.untilBeforeStart:The last day can't be before the first.`;
+    }
+    if (value.until > this.maxUntil) {
+      return $localize`:@@series.untilTooFar:A booking can repeat at most ${L.maxAdvanceDays}:days: days ahead.`;
+    }
+    return null;
+  });
+  /** Asks again for the same dates, e.g. after booking found one taken meanwhile. */
+  private readonly previewRun = signal(0);
+  private readonly seriesQuery = computed<SeriesPreviewQuery | null>(() => {
+    const recurrence = this.recurrence();
+    const value = this.formValue();
+    const start = fromDateTimeLocal(value.startDateTime);
+    const end = fromDateTimeLocal(value.endDateTime);
+    if (!recurrence || this.repeatError() || this.formStatus() !== 'VALID' || !start || !end) {
+      return null;
+    }
+    return {
+      resourceId: value.resourceId,
+      startDateTime: start.toISOString(),
+      endDateTime: end.toISOString(),
+      recurrence,
+    };
+  });
+  /** The dates of the series and which are free, asked for as the form changes. */
+  protected readonly seriesPreview = toSignal(
+    toObservable(computed(() => ({ query: this.seriesQuery(), run: this.previewRun() }))).pipe(
+      debounceTime(inject(SERIES_PREVIEW_DEBOUNCE)),
+      distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+      switchMap(({ query }) =>
+        query
+          ? this.reservationService.previewSeries(query).pipe(
+              map((preview): SeriesPreviewState => ({ state: 'ready', dates: preview.dates })),
+              catchError((error: unknown) => of(previewProblem(error))),
+              startWith<SeriesPreviewState>({ state: 'loading' }),
+            )
+          : of<SeriesPreviewState>({ state: 'idle' }),
+      ),
+      takeUntilDestroyed(),
+    ),
+    { initialValue: { state: 'idle' } as SeriesPreviewState },
+  );
+  /** How many of the series' dates are free, once the API has said. */
+  protected readonly seriesCounts = computed(() => {
+    const preview = this.seriesPreview();
+    if (preview.state !== 'ready') return null;
+    const free = preview.dates.filter((date) => date.free).length;
+    return { total: preview.dates.length, free, taken: preview.dates.length - free };
+  });
+
   ngOnInit(): void {
     if (this.authService.isManager() || this.authService.isAdmin()) {
       this.reservationService.getInvitees().subscribe({
@@ -307,8 +459,13 @@ export class ReservationForm implements OnInit {
   protected submit(): void {
     // Re-run the time rules: the page may have been open since the start was picked.
     this.form.updateValueAndValidity();
-    if (this.form.invalid || this.attendeesProblem()) {
+    if (this.form.invalid || this.attendeesProblem() || this.repeatError()) {
       this.form.markAllAsTouched();
+      return;
+    }
+    const recurrence = this.recurrence();
+    if (recurrence) {
+      this.submitSeries(recurrence);
       return;
     }
 
@@ -341,6 +498,102 @@ export class ReservationForm implements OnInit {
       },
       error: (error: unknown) => this.handleSaveError(error),
     });
+  }
+
+  /** Books every date of a repeating booking: the free ones, when the list showed some taken. */
+  private submitSeries(recurrence: Recurrence): void {
+    const preview = this.seriesPreview();
+    const body: CreateSeriesRequest = {
+      ...this.toRequest(),
+      recurrence,
+      skipConflicts: preview.state === 'ready' && preview.dates.some((date) => !date.free),
+    };
+    if (body.reminderMinutes !== null) {
+      this.reminderAlerts.requestPermissionIfUnasked();
+    }
+
+    this.saving.set(true);
+    this.formError.set(null);
+    this.conflict.set(null);
+    this.reservationService
+      .createSeries(body)
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (result) => {
+          this.notifications.success(this.seriesBooked(result, body.attendeeIds?.length ?? 0));
+          void this.router.navigateByUrl('/reservations/mine');
+        },
+        error: (error: unknown) => {
+          if (
+            error instanceof ApiError &&
+            error.status === 409 &&
+            error.code === SERIES_CONFLICTS
+          ) {
+            // A date was taken meanwhile: show the dates as they are now.
+            this.conflict.set(error.detail ?? error.title);
+            this.previewRun.update((run) => run + 1);
+            return;
+          }
+          this.handleSaveError(error);
+        },
+      });
+  }
+
+  /** "Board Room is booked on 4 dates, every Monday until 2 Nov 2026, 10:00-11:00." */
+  private seriesBooked(result: SeriesResult, invited: number): string {
+    const first = result.booked[0];
+    const name = first.resourceName;
+    const count = result.booked.length;
+    const rule = describeSeries(result.series, this.locale);
+    const time = `${formatDate(first.startDateTime, 'HH:mm', this.locale)}-${formatDate(first.endDateTime, 'HH:mm', this.locale)}`;
+    const lines = [
+      $localize`:@@series.booked:${name}:resource: is booked on ${count}:count: dates, ${rule}:rule:, ${time}:time:.`,
+    ];
+    if (result.skipped.length > 0) {
+      const skipped = result.skipped.length;
+      lines.push(
+        skipped === 1
+          ? $localize`:@@series.skippedOne:One date wasn't free and was skipped.`
+          : $localize`:@@series.skipped:${skipped}:count: dates weren't free and were skipped.`,
+      );
+    }
+    if (invited > 0) {
+      lines.push(
+        $localize`:@@series.invitesSent:Each person you invited got one message for all the dates.`,
+      );
+    }
+    return lines.join(' ');
+  }
+
+  /** "every Monday until 2 Nov 2026", for a booking that repeats. */
+  protected describe(series: ReservationSeries): string {
+    return describeSeries(series, this.locale);
+  }
+
+  /** "Mon", for the day buttons. */
+  protected shortDay(day: WeekDay): string {
+    return dayName(day, this.locale, true);
+  }
+
+  protected dayLabel(day: WeekDay): string {
+    return dayName(day, this.locale);
+  }
+
+  /** Ticks or unticks a day of a weekly series; the day it starts on stays ticked. */
+  protected toggleDay(day: WeekDay, on: boolean): void {
+    const control = this.form.controls.repeatDays;
+    const others = control.value.filter((existing) => existing !== day);
+    control.setValue(on ? [...others, day] : others);
+  }
+
+  /** A first choice to repeat sets a last day four weeks on; changing it keeps the one chosen. */
+  protected onRepeatChange(): void {
+    const { repeat, until, startDateTime } = this.form.controls;
+    const start = fromDateTimeLocal(startDateTime.value);
+    if (repeat.value !== 'none' && !until.value && start) {
+      const last = toDateParam(addDays(start, SERIES_DEFAULT_DAYS));
+      until.setValue(last > this.maxUntil ? this.maxUntil : last);
+    }
   }
 
   protected resourceError(): string | null {
@@ -454,6 +707,9 @@ export class ReservationForm implements OnInit {
       note: '',
       reminderMinutes: DEFAULT_REMINDER_MINUTES,
       attendeeIds: [],
+      repeat: 'none',
+      repeatDays: [],
+      until: '',
     });
     if (linkStart && linkEnd && this.form.invalid) {
       this.form.markAllAsTouched(); // e.g. an old link whose start is now in the past
@@ -556,6 +812,9 @@ export class ReservationForm implements OnInit {
       note: reservation.note ?? '',
       reminderMinutes: reservation.reminderMinutes,
       attendeeIds: reservation.attendees.map((a) => a.id),
+      repeat: 'none',
+      repeatDays: [],
+      until: '',
     });
     if (mode === 'inProgress') {
       this.form.controls.resourceId.disable();
@@ -611,6 +870,15 @@ export class ReservationForm implements OnInit {
       ? `${start}-${end}`
       : $localize`:@@common.rangeTo:${start}:start: to ${formatDate(reservation.endDateTime, RANGE_FORMAT, this.locale)}:end:`;
   }
+}
+
+/** Why the API wouldn't give the dates: a rule broken (400) or a resource out of use (409). */
+function previewProblem(error: unknown): SeriesPreviewState {
+  if (error instanceof ApiError && (error.status === 400 || error.status === 409)) {
+    const message = Object.values(error.fieldErrors).flat()[0] ?? error.detail ?? error.title;
+    return { state: 'invalid', message };
+  }
+  return { state: 'failed' };
 }
 
 /** The API's time rules for each mode. */

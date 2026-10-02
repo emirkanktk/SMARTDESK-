@@ -24,6 +24,7 @@ import { ExtendBooking } from '../../shared/components/extend-booking/extend-boo
 import { MeetingAnswer } from '../../shared/components/meeting-answer/meeting-answer';
 import { formatDuration } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
+import { describeSeries } from '../../shared/utils/recurrence';
 
 type Tab = 'upcoming' | 'invited' | 'past' | 'cancelled';
 
@@ -53,6 +54,8 @@ interface Item {
   attendees: string | null;
   /** "Organized by Zeynep Kaya" on a meeting the user is invited to. */
   organizer: string | null;
+  /** "Repeats every Monday until 2 Nov 2026", for a date of a series (ADR-0035). */
+  series: string | null;
 }
 
 /**
@@ -89,6 +92,8 @@ export class MyReservations implements OnInit {
   protected readonly loadFailed = signal(false);
   /** Id of the reservation being cancelled, to disable its button meanwhile. */
   protected readonly cancellingId = signal<string | null>(null);
+  /** Id of the date from which a series is being cancelled. */
+  protected readonly cancellingFollowingId = signal<string | null>(null);
   /** Id of the booking in progress whose ways to run longer are open (ADR-0033). */
   protected readonly extendingId = signal<string | null>(null);
 
@@ -234,6 +239,42 @@ export class MyReservations implements OnInit {
       });
   }
 
+  /** Cancels a date of a series and every later one (ADR-0035). */
+  protected cancelFollowing(item: Item): void {
+    const { reservation } = item;
+    const resource = reservation.resourceName;
+    const when = this.when(item);
+    if (
+      !confirm(
+        $localize`:@@mine.confirmCancelFollowing:Cancel your ${resource}:resource: booking on ${when}:when: and every later date of the series?`,
+      )
+    ) {
+      return;
+    }
+
+    this.cancellingFollowingId.set(reservation.id);
+    this.reservationService
+      .cancelFollowing(reservation.id)
+      .pipe(finalize(() => this.cancellingFollowingId.set(null)))
+      .subscribe({
+        next: (cancelled) => {
+          cancelled.forEach((date) => this.upsert(date));
+          const count = cancelled.length;
+          this.notifications.success(
+            count === 1
+              ? $localize`:@@reservationForm.cancelled:Your ${resource}:resource: reservation for ${when}:when: was cancelled.`
+              : $localize`:@@mine.cancelledFollowing:${count}:count: dates of your ${resource}:resource: booking were cancelled, from ${when}:when: on.`,
+          );
+        },
+        error: (error: unknown) => {
+          if (error instanceof ApiError && error.status === 409) {
+            this.notifications.error(error.detail ?? error.title);
+          }
+          this.load(false);
+        },
+      });
+  }
+
   /** Opens or closes the ways to make a booking in progress run longer. */
   protected toggleExtend(item: Item): void {
     this.extendingId.update((id) => (id === item.reservation.id ? null : item.reservation.id));
@@ -309,6 +350,9 @@ export class MyReservations implements OnInit {
         : null,
       attendees: invited ? null : this.attendeeNames(reservation),
       organizer: invited ? this.organizer(reservation) : null,
+      series: reservation.series
+        ? $localize`:@@mine.repeats:Repeats ${describeSeries(reservation.series, this.locale)}:rule:`
+        : null,
     };
   }
 

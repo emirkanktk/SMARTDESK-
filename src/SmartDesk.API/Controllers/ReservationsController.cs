@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Mvc;
 using SmartDesk.Application.Features.Meetings.Commands.RespondToInvitation;
 using SmartDesk.Application.Features.Meetings.Queries.GetInvitees;
 using SmartDesk.Application.Features.Meetings.Queries.GetMyInvitations;
+using SmartDesk.Application.Features.Reservations.Commands.CancelFollowing;
 using SmartDesk.Application.Features.Reservations.Commands.CancelReservation;
 using SmartDesk.Application.Features.Reservations.Commands.CreateReservation;
+using SmartDesk.Application.Features.Reservations.Commands.CreateReservationSeries;
 using SmartDesk.Application.Features.Reservations.Commands.EndReservation;
 using SmartDesk.Application.Features.Reservations.Commands.ExtendReservation;
 using SmartDesk.Application.Features.Reservations.Commands.UpdateReservation;
@@ -14,6 +16,7 @@ using SmartDesk.Application.Features.Reservations.Queries.GetExtensionOptions;
 using SmartDesk.Application.Features.Reservations.Queries.GetMyReservations;
 using SmartDesk.Application.Features.Reservations.Queries.GetReservationById;
 using SmartDesk.Application.Features.Reservations.Queries.GetReservations;
+using SmartDesk.Application.Features.Reservations.Queries.GetSeriesPreview;
 
 namespace SmartDesk.API.Controllers;
 
@@ -33,6 +36,30 @@ public sealed class ReservationsController(ISender sender) : ControllerBase
 
         return StatusCode(StatusCodes.Status201Created, reservation);
     }
+
+    // A booking that repeats (ADR-0035): every date booked at once, or - with skipConflicts -
+    // the free ones.
+    [HttpPost("series")]
+    [ProducesResponseType<ReservationSeriesResultDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<ReservationSeriesResultDto>> CreateSeries(
+        CreateReservationSeriesCommand command, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(command, cancellationToken);
+
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
+
+    // The dates a repeating booking would have, and which are free (ADR-0035).
+    [HttpGet("series/preview")]
+    [ProducesResponseType<SeriesPreviewDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<SeriesPreviewDto> PreviewSeries([FromQuery] GetSeriesPreviewQuery query, CancellationToken cancellationToken) =>
+        sender.Send(query, cancellationToken);
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType<ReservationDto>(StatusCodes.Status200OK)]
@@ -65,6 +92,16 @@ public sealed class ReservationsController(ISender sender) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<ReservationDto> Cancel(Guid id, CancellationToken cancellationToken) =>
         sender.Send(new CancelReservationCommand(id), cancellationToken);
+
+    // A date of a repeating booking and every later one still to come (ADR-0035): the dates
+    // cancelled now.
+    [HttpPost("{id:guid}/cancel-following")]
+    [ProducesResponseType<IReadOnlyList<ReservationDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public Task<IReadOnlyList<ReservationDto>> CancelFollowing(Guid id, CancellationToken cancellationToken) =>
+        sender.Send(new CancelFollowingCommand(id), cancellationToken);
 
     // How much longer the booking can run (ADR-0033): the extension options that still fit.
     [HttpGet("{id:guid}/extension")]

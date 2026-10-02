@@ -41,7 +41,92 @@ export interface Reservation {
    * them may check it in at the door too.
    */
   attendees: ReservationAttendee[];
+  /**
+   * The rule of the repeating booking it's one date of (ADR-0035); null for a booking made on
+   * its own. Each date is a booking of its own, moved or cancelled alone.
+   */
+  series?: ReservationSeries | null;
 }
+
+export const RECURRENCE_FREQUENCIES = ['Daily', 'Weekly'] as const;
+export type RecurrenceFrequency = (typeof RECURRENCE_FREQUENCIES)[number];
+
+/** The days of the week as the API names them, Monday first, as a series counts its weeks. */
+export const WEEK_DAYS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const;
+export type WeekDay = (typeof WEEK_DAYS)[number];
+
+/** How a booking repeats (ADR-0035). */
+export interface Recurrence {
+  frequency: RecurrenceFrequency;
+  /** Every this many days or weeks: 1 to SERIES_LIMITS.maxInterval. */
+  interval: number;
+  /** The days of a weekly series; the day it starts on has to be one of them. */
+  daysOfWeek: WeekDay[];
+  /** The last day it may come back on, inclusive, e.g. "2026-11-30". */
+  until: string;
+  /** The IANA zone its local times are in, e.g. "Europe/Istanbul". */
+  timeZone: string;
+}
+
+/** The rule a booking repeats by, on each of its dates and on the messages about it. */
+export interface ReservationSeries extends Recurrence {
+  id: string;
+}
+
+/** Body of `POST /api/reservations/series`: the first date, and how it repeats. */
+export interface CreateSeriesRequest extends CreateReservationRequest {
+  recurrence: Recurrence;
+  /** Book the free dates and skip the others; without it, one that isn't free stops the lot. */
+  skipConflicts: boolean;
+}
+
+/** Query of `GET /api/reservations/series/preview`. */
+export interface SeriesPreviewQuery {
+  resourceId: string;
+  startDateTime: string;
+  endDateTime: string;
+  recurrence: Recurrence;
+}
+
+/** One date of a series and whether it can be booked; when not, why. */
+export interface SeriesDate {
+  startDateTime: string;
+  endDateTime: string;
+  free: boolean;
+  /** "reservation-overlaps" or "resource-blocked"; null for a free date. */
+  code: string | null;
+  /** Written to be shown as-is. */
+  reason: string | null;
+}
+
+/** Body of `GET /api/reservations/series/preview`: every date, earliest first. */
+export interface SeriesPreview {
+  dates: SeriesDate[];
+}
+
+/** Body of `POST /api/reservations/series`: the rule, the dates booked and those skipped. */
+export interface SeriesResult {
+  series: ReservationSeries;
+  booked: Reservation[];
+  skipped: SeriesDate[];
+}
+
+/** The 409 `code` when some of a series' dates aren't free. */
+export const SERIES_CONFLICTS = 'series-conflicts';
+
+/** What the API allows a series (ADR-0035). */
+export const SERIES_LIMITS = {
+  /** Every 1 to this many days or weeks. */
+  maxInterval: 4,
+} as const;
 
 export const ATTENDEE_RESPONSES = ['Pending', 'Accepted', 'Declined'] as const;
 /**
@@ -64,6 +149,8 @@ export interface RespondRequest {
   response: Exclude<AttendeeResponse, 'Pending'>;
   /** Needed to decline, for the organizer; left out when coming. */
   reason?: string;
+  /** For a meeting that repeats: the answer is for this date and every later one (ADR-0035). */
+  following?: boolean;
 }
 
 /** Longest reason for not coming the API accepts, as long as a booking's note. */

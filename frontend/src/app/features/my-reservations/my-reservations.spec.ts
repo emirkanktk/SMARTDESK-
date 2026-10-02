@@ -42,6 +42,7 @@ describe('MyReservations', () => {
   let getExtensionOptions: ReturnType<typeof vi.fn>;
   let extend: ReturnType<typeof vi.fn>;
   let cancel: ReturnType<typeof vi.fn>;
+  let cancelFollowing: ReturnType<typeof vi.fn>;
   let success: ReturnType<typeof vi.fn>;
   let error: ReturnType<typeof vi.fn>;
   let confirmSpy: ReturnType<typeof vi.spyOn>;
@@ -71,6 +72,7 @@ describe('MyReservations', () => {
       }),
     );
     cancel = vi.fn((id: string) => of({ ...soon, id, status: 'Cancelled' }));
+    cancelFollowing = vi.fn();
     success = vi.fn();
     error = vi.fn();
     confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -87,7 +89,15 @@ describe('MyReservations', () => {
         provideRouter([]),
         {
           provide: ReservationService,
-          useValue: { getMine, getInvited, respond, getExtensionOptions, extend, cancel },
+          useValue: {
+            getMine,
+            getInvited,
+            respond,
+            getExtensionOptions,
+            extend,
+            cancel,
+            cancelFollowing,
+          },
         },
         { provide: ReservationHubService, useValue: hub },
         { provide: AuthService, useValue: { currentUser: signal({ id: OWNER_ID }) } },
@@ -623,6 +633,102 @@ describe('MyReservations', () => {
       expect(itemText('Meeting Room A')).toContain('Released');
       expect(itemText('Meeting Room A')).toContain('Nobody checked in by 09:45');
       expect(itemText('Meeting Room A')).not.toContain('Check in at the door');
+    });
+  });
+  describe('a booking that repeats (ADR-0035)', () => {
+    const pad = (day: number) => String(day).padStart(2, '0');
+    const series = {
+      id: 'series-1',
+      frequency: 'Weekly' as const,
+      interval: 1,
+      daysOfWeek: ['Tuesday' as const],
+      until: '2026-10-27',
+      timeZone: 'Europe/Istanbul',
+    };
+    const tuesday = (id: string, day: number) =>
+      booking(id, 'Board Room', `2026-10-${pad(day)}T14:00`, `2026-10-${pad(day)}T15:00`, {
+        note: null,
+        series,
+      });
+    const dates = [tuesday('s-1', 6), tuesday('s-2', 13), tuesday('s-3', 20)];
+
+    it('says how each date repeats, and offers to cancel it and the later ones', async () => {
+      getMine.mockReturnValue(of([soon, ...dates]));
+      await render();
+
+      const items = Array.from(element.querySelectorAll('li.item'));
+      const first = items.find(
+        (li) => li.textContent!.includes('Tue 6 Oct') && li.textContent!.includes('Board Room'),
+      )!;
+      expect(first.querySelector('.series')!.textContent).toBe(
+        'Repeats every Tuesday until 27 Oct 2026',
+      );
+      expect(first.querySelector('.cancel-following')).not.toBeNull();
+      const single = items.find((li) => li.textContent!.includes('Meeting Room A'))!;
+      expect(single.querySelector('.series')).toBeNull();
+      expect(single.querySelector('.cancel-following')).toBeNull();
+    });
+
+    it('cancels a date and every later one, after asking', async () => {
+      getMine.mockReturnValue(of(dates));
+      cancelFollowing.mockReturnValue(
+        of([
+          { ...dates[1], status: 'Cancelled' },
+          { ...dates[2], status: 'Cancelled' },
+        ]),
+      );
+      await render();
+
+      const second = Array.from(element.querySelectorAll('li.item')).find((li) =>
+        li.textContent!.includes('Tue 13 Oct'),
+      )!;
+      second.querySelector<HTMLButtonElement>('.cancel-following')!.click();
+      await fixture.whenStable();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Cancel your Board Room booking on Tue 13 Oct, 14:00-15:00 and every later date of the series?',
+      );
+      expect(cancelFollowing).toHaveBeenCalledWith('s-2');
+      expect(success).toHaveBeenCalledWith(
+        '2 dates of your Board Room booking were cancelled, from Tue 13 Oct, 14:00-15:00 on.',
+      );
+      // Only the first is still to come; the others are under Cancelled.
+      expect(element.querySelectorAll('li.item')).toHaveLength(1);
+      expect(element.querySelector('#tab-cancelled .count')!.textContent).toBe('2');
+    });
+
+    it('does nothing when the booker thinks better of it', async () => {
+      getMine.mockReturnValue(of(dates));
+      confirmSpy.mockReturnValue(false);
+      await render();
+
+      element.querySelector<HTMLButtonElement>('.cancel-following')!.click();
+      await fixture.whenStable();
+
+      expect(cancelFollowing).not.toHaveBeenCalled();
+    });
+
+    it('says why it could not, and shows the dates as they are', async () => {
+      getMine.mockReturnValue(of(dates));
+      cancelFollowing.mockReturnValue(
+        throwError(
+          () =>
+            new ApiError(
+              409,
+              'Conflict',
+              "This reservation has already ended and can't be cancelled.",
+            ),
+        ),
+      );
+      await render();
+
+      element.querySelector<HTMLButtonElement>('.cancel-following')!.click();
+      await fixture.whenStable();
+
+      expect(error).toHaveBeenCalledWith(
+        "This reservation has already ended and can't be cancelled.",
+      );
+      expect(getMine).toHaveBeenCalledTimes(2);
     });
   });
 });

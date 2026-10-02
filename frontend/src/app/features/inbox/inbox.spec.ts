@@ -406,4 +406,82 @@ describe('Inbox', () => {
 
     expect(element.textContent).not.toContain('Only your latest messages are shown.');
   });
+  describe('a meeting that repeats (ADR-0035)', () => {
+    const series = {
+      id: 'series-1',
+      frequency: 'Weekly' as const,
+      interval: 1,
+      daysOfWeek: ['Monday' as const],
+      until: '2026-10-26',
+      timeZone: 'Europe/Istanbul',
+    };
+    const seriesInvitation = inboxMessage({
+      id: 'm-9',
+      kind: 'SeriesInvitation',
+      series,
+      createdAt: utc('2026-10-01T14:45'),
+    });
+    /** A date of the series Ayşe is invited to. */
+    const date = (id: string, day: string, response: AttendeeResponse = 'Pending') =>
+      meeting(response, {
+        id,
+        series,
+        startDateTime: utc(`2026-10-${day}T10:00`),
+        endDateTime: utc(`2026-10-${day}T11:00`),
+      });
+
+    it('says it repeats, from when, how and until when', async () => {
+      list.mockReturnValue(of([seriesInvitation]));
+      await render();
+      const [message] = messages();
+
+      expect(headlines()).toEqual(['Zeynep Kaya invited you to a meeting that repeats']);
+      expect(text(message.querySelector('.meeting')!)).toBe(
+        'Board Room · from Mon 5 Oct, every Monday until 26 Oct 2026, 10:00-11:00',
+      );
+    });
+
+    it('is answered from its next date, for that date and every later one', async () => {
+      list.mockReturnValue(of([seriesInvitation]));
+      // The first date is over and gone from the invitations; the next ones are still to come.
+      getInvited.mockReturnValue(of([date('rsv-19', '19'), date('rsv-12', '12')]));
+      respond.mockReturnValue(of(date('rsv-12', '12', 'Accepted')));
+      await render();
+      const [message] = messages();
+
+      expect(message.textContent).toContain('Your answer is for this date and every later one.');
+      button(message, "I'm coming")!.click();
+      await fixture.whenStable();
+
+      expect(respond).toHaveBeenCalledWith('rsv-12', { response: 'Accepted', following: true });
+      expect(message.querySelector('a')!.getAttribute('href')).toBe('/reservations/rsv-12/edit');
+    });
+
+    it("tells the organizer who can't come from a date on, and why", async () => {
+      list.mockReturnValue(
+        of([
+          inboxMessage({
+            id: 'm-10',
+            kind: 'SeriesDeclined',
+            senderName: 'Ayşe Yılmaz',
+            reason: 'Training on Mondays',
+            series,
+          }),
+          inboxMessage({ id: 'm-11', kind: 'SeriesCancelled', series, note: null }),
+          inboxMessage({ id: 'm-12', kind: 'SeriesAccepted', senderName: 'Mehmet Demir', series }),
+        ]),
+      );
+      getInvited.mockReturnValue(of([]));
+      await render();
+      const [declined] = messages();
+
+      expect(headlines()).toEqual([
+        "Ayşe Yılmaz can't come to your meeting that repeats",
+        'Zeynep Kaya cancelled the rest of a meeting that repeats',
+        'Mehmet Demir is coming to your meeting that repeats',
+      ]);
+      expect(text(declined.querySelector('.note')!)).toBe('Training on Mondays');
+      expect(element.querySelector('app-meeting-answer')).toBeNull();
+    });
+  });
 });

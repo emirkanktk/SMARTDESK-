@@ -45,6 +45,10 @@
           {{ r.startDateTime | date: 'EEE d MMM y, HH:mm' }} to
           {{ r.endDateTime | date: 'EEE d MMM y, HH:mm' }}
         </dd>
+        @if (r.series; as series) {
+          <dt i18n="@@series.repeatsLabel">Repeats</dt>
+          <dd>{{ describe(series) }}</dd>
+        }
         <dt i18n="@@reservationForm.bookedByLabel">Booked by</dt>
         <dd>
           @if (r.userDisplayName) {
@@ -84,6 +88,12 @@
     @if (mode() === 'inProgress') {
       <p class="notice" role="status" i18n="@@reservationForm.inProgress">
         This reservation has already started, so only its end time and note can change.
+      </p>
+    }
+    @if (reservation()?.series; as series) {
+      <p class="series-note" role="status" i18n="@@series.oneDate">
+        This is one date of a booking that repeats {{ describe(series) }}. Changes here are for this
+        date only.
       </p>
     }
     @if (bookedBy(); as name) {
@@ -179,6 +189,86 @@
         }
       </div>
     </div>
+
+    @if (mode() === 'create') {
+      <fieldset class="field repeat">
+        <legend i18n="@@series.legend">Repeat</legend>
+        <select
+          class="input"
+          formControlName="repeat"
+          (change)="onRepeatChange()"
+          aria-label="How it repeats"
+          i18n-aria-label="@@series.repeatLabel"
+        >
+          <option value="none" i18n="@@series.none">Doesn't repeat</option>
+          <option value="daily" i18n="@@series.daily">Every day</option>
+          <option value="weekdays" i18n="@@series.weekdays">
+            Every weekday (Monday to Friday)
+          </option>
+          <option value="weekly" i18n="@@series.weekly">Every week</option>
+          <option value="biweekly" i18n="@@series.biweekly">Every 2 weeks</option>
+        </select>
+
+        @if (recurrence(); as rule) {
+          @if (rule.frequency === 'Weekly' && form.controls.repeat.value !== 'weekdays') {
+            <div
+              class="days"
+              role="group"
+              aria-label="On these days"
+              i18n-aria-label="@@series.daysLabel"
+            >
+              @for (day of weekDays; track day) {
+                <label class="day" [attr.title]="dayLabel(day)">
+                  <input
+                    type="checkbox"
+                    [checked]="rule.daysOfWeek.includes(day)"
+                    [disabled]="day === startDay()"
+                    [attr.aria-label]="dayLabel(day)"
+                    (change)="toggleDay(day, $any($event.target).checked)"
+                  />
+                  <span aria-hidden="true">{{ shortDay(day) }}</span>
+                </label>
+              }
+            </div>
+            <span class="text-muted hint" i18n="@@series.daysHint"
+              >The day it starts on is always one of them.</span
+            >
+          }
+          <div class="until">
+            <label for="until" i18n="@@series.untilLabel">Last day</label>
+            <input
+              id="until"
+              class="input"
+              type="date"
+              formControlName="until"
+              [min]="minUntil()"
+              [max]="maxUntil"
+              [class.invalid]="repeatError()"
+            />
+          </div>
+          @if (repeatError(); as error) {
+            <span class="field-error">{{ error }}</span>
+          } @else {
+            @let preview = seriesPreview();
+            <div class="series" aria-live="polite">
+              @if (preview.state === 'loading') {
+                <p class="text-muted hint" role="status" i18n="@@series.checking">
+                  Checking the dates…
+                </p>
+              } @else if (preview.state === 'failed') {
+                <p class="text-muted hint" i18n="@@series.checkFailed">
+                  The dates could not be checked right now. Booking checks them again.
+                </p>
+              } @else if (preview.state === 'invalid') {
+                <span class="field-error">{{ preview.message }}</span>
+              } @else if (preview.state === 'ready') {
+                <app-series-dates [dates]="preview.dates" />
+              }
+            </div>
+          }
+        }
+      </fieldset>
+    }
 
     <div class="field">
       <label for="note" i18n="@@reservationForm.note"
@@ -297,11 +387,26 @@
           }
         </button>
       }
-      <button type="submit" class="btn btn-primary" [disabled]="saving() || cancelling()">
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="saving() || cancelling() || (!!recurrence() && seriesCounts()?.free === 0)"
+      >
         @if (saving()) {
           <ng-container i18n="@@common.saving">Saving…</ng-container>
         } @else if (id()) {
           <ng-container i18n="@@common.saveChanges">Save changes</ng-container>
+        } @else if (recurrence() && seriesCounts()) {
+          @let counts = seriesCounts()!;
+          @if (counts.taken === 0) {
+            <ng-container i18n="@@series.bookAll">Book {{ counts.total }} dates</ng-container>
+          } @else if (counts.free === 1) {
+            <ng-container i18n="@@series.bookOneFree">Book the free date</ng-container>
+          } @else {
+            <ng-container i18n="@@series.bookFree"
+              >Book the {{ counts.free }} free dates</ng-container
+            >
+          }
         } @else {
           <ng-container i18n="@@availability.book">Book</ng-container>
         }

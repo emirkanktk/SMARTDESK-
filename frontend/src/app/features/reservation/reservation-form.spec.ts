@@ -4,7 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { CurrentUser } from '../../core/models/auth.model';
 import { ApiError } from '../../core/models/api-error.model';
-import { Invitee } from '../../core/models/reservation.model';
+import { Invitee, SeriesDate, SeriesResult } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
@@ -13,7 +13,7 @@ import { ResourceService } from '../../core/services/resource.service';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { DESK_TYPE, fakeResource } from '../../../testing/resource-fixtures';
 import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
-import { ATTENDEE_SEARCH_FROM, ReservationForm } from './reservation-form';
+import { ATTENDEE_SEARCH_FROM, ReservationForm, SERIES_PREVIEW_DEBOUNCE } from './reservation-form';
 
 // Local wall-clock time -> the UTC ISO string the API uses, whatever zone the tests run in.
 const utc = (local: string) => new Date(local).toISOString();
@@ -47,6 +47,8 @@ describe('ReservationForm', () => {
   let create: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
   let cancel: ReturnType<typeof vi.fn>;
+  let previewSeries: ReturnType<typeof vi.fn>;
+  let createSeries: ReturnType<typeof vi.fn>;
   let confirmSpy: ReturnType<typeof vi.spyOn>;
   let success: ReturnType<typeof vi.fn>;
   let reminderAlerts: {
@@ -69,6 +71,8 @@ describe('ReservationForm', () => {
     create = vi.fn(() => of(fakeReservation()));
     update = vi.fn(() => of(fakeReservation()));
     cancel = vi.fn(() => of(fakeReservation({ status: 'Cancelled' })));
+    previewSeries = vi.fn(() => of({ dates: [] }));
+    createSeries = vi.fn();
     confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     success = vi.fn();
     reminderAlerts = {
@@ -83,8 +87,18 @@ describe('ReservationForm', () => {
         { provide: ResourceService, useValue: { getResources } },
         {
           provide: ReservationService,
-          useValue: { getReservation, getInvitees, create, update, cancel },
+          useValue: {
+            getReservation,
+            getInvitees,
+            create,
+            update,
+            cancel,
+            previewSeries,
+            createSeries,
+          },
         },
+        // The dates of a series are asked for at once, rather than after a pause for typing.
+        { provide: SERIES_PREVIEW_DEBOUNCE, useValue: 0 },
         { provide: AuthService, useValue: { currentUser, isAdmin, isManager } },
         { provide: NotificationService, useValue: { success } },
         { provide: ReminderAlertsService, useValue: reminderAlerts },
@@ -1009,6 +1023,302 @@ describe('ReservationForm', () => {
       await render({ resourceId: room.id });
 
       expect(element.textContent).toContain('Desktop notifications are blocked in this browser');
+    });
+  });
+  describe('repeating (ADR-0035)', () => {
+    // Mondays at 10:30-11:30, local time: the form's start without a link.
+    const monday = (day: number) => ({
+      startDateTime: utc(`2026-10-${String(day).padStart(2, '0')}T10:30`),
+      endDateTime: utc(`2026-10-${String(day).padStart(2, '0')}T11:30`),
+    });
+    const free = (day: number): SeriesDate => ({
+      ...monday(day),
+      free: true,
+      code: null,
+      reason: null,
+    });
+    const taken = (day: number): SeriesDate => ({
+      ...monday(day),
+      free: false,
+      code: 'reservation-overlaps',
+      reason: 'Meeting Room A is already reserved for part of that time.',
+    });
+    const series = {
+      id: 'series-1',
+      frequency: 'Weekly' as const,
+      interval: 1,
+      daysOfWeek: ['Monday' as const],
+      until: '2026-11-02',
+      timeZone: 'Europe/Istanbul',
+    };
+    const result = (booked: number[], skipped: SeriesDate[] = []): SeriesResult => ({
+      series,
+      booked: booked.map((day) => fakeReservation({ id: `rsv-${day}`, ...monday(day), series })),
+      skipped,
+    });
+
+    /** The dates are asked for after a pause, here none: let it pass. */
+    async function settle(): Promise<void> {
+      await fixture.whenStable();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await fixture.whenStable();
+    }
+
+    async function repeat(choice: string): Promise<void> {
+      await set('.repeat select', choice);
+      await settle();
+    }
+
+    const submitButton = () =>
+      element.querySelector<HTMLButtonElement>('button[type=submit]')!.textContent!.trim();
+
+    it('is offered for a new booking only', async () => {
+      await render({ resourceId: room.id });
+      expect(element.querySelector('.repeat select')).not.toBeNull();
+      expect(field<HTMLSelectElement>('.repeat select').value).toBe('none');
+
+      fixture.destroy();
+      await render({ id: 'rsv-1' });
+      expect(element.querySelector('.repeat')).toBeNull();
+    });
+
+    it('repeats weekly on the day it starts, four weeks on, and shows the dates before booking', async () => {
+      previewSeries.mockReturnValue(
+        of({ dates: [free(5), free(12), free(19), free(26), free(2)] }),
+      );
+      await render({ resourceId: room.id });
+
+      await repeat('weekly');
+
+      expect(field('#until').value).toBe('2026-11-02');
+      expect(previewSeries).toHaveBeenLastCalledWith({
+        resourceId: room.id,
+        startDateTime: utc('2026-10-05T10:30'),
+        endDateTime: utc('2026-10-05T11:30'),
+        recurrence: {
+          frequency: 'Weekly',
+          interval: 1,
+          daysOfWeek: ['Monday'],
+          until: '2026-11-02',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+      });
+      const days = Array.from(element.querySelectorAll<HTMLInputElement>('.days input'));
+      expect(days.map((d) => d.checked)).toEqual([true, false, false, false, false, false, false]);
+      expect(days[0].disabled).toBe(true);
+      expect(element.querySelector('app-series-dates')!.textContent).toContain(
+        '5 dates, all free.',
+      );
+      expect(submitButton()).toBe('Book 5 dates');
+    });
+
+    it('adds days and repeats every other week', async () => {
+      await render({ resourceId: room.id });
+      await repeat('biweekly');
+
+      const thursday = element.querySelectorAll<HTMLInputElement>('.days input')[3];
+      thursday.checked = true;
+      thursday.dispatchEvent(new Event('change'));
+      await settle();
+
+      expect(previewSeries).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          recurrence: expect.objectContaining({ interval: 2, daysOfWeek: ['Monday', 'Thursday'] }),
+        }),
+      );
+    });
+
+    it('repeats daily, or on weekdays, with no days to pick', async () => {
+      await render({ resourceId: room.id });
+
+      await repeat('daily');
+      expect(element.querySelector('.days')).toBeNull();
+      expect(previewSeries).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          recurrence: expect.objectContaining({ frequency: 'Daily', interval: 1, daysOfWeek: [] }),
+        }),
+      );
+
+      await repeat('weekdays');
+      expect(element.querySelector('.days')).toBeNull();
+      expect(previewSeries).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          recurrence: expect.objectContaining({
+            frequency: 'Weekly',
+            daysOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+          }),
+        }),
+      );
+    });
+
+    it('books every date when all are free', async () => {
+      previewSeries.mockReturnValue(of({ dates: [free(5), free(12)] }));
+      createSeries.mockReturnValue(of(result([5, 12])));
+      await render({ resourceId: room.id });
+      await repeat('weekly');
+
+      await submit();
+
+      expect(createSeries).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resourceId: room.id,
+          startDateTime: utc('2026-10-05T10:30'),
+          endDateTime: utc('2026-10-05T11:30'),
+          reminderMinutes: 15,
+          attendeeIds: [],
+          recurrence: expect.objectContaining({ frequency: 'Weekly', until: '2026-11-02' }),
+          skipConflicts: false,
+        }),
+      );
+      expect(create).not.toHaveBeenCalled();
+      expect(success).toHaveBeenCalledWith(
+        'Meeting Room A is booked on 2 dates, every Monday until 2 Nov 2026, 10:30-11:30.',
+      );
+      expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
+    });
+
+    it("shows the dates that aren't free and books the others", async () => {
+      previewSeries.mockReturnValue(of({ dates: [free(5), taken(12), free(19)] }));
+      createSeries.mockReturnValue(of(result([5, 19], [taken(12)])));
+      await render({ resourceId: room.id });
+      await repeat('weekly');
+
+      expect(element.querySelectorAll('app-series-dates li.taken')).toHaveLength(1);
+      expect(submitButton()).toBe('Book the 2 free dates');
+
+      await submit();
+
+      expect(createSeries).toHaveBeenCalledWith(expect.objectContaining({ skipConflicts: true }));
+      expect(success).toHaveBeenCalledWith(
+        "Meeting Room A is booked on 2 dates, every Monday until 2 Nov 2026, 10:30-11:30. One date wasn't free and was skipped.",
+      );
+    });
+
+    it('says the free date in the singular, and with none free offers nothing to book', async () => {
+      previewSeries.mockReturnValue(of({ dates: [free(5), taken(12)] }));
+      await render({ resourceId: room.id });
+      await repeat('weekly');
+      expect(submitButton()).toBe('Book the free date');
+
+      previewSeries.mockReturnValue(of({ dates: [taken(5), taken(12)] }));
+      await set('#until', '2026-10-12');
+      await settle();
+      expect(element.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(true);
+    });
+
+    it('shows the dates again when one was taken while booking', async () => {
+      previewSeries.mockReturnValue(of({ dates: [free(5), free(12)] }));
+      createSeries.mockReturnValue(
+        throwError(
+          () =>
+            new ApiError(
+              409,
+              'Conflict',
+              "1 of the 2 dates aren't free in Meeting Room A. Look at the dates again, then book the others or choose another time.",
+              {},
+              'series-conflicts',
+            ),
+        ),
+      );
+      await render({ resourceId: room.id });
+      await repeat('weekly');
+      const asked = previewSeries.mock.calls.length;
+
+      previewSeries.mockReturnValue(of({ dates: [free(5), taken(12)] }));
+      await submit();
+      await settle();
+
+      expect(element.querySelector('.conflict')!.textContent).toContain(
+        "1 of the 2 dates aren't free",
+      );
+      expect(previewSeries.mock.calls.length).toBe(asked + 1);
+      expect(submitButton()).toBe('Book the free date');
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('says what the API found wrong with the dates', async () => {
+      previewSeries.mockReturnValue(
+        throwError(
+          () =>
+            new ApiError(400, 'Invalid', null, {
+              'Recurrence.Until': [
+                "That's only one date: pick a later end, or more days, for it to repeat.",
+              ],
+            }),
+        ),
+      );
+      await render({ resourceId: room.id });
+      await repeat('weekly');
+
+      expect(element.querySelector('.repeat .field-error')!.textContent).toContain(
+        "That's only one date",
+      );
+    });
+
+    it('says so when the dates could not be checked, and still lets the booker book', async () => {
+      previewSeries.mockReturnValue(throwError(() => new ApiError(0, 'Unreachable')));
+      await render({ resourceId: room.id });
+      await repeat('weekly');
+
+      expect(element.querySelector('.repeat')!.textContent).toContain(
+        'The dates could not be checked right now.',
+      );
+      expect(element.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(false);
+    });
+
+    it('checks the last day itself before asking', async () => {
+      await render({ resourceId: room.id });
+      await repeat('weekly');
+      previewSeries.mockClear();
+
+      await set('#until', '2027-05-01');
+      await settle();
+      expect(element.querySelector('.repeat .field-error')!.textContent).toContain(
+        'A booking can repeat at most 180 days ahead.',
+      );
+
+      await set('#until', '2026-10-04');
+      await settle();
+      expect(element.querySelector('.repeat .field-error')!.textContent).toContain(
+        "The last day can't be before the first.",
+      );
+      expect(previewSeries).not.toHaveBeenCalled();
+
+      await submit();
+      expect(createSeries).not.toHaveBeenCalled();
+    });
+
+    it('starts a series on weekdays on a weekday', async () => {
+      await render({
+        resourceId: room.id,
+        start: utc('2026-10-10T10:00'),
+        end: utc('2026-10-10T11:00'),
+      });
+
+      await repeat('weekdays');
+
+      expect(element.querySelector('.repeat .field-error')!.textContent).toContain(
+        'Start on a weekday for a booking that repeats on weekdays.',
+      );
+      expect(previewSeries).not.toHaveBeenCalled();
+    });
+
+    it('says a date of a series repeats, and that a change is for that date alone', async () => {
+      getReservation.mockReturnValue(of(fakeReservation({ series })));
+      await render({ id: 'rsv-1' });
+
+      expect(element.querySelector('.series-note')!.textContent!.replace(/\s+/g, ' ')).toContain(
+        'This is one date of a booking that repeats every Monday until 2 Nov 2026. Changes here are for this date only.',
+      );
+    });
+
+    it("says how someone else's booking repeats", async () => {
+      getReservation.mockReturnValue(of(fakeReservation({ userId: 'someone-else', series })));
+      await render({ id: 'rsv-1' });
+
+      const terms = Array.from(element.querySelectorAll('.details dt'));
+      const repeats = terms.find((dt) => dt.textContent!.trim() === 'Repeats')!;
+      expect(repeats.nextElementSibling!.textContent!.trim()).toBe('every Monday until 2 Nov 2026');
     });
   });
 });
