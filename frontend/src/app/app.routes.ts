@@ -51,6 +51,21 @@ export const routes: Routes = [
       import('./features/password/change-password').then((m) => m.ChangePassword),
   },
   {
+    // Outside the shell, so only the sheet with the QR code prints (ADR-0030).
+    path: 'resources/:id/check-in-poster',
+    canActivate: [authGuard, resourceEditorGuard],
+    title: $localize`:@@title.checkInPoster:QR code for checking in · SmartDesk`,
+    loadComponent: () =>
+      import('./features/check-in-poster/check-in-poster').then((m) => m.CheckInPoster),
+  },
+  {
+    // The screen at a resource's door (ADR-0034): no user and no shell, just the room and its
+    // changing QR code. The link it's opened with carries the screen's own token.
+    path: 'door/:resourceId',
+    title: $localize`:@@title.door:Door screen · SmartDesk`,
+    loadComponent: () => import('./features/door-screen/door-screen').then((m) => m.DoorScreen),
+  },
+  {
     // Every signed-in screen renders inside the shell. canActivateChild re-checks the
     // session on each navigation, so an expired token is caught before the screen loads.
     path: '',
@@ -107,15 +122,32 @@ export const routes: Routes = [
           import('./features/reservation/reservation-form').then((m) => m.ReservationForm),
       },
       {
+        // Where a resource's QR code leads (ADR-0030). Signed out, the guard sends the phone
+        // to sign in first and back here afterwards, code and all.
+        path: 'check-in/:resourceId',
+        title: $localize`:@@title.checkIn:Check in · SmartDesk`,
+        loadComponent: () => import('./features/check-in/check-in').then((m) => m.CheckIn),
+      },
+      {
         path: 'reservations/mine',
         title: $localize`:@@title.myReservations:My reservations · SmartDesk`,
         loadComponent: () =>
           import('./features/my-reservations/my-reservations').then((m) => m.MyReservations),
       },
       {
+        path: 'inbox',
+        title: $localize`:@@title.inbox:Inbox · SmartDesk`,
+        loadComponent: () => import('./features/inbox/inbox').then((m) => m.Inbox),
+      },
+      {
         path: 'profile',
         title: $localize`:@@title.profile:My profile · SmartDesk`,
         loadComponent: () => import('./features/profile/profile').then((m) => m.Profile),
+      },
+      {
+        path: 'guide',
+        title: $localize`:@@title.guide:How SmartDesk works · SmartDesk`,
+        loadComponent: () => import('./features/guide/guide').then((m) => m.Guide),
       },
       {
         path: 'admin',

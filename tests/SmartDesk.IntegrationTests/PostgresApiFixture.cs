@@ -33,6 +33,9 @@ public sealed class PostgresApiFixture : WebApplicationFactory<Program>, IAsyncL
     {
         builder.UseSetting("ConnectionStrings:DefaultConnection", _postgres.GetConnectionString());
         builder.UseSetting("Jwt:Key", new string('k', 32));
+        // The suite signs in far more often in a minute than any person: the limit itself is
+        // tested on an app of its own (ForwardedHeadersTests).
+        builder.UseSetting("RateLimiting:LoginPermitsPerMinute", "1000");
         builder.UseEnvironment("Development");
     }
 }

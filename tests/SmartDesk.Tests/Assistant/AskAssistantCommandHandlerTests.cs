@@ -76,7 +76,7 @@ public class AskAssistantCommandHandlerTests
     public async Task Handle_ReturnsTheReplyWithTheCardsTheModelProposed()
     {
         var room = new ResourceDto(Guid.NewGuid(), "Room A", Guid.NewGuid(), "Meeting Room", 6, "2nd Floor",
-            ResourceStatus.Active, null, [], [], null);
+            ResourceStatus.Active, null, [], [], null, false);
         _sender.Setup(s => s.Send(new GetResourceByIdQuery(room.Id), It.IsAny<CancellationToken>())).ReturnsAsync(room);
         _sender.Setup(s => s.Send(It.IsAny<GetAvailableResourcesQuery>(), It.IsAny<CancellationToken>())).ReturnsAsync([room]);
         _model.Answer = async toolbox =>

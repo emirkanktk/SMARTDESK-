@@ -1,0 +1,100 @@
+<main class="door">
+  @if (notSetUp()) {
+    <section class="setup" role="alert">
+      <h1 i18n="@@door.notSetUpTitle">This screen isn't set up</h1>
+      <p i18n="@@door.notSetUp">
+        Open the door screen link from the resource's page in SmartDesk on this device. A link that
+        was replaced, or a screen that was turned off, no longer works.
+      </p>
+    </section>
+  } @else if (screen(); as room) {
+    <header class="head">
+      <div>
+        <h1 class="name">{{ room.resourceName }}</h1>
+        <p class="where">
+          {{ room.location }} ·
+          @if (room.capacity === 1) {
+            <ng-container i18n="@@availability.onePerson">1 person</ng-container>
+          } @else {
+            <ng-container i18n="@@availability.people.count"
+              >{{ room.capacity }} people</ng-container
+            >
+          }
+        </p>
+      </div>
+      <div class="clock">
+        <span class="time">{{ clock() }}</span>
+        <span class="date">{{ date() }}</span>
+      </div>
+    </header>
+
+    <div class="body">
+      @let current = state();
+      <section class="status" aria-live="polite" [class]="'status ' + (current?.kind ?? '')">
+        @if (current?.kind === 'free' && current; as free) {
+          <p class="big" i18n="@@door.free">Free</p>
+          @if (free.kind === 'free' && free.until) {
+            <p class="detail" i18n="@@door.freeUntil">until {{ time(free.until) }}</p>
+          } @else {
+            <p class="detail" i18n="@@door.freeAllDay">for the rest of the day</p>
+          }
+        } @else if (current?.kind === 'busy' && current; as busy) {
+          @if (busy.kind === 'busy') {
+            <p class="big" i18n="@@door.busy">In use</p>
+            <p class="detail" i18n="@@door.busyUntil">until {{ time(busy.until) }}</p>
+            @if (busy.waitingUntil) {
+              <p class="waiting" i18n="@@door.waiting">
+                Nobody has checked in yet. Without a check-in by {{ time(busy.waitingUntil) }}, the
+                room is released.
+              </p>
+            } @else if (busy.booking.checkedIn) {
+              <p class="checked" i18n="@@door.checkedIn">Checked in</p>
+            }
+          }
+        } @else if (current?.kind === 'unavailable' && current; as out) {
+          @if (out.kind === 'unavailable') {
+            <p class="big" i18n="@@door.unavailable">Not available</p>
+            <p class="detail">{{ out.reason }}</p>
+            @if (out.until) {
+              <p class="detail" i18n="@@door.unavailableUntil">until {{ time(out.until) }}</p>
+            }
+          }
+        }
+
+        <div class="today">
+          <h2 i18n="@@door.later">Later today</h2>
+          @if (upcoming().length === 0) {
+            <p class="none" i18n="@@door.nothingLater">Nothing else booked today.</p>
+          } @else {
+            <ul>
+              @for (booking of upcoming(); track booking.startDateTime) {
+                <li>{{ time(booking.startDateTime) }}-{{ time(booking.endDateTime) }}</li>
+              }
+            </ul>
+          }
+        </div>
+      </section>
+
+      @if (room.checkIn; as checkIn) {
+        <section class="scan" [attr.data-url]="checkIn.url">
+          <app-qr-code class="qr" [value]="checkIn.url" [label]="qrLabel()" />
+          <p class="scan-title" i18n="@@door.scan">Scan to check in or book</p>
+          <div class="left" aria-hidden="true">
+            <span [style.width.%]="codeLeft() * 100"></span>
+          </div>
+          <p class="scan-note" i18n="@@door.changes">
+            The code changes every 30 seconds, so it only works here at the door.
+          </p>
+        </section>
+      }
+    </div>
+
+    @if (offline()) {
+      <p class="offline" role="status" i18n="@@door.offline">
+        Can't reach SmartDesk right now; trying again.
+      </p>
+    }
+  } @else {
+    <p class="loading" role="status" i18n="@@common.loading">Loading…</p>
+  }
+</main>

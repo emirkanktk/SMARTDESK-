@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using SmartDesk.Application.Common.Behaviors;
 using SmartDesk.Application.Features.Accounts.Common;
+using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Application.Resources;
 
@@ -20,6 +21,8 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(AssemblyReference).Assembly);
         services.AddScoped<AccountCreation>();
         services.AddScoped<ResourceReader>();
+        services.AddScoped<Invitees>();
+        services.AddScoped<MeetingInvitations>();
 
         // FluentValidation's own messages ("'Name' must not be empty.") follow the UI culture,
         // which the API sets for every request from Accept-Language (ADR-0023). Field names in

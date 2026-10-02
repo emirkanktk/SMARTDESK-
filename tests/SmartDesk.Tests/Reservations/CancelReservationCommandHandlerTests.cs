@@ -27,7 +27,7 @@ public class CancelReservationCommandHandlerTests : IDisposable
     {
         await using var context = _database.CreateContext();
         var handler = new CancelReservationCommandHandler(
-            context, caller, new FakeIdentityService(), _notifier.Object, new FakeTimeProvider(Now));
+            context, caller, new FakeIdentityService(), _notifier.Object, new FakeTimeProvider(Now), TestInvitations.For(context, caller));
         return await handler.Handle(new CancelReservationCommand(reservationId), CancellationToken.None);
     }
 

@@ -92,6 +92,22 @@ describe('Profile', () => {
     expect(element.textContent).toContain('Use at most 100 characters.');
   });
 
+  it('ties each error to its field, for screen readers', async () => {
+    const first = element.querySelector<HTMLInputElement>('#firstName')!;
+    const last = element.querySelector<HTMLInputElement>('#lastName')!;
+    expect(first.getAttribute('aria-invalid')).toBe('false');
+
+    await type('#firstName', '   ');
+    await submit();
+
+    expect(first.getAttribute('aria-invalid')).toBe('true');
+    const error = element.querySelector(`#${first.getAttribute('aria-describedby')}`)!;
+    expect(error.classList).toContain('field-error');
+    expect(error.textContent!.trim()).not.toBe('');
+    expect(last.getAttribute('aria-invalid')).toBe('false');
+    expect(last.getAttribute('aria-describedby')).not.toBe(first.getAttribute('aria-describedby'));
+  });
+
   it('shows the API messages next to the fields', async () => {
     updateProfile.mockReturnValue(
       throwError(

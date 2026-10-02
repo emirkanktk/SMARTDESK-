@@ -3,13 +3,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
-import { Reservation } from '../../core/models/reservation.model';
+import { Reservation, ReservationAttendee } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
-import { MyReservations } from './my-reservations';
+import { ATTENDEES_SHOWN, MyReservations } from './my-reservations';
 
 // Local wall-clock time -> the UTC ISO string the API uses, whatever zone the tests run in.
 const utc = (local: string) => new Date(local).toISOString();
@@ -37,7 +37,12 @@ describe('MyReservations', () => {
   });
 
   let getMine: ReturnType<typeof vi.fn>;
+  let getInvited: ReturnType<typeof vi.fn>;
+  let respond: ReturnType<typeof vi.fn>;
+  let getExtensionOptions: ReturnType<typeof vi.fn>;
+  let extend: ReturnType<typeof vi.fn>;
   let cancel: ReturnType<typeof vi.fn>;
+  let cancelFollowing: ReturnType<typeof vi.fn>;
   let success: ReturnType<typeof vi.fn>;
   let error: ReturnType<typeof vi.fn>;
   let confirmSpy: ReturnType<typeof vi.spyOn>;
@@ -54,7 +59,20 @@ describe('MyReservations', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     getMine = vi.fn(() => of([lastWeek, friday, running, soon, called, later]));
+    getInvited = vi.fn(() => of([]));
+    respond = vi.fn();
+    getExtensionOptions = vi.fn(() => of({ minutes: [15, 30, 60] }));
+    extend = vi.fn((id: string, minutes: number) =>
+      of({
+        ...running,
+        id,
+        endDateTime: new Date(
+          new Date(running.endDateTime).getTime() + minutes * 60_000,
+        ).toISOString(),
+      }),
+    );
     cancel = vi.fn((id: string) => of({ ...soon, id, status: 'Cancelled' }));
+    cancelFollowing = vi.fn();
     success = vi.fn();
     error = vi.fn();
     confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -69,7 +87,18 @@ describe('MyReservations', () => {
       imports: [MyReservations],
       providers: [
         provideRouter([]),
-        { provide: ReservationService, useValue: { getMine, cancel } },
+        {
+          provide: ReservationService,
+          useValue: {
+            getMine,
+            getInvited,
+            respond,
+            getExtensionOptions,
+            extend,
+            cancel,
+            cancelFollowing,
+          },
+        },
         { provide: ReservationHubService, useValue: hub },
         { provide: AuthService, useValue: { currentUser: signal({ id: OWNER_ID }) } },
         { provide: NotificationService, useValue: { success, error } },
@@ -163,6 +192,7 @@ describe('MyReservations', () => {
     await render();
 
     expect(tabText('Upcoming')).toBe('Upcoming 3');
+    expect(tabText('Invitations')).toBe('Invitations 0');
     expect(tabText('Past')).toBe('Past 2');
     expect(tabText('Cancelled')).toBe('Cancelled 1');
   });
@@ -313,6 +343,392 @@ describe('MyReservations', () => {
 
       expect(getMine).toHaveBeenCalledTimes(2);
       expect(names()).toEqual(['Meeting Room A']);
+    });
+  });
+
+  describe('meetings the user is invited to (ADR-0032)', () => {
+    const invitation = (extra: Partial<Reservation> = {}) =>
+      booking('rsv-20', 'Planning Room', '2026-10-06T11:00', '2026-10-06T12:00', {
+        userId: 'u-zeynep',
+        userDisplayName: 'Zeynep Kaya',
+        note: 'Quarterly plan',
+        reminderMinutes: 15,
+        attendees: [{ id: OWNER_ID, name: 'Ayşe Yılmaz', response: 'Pending' }],
+        ...extra,
+      });
+
+    function itemText(): string {
+      return element.querySelector('.item')!.textContent!.replace(/\s+/g, ' ');
+    }
+
+    it('lists them under Invitations, with who organized each, and only a way to see it', async () => {
+      getInvited.mockReturnValue(of([invitation()]));
+      await render();
+
+      expect(names()).not.toContain('Planning Room');
+      expect(tabText('Invitations')).toBe('Invitations 1');
+      await openTab('Invitations');
+
+      expect(names()).toEqual(['Planning Room']);
+      expect(itemText()).toContain('Organized by Zeynep Kaya');
+      expect(itemText()).toContain('Quarterly plan');
+      expect(itemText()).not.toContain('Reminder'); // the organizer's, not theirs
+      const links = element.querySelectorAll<HTMLAnchorElement>('.item .actions a');
+      expect(links).toHaveLength(1);
+      expect(links[0].textContent!.trim()).toBe('Details');
+      expect(links[0].getAttribute('href')).toBe('/reservations/rsv-20/edit');
+      expect(element.querySelector('.item button.cancel')).toBeNull();
+    });
+
+    it('tells them when to check in, since they may do it too', async () => {
+      getInvited.mockReturnValue(of([invitation({ checkInRequired: true })]));
+      await render();
+      await openTab('Invitations');
+
+      expect(itemText()).toContain('Check in at the door 10:50-11:15');
+    });
+
+    it('says so when there are none', async () => {
+      await render();
+      await openTab('Invitations');
+
+      expect(element.textContent).toContain(
+        "Nobody has invited you to a meeting that's still to come.",
+      );
+    });
+
+    it("names who is invited to the user's own bookings by their answer, the first few of each", async () => {
+      const pending = ['Can Öztürk', 'Deniz Ak', 'Elif Şahin', 'Fatma Koç', 'Gül Ay'].map(
+        (name, i): ReservationAttendee => ({ id: `u-${i}`, name, response: 'Pending' }),
+      );
+      getMine.mockReturnValue(
+        of([
+          {
+            ...soon,
+            attendees: [
+              { id: 'u-a', name: 'Ayşe Yılmaz', response: 'Accepted' },
+              { id: 'u-m', name: 'Mehmet Demir', response: 'Declined' },
+              pending[0],
+            ],
+          },
+          { ...later, attendees: [...pending, { id: 'u-gone', name: null, response: 'Pending' }] },
+          running,
+        ]),
+      );
+      await render();
+
+      const lines = Array.from(element.querySelectorAll('.item')).map(
+        (item) => item.querySelector('.attendees')?.textContent ?? null,
+      );
+      expect(ATTENDEES_SHOWN).toBe(3);
+      expect(lines).toEqual([
+        null, // Board Room
+        "Coming: Ayşe Yılmaz · Can't come: Mehmet Demir · No answer yet: Can Öztürk",
+        'No answer yet: Can Öztürk, Deniz Ak, Elif Şahin and 3 more',
+      ]);
+    });
+
+    it('lets them answer an invitation right there', async () => {
+      getInvited.mockReturnValue(of([invitation()]));
+      respond.mockReturnValue(
+        of(
+          invitation({ attendees: [{ id: OWNER_ID, name: 'Ayşe Yılmaz', response: 'Accepted' }] }),
+        ),
+      );
+      await render();
+      await openTab('Invitations');
+      expect(itemText()).toContain('Will you come?');
+
+      Array.from(element.querySelectorAll<HTMLButtonElement>('app-meeting-answer button'))
+        .find((b) => b.textContent!.trim() === "I'm coming")!
+        .click();
+      await fixture.whenStable();
+
+      expect(respond).toHaveBeenCalledWith('rsv-20', { response: 'Accepted' });
+      expect(itemText()).toContain("You said you're coming.");
+    });
+
+    it('has no answer to give on their own bookings', async () => {
+      await render();
+
+      expect(element.querySelector('app-meeting-answer')).toBeNull();
+    });
+
+    it('adds an invitation sent meanwhile, and drops it when the user is taken off', async () => {
+      await render();
+
+      hub.created$.next(invitation());
+      await fixture.whenStable();
+      expect(tabText('Invitations')).toBe('Invitations 1');
+
+      hub.updated$.next(
+        invitation({ attendees: [{ id: 'u-other', name: 'Can Öztürk', response: 'Pending' }] }),
+      );
+      await fixture.whenStable();
+      expect(tabText('Invitations')).toBe('Invitations 0');
+    });
+
+    it('drops a meeting that is cancelled, and follows one that moves', async () => {
+      getInvited.mockReturnValue(of([invitation()]));
+      await render();
+      await openTab('Invitations');
+
+      hub.updated$.next(invitation({ resourceName: 'Board Room' }));
+      await fixture.whenStable();
+      expect(names()).toEqual(['Board Room']);
+
+      hub.cancelled$.next(invitation({ status: 'Cancelled' }));
+      await fixture.whenStable();
+      expect(names()).toEqual([]);
+    });
+
+    it('ignores other meetings the user is not invited to', async () => {
+      await render();
+      hub.created$.next(invitation({ attendees: [] }));
+      await fixture.whenStable();
+
+      expect(tabText('Invitations')).toBe('Invitations 0');
+      expect(names()).not.toContain('Planning Room');
+    });
+
+    it('keeps an invitation that arrives while the lists are still loading', async () => {
+      const response = new Subject<Reservation[]>();
+      getInvited.mockReturnValue(response);
+      await render();
+
+      hub.created$.next(invitation());
+      response.next([]); // queried before the invitation was committed
+      response.complete();
+      await fixture.whenStable();
+
+      expect(tabText('Invitations')).toBe('Invitations 1');
+    });
+
+    it('lets an invitation go once the meeting is over', async () => {
+      getInvited.mockReturnValue(of([invitation()]));
+      await render();
+      expect(tabText('Invitations')).toBe('Invitations 1');
+
+      // A refresh re-reads the clock, as the page does every minute; the list it gets still
+      // has the meeting, which ended just now.
+      vi.setSystemTime(new Date('2026-10-06T12:00'));
+      hub.reconnected$.next();
+      await fixture.whenStable();
+
+      expect(tabText('Invitations')).toBe('Invitations 0');
+    });
+  });
+
+  describe('running longer (ADR-0033)', () => {
+    function extendToggle(name: string): HTMLButtonElement | null {
+      const item = Array.from(element.querySelectorAll('.item')).find((i) =>
+        i.querySelector('h2')!.textContent!.includes(name),
+      )!;
+      return item.querySelector<HTMLButtonElement>('.extend-toggle');
+    }
+
+    it('offers Extend on a booking in progress only', async () => {
+      await render();
+
+      expect(extendToggle('Board Room')).not.toBeNull(); // 09:30-11:00, it's 10:07
+      expect(extendToggle('Meeting Room A')).toBeNull();
+      expect(extendToggle('Desk 12')).toBeNull();
+    });
+
+    it('extends from the list and shows the new end', async () => {
+      await render();
+      extendToggle('Board Room')!.click();
+      await fixture.whenStable();
+      expect(extendToggle('Board Room')!.getAttribute('aria-expanded')).toBe('true');
+
+      Array.from(element.querySelectorAll<HTMLButtonElement>('app-extend-booking button'))
+        .find((b) => b.textContent!.trim() === '+30 min')!
+        .click();
+      await fixture.whenStable();
+
+      expect(extend).toHaveBeenCalledWith('rsv-2', 30);
+      expect(element.querySelector('app-extend-booking')).toBeNull();
+      expect(element.querySelector('.item')!.textContent).toContain('09:30-11:30');
+    });
+
+    it('closes again with a second click', async () => {
+      await render();
+      extendToggle('Board Room')!.click();
+      await fixture.whenStable();
+      extendToggle('Board Room')!.click();
+      await fixture.whenStable();
+
+      expect(element.querySelector('app-extend-booking')).toBeNull();
+    });
+  });
+
+  describe('check-in at the door (ADR-0030)', () => {
+    function itemText(name: string): string {
+      return Array.from(element.querySelectorAll('.item'))
+        .find((i) => i.querySelector('h2')!.textContent!.includes(name))!
+        .textContent!.replace(/\s+/g, ' ');
+    }
+
+    it('says when to check in, until that is done or has passed', async () => {
+      // It's 10:07: Desk 7's check-in is open until 10:25, but done already.
+      const checkedIn = booking('rsv-7', 'Desk 7', '2026-10-05T10:10', '2026-10-05T11:00', {
+        checkInRequired: true,
+        checkedInAt: utc('2026-10-05T10:05'),
+      });
+      getMine.mockReturnValue(
+        of([
+          { ...soon, checkInRequired: true },
+          { ...running, checkInRequired: true },
+          checkedIn,
+          { ...later, checkInRequired: false },
+        ]),
+      );
+      await render();
+
+      expect(itemText('Meeting Room A')).toContain('Check in at the door 13:50-14:15');
+      expect(itemText('Desk 7')).toContain('Checked in');
+      expect(itemText('Desk 7')).not.toContain('Check in at the door');
+      expect(itemText('Board Room')).not.toContain('Check in at the door'); // closed at 09:45
+      expect(itemText('Desk 12')).not.toContain('Check in');
+    });
+
+    it('says who checked in when it was someone else of the meeting', async () => {
+      getMine.mockReturnValue(
+        of([
+          {
+            ...soon,
+            checkInRequired: true,
+            checkedInAt: utc('2026-10-05T10:05'),
+            checkedInBy: 'u-mehmet',
+            checkedInByName: 'Mehmet Demir',
+          },
+          {
+            ...later,
+            checkInRequired: true,
+            checkedInAt: utc('2026-10-05T10:05'),
+            checkedInBy: OWNER_ID,
+          },
+        ]),
+      );
+      await render();
+
+      expect(itemText('Meeting Room A')).toContain('checked in by Mehmet Demir');
+      expect(itemText('Desk 12')).not.toContain('checked in by');
+    });
+
+    it('marks a booking released because nobody checked in, and when', async () => {
+      getMine.mockReturnValue(
+        of([
+          {
+            ...soon,
+            status: 'Cancelled',
+            checkInRequired: true,
+            releasedAt: utc('2026-10-05T09:45'),
+          },
+        ]),
+      );
+      await render();
+      await openTab('Cancelled');
+
+      expect(itemText('Meeting Room A')).toContain('Released');
+      expect(itemText('Meeting Room A')).toContain('Nobody checked in by 09:45');
+      expect(itemText('Meeting Room A')).not.toContain('Check in at the door');
+    });
+  });
+  describe('a booking that repeats (ADR-0035)', () => {
+    const pad = (day: number) => String(day).padStart(2, '0');
+    const series = {
+      id: 'series-1',
+      frequency: 'Weekly' as const,
+      interval: 1,
+      daysOfWeek: ['Tuesday' as const],
+      until: '2026-10-27',
+      timeZone: 'Europe/Istanbul',
+    };
+    const tuesday = (id: string, day: number) =>
+      booking(id, 'Board Room', `2026-10-${pad(day)}T14:00`, `2026-10-${pad(day)}T15:00`, {
+        note: null,
+        series,
+      });
+    const dates = [tuesday('s-1', 6), tuesday('s-2', 13), tuesday('s-3', 20)];
+
+    it('says how each date repeats, and offers to cancel it and the later ones', async () => {
+      getMine.mockReturnValue(of([soon, ...dates]));
+      await render();
+
+      const items = Array.from(element.querySelectorAll('li.item'));
+      const first = items.find(
+        (li) => li.textContent!.includes('Tue 6 Oct') && li.textContent!.includes('Board Room'),
+      )!;
+      expect(first.querySelector('.series')!.textContent).toBe(
+        'Repeats every Tuesday until 27 Oct 2026',
+      );
+      expect(first.querySelector('.cancel-following')).not.toBeNull();
+      const single = items.find((li) => li.textContent!.includes('Meeting Room A'))!;
+      expect(single.querySelector('.series')).toBeNull();
+      expect(single.querySelector('.cancel-following')).toBeNull();
+    });
+
+    it('cancels a date and every later one, after asking', async () => {
+      getMine.mockReturnValue(of(dates));
+      cancelFollowing.mockReturnValue(
+        of([
+          { ...dates[1], status: 'Cancelled' },
+          { ...dates[2], status: 'Cancelled' },
+        ]),
+      );
+      await render();
+
+      const second = Array.from(element.querySelectorAll('li.item')).find((li) =>
+        li.textContent!.includes('Tue 13 Oct'),
+      )!;
+      second.querySelector<HTMLButtonElement>('.cancel-following')!.click();
+      await fixture.whenStable();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Cancel your Board Room booking on Tue 13 Oct, 14:00-15:00 and every later date of the series?',
+      );
+      expect(cancelFollowing).toHaveBeenCalledWith('s-2');
+      expect(success).toHaveBeenCalledWith(
+        '2 dates of your Board Room booking were cancelled, from Tue 13 Oct, 14:00-15:00 on.',
+      );
+      // Only the first is still to come; the others are under Cancelled.
+      expect(element.querySelectorAll('li.item')).toHaveLength(1);
+      expect(element.querySelector('#tab-cancelled .count')!.textContent).toBe('2');
+    });
+
+    it('does nothing when the booker thinks better of it', async () => {
+      getMine.mockReturnValue(of(dates));
+      confirmSpy.mockReturnValue(false);
+      await render();
+
+      element.querySelector<HTMLButtonElement>('.cancel-following')!.click();
+      await fixture.whenStable();
+
+      expect(cancelFollowing).not.toHaveBeenCalled();
+    });
+
+    it('says why it could not, and shows the dates as they are', async () => {
+      getMine.mockReturnValue(of(dates));
+      cancelFollowing.mockReturnValue(
+        throwError(
+          () =>
+            new ApiError(
+              409,
+              'Conflict',
+              "This reservation has already ended and can't be cancelled.",
+            ),
+        ),
+      );
+      await render();
+
+      element.querySelector<HTMLButtonElement>('.cancel-following')!.click();
+      await fixture.whenStable();
+
+      expect(error).toHaveBeenCalledWith(
+        "This reservation has already ended and can't be cancelled.",
+      );
+      expect(getMine).toHaveBeenCalledTimes(2);
     });
   });
 });

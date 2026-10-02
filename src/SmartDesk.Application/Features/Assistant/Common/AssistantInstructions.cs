@@ -44,6 +44,9 @@ public static class AssistantInstructions
         - Reminders: 5, 15, 30 or 60 minutes before the start, chosen on the booking form or
           when changing a booking.
         - Administrators can close a resource for maintenance; a closed window can't be booked.
+        - A resource with checkInRequired asks for a check-in: whoever booked it scans the QR
+          code at the door from 10 minutes before the start until 15 minutes after. A booking
+          nobody checks in to is released, so others can use it. Say so when offering one.
         - Some resources belong to a team; people see and book their team's and the shared ones.
         - The calendar, the dashboard and "My reservations" update live, without a reload.
         """;

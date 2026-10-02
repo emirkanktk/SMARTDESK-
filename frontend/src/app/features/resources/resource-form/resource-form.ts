@@ -12,6 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Observable, finalize, map, of, switchMap, tap } from 'rxjs';
 import { Roles } from '../../../core/constants/roles';
 import { ApiError } from '../../../core/models/api-error.model';
+import { CHECK_IN } from '../../../core/models/reservation.model';
 import {
   RESOURCE_LIMITS,
   RESOURCE_PHOTO,
@@ -31,6 +32,7 @@ import { preparePhoto } from '../../../shared/utils/photo';
 import { canManageResource, teamName } from '../../../shared/utils/resource-access';
 import { applyServerErrors } from '../../../shared/utils/server-errors';
 import { integerValidator } from '../../../shared/validators/integer.validator';
+import { CheckInCodePanel } from '../check-in-code/check-in-code';
 
 const L = RESOURCE_LIMITS;
 
@@ -50,10 +52,11 @@ type PhotoChange =
  * Create (`/resources/new`) and edit (`/resources/:id/edit`) form. Admins pick the teams that
  * may use the resource (none: shared by everyone); a manager's resource always belongs to their
  * own team, and they can only edit one that belongs to their team alone (ADR-0022). A photo
- * is optional; without one the type's picture shows (ADR-0027).
+ * is optional; without one the type's picture shows (ADR-0027). Check-in at the door can be
+ * switched on, and the edit form then shows the QR code to put up (ADR-0030).
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, ResourcePhoto],
+  imports: [ReactiveFormsModule, RouterLink, ResourcePhoto, CheckInCodePanel],
   selector: 'app-resource-form',
   styleUrl: './resource-form.scss',
   templateUrl: './resource-form.html',
@@ -92,7 +95,16 @@ export class ResourceForm implements OnInit {
     status: ['Active' as ResourceStatus],
     features: [[] as string[]],
     teamIds: new FormControl<string[]>([], { nonNullable: true, validators: teamListValidator }),
+    checkInRequired: [false],
   });
+
+  protected readonly checkIn = CHECK_IN;
+  /** Whether the box is ticked now, saved or not: the QR code shows as soon as it is. */
+  protected readonly checkInOn = toSignal(this.form.controls.checkInRequired.valueChanges, {
+    initialValue: false,
+  });
+  /** The loaded resource's name, for the QR code's label. */
+  protected readonly loadedName = signal('');
 
   /** Text box for the next feature; not part of the submitted form. */
   protected readonly newFeature = new FormControl('', { nonNullable: true });
@@ -283,6 +295,7 @@ export class ResourceForm implements OnInit {
       location: value.location.trim(),
       description: value.description.trim() || null,
       features: value.features,
+      checkInRequired: value.checkInRequired,
     };
 
     const id = this.id();
@@ -351,6 +364,7 @@ export class ResourceForm implements OnInit {
     );
     this.loadedTeams.set(resource.teams);
     this.loadedPhoto.set(resource.photoUpdatedAt);
+    this.loadedName.set(resource.name);
     this.form.setValue({
       name: resource.name,
       resourceTypeId: resource.resourceTypeId,
@@ -360,6 +374,7 @@ export class ResourceForm implements OnInit {
       status: resource.status,
       features: [...resource.features],
       teamIds: resource.teams.map((team) => team.id),
+      checkInRequired: resource.checkInRequired,
     });
   }
 

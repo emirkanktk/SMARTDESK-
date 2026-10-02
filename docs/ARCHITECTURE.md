@@ -20,7 +20,7 @@ reflects reservation changes to every open screen in real time.
 | Auth | ASP.NET Core Identity + JWT bearer tokens |
 | Real-time | SignalR |
 | API docs | Built-in ASP.NET Core OpenAPI (`/openapi/v1.json`) + Swagger UI (`/swagger`), Development only |
-| Local infra | Docker Compose (PostgreSQL) |
+| Local infra | Docker Compose: PostgreSQL and Mailpit; optionally the API, or the API and the app behind nginx (ADR-0031) |
 
 ## 3. Backend: Onion Architecture
 
@@ -96,7 +96,8 @@ src/
     Entities/          Resource, ResourceType, ResourceFeature, Reservation
     Enums/              ResourceStatus, ReservationStatus
     Constants/          Roles (Admin, Employee)
-    Rules/              ReservationOverlap - the one definition of "time range taken"
+    Rules/              ReservationOverlap - the one definition of "time range taken";
+                          CheckInRules - the check-in window and when a booking is released
   SmartDesk.Application/
     Common/             Behaviors/ (ValidationBehavior), Exceptions/, Extensions/,
                           Interfaces/ (incl. IApplicationDbContext), Models/
@@ -115,7 +116,9 @@ src/
     Controllers/          thin - build a command/query, send it through MediatR
     Services/             CurrentUserService (reads the caller from the JWT),
                           SignalRReservationNotifier (NullReservationNotifier remains
-                          only as an unused fallback)
+                          only as an unused fallback), and the timed jobs:
+                          ReservationReminderWorker and NoShowReleaseWorker, each sending
+                          one command every 30 seconds (PeriodicCommandWorker)
     OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
 tests/
@@ -158,6 +161,17 @@ Handlers don't know about SignalR. After a committed create, update or cancel th
 `Clients.All` (ADR-0014). A failed broadcast is logged and swallowed, so a down socket
 cannot turn a saved reservation into an HTTP error. `NullReservationNotifier` is still
 registered with `TryAdd` and only applies if the SignalR notifier is not registered.
+
+Two events go to the reservation's owner alone: the reminder (`ReservationStartingSoon`,
+ADR-0018) and the notice that a booking was released because nobody checked in
+(`ReservationReleased`, ADR-0030), and the question whether a booking about to end needs longer
+(`ReservationEndingSoon`, ADR-0033). The warning before a release goes to the owner and those
+invited (`ReservationReleaseWarning`, ADR-0034). They come from timed jobs rather than a request.
+
+Inbox messages (ADR-0032) go to their recipient alone, through `IInboxNotifier`
+(`SignalRInboxNotifier`, `InboxMessageReceived`). Handlers write them with the change, in the
+same transaction (`MeetingInvitations`), and push them only after it's committed, so a message
+never announces a change that rolled back.
 
 The Angular app opens the connection when a session exists and closes it on logout.
 Negotiate does not send cookies (`withCredentials: false`); the hub uses the bearer token,
@@ -304,6 +318,42 @@ picker drops seconds and any difference would count as a change.
   fetches a photo with the token and keeps an object URL per version (`photoUpdatedAt`). The
   resource form makes a chosen picture smaller (`shared/utils/photo.ts`) and uploads it after
   the details are saved.
+- **Check-in at the door (ADR-0030).** A resource's QR code leads to `/check-in/:resourceId?code=…`
+  inside the shell, so a signed-out phone signs in first and comes back with the code. The page
+  shows the caller's booking of that resource and a **Check in** button while it's open, and
+  follows the clock and live events. The resource form switches check-in on and shows the code
+  (`<app-check-in-code>`, drawn by `<app-qr-code>` from `qrcode-generator`), and
+  `/resources/:id/check-in-poster`, outside the shell, is the sheet to print. The booking form
+  and **My reservations** say when to check in, and `ReminderAlertsService` tells the owner when
+  a booking was released.
+- **Meetings and the inbox (ADR-0032).** The booking form lists who the user may invite
+  (`GET /api/reservations/invitees`), with what each answered. `InboxService`, started by the
+  app, keeps the unread count for the **Inbox** link and the narrow bar's bell, and shows each
+  new message as a toast (and a desktop notification when allowed). `/inbox` lists the messages
+  and lets an invitation be answered there (`<app-meeting-answer>`, also in **My reservations**
+  and on the meeting's page). `core/i18n/inbox-texts.ts` writes each message's sentence.
+- **Running over (ADR-0033).** `<app-ending-soon>` in the shell shows the question when
+  `ReservationEndingSoon` arrives: a card in the corner with `<app-extend-booking>`, the
+  extension options that still fit as buttons. One booking at a time; one extended or cancelled
+  elsewhere leaves by itself. **My reservations** has the same buttons behind **Extend** for a
+  booking in progress.
+- **The door screen (ADR-0034).** `/door/:resourceId`, outside the shell and without a user:
+  it keeps the token from its link (in `localStorage`, out of the address), asks
+  `GET /api/door/{id}` through `DoorScreenService` just after its code changes, and draws the
+  room's state (`doorState`) and the QR code. The resource form's `<app-check-in-code>` sets
+  the screen up. The check-in page reads the code once and drops it from the address, and
+  offers what can be done at the door: run longer, end, or book on the spot.
+- **The guide.** `/guide` lists `GUIDE_SECTIONS` (`features/guide/guide-sections.ts`): each
+  part's steps as `$localize` texts, the numbers in them taken from the rules' constants
+  (`CHECK_IN`, `EXTENSION_OPTIONS`), filtered by role and by whether the server has the
+  assistant. The contents on top link to each part's fragment; the page scrolls there and moves
+  the focus to its heading itself, without the router's anchor scrolling.
+- **Bookings that repeat (ADR-0035).** The booking form's Repeat section is part of its
+  reactive form (`repeat`, `repeatDays`, `until`). From them it works out the rule
+  (`recurrence`), asks `GET /api/reservations/series/preview` as the form changes - after a
+  pause (`SERIES_PREVIEW_DEBOUNCE`), the newest answer only - and lists the dates with
+  `<app-series-dates>`. `shared/utils/recurrence.ts` says a rule in the reader's words ("every
+  Monday until 2 Nov 2026"); My reservations and the inbox use it too.
 - **Styling.** Plain SCSS. Design tokens (colors, the brand's gradients, spacing, radius,
   shadows) and shared building blocks (`.btn`, `.field`, `.input`, `.card`, `.alert-error`,
   `.brand-panel`, `.empty`) live in `src/styles.scss`. Component styles use those variables

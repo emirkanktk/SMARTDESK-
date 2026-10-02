@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Observable, Subject, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { InboxMessage } from '../models/inbox.model';
 import { Reservation } from '../models/reservation.model';
 import { AuthService } from './auth.service';
 
@@ -24,6 +25,10 @@ export class ReservationHubService {
   private readonly updated = new Subject<Reservation>();
   private readonly cancelled = new Subject<Reservation>();
   private readonly startingSoon = new Subject<Reservation>();
+  private readonly released = new Subject<Reservation>();
+  private readonly endingSoon = new Subject<Reservation>();
+  private readonly releaseWarning = new Subject<Reservation>();
+  private readonly inboxMessage = new Subject<InboxMessage>();
   private readonly reconnected = new Subject<void>();
 
   readonly created$: Observable<Reservation> = this.created.asObservable();
@@ -31,6 +36,23 @@ export class ReservationHubService {
   readonly cancelled$: Observable<Reservation> = this.cancelled.asObservable();
   /** The signed-in user's own reminders; the API sends them to the owner only. */
   readonly startingSoon$: Observable<Reservation> = this.startingSoon.asObservable();
+  /**
+   * The signed-in user's own bookings released because nobody checked in (ADR-0030), to the
+   * owner only. Everyone, the owner included, also gets the booking in `cancelled$`.
+   */
+  readonly released$: Observable<Reservation> = this.released.asObservable();
+  /**
+   * The signed-in user's own bookings that are about to end, asking whether they need longer
+   * (ADR-0033); to the owner only.
+   */
+  readonly endingSoon$: Observable<Reservation> = this.endingSoon.asObservable();
+  /**
+   * Nobody has checked in to a booking the user owns or is invited to, and it's released in
+   * five minutes (ADR-0034); to them only.
+   */
+  readonly releaseWarning$: Observable<Reservation> = this.releaseWarning.asObservable();
+  /** Messages to the signed-in user's inbox (ADR-0032); the API sends each to its recipient only. */
+  readonly inboxMessage$: Observable<InboxMessage> = this.inboxMessage.asObservable();
   readonly reconnected$: Observable<void> = this.reconnected.asObservable();
 
   connect(): void {
@@ -62,6 +84,18 @@ export class ReservationHubService {
     );
     connection.on('ReservationStartingSoon', (reservation: Reservation) =>
       this.startingSoon.next(reservation),
+    );
+    connection.on('ReservationReleased', (reservation: Reservation) =>
+      this.released.next(reservation),
+    );
+    connection.on('ReservationEndingSoon', (reservation: Reservation) =>
+      this.endingSoon.next(reservation),
+    );
+    connection.on('ReservationReleaseWarning', (reservation: Reservation) =>
+      this.releaseWarning.next(reservation),
+    );
+    connection.on('InboxMessageReceived', (message: InboxMessage) =>
+      this.inboxMessage.next(message),
     );
     connection.onreconnected(() => this.reconnected.next());
     // The server ends a user's connections when their account or sessions change - a sign-in

@@ -1,0 +1,17 @@
+@for (booking of current(); track booking.id) {
+  <section class="ending-soon" aria-labelledby="ending-soon-title" aria-live="polite">
+    <div class="head">
+      <span class="icon" aria-hidden="true"><app-icon name="clock" /></span>
+      <h2 id="ending-soon-title" i18n="@@endingSoon.title">
+        {{ booking.resourceName }} ends at {{ endTime(booking) }}
+      </h2>
+    </div>
+    <p class="text-muted" i18n="@@endingSoon.question">
+      Need more time? Extend it here instead of picking a new end.
+    </p>
+    <app-extend-booking [reservation]="booking" (extended)="onExtended($event)" />
+    <button type="button" class="not-now" (click)="dismiss(booking)" i18n="@@endingSoon.notNow">
+      Not now
+    </button>
+  </section>
+}

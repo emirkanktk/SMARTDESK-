@@ -24,10 +24,11 @@ services:
       - "1025:1025"
       - "8025:8025"
 
-  # Opt-in. `docker compose up -d` starts PostgreSQL and Mailpit only.
+  # Opt-in. `docker compose up -d` starts PostgreSQL and Mailpit only; the `api` profile adds
+  # the API on port 8080, and the `app` profile the API and the app behind nginx (`web`).
   api:
     build: .
-    profiles: ["api"]
+    profiles: ["api", "app"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -40,6 +41,9 @@ services:
       Database__MigrateOnStartup: "true"
       Jwt__Key: ${JWT_KEY:-}
       Email__Smtp__Host: mailpit
+      # nginx in `web` is the reverse proxy whose X-Forwarded-For it believes (ADR-0028).
+      ForwardedHeaders__KnownProxies__0: 172.28.42.10
+    networks: [default, proxy]
     ports:
       - "8080:8080"
     healthcheck:
@@ -48,6 +52,34 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+
+  # Opt-in, with the API: `docker compose --profile app up -d --build` serves the whole app at
+  # http://localhost:4200 (ADR-0031). That's the address `ng serve` uses and the API's
+  # Development settings expect, so stop `ng serve` first.
+  web:
+    build: ./frontend
+    profiles: ["app"]
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      proxy:
+        ipv4_address: 172.28.42.10
+    ports:
+      - "4200:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Just nginx and the API, with a fixed address for nginx so the API knows which proxy to trust.
+# Pick another subnet if this one is taken on your machine, and change both addresses above.
+networks:
+  proxy:
+    ipam:
+      config:
+        - subnet: 172.28.42.0/24
 
 volumes:
   smartdesk-postgres-data:

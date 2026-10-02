@@ -798,3 +798,281 @@ new tables.
     panel says to check them.
   - A request that carries a token is now authenticated before it is counted. Sign-in requests
     carry none, so the sign-in limit costs what it did.
+
+## ADR-0030: Checking in at the door with a QR code, and releasing bookings nobody used
+
+**Decision:**
+- **Per resource, off by default.** An Admin, or a Manager for a resource of their team alone,
+  can switch on "bookings must be checked in" (`Resource.CheckInRequired`). Resources without
+  it work exactly as before.
+- **A QR code at the door.** Every resource has a random 128-bit secret (`CheckInCode`). Its QR
+  code opens the app's check-in page with the secret in the address, and the signed-in owner
+  checks in there. Only those who may edit the resource see the code: its own endpoint, never
+  in resource responses. Replacing it retires the printed one.
+- **The window.** From 10 minutes before the start until 15 minutes after, and never once the
+  booking is over. Only the owner checks in, only a `Confirmed` booking. (Anyone invited to it
+  may too, since ADR-0032.)
+- **Release.** A booking nobody checked in to when its window closes is released: `Cancelled`,
+  with `ReleasedAt`. A background job looks every 30 seconds. Calendars free the slot through
+  the usual `ReservationCancelled`; the owner also gets `ReservationReleased`, a toast saying why.
+- **Knowing at booking time.** A reservation keeps whether its resource asked for a check-in
+  when it was booked or last moved: a new start, or another resource. Staying longer or ending
+  early is the same visit and keeps it. It's released only while that and the resource's own
+  setting are both on.
+- **One rule, both sides.** `CheckInRules` holds the window and the release condition as
+  expressions, used by the check-in, the release job and the queries. Their start conditions are
+  exact opposites, and both act under the reservation's row lock, like update and cancel
+  (ADR-0013).
+
+**Why:**
+- The brief lists QR check-in as a bonus. What it's worth is the rooms held by meetings that
+  never happen: without a check-in, nothing tells the booking apart from a real one, so the room
+  stays empty and blocked.
+- Per resource, because not everything has a door to put a code on: a camera or a car booked for
+  the day can't be "checked in" the same way. Off by default, so switching the feature on
+  changes nothing until someone asks for it.
+- The secret, because resource ids show up in the app's own addresses. With only the id,
+  anyone could check in from their desk without going to the room.
+- Remembering the setting on the booking, because switching check-in on for a room shouldn't
+  release a booking made yesterday by someone who couldn't know. Requiring the resource's
+  setting as well lets an Admin switch it off, e.g. when the printed code is gone, and stop
+  every release at once.
+- Releasing as a cancellation, with `ReleasedAt` beside it, keeps every existing rule, query and
+  screen right: a released booking frees its slot exactly like a cancelled one. The timestamp
+  is what tells them apart for the owner.
+- **Trade-offs:**
+  - A printed code proves someone was at the door once, not now: whoever has the link can
+    check in from elsewhere until the code is replaced. A screen at the door with a changing
+    code would close that, and is out of scope. (ADR-0034 adds that screen.)
+  - The release can be up to one job interval late, never early.
+  - Only the owner can check in. A colleague who arrives first can't keep the room for them.
+
+## ADR-0031: The whole app in containers: nginx serves the build and passes /api and /hubs to the API
+
+**Decision:**
+- `frontend/Dockerfile` builds the production bundle and serves it with nginx
+  (`nginxinc/nginx-unprivileged`: not root, port 8080, like the API's image). docker-compose's
+  `web` service runs it in a new `app` profile, which starts the API too:
+  `docker compose --profile app up -d --build`, then `http://localhost:4200`.
+- **One origin.** nginx passes `/api` and `/hubs` to the API container, and serves the app
+  for everything else, with `index.html` for its own routes. As with `ng serve`'s proxy, the
+  browser makes no cross-origin call, and the session cookie (ADR-0026: `SameSite=Strict`,
+  path `/api/auth`) works as it is.
+- **The proxy the API trusts.** nginx gets a fixed address on a network of its own (`proxy`,
+  172.28.42.0/24), and the API lists that address in `ForwardedHeaders:KnownProxies`
+  (ADR-0028). Trusting the whole network would also trust whatever reaches the API's
+  published port through Docker's gateway.
+- **What goes through it:**
+  - SignalR gets WebSocket upgrades and no buffering.
+  - Requests may be 8 MB, for photos (ADR-0027).
+  - An answer may take 120 s, for the assistant's 90 s limit (ADR-0029).
+  - Docker's DNS is asked again every 10 s, so a restarted API is found at its new address.
+- **Caching:** hashed scripts, styles and fonts are kept for a year. `index.html`, the
+  pictures and the translations are checked again on every visit, so a new release shows at
+  once.
+- **No secrets in the access log:** it leaves out query strings and the Referer. SignalR sends
+  its access token in the query string, and a password reset link carries its token there.
+- **Port 4200,** the address `ng serve` uses. The API's Development settings (`App:FrontendUrl`,
+  CORS) already name it, so links in emails work in both setups, which can't run at once.
+
+**Why:**
+- Burak's Docker work (#18) put the API in a container, but the app still needed Node.js and
+  `ng serve`. Now anyone with Docker runs the whole app with one command, which is what a demo
+  on someone else's machine needs.
+- nginx in front of the API is the setup ADR-0028 was written for, and this runs it for real.
+- **Trade-offs:**
+  - Like the `api` profile, it's a local stand-in in Development: demo data and no HTTPS. A
+    production setup would add TLS at nginx or a load balancer, and not publish the API's port.
+  - The fixed subnet can clash with a network already on the machine. The compose file says
+    which lines to change.
+  - nginx's error log still shows a failing request's query string. Errors are rare, and that
+    log isn't kept anywhere.
+
+    (ADR-0032 lets anyone invited to a meeting check it in.)
+
+## ADR-0032: Meetings: people invited to a booking, their answers, and an inbox
+
+**Decision:**
+- **Who invites whom.** A booking can have a list of people invited to it
+  (`ReservationAttendee`). A Manager may invite their own team's active members, an Admin any
+  active account, an Employee nobody. Whoever is added must be able to use the resource
+  (ADR-0022), and the room must hold everyone, the organizer included. Someone already on the
+  list stays on it after leaving the team; they can only be taken off.
+- **The organizer stays the owner.** When an Admin changes a meeting, its owner is still the
+  organizer, and the Admin is named as the sender of the messages the change causes.
+- **An inbox.** Each user has messages (`InboxMessage`) about the meetings they're invited to:
+  invited, moved to a new time or room, cancelled or released, taken off the list. The
+  organizer gets one for each answer. A message keeps its own copy of the meeting (room, times,
+  note), so it reads the same later, and the app writes the sentence from its kind, in the
+  reader's language. `GET /api/inbox` lists the newest 100, read or not, with an unread count
+  for the badge.
+- **Answers.** Someone invited answers coming or not (`POST /api/reservations/{id}/response`);
+  not coming needs a reason. The organizer gets a message either way, the reason in it. A new
+  start or another room asks everyone to answer again.
+- **Live.** Each message is pushed to its recipient only (`InboxMessageReceived`), once the
+  change is committed. An answer reaches every screen showing the meeting as
+  `ReservationUpdated`.
+- **Check-in (amends ADR-0030).** Anyone invited may check the meeting in at the door; whoever
+  gets there first keeps the room for everyone.
+
+**Why:**
+- A manager meeting the team in a room picks from a list whom to meet, and those people are
+  told. The inbox is where that stays, and where they answer.
+- Managers invite their own team because that's whom they manage, and the team already shares
+  their resources (ADR-0022). Admins run the office and can invite anyone who may use the room.
+  Inviting colleagues at will would turn the inbox into noise.
+- A message keeps its own copy of the meeting because the booking changes or goes away: "moved
+  to 14:00" must still say so after a second move.
+- The words are written by the app, at read time, in the reader's language (ADR-0025), rather
+  than by the API in the sender's.
+- A reason for not coming goes to the organizer only. The booking, with its list and answers,
+  is visible to everyone who may use the resource and sent to their screens; "I'm at the
+  doctor's" isn't for them.
+- An answer to 10:00 isn't an answer to 14:00, or to another building. A meeting that only
+  runs longer is the same meeting, and keeps its answers (ADR-0033).
+- **Trade-offs:**
+  - Who's invited, and what each answered, is as visible as who booked it. Reasons aren't.
+  - The inbox lists the newest 100 messages; older ones stay in the database.
+  - A message pushed while its reader is offline isn't pushed again. The inbox and its count
+    catch up when they open the app or reconnect.
+  - Changing only the note tells nobody.
+
+## ADR-0033: Asked before a booking ends whether it needs longer, and extended with a click
+
+**Decision:**
+- **The question.** Ten minutes before a booking under way ends, its owner is asked whether
+  they need longer (`ReservationEndingSoon`, to them only): a card in the app, and a desktop
+  notification when allowed. A background job looks every 30 seconds
+  (`EndingSoon:IntervalSeconds`; `EndingSoon:Enabled: false` switches it off) and asks once
+  per end (`EndingSoonSentAt`); a new end, however it comes, is asked about again.
+- **The answer is a button.** 15, 30 or 60 minutes more, only those that end before the
+  resource's next booking or blocked window (`GET /api/reservations/{id}/extension`).
+  `POST /api/reservations/{id}/extend` adds one, for the owner or an Admin, under the same locks
+  and booking checks as moving a booking: only the extra time is a new claim on the resource.
+- **The same visit.** Only the end moves. The check-in (ADR-0030), the reminder and the answers
+  to the invitation (ADR-0032) stay as they are, and everyone invited is told it runs longer
+  (`MeetingExtended`).
+- **Also from the list.** A booking in progress has **Extend** in My reservations, with the
+  same buttons.
+
+**Why:**
+- A meeting that runs over is the usual reason to change a booking while it's on, and the edit
+  form makes that a hunt for the end field and a new time. A question at the right moment, with
+  answers that are known to fit, makes it one click.
+- Offering only what fits, rather than letting the click fail, because the next booking is
+  usually the reason it can't run on.
+- The same checks as a move, because the extra time is a claim like any other: a room switched
+  to maintenance or blocked meanwhile can't be taken.
+- Not a new visit, because the people in the room are the same: a check-in made at 10:00 still
+  holds, and nobody has to answer the invitation again.
+- **Trade-offs:**
+  - The question can come up to one job interval late, and only to screens that are open: one
+    that finds the owner offline isn't repeated. The **Extend** button is always there.
+  - Only the owner (or an Admin) can extend, not someone invited.
+  - 15, 30 or 60 minutes; anything else goes through the edit form.
+
+## ADR-0034: A door screen with a changing code, and more to do at the door
+
+**Decision:**
+- **A door screen.** Those who may edit a resource can set up a screen at its door: a tablet
+  that opens `/door/{id}` from a link shown once. The link carries the screen's own token
+  after `#`, so it never reaches a server or its logs; the page keeps it and takes it out of
+  the address. Only the token's SHA-256 is stored. A new link cuts off the old screen; turning
+  the screen off goes back to the printed code.
+- **A changing code.** While a screen is set up, only its code checks in: an HMAC-SHA256 of the
+  current 30-second step, keyed by the resource's secret, 20 hex digits. The step before is
+  still taken, so a code scanned as it changes works. The printed code is refused, saying why.
+- **What the screen shows.** It asks `GET /api/door/{id}` with its token in a header, without
+  a user: the room, today's bookings as times only (a corridor is no place for names), blocked
+  windows, and the check-in link with the current code. It asks again just after the code
+  changes, at least every 10 seconds.
+- **At the door.** The check-in page takes the code out of the address as soon as it's read. A
+  booking remembers who checked it in (`CheckedInByUserId`). Its owner can make it run longer
+  (ADR-0033) or end it there (`POST /api/reservations/{id}/end`). Someone with nothing to check
+  in to sees whether the room is free, and can book 30 or 60 minutes on the spot, checked in at
+  once.
+- **A warning before the release.** Five minutes before a booking nobody checked in to is
+  released, its owner and those invited get `ReservationReleaseWarning`, once
+  (`ReleaseWarningSentAt`), from its own job on the check-in schedule.
+- **Rate limits.** Checking in: 20 a minute per user. The door screen: 600 a minute per
+  address.
+
+**Why:**
+- ADR-0030's own trade-off: a printed code proves someone was at the door once. A photo of it,
+  or its link, checks in from anywhere until it's replaced. A code that changes every 30 seconds
+  is only good to someone standing in front of the screen, for a minute at most.
+- The step before is taken so that scanning a code just as it changes isn't refused; anything
+  older is a photo.
+- The screen proves itself with a token rather than a user's sign-in: nobody should stay signed
+  in on a tablet in a corridor, and the token can do nothing but show that one room's screen.
+  Keeping only its hash means a copy of the database can't drive a screen.
+- Turning a screen on is what switches to changing codes, rather than a separate setting, so
+  there's no state where check-in needs a screen nobody set up.
+- A booking at the door is checked in at once because the person making it is standing there.
+- The warning, because a released booking is a surprise to someone running late; five minutes
+  is enough to get to the door.
+- The limits: a person scans a few times at most, a script guessing codes far more. A screen
+  asks about six times a minute, and a building's screens usually reach the API from one
+  address, so theirs leaves room for a hundred.
+- **Trade-offs:**
+  - A photo of the screen sent to someone elsewhere works for up to a minute.
+  - Whoever has the screen's link can show its codes anywhere until it's replaced. The link is
+    shown once and meant to be opened on the tablet only.
+  - With the screen off or broken, nobody can check in until someone turns it off or replaces
+    the link; the warning still goes out, and the release follows as usual.
+
+## ADR-0035: Bookings that repeat
+
+**Decision:**
+- **A series is its rule and one booking a date.** `ReservationSeries` keeps the rule it was
+  made with: daily or weekly, every 1 to 4, the days of a weekly one, the last day it may come
+  back on, and the booker's time zone. Each date is an ordinary `Reservation` with its
+  `SeriesId`, booked when the series is.
+- **Dates in the booker's time zone.** The first date is the booking asked for; the others keep
+  its local time of day and its length, so a meeting at 10:00 stays at 10:00 when the clocks
+  change. Weeks are counted from Monday: "every 2 weeks" is the first date's week, the one two
+  weeks on, and so on. A time the clocks skip moves to the first minute after it. A weekly series
+  has to include the day it starts on.
+- **As far ahead as any booking.** The last date may start at most 180 days ahead (issue #41),
+  so a daily series has at most 181 dates. At least two dates, and none running into the next.
+- **Seen first, then booked at once.** `GET /api/reservations/series/preview` lists the dates
+  and which are free. `POST /api/reservations/series` checks every date under the resource's
+  lock and books them in one transaction. One date that isn't free stops the lot (409,
+  `series-conflicts`) unless the booker asked to skip such dates (`skipConflicts`); the answer
+  lists the dates booked and those skipped, and why.
+- **One date at a time, or the rest.** A date is moved or cancelled like any booking. `POST
+  /api/reservations/{id}/cancel-following` cancels a date and every later one still to come.
+  The rule is never edited: a different rhythm is a new series.
+- **One message for a series.** Those invited get one `SeriesInvitation` for every date, not one
+  each, and answer once with `following` for the date and every later one they're invited to
+  (`SeriesAccepted`, `SeriesDeclined`). Cancelling the rest sends one `SeriesCancelled`. A change
+  to one date tells them about that date, as before.
+- **The form.** A new booking has a Repeat choice: every day, every weekday, every week, every
+  2 weeks, with the days of a weekly one and a last day four weeks on to begin with. The form
+  asks for the dates as it changes, lists them, those that aren't free with why, and its button
+  books them all or the free ones.
+
+**Why:**
+- Every date being a booking of its own means everything a booking does - the overlap rule and
+  its constraint, reminders, check-in and release, running over, meetings, the calendar and the
+  live events - works for each date unchanged. Expanding a rule on every read would have had to
+  teach all of them about series, and the overlap check couldn't lean on the database any more.
+- One transaction under the resource's lock is the guarantee a single booking has (ADR-0011):
+  what was checked is what's booked, and nothing half-booked is left behind.
+- Refusing the lot by default means nothing is booked that the booker didn't see; the preview
+  makes skipping a choice made knowingly, and booking checks again, so a date taken meanwhile
+  is never double-booked.
+- Local times in the booker's zone are what a person means by "every Monday at 10:00"; fixed
+  UTC times would drift by an hour twice a year in zones with summer time.
+- The 180-day limit already stops one person holding a room for years; a series is held to it,
+  so it needs no other cap.
+- One message per series: a weekly meeting for six months would otherwise fill an inbox with 26
+  invitations to answer one by one.
+- **Trade-offs:**
+  - A daily series for six months is 181 rows and 181 live events at once. Fine for an office;
+    the events let open calendars patch themselves without a reload.
+  - Changing a series' time means cancelling the rest and booking a new one; an "edit every
+    date" would have to re-check them all, and say which failed.
+  - A date moved on its own stays in its series; "cancel the rest" cancels it too.
+  - A resource with a long series ahead can't go into maintenance until those dates are
+    cancelled (issue #41), as with single bookings.

@@ -1,0 +1,7 @@
+# What the frontend image doesn't need: installed packages (rebuilt for Linux inside the
+# image), build output and caches, and the browser tests' results.
+node_modules
+dist
+.angular
+test-results
+playwright-report

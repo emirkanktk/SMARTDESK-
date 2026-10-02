@@ -40,6 +40,29 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Reminders** - the owner can ask to be reminded 5, 15, 30 or 60 minutes before a reservation
   starts. The reminder arrives in the app, and as a desktop notification when allowed
   ([ADR-0018](docs/DECISIONS.md)).
+- **Check-in with a QR code** - a room can ask for its bookings to be checked in: whoever
+  booked it scans the QR code at the door from 10 minutes before the start until 15 minutes
+  after. A booking nobody checks in to is released, so the room goes back to people who are
+  there. The resource form shows the code and a sheet to print; switched off, nothing changes
+  ([ADR-0030](docs/DECISIONS.md)). To try it on one machine, switch it on for a room, book the
+  room for a few minutes from now, and open the link under its QR code.
+- **A door screen** - a tablet at the door shows the room's day and a QR code that changes every
+  30 seconds, so only someone standing there can check in. At the door you can also book a free
+  room on the spot, make a booking run longer or end it, and five minutes before a release
+  everyone on the booking is warned ([ADR-0034](docs/DECISIONS.md)).
+- **Bookings that repeat** - every day, every weekday, every week or every 2 weeks until a last
+  day: the form lists the dates first, those that aren't free with why, and books them all at
+  once or only the free ones. Each date is a booking of its own; the rest of a series can be
+  cancelled from any date, and those invited answer once for every date
+  ([ADR-0035](docs/DECISIONS.md)).
+- **Running over** - ten minutes before a booking ends, its owner is asked whether they need
+  longer, and extends it by 15, 30 or 60 minutes with a click, only as far as the room is free;
+  everyone invited is told ([ADR-0033](docs/DECISIONS.md)). A booking in progress also has
+  **Extend** in My reservations.
+- **Meetings and an inbox** - a manager books a room and ticks whom of the team to meet; an
+  admin may invite anyone. Each person gets a message in their SmartDesk inbox, and another if
+  the meeting moves or is cancelled, and answers there: coming, or not and why. The organizer
+  sees every answer, and the reason only they read ([ADR-0032](docs/DECISIONS.md)).
 - **Usage report** - for Admins: how much each resource, type and person booked over up to
   92 days, and how full the office day was (Monday to Friday, 09:00-18:00, in the admin's
   time zone - [ADR-0017](docs/DECISIONS.md)).
@@ -85,7 +108,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - `dotnet tool install --global dotnet-ef` (EF Core CLI - not bundled with the SDK)
 - Node.js 22.22+ or 24.15+ (what Angular 22 supports; CI uses 24) and Angular CLI 22
   (`npm i -g @angular/cli`)
-- Docker Desktop (for local PostgreSQL)
+- Docker Desktop (for local PostgreSQL, or to run the whole app in containers)
 - Trust the local HTTPS dev certificate once per machine: `dotnet dev-certs https --trust`
   (skip this and the Angular dev server's calls to the API will fail with a cert error, not
   a CORS one - the symptoms look similar in the browser console, don't confuse them)
@@ -194,6 +217,33 @@ The Development seed also creates eight sample resources (meeting rooms, desks, 
 car, a projector, and a camera under maintenance) when the database has none. The five
 resource types come from a migration and exist in every environment (ADR-0010).
 
+### Optional: the whole app in Docker
+
+The `app` profile runs everything in containers: PostgreSQL, Mailpit, the API, and the
+app's production build behind nginx (ADR-0031). No .NET SDK or Node.js needed, only Docker:
+
+```bash
+export JWT_KEY="<a long random string>"
+docker compose --profile app up -d --build
+```
+
+Then open `http://localhost:4200` and sign in as one of the demo users above (a production
+build doesn't list them on the front page). That's the address `ng serve` uses, so stop
+`ng serve` first. The API's Development settings name it too, so links in emails work.
+
+- nginx serves the app and passes `/api` and `/hubs` (SignalR's WebSocket) to the API, so
+  the browser sees one origin, as with `ng serve`. The session cookie needs that (ADR-0026).
+- The API believes nginx's `X-Forwarded-For` (ADR-0028), so each user has their own sign-in
+  limit. For that, nginx has a fixed address on a network of its own, `172.28.42.0/24` in
+  `docker-compose.yml`. If that subnet is taken on your machine, change it and the two
+  addresses that go with it.
+- nginx's access log leaves out query strings, which carry SignalR's token and a password
+  reset link's.
+- Like the `api` profile, this is a local stand-in in Development with the demo data, not a
+  production setup: there's no HTTPS, and the API's port 8080 is open too.
+
+`docker compose --profile app down` stops it; add `-v` to drop the database as well.
+
 ### Optional: the booking assistant
 
 The assistant is off until the API has an Anthropic API key (ADR-0029). Without one the app
@@ -233,10 +283,15 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin), `PATCH /api/resources/{id}/status` (Admin) |
 | Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
+| Series | `GET /api/reservations/series/preview`, `POST /api/reservations/series`, `POST /api/reservations/{id}/cancel-following` (ADR-0035) |
+| Running over | `GET /api/reservations/{id}/extension`, `POST /api/reservations/{id}/extend` (ADR-0033) |
+| Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |
+| Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |
+| Inbox | `GET /api/inbox`, `GET /api/inbox/unread-count`, `POST /api/inbox/{id}/read`, `POST /api/inbox/read-all` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
 | Reports | `GET /api/reports/usage?from=&to=&timeZone=` (Admin) |
 | Assistant | `GET /api/assistant`, `POST /api/assistant/messages` (optional, ADR-0029) |
-| Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` |
+| Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled`; to one user: `ReservationStartingSoon`, `ReservationReleased`, `ReservationReleaseWarning`, `ReservationEndingSoon`, `InboxMessageReceived` |
 | Ops | `GET /health` |
 
 ## Frontend setup
@@ -275,6 +330,8 @@ The same checks run on GitHub Actions for every pull request and every push to `
 - the browser tests (`npm run e2e`, see `frontend/README.md`): PostgreSQL, the API with the
   Development seed and `ng serve`, driven in Chromium. A failed run keeps the Playwright report,
   the traces and both logs as an artifact for a week.
+- the whole app in Docker (`docker compose --profile app`, ADR-0031): both images are built,
+  and some of the browser tests run through nginx.
 
 A PR's status checks show the result, so a reviewer can see "still builds and passes tests"
 before merging.
@@ -303,7 +360,8 @@ frontend/
   src/app/core/               interceptors, guards, shared services
 docs/
   ARCHITECTURE.md, DATA_MODEL.md, API_CONTRACTS.md, DECISIONS.md, TEAM_SYNC.md
-docker-compose.yml            local PostgreSQL; optional API via the `api` profile
+docker-compose.yml            local PostgreSQL and Mailpit; the API (`api` profile), or the API
+                             and the app behind nginx (`app` profile, frontend/Dockerfile)
 ```
 
 See `docs/TEAM_SYNC.md` for who owns which part of this structure.

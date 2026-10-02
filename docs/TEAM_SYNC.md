@@ -9,7 +9,9 @@
 
 Burak (integration) left the team on 2026-09-28. His area moved to Emirkan: SignalR (#17),
 Docker (#18) and the integration tests (#21) are done. Lütfi built the optional LLM
-assistant, agreed in #83 and reviewed by Emirkan (ADR-0029).
+assistant, agreed in #83 and reviewed by Emirkan (ADR-0029), and the app's own container
+(`frontend/Dockerfile` and `frontend/nginx.conf`, ADR-0031). `docker-compose.yml` and CI stay
+Emirkan's.
 
 One person leans backend, one leans frontend; authentication and SignalR are handled
 together since both sides need to agree on the contract.

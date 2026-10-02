@@ -8,6 +8,10 @@ namespace SmartDesk.Application.Features.Reservations.Common;
 // carries enough (resource name, type, times, status) for a screen to patch itself. The type
 // comes as an id too, so a screen filtered by type can place a live event without looking up
 // the resource first.
+//
+// CheckInRequired (ADR-0030) is whether this booking has to be checked in at the door now:
+// its resource asked when it was booked and still does. ReleasedAt is set on a booking that
+// was cancelled because nobody did.
 public sealed record ReservationDto(
     Guid Id,
     Guid ResourceId,
@@ -20,12 +24,27 @@ public sealed record ReservationDto(
     DateTime EndDateTime,
     ReservationStatus Status,
     string? Note,
-    int? ReminderMinutes)
+    int? ReminderMinutes,
+    bool CheckInRequired,
+    DateTime? CheckedInAt,
+    DateTime? ReleasedAt)
 {
     // Who booked it ("Ayşe Yılmaz"), for calendars, the dashboard and live events. Not part
     // of Projection - users live in Identity, outside IApplicationDbContext - so handlers
     // fill it afterwards with WithUserNamesAsync.
     public string? UserDisplayName { get; init; }
+
+    // The people invited to it (ADR-0032), named like UserDisplayName by WithUserNamesAsync.
+    public IReadOnlyList<ReservationAttendeeDto> Attendees { get; init; } = [];
+
+    // Who checked it in, and their name (ADR-0034); null until someone does.
+    public Guid? CheckedInBy { get; init; }
+
+    public string? CheckedInByName { get; init; }
+
+    // The rule of the repeating booking it's one date of (ADR-0035); null for a booking made
+    // on its own.
+    public ReservationSeriesDto? Series { get; init; }
 
     public static readonly Expression<Func<Reservation, ReservationDto>> Projection = r => new ReservationDto(
         r.Id,
@@ -39,5 +58,21 @@ public sealed record ReservationDto(
         r.EndDateTime,
         r.Status,
         r.Note,
-        r.ReminderMinutes);
+        r.ReminderMinutes,
+        // CheckInRules.Needed, spelled out: an expression can't call another one.
+        r.CheckInRequired && r.Resource.CheckInRequired,
+        r.CheckedInAt,
+        r.ReleasedAt)
+    {
+        Attendees = r.Attendees.Select(a => new ReservationAttendeeDto(a.UserId, null, a.Response)).ToList(),
+        CheckedInBy = r.CheckedInByUserId,
+        Series = r.Series == null
+            ? null
+            : new ReservationSeriesDto(r.Series.Id, r.Series.Frequency, r.Series.Interval, r.Series.DaysOfWeek, r.Series.Until, r.Series.TimeZone),
+    };
 }
+
+// Someone invited to a booking: their account id, name and answer. Name is null when the
+// account is gone. Why someone can't come isn't here: everyone who can see the booking gets
+// this, and that's for the organizer only (their inbox has it).
+public sealed record ReservationAttendeeDto(Guid Id, string? Name, AttendeeResponse Response);

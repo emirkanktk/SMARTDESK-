@@ -17,8 +17,8 @@ import { AfterContentInit, Component, ElementRef, OnDestroy, inject, signal } fr
       class="reveal"
       [attr.aria-controls]="inputId"
       [attr.aria-pressed]="shown()"
-      [attr.aria-label]="shown() ? hideLabel : showLabel"
-      [title]="shown() ? hideLabel : showLabel"
+      [attr.aria-label]="label"
+      [title]="label"
       (click)="toggle()"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -71,8 +71,8 @@ export class PasswordField implements AfterContentInit, OnDestroy {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly shown = signal(false);
-  protected readonly showLabel = $localize`:@@passwordField.show:Show password`;
-  protected readonly hideLabel = $localize`:@@passwordField.hide:Hide password`;
+  /** A toggle keeps its name; whether the password shows is its pressed state. */
+  protected readonly label = $localize`:@@passwordField.show:Show password`;
   protected inputId: string | null = null;
 
   private input: HTMLInputElement | null = null;

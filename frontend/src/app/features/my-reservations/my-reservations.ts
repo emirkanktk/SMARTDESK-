@@ -5,8 +5,8 @@ import { RouterLink } from '@angular/router';
 import {
   Subject,
   catchError,
-  filter,
   finalize,
+  forkJoin,
   interval,
   map,
   merge,
@@ -15,15 +15,21 @@ import {
   tap,
 } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
-import { Reservation } from '../../core/models/reservation.model';
+import { AttendeeResponse, Reservation, checkInWindow } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
+import { ExtendBooking } from '../../shared/components/extend-booking/extend-booking';
+import { MeetingAnswer } from '../../shared/components/meeting-answer/meeting-answer';
 import { formatDuration } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
+import { describeSeries } from '../../shared/utils/recurrence';
 
-type Tab = 'upcoming' | 'past' | 'cancelled';
+type Tab = 'upcoming' | 'invited' | 'past' | 'cancelled';
+
+/** How many invited people of each answer a booking names before "and 3 more". */
+export const ATTENDEES_SHOWN = 3;
 
 interface Item {
   reservation: Reservation;
@@ -34,15 +40,32 @@ interface Item {
   inProgress: boolean;
   /** "Reminder 15 min before", while it can still come: Confirmed and not started. */
   reminder: string | null;
+  /** "Check in at the door 09:50-10:15", while that's still to do (ADR-0030). */
+  checkInHint: string | null;
+  checkedIn: boolean;
+  /** "Checked in by Mehmet Demir", when someone else of the meeting did it (ADR-0034). */
+  checkedInBy: string | null;
+  /** "Nobody checked in by 10:15", for a booking released because of it. */
+  releasedNote: string | null;
+  /**
+   * "Coming: Ayşe Yılmaz · No answer yet: Mehmet Demir" on the user's own bookings that
+   * invite anyone.
+   */
+  attendees: string | null;
+  /** "Organized by Zeynep Kaya" on a meeting the user is invited to. */
+  organizer: string | null;
+  /** "Repeats every Monday until 2 Nov 2026", for a date of a series (ADR-0035). */
+  series: string | null;
 }
 
 /**
- * The signed-in user's reservations: upcoming (including in progress), past and cancelled.
- * Upcoming ones can be changed or cancelled. Kept current by the reservation hub, so a
- * booking made or cancelled elsewhere shows up without a reload.
+ * The signed-in user's reservations: upcoming (including in progress), past and cancelled,
+ * and the meetings they're invited to that aren't over (ADR-0032). Upcoming ones can be
+ * changed or cancelled. Kept current by the reservation hub, so a booking made, changed or
+ * cancelled elsewhere - an invitation too - shows up without a reload.
  */
 @Component({
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, ExtendBooking, MeetingAnswer],
   selector: 'app-my-reservations',
   styleUrl: './my-reservations.scss',
   templateUrl: './my-reservations.html',
@@ -56,16 +79,23 @@ export class MyReservations implements OnInit {
 
   protected readonly tabs: { id: Tab; label: string }[] = [
     { id: 'upcoming', label: $localize`:@@mine.tab.upcoming:Upcoming` },
+    { id: 'invited', label: $localize`:@@mine.tab.invited:Invitations` },
     { id: 'past', label: $localize`:@@mine.tab.past:Past` },
     { id: 'cancelled', label: $localize`:@@status.reservation.cancelled:Cancelled` },
   ];
   protected readonly activeTab = signal<Tab>('upcoming');
 
   private readonly reservations = signal<Reservation[]>([]);
+  /** Other people's meetings the user is invited to. */
+  private readonly invitations = signal<Reservation[]>([]);
   protected readonly loading = signal(true);
   protected readonly loadFailed = signal(false);
   /** Id of the reservation being cancelled, to disable its button meanwhile. */
   protected readonly cancellingId = signal<string | null>(null);
+  /** Id of the date from which a series is being cancelled. */
+  protected readonly cancellingFollowingId = signal<string | null>(null);
+  /** Id of the booking in progress whose ways to run longer are open (ADR-0033). */
+  protected readonly extendingId = signal<string | null>(null);
 
   /** Each value starts a load; true shows the loading state, false refreshes quietly. */
   private readonly loads = new Subject<boolean>();
@@ -76,24 +106,7 @@ export class MyReservations implements OnInit {
 
   private readonly items = computed(() => {
     const now = this.now();
-    return this.reservations().map((reservation): Item => {
-      const start = new Date(reservation.startDateTime);
-      const end = new Date(reservation.endDateTime);
-      const minutes = reservation.reminderMinutes;
-      return {
-        reservation,
-        start,
-        end,
-        sameDay: start.toDateString() === end.toDateString(),
-        duration: formatDuration(start, end),
-        inProgress:
-          reservation.status === 'Confirmed' && start.getTime() <= now && end.getTime() > now,
-        reminder:
-          minutes != null && reservation.status === 'Confirmed' && start.getTime() > now
-            ? $localize`:@@mine.reminder:Reminder ${minutes}:minutes: min before`
-            : null,
-      };
-    });
+    return this.reservations().map((reservation) => this.toItem(reservation, now, false));
   });
 
   private readonly grouped = computed(() => {
@@ -102,6 +115,10 @@ export class MyReservations implements OnInit {
     return {
       // Soonest first: what's next matters most.
       upcoming: confirmed.filter((i) => i.end.getTime() > now).sort(byStart),
+      invited: this.invitations()
+        .filter((r) => r.status === 'Confirmed' && new Date(r.endDateTime).getTime() > now)
+        .map((reservation) => this.toItem(reservation, now, true))
+        .sort(byStart),
       // Most recent first.
       past: confirmed
         .filter((i) => i.end.getTime() <= now)
@@ -117,7 +134,12 @@ export class MyReservations implements OnInit {
   protected readonly visible = computed(() => this.grouped()[this.activeTab()]);
   protected readonly counts = computed(() => {
     const g = this.grouped();
-    return { upcoming: g.upcoming.length, past: g.past.length, cancelled: g.cancelled.length };
+    return {
+      upcoming: g.upcoming.length,
+      invited: g.invited.length,
+      past: g.past.length,
+      cancelled: g.cancelled.length,
+    };
   });
 
   constructor() {
@@ -135,33 +157,37 @@ export class MyReservations implements OnInit {
           this.liveEvents.start();
         }),
         switchMap((showLoading) =>
-          this.reservationService.getMine().pipe(
-            map((reservations) => ({ reservations, showLoading })),
-            catchError(() => of({ reservations: null, showLoading })),
+          forkJoin({
+            mine: this.reservationService.getMine(),
+            invited: this.reservationService.getInvited(),
+          }).pipe(
+            map((lists) => ({ lists, showLoading })),
+            catchError(() => of({ lists: null, showLoading })),
           ),
         ),
         takeUntilDestroyed(),
       )
-      .subscribe(({ reservations, showLoading }) => {
+      .subscribe(({ lists, showLoading }) => {
         this.loading.set(false);
         const missed = this.liveEvents.drain();
-        if (reservations) {
-          this.reservations.set(reservations);
+        if (lists) {
+          this.reservations.set(lists.mine);
+          this.invitations.set(lists.invited);
           this.loadFailed.set(false);
           this.now.set(Date.now());
           // The result may predate changes that arrived while it loaded.
-          missed.forEach((reservation) => this.upsert(reservation));
+          missed.forEach((reservation) => this.apply(reservation));
         } else if (showLoading) {
           this.loadFailed.set(true); // a failed quiet refresh keeps the list on screen
         }
       });
 
-    const mine = (r: Reservation) => r.userId === this.authService.currentUser()?.id;
     merge(this.hub.created$, this.hub.updated$, this.hub.cancelled$)
-      .pipe(filter(mine), takeUntilDestroyed())
+      .pipe(takeUntilDestroyed())
       .subscribe((reservation) => {
-        this.upsert(reservation);
-        this.liveEvents.record(reservation);
+        if (this.apply(reservation)) {
+          this.liveEvents.record(reservation);
+        }
       });
 
     // Events sent while the connection was down are lost; catch up from the API.
@@ -213,6 +239,156 @@ export class MyReservations implements OnInit {
       });
   }
 
+  /** Cancels a date of a series and every later one (ADR-0035). */
+  protected cancelFollowing(item: Item): void {
+    const { reservation } = item;
+    const resource = reservation.resourceName;
+    const when = this.when(item);
+    if (
+      !confirm(
+        $localize`:@@mine.confirmCancelFollowing:Cancel your ${resource}:resource: booking on ${when}:when: and every later date of the series?`,
+      )
+    ) {
+      return;
+    }
+
+    this.cancellingFollowingId.set(reservation.id);
+    this.reservationService
+      .cancelFollowing(reservation.id)
+      .pipe(finalize(() => this.cancellingFollowingId.set(null)))
+      .subscribe({
+        next: (cancelled) => {
+          cancelled.forEach((date) => this.upsert(date));
+          const count = cancelled.length;
+          this.notifications.success(
+            count === 1
+              ? $localize`:@@reservationForm.cancelled:Your ${resource}:resource: reservation for ${when}:when: was cancelled.`
+              : $localize`:@@mine.cancelledFollowing:${count}:count: dates of your ${resource}:resource: booking were cancelled, from ${when}:when: on.`,
+          );
+        },
+        error: (error: unknown) => {
+          if (error instanceof ApiError && error.status === 409) {
+            this.notifications.error(error.detail ?? error.title);
+          }
+          this.load(false);
+        },
+      });
+  }
+
+  /** Opens or closes the ways to make a booking in progress run longer. */
+  protected toggleExtend(item: Item): void {
+    this.extendingId.update((id) => (id === item.reservation.id ? null : item.reservation.id));
+  }
+
+  protected onExtended(booking: Reservation): void {
+    this.extendingId.set(null);
+    this.upsert(booking);
+  }
+
+  /** An answer to an invitation was sent: the meeting is as the API now has it. */
+  protected onAnswered(meeting: Reservation): void {
+    this.apply(meeting);
+  }
+
+  /**
+   * Puts a reservation as it is now where it belongs: the user's own in their list, and a
+   * meeting they're invited to in the invitations - or out of them, once it's cancelled or
+   * they were taken off it. False when it's neither, e.g. someone else's booking.
+   */
+  private apply(reservation: Reservation): boolean {
+    const userId = this.authService.currentUser()?.id;
+    if (reservation.userId === userId) {
+      this.upsert(reservation);
+      return true;
+    }
+
+    const invited =
+      reservation.status === 'Confirmed' && reservation.attendees.some((a) => a.id === userId);
+    const listed = this.invitations().some((r) => r.id === reservation.id);
+    if (invited) {
+      this.invitations.update((list) => [
+        ...list.filter((r) => r.id !== reservation.id),
+        reservation,
+      ]);
+    } else if (listed) {
+      this.invitations.update((list) => list.filter((r) => r.id !== reservation.id));
+    }
+    return invited || listed;
+  }
+
+  private toItem(reservation: Reservation, now: number, invited: boolean): Item {
+    const start = new Date(reservation.startDateTime);
+    const end = new Date(reservation.endDateTime);
+    const minutes = reservation.reminderMinutes;
+    const confirmed = reservation.status === 'Confirmed';
+    const { opensAt, closesAt } = checkInWindow(reservation);
+    const time = (date: Date | string) => formatDate(date, 'HH:mm', this.locale);
+    return {
+      reservation,
+      start,
+      end,
+      sameDay: start.toDateString() === end.toDateString(),
+      duration: formatDuration(start, end),
+      inProgress: confirmed && start.getTime() <= now && end.getTime() > now,
+      // A reminder goes to the owner only.
+      reminder:
+        !invited && minutes != null && confirmed && start.getTime() > now
+          ? $localize`:@@mine.reminder:Reminder ${minutes}:minutes: min before`
+          : null,
+      // Anyone invited may check in too (ADR-0032).
+      checkInHint:
+        confirmed &&
+        reservation.checkInRequired &&
+        !reservation.checkedInAt &&
+        closesAt.getTime() > now
+          ? $localize`:@@mine.checkInHint:Check in at the door ${time(opensAt)}:from:-${time(closesAt)}:until:`
+          : null,
+      checkedIn: confirmed && reservation.checkedInAt !== null,
+      checkedInBy: this.checkedInBy(reservation),
+      releasedNote: reservation.releasedAt
+        ? $localize`:@@mine.releasedNote:Nobody checked in by ${time(reservation.releasedAt)}:time:`
+        : null,
+      attendees: invited ? null : this.attendeeNames(reservation),
+      organizer: invited ? this.organizer(reservation) : null,
+      series: reservation.series
+        ? $localize`:@@mine.repeats:Repeats ${describeSeries(reservation.series, this.locale)}:rule:`
+        : null,
+    };
+  }
+
+  private checkedInBy(reservation: Reservation): string | null {
+    const by = reservation.checkedInBy;
+    if (!reservation.checkedInAt || !by || by === this.authService.currentUser()?.id) return null;
+    const name = reservation.checkedInByName ?? $localize`:@@common.someone:Someone`;
+    return $localize`:@@mine.checkedInBy:checked in by ${name}:name:`;
+  }
+
+  private organizer(reservation: Reservation): string {
+    const name = reservation.userDisplayName ?? $localize`:@@common.someone:Someone`;
+    return $localize`:@@mine.organizer:Organized by ${name}:name:`;
+  }
+
+  /**
+   * Who's invited, by their answer: "Coming: Ayşe Yılmaz · Can't come: Mehmet Demir · No
+   * answer yet: Can Öztürk", the first few of each "and 3 more".
+   */
+  private attendeeNames(reservation: Reservation): string | null {
+    const groups: [AttendeeResponse, string][] = [
+      ['Accepted', $localize`:@@mine.coming:Coming`],
+      ['Declined', $localize`:@@mine.notComing:Can't come`],
+      ['Pending', $localize`:@@mine.noAnswer:No answer yet`],
+    ];
+    const lines = groups
+      .map(([response, label]) => {
+        const names = reservation.attendees
+          .filter((a) => a.response === response)
+          .map((a) => a.name ?? $localize`:@@common.unknownUser:Unknown user`);
+        return names.length > 0 ? `${label}: ${shorten(names)}` : null;
+      })
+      .filter((line) => line !== null);
+    return lines.length > 0 ? lines.join(' · ') : null;
+  }
+
   /** "Mon 5 Oct, 10:00-11:30", or with both dates when it spans days. */
   private when(item: Item): string {
     const start = formatDate(item.start, 'EEE d MMM, HH:mm', this.locale);
@@ -237,6 +413,13 @@ export class MyReservations implements OnInit {
         : [...list, reservation],
     );
   }
+}
+
+/** "Ayşe Yılmaz, Mehmet Demir", or the first few "and 3 more". */
+function shorten(names: string[]): string {
+  const shown = names.slice(0, ATTENDEES_SHOWN).join(', ');
+  const more = names.length - ATTENDEES_SHOWN;
+  return more > 0 ? $localize`:@@mine.andMore:${shown}:names: and ${more}:count: more` : shown;
 }
 
 function byStart(a: Item, b: Item): number {

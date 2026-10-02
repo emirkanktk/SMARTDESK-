@@ -5,8 +5,10 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Entities;
+using SmartDesk.Domain.Rules;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence.Seed;
 
@@ -22,6 +24,9 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<ResourceBlock> ResourceBlocks => Set<ResourceBlock>();
     public DbSet<ResourceTeam> ResourceTeams => Set<ResourceTeam>();
     public DbSet<ResourcePhoto> ResourcePhotos => Set<ResourcePhoto>();
+    public DbSet<ReservationAttendee> ReservationAttendees => Set<ReservationAttendee>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
+    public DbSet<ReservationSeries> ReservationSeries => Set<ReservationSeries>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -55,6 +60,9 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Location).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.CheckInCode).IsRequired().HasMaxLength(CheckInRules.CodeLength);
+            // SHA-256 of a door screen's token, as 64 hex digits (ADR-0034).
+            entity.Property(e => e.DoorScreenTokenHash).HasMaxLength(64);
 
             entity.HasOne(e => e.ResourceType)
                 .WithMany(rt => rt.Resources)
@@ -132,6 +140,12 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 .HasDatabaseName("IX_Reservations_PendingReminders")
                 .HasFilter("\"ReminderMinutes\" IS NOT NULL AND \"ReminderSentAt\" IS NULL");
 
+            // Likewise for the release job (ADR-0030): confirmed bookings that need a check-in
+            // nobody has made yet. A booking leaves it when checked in, released or cancelled.
+            // Named, because an unnamed HasIndex on the same column would be the index above.
+            entity.HasIndex(e => e.StartDateTime, "IX_Reservations_AwaitingCheckIn")
+                .HasFilter("\"CheckInRequired\" AND \"CheckedInAt\" IS NULL AND \"Status\" = 0");
+
             // Business rule 2, enforced by the database as well as the validator.
             entity.ToTable(t => t.HasCheckConstraint(
                 ReservationConstraints.EndAfterStart, "\"EndDateTime\" > \"StartDateTime\""));
@@ -139,6 +153,21 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             // Business rule 1's hard guarantee is a PostgreSQL exclusion constraint
             // (ReservationConstraints.NoOverlap). EF can't model it, so it's created in raw SQL
             // by the AddReservationOverlapConstraint migration - see ADR-0011.
+
+            // The dates of a series (ADR-0035), e.g. to cancel the rest of it. Bookings are
+            // cancelled rather than deleted, and so are series, so nothing cascades.
+            entity.HasOne(e => e.Series)
+                .WithMany()
+                .HasForeignKey(e => e.SeriesId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => e.SeriesId);
+        });
+
+        builder.Entity<ReservationSeries>(entity =>
+        {
+            entity.Property(e => e.TimeZone).IsRequired().HasMaxLength(100);
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_ReservationSeries_Interval", $"\"Interval\" BETWEEN 1 AND {RecurrenceRules.MaxInterval}"));
         });
 
         builder.Entity<ResourceBlock>(entity =>
@@ -156,6 +185,41 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
 
             entity.ToTable(t => t.HasCheckConstraint(
                 "CK_ResourceBlocks_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\""));
+        });
+
+        // ADR-0032. The attendee is an account id, with no foreign key across the Identity
+        // boundary; indexed for "the meetings I'm invited to".
+        builder.Entity<ReservationAttendee>(entity =>
+        {
+            entity.HasKey(e => new { e.ReservationId, e.UserId });
+            entity.HasIndex(e => e.UserId);
+            entity.Property(e => e.DeclineReason).HasMaxLength(500);
+            entity.HasOne(e => e.Reservation)
+                .WithMany(r => r.Attendees)
+                .HasForeignKey(e => e.ReservationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // A message keeps its own copy of the meeting, so it outlives the booking it links to.
+        builder.Entity<InboxMessage>(entity =>
+        {
+            entity.Property(e => e.ResourceName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.HasOne<Reservation>()
+                .WithMany()
+                .HasForeignKey(e => e.ReservationId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.Series)
+                .WithMany()
+                .HasForeignKey(e => e.SeriesId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Someone's inbox, newest first; and how many they haven't read, which the app asks
+            // for on every page.
+            entity.HasIndex(e => new { e.RecipientId, e.CreatedAt });
+            entity.HasIndex(e => e.RecipientId, "IX_InboxMessages_Unread")
+                .HasFilter("\"ReadAt\" IS NULL");
         });
     }
 

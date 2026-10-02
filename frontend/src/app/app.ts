@@ -1,6 +1,7 @@
 import { Component, effect, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { AuthService } from './core/services/auth.service';
+import { InboxService } from './core/services/inbox.service';
 import { ReminderAlertsService } from './core/services/reminder-alerts.service';
 import { ReservationHubService } from './core/services/reservation-hub.service';
 import { NotificationHost } from './layout/notification-host/notification-host';
@@ -16,8 +17,9 @@ export class App {
   private readonly reservationHub = inject(ReservationHubService);
 
   constructor() {
-    // Reminders only arrive while connected, i.e. signed in.
+    // Reminders only arrive while connected, i.e. signed in; so do inbox messages (ADR-0032).
     inject(ReminderAlertsService).start();
+    inject(InboxService).start();
 
     // Not while a temporary password must be replaced: the API refuses the hub then (ADR-0021),
     // and the connection opens once the new password - and its new token - are in place.

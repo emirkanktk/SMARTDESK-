@@ -1,4 +1,5 @@
 using SmartDesk.Domain.Enums;
+using SmartDesk.Domain.Rules;
 
 namespace SmartDesk.Domain.Entities;
 
@@ -11,6 +12,19 @@ public class Resource
     public string Location { get; set; } = string.Empty;
     public ResourceStatus Status { get; set; } = ResourceStatus.Active;
     public string? Description { get; set; }
+
+    // Bookings of it must be checked in at the door, or they're released (ADR-0030).
+    public bool CheckInRequired { get; set; }
+
+    // The secret in its QR code, so a check-in comes from someone who has been at the door.
+    // Only those who may edit the resource see it; replacing it retires the printed code.
+    public string CheckInCode { get; set; } = CheckInRules.NewCode();
+
+    // A screen at its door shows a code that changes every 30 seconds instead (ADR-0034): the
+    // screen proves itself with a token of its own, of which only the hash is kept. While one
+    // is set up, the printed code no longer checks in.
+    public string? DoorScreenTokenHash { get; set; }
+    public DateTime? DoorScreenSetUpAt { get; set; }
 
     public ResourceType ResourceType { get; set; } = null!;
     public ICollection<ResourceFeature> Features { get; set; } = new List<ResourceFeature>();

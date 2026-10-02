@@ -135,6 +135,18 @@
   <data name="Booking_TakenResource" xml:space="preserve">
     <value>Kaynak bu sürenin bir kısmında zaten rezerve edilmiş.</value>
   </data>
+  <data name="CheckIn_CodeExpired" xml:space="preserve">
+    <value>Bu kodun süresi doldu. {0} kapısındaki ekrandaki kodu yeniden okutun.</value>
+  </data>
+  <data name="CheckIn_NotUsed" xml:space="preserve">
+    <value>{0} için check-in kullanılmıyor.</value>
+  </data>
+  <data name="CheckIn_NothingToCheckIn" xml:space="preserve">
+    <value>Şu anda {0} için check-in yapabileceğiniz bir rezervasyonunuz yok. Check-in, başlangıçtan {1} dakika önce açılır ve {2} dakika sonra kapanır.</value>
+  </data>
+  <data name="CheckIn_WrongCode" xml:space="preserve">
+    <value>Bu QR kod artık geçerli değil. {0} için güncel kodu okutun.</value>
+  </data>
   <data name="Email_AccountCreated_Body" xml:space="preserve">
     <value>{0} sizin için toplantı odası, masa ve ekipman ayırabileceğiniz bir SmartDesk hesabı oluşturdu. Size geçici bir parola verilecek; ilk girişinizde kendi parolanızı belirleyeceksiniz.</value>
   </data>
@@ -240,6 +252,9 @@
   <data name="Entity_Account" xml:space="preserve">
     <value>Hesap</value>
   </data>
+  <data name="Entity_InboxMessage" xml:space="preserve">
+    <value>Mesaj</value>
+  </data>
   <data name="Entity_Reservation" xml:space="preserve">
     <value>Rezervasyon</value>
   </data>
@@ -264,6 +279,12 @@
   <data name="Error_TooManyAssistantRequests" xml:space="preserve">
     <value>Son bir dakikada asistana çok fazla soru soruldu. Biraz bekleyip yeniden deneyin.</value>
   </data>
+  <data name="Error_TooManyCheckIns" xml:space="preserve">
+    <value>Çok fazla check-in denemesi yapıldı. Bir dakika bekleyip tekrar deneyin.</value>
+  </data>
+  <data name="Error_TooManyDoorScreenRequests" xml:space="preserve">
+    <value>Kapı ekranı çok sık istekte bulundu. Bir dakika sonra yeniden deneyecek.</value>
+  </data>
   <data name="Error_TooManySignIns" xml:space="preserve">
     <value>Çok fazla giriş denemesi yapıldı. Lütfen bir dakika bekleyip tekrar deneyin.</value>
   </data>
@@ -287,6 +308,39 @@
   </data>
   <data name="Identity_PasswordTooShort" xml:space="preserve">
     <value>Parola en az {0} karakter olmalı.</value>
+  </data>
+  <data name="Meetings_AnswerCancelled" xml:space="preserve">
+    <value>Bu toplantı iptal edildi; yanıtlanacak bir şey yok.</value>
+  </data>
+  <data name="Meetings_AnswerEnded" xml:space="preserve">
+    <value>Bu toplantı sona erdi.</value>
+  </data>
+  <data name="Meetings_AnswerInvalid" xml:space="preserve">
+    <value>Yanıt Accepted ya da Declined olmalıdır.</value>
+  </data>
+  <data name="Meetings_CantUseResource" xml:space="preserve">
+    <value>{1} başka bir ekibe ait; {0} bu kaynağı kullanamaz.</value>
+  </data>
+  <data name="Meetings_NotInvitable" xml:space="preserve">
+    <value>Yalnızca kendi ekibinizin etkin üyelerini davet edebilirsiniz.</value>
+  </data>
+  <data name="Meetings_NotInvitableByAdmin" xml:space="preserve">
+    <value>Yalnızca etkin hesaplar davet edilebilir.</value>
+  </data>
+  <data name="Meetings_NotInvited" xml:space="preserve">
+    <value>Bu toplantının davetli listesinde değilsiniz.</value>
+  </data>
+  <data name="Meetings_OnlyManagersInvite" xml:space="preserve">
+    <value>Yalnızca ekip yöneticileri ve sistem yöneticileri kişi davet edebilir.</value>
+  </data>
+  <data name="Meetings_ReasonRequired" xml:space="preserve">
+    <value>Neden katılamayacağınızı yazın.</value>
+  </data>
+  <data name="Meetings_RoomTooSmall" xml:space="preserve">
+    <value>{0} {1} kişilik; sizinle birlikte {2} kişi olursunuz.</value>
+  </data>
+  <data name="Meetings_TooManyAttendees" xml:space="preserve">
+    <value>En fazla {0} kişi davet edilebilir.</value>
   </data>
   <data name="Problem_Conflict" xml:space="preserve">
     <value>Çakışma</value>
@@ -315,11 +369,20 @@
   <data name="Problem_Validation" xml:space="preserve">
     <value>Bir veya daha fazla doğrulama hatası oluştu.</value>
   </data>
+  <data name="Property_AttendeeIds" xml:space="preserve">
+    <value>Katılımcılar</value>
+  </data>
   <data name="Property_Capacity" xml:space="preserve">
     <value>Kapasite</value>
   </data>
+  <data name="Property_Code" xml:space="preserve">
+    <value>Kod</value>
+  </data>
   <data name="Property_CurrentPassword" xml:space="preserve">
     <value>Mevcut parola</value>
+  </data>
+  <data name="Property_DaysOfWeek" xml:space="preserve">
+    <value>Haftanın günleri</value>
   </data>
   <data name="Property_Description" xml:space="preserve">
     <value>Açıklama</value>
@@ -336,8 +399,14 @@
   <data name="Property_FirstName" xml:space="preserve">
     <value>Ad</value>
   </data>
+  <data name="Property_Frequency" xml:space="preserve">
+    <value>Sıklık</value>
+  </data>
   <data name="Property_From" xml:space="preserve">
     <value>Başlangıç</value>
+  </data>
+  <data name="Property_Interval" xml:space="preserve">
+    <value>Aralık</value>
   </data>
   <data name="Property_LastName" xml:space="preserve">
     <value>Soyad</value>
@@ -354,6 +423,9 @@
   <data name="Property_MinCapacity" xml:space="preserve">
     <value>En az kapasite</value>
   </data>
+  <data name="Property_Minutes" xml:space="preserve">
+    <value>Dakika</value>
+  </data>
   <data name="Property_Name" xml:space="preserve">
     <value>Ad</value>
   </data>
@@ -369,6 +441,9 @@
   <data name="Property_Reason" xml:space="preserve">
     <value>Neden</value>
   </data>
+  <data name="Property_Recurrence" xml:space="preserve">
+    <value>Tekrar</value>
+  </data>
   <data name="Property_ReminderMinutes" xml:space="preserve">
     <value>Hatırlatma</value>
   </data>
@@ -377,6 +452,9 @@
   </data>
   <data name="Property_ResourceTypeId" xml:space="preserve">
     <value>Kaynak türü</value>
+  </data>
+  <data name="Property_Response" xml:space="preserve">
+    <value>Yanıt</value>
   </data>
   <data name="Property_Role" xml:space="preserve">
     <value>Rol</value>
@@ -402,6 +480,9 @@
   <data name="Property_Token" xml:space="preserve">
     <value>Bağlantı</value>
   </data>
+  <data name="Property_Until" xml:space="preserve">
+    <value>Bitiş günü</value>
+  </data>
   <data name="Reports_MaxRange" xml:space="preserve">
     <value>Rapor en fazla {0} günü kapsayabilir.</value>
   </data>
@@ -425,6 +506,15 @@
   </data>
   <data name="Reservations_EndedCantChange" xml:space="preserve">
     <value>Bu rezervasyon sona erdi; değiştirilemez.</value>
+  </data>
+  <data name="Reservations_EndNotStarted" xml:space="preserve">
+    <value>Rezervasyon henüz başlamadı; bunun yerine iptal edin.</value>
+  </data>
+  <data name="Reservations_ExtensionOptions" xml:space="preserve">
+    <value>Şu sürelerden biriyle uzatın: {0} dakika.</value>
+  </data>
+  <data name="Reservations_ExtensionTaken" xml:space="preserve">
+    <value>{0} hemen sonrasında dolu; rezervasyon {1} dakika uzatılamıyor.</value>
   </data>
   <data name="Reservations_MaxDuration" xml:space="preserve">
     <value>Bir rezervasyon en fazla {0} gün sürebilir.</value>
@@ -482,6 +572,36 @@
   </data>
   <data name="Resources_UnknownType" xml:space="preserve">
     <value>Böyle bir kaynak türü yok.</value>
+  </data>
+  <data name="Series_Conflicts" xml:space="preserve">
+    <value>{2} için {1} tarihin {0} tanesi boş değil. Tarihlere yeniden bakın; ötekileri rezerve edin ya da başka bir saat seçin.</value>
+  </data>
+  <data name="Series_DaysMustIncludeFirst" xml:space="preserve">
+    <value>Seri, başladığı günü de içermeli ({0}).</value>
+  </data>
+  <data name="Series_IntervalRange" xml:space="preserve">
+    <value>1 ile {0} gün ya da hafta arasında bir aralıkla tekrarlayın.</value>
+  </data>
+  <data name="Series_NoneFree" xml:space="preserve">
+    <value>{0} için tarihlerin hiçbiri boş değil.</value>
+  </data>
+  <data name="Series_NotASeries" xml:space="preserve">
+    <value>Bu rezervasyon tekrarlamıyor.</value>
+  </data>
+  <data name="Series_Overlapping" xml:space="preserve">
+    <value>Her tarih bir sonrakine taşıyor: süreyi kısaltın ya da daha seyrek tekrarlayın.</value>
+  </data>
+  <data name="Series_TooFarAhead" xml:space="preserve">
+    <value>Bir seri en fazla {0} gün ileriye uzanabilir: daha erken bitirin.</value>
+  </data>
+  <data name="Series_TooFewDates" xml:space="preserve">
+    <value>Bu yalnızca bir tarih: tekrarlaması için daha geç bir bitiş ya da daha fazla gün seçin.</value>
+  </data>
+  <data name="Series_UnknownDay" xml:space="preserve">
+    <value>Bilinmeyen bir gün.</value>
+  </data>
+  <data name="Series_UntilBeforeStart" xml:space="preserve">
+    <value>Seri, başladığı gün ya da daha sonra bitmeli.</value>
   </data>
   <data name="Status_Active" xml:space="preserve">
     <value>Etkin</value>

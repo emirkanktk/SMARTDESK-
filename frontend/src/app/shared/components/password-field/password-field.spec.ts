@@ -44,7 +44,10 @@ describe('PasswordField', () => {
 
     expect(input().type).toBe('text');
     expect(eye().getAttribute('aria-pressed')).toBe('true');
-    expect(eye().getAttribute('aria-label')).toBe('Hide password');
+    // A toggle keeps its name, so it's read as "Show password, pressed" rather than
+    // "Hide password, pressed".
+    expect(eye().getAttribute('aria-label')).toBe('Show password');
+    expect(eye().title).toBe('Show password');
 
     eye().click();
     await fixture.whenStable();

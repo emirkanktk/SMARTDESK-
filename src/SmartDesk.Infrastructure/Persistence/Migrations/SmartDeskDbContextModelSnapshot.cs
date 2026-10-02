@@ -152,18 +152,96 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.InboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EndDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReservationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResourceName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("SenderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SeriesId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReservationId");
+
+                    b.HasIndex("SeriesId");
+
+                    b.HasIndex("RecipientId", "CreatedAt");
+
+                    b.HasIndex(new[] { "RecipientId" }, "IX_InboxMessages_Unread")
+                        .HasFilter("\"ReadAt\" IS NULL");
+
+                    b.ToTable("InboxMessages");
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("CheckInRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("CheckedInAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CheckedInByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("EndDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EndingSoonSentAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Note")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReleaseWarningSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("ReminderMinutes")
                         .HasColumnType("integer");
@@ -172,6 +250,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SeriesId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("StartDateTime")
@@ -185,15 +266,82 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("SeriesId");
+
                     b.HasIndex("StartDateTime")
                         .HasDatabaseName("IX_Reservations_PendingReminders")
                         .HasFilter("\"ReminderMinutes\" IS NOT NULL AND \"ReminderSentAt\" IS NULL");
 
                     b.HasIndex("ResourceId", "Status", "StartDateTime", "EndDateTime");
 
+                    b.HasIndex(new[] { "StartDateTime" }, "IX_Reservations_AwaitingCheckIn")
+                        .HasFilter("\"CheckInRequired\" AND \"CheckedInAt\" IS NULL AND \"Status\" = 0");
+
                     b.ToTable("Reservations", t =>
                         {
                             t.HasCheckConstraint("CK_Reservations_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\"");
+                        });
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ReservationAttendee", b =>
+                {
+                    b.Property<Guid>("ReservationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Response")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ReservationId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ReservationAttendees");
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ReservationSeries", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DaysOfWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Frequency")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Interval")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateOnly>("Until")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReservationSeries", t =>
+                        {
+                            t.HasCheckConstraint("CK_ReservationSeries_Interval", "\"Interval\" BETWEEN 1 AND 4");
                         });
                 });
 
@@ -206,9 +354,24 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<int>("Capacity")
                         .HasColumnType("integer");
 
+                    b.Property<string>("CheckInCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("CheckInRequired")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("DoorScreenSetUpAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DoorScreenTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("Location")
                         .IsRequired()
@@ -564,6 +727,21 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.InboxMessage", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Reservation", null)
+                        .WithMany()
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SmartDesk.Domain.Entities.ReservationSeries", "Series")
+                        .WithMany()
+                        .HasForeignKey("SeriesId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Series");
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>
                 {
                     b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
@@ -572,7 +750,25 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SmartDesk.Domain.Entities.ReservationSeries", "Series")
+                        .WithMany()
+                        .HasForeignKey("SeriesId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Resource");
+
+                    b.Navigation("Series");
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ReservationAttendee", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Reservation", "Reservation")
+                        .WithMany("Attendees")
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Reservation");
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.Resource", b =>
@@ -643,6 +839,11 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>
+                {
+                    b.Navigation("Attendees");
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.Resource", b =>
