@@ -343,6 +343,11 @@ picker drops seconds and any difference would count as a change.
   room's state (`doorState`) and the QR code. The resource form's `<app-check-in-code>` sets
   the screen up. The check-in page reads the code once and drops it from the address, and
   offers what can be done at the door: run longer, end, or book on the spot.
+- **The guide.** `/guide` lists `GUIDE_SECTIONS` (`features/guide/guide-sections.ts`): each
+  part's steps as `$localize` texts, the numbers in them taken from the rules' constants
+  (`CHECK_IN`, `EXTENSION_OPTIONS`), filtered by role and by whether the server has the
+  assistant. The contents on top link to each part's fragment; the page scrolls there and moves
+  the focus to its heading itself, without the router's anchor scrolling.
 - **Bookings that repeat (ADR-0035).** The booking form's Repeat section is part of its
   reactive form (`repeat`, `repeatDays`, `until`). From them it works out the rule
   (`recurrence`), asks `GET /api/reservations/series/preview` as the form changes - after a
