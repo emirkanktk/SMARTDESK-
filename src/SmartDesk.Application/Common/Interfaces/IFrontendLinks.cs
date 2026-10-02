@@ -7,6 +7,10 @@ public interface IFrontendLinks
     // The check-in page a resource's QR code opens (ADR-0030). `code` is hex, so URL-safe.
     string CheckIn(Guid resourceId, string code);
 
+    // The page a resource's door screen opens (ADR-0034). The token goes after '#', so it never
+    // reaches a server or its logs; it's hex, so URL-safe.
+    string DoorScreen(Guid resourceId, string token);
+
     // `token` must already be URL-safe (IIdentityService hands it out that way).
     string ResetPassword(string email, string token);
 

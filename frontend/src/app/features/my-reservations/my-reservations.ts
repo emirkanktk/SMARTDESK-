@@ -42,6 +42,8 @@ interface Item {
   /** "Check in at the door 09:50-10:15", while that's still to do (ADR-0030). */
   checkInHint: string | null;
   checkedIn: boolean;
+  /** "Checked in by Mehmet Demir", when someone else of the meeting did it (ADR-0034). */
+  checkedInBy: string | null;
   /** "Nobody checked in by 10:15", for a booking released because of it. */
   releasedNote: string | null;
   /**
@@ -301,12 +303,20 @@ export class MyReservations implements OnInit {
           ? $localize`:@@mine.checkInHint:Check in at the door ${time(opensAt)}:from:-${time(closesAt)}:until:`
           : null,
       checkedIn: confirmed && reservation.checkedInAt !== null,
+      checkedInBy: this.checkedInBy(reservation),
       releasedNote: reservation.releasedAt
         ? $localize`:@@mine.releasedNote:Nobody checked in by ${time(reservation.releasedAt)}:time:`
         : null,
       attendees: invited ? null : this.attendeeNames(reservation),
       organizer: invited ? this.organizer(reservation) : null,
     };
+  }
+
+  private checkedInBy(reservation: Reservation): string | null {
+    const by = reservation.checkedInBy;
+    if (!reservation.checkedInAt || !by || by === this.authService.currentUser()?.id) return null;
+    const name = reservation.checkedInByName ?? $localize`:@@common.someone:Someone`;
+    return $localize`:@@mine.checkedInBy:checked in by ${name}:name:`;
   }
 
   private organizer(reservation: Reservation): string {

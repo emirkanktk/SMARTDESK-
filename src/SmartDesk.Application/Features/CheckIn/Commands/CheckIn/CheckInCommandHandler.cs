@@ -27,7 +27,7 @@ public sealed class CheckInCommandHandler(
             .AsNoTracking()
             .UsableBy(currentUser)
             .Where(r => r.Id == request.ResourceId)
-            .Select(r => new { r.Name, r.CheckInRequired, r.CheckInCode })
+            .Select(r => new { r.Name, r.CheckInRequired, r.CheckInCode, r.DoorScreenTokenHash })
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException(nameof(Resource), request.ResourceId);
 
@@ -39,13 +39,22 @@ public sealed class CheckInCommandHandler(
             };
         }
 
-        // A code that's been replaced: the page was opened from an old print or photo.
-        if (!CheckInRules.CodeMatches(resource.CheckInCode, request.Code))
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+
+        // With a door screen, only its changing code checks in, so a photo of it or a shared
+        // link stops working within a minute (ADR-0034). Without one, the printed code does,
+        // until it's replaced: then the page was opened from an old print or photo.
+        if (resource.DoorScreenTokenHash is not null)
+        {
+            if (!CheckInRules.ChangingCodeMatches(resource.CheckInCode, request.Code, now))
+            {
+                throw new ForbiddenAccessException(string.Format(Messages.CheckIn_CodeExpired, resource.Name));
+            }
+        }
+        else if (!CheckInRules.CodeMatches(resource.CheckInCode, request.Code))
         {
             throw new ForbiddenAccessException(string.Format(Messages.CheckIn_WrongCode, resource.Name));
         }
-
-        var now = timeProvider.GetUtcNow().UtcDateTime;
         var nothingToCheckIn = new ConflictException(string.Format(
             Messages.CheckIn_NothingToCheckIn,
             resource.Name,
@@ -81,6 +90,7 @@ public sealed class CheckInCommandHandler(
             if (checkedInNow)
             {
                 reservation.CheckedInAt = now;
+                reservation.CheckedInByUserId = userId;
                 await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
             }

@@ -23,6 +23,15 @@ public class Reservation
     // moves, so a meeting that runs on is asked again before its new end.
     public DateTime? EndingSoonSentAt { get; set; }
 
+    // Who checked it in: the owner, or someone invited to it (ADR-0034). Cleared with
+    // CheckedInAt.
+    public Guid? CheckedInByUserId { get; set; }
+
+    // When the owner and those invited were warned that nobody has checked in yet and it's
+    // about to be released (ADR-0034). That's after its start, when neither the start nor the
+    // resource can change any more, so it's never cleared.
+    public DateTime? ReleaseWarningSentAt { get; set; }
+
     // Whether its resource asked for a check-in when it was booked or last moved (ADR-0030).
     // It's released unchecked only while the resource still asks (CheckInRules.Needed).
     public bool CheckInRequired { get; set; }

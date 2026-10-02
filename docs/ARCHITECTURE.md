@@ -165,7 +165,8 @@ registered with `TryAdd` and only applies if the SignalR notifier is not registe
 Two events go to the reservation's owner alone: the reminder (`ReservationStartingSoon`,
 ADR-0018) and the notice that a booking was released because nobody checked in
 (`ReservationReleased`, ADR-0030), and the question whether a booking about to end needs longer
-(`ReservationEndingSoon`, ADR-0033). They come from timed jobs rather than a request.
+(`ReservationEndingSoon`, ADR-0033). The warning before a release goes to the owner and those
+invited (`ReservationReleaseWarning`, ADR-0034). They come from timed jobs rather than a request.
 
 Inbox messages (ADR-0032) go to their recipient alone, through `IInboxNotifier`
 (`SignalRInboxNotifier`, `InboxMessageReceived`). Handlers write them with the change, in the
@@ -336,6 +337,12 @@ picker drops seconds and any difference would count as a change.
   extension options that still fit as buttons. One booking at a time; one extended or cancelled
   elsewhere leaves by itself. **My reservations** has the same buttons behind **Extend** for a
   booking in progress.
+- **The door screen (ADR-0034).** `/door/:resourceId`, outside the shell and without a user:
+  it keeps the token from its link (in `localStorage`, out of the address), asks
+  `GET /api/door/{id}` through `DoorScreenService` just after its code changes, and draws the
+  room's state (`doorState`) and the QR code. The resource form's `<app-check-in-code>` sets
+  the screen up. The check-in page reads the code once and drops it from the address, and
+  offers what can be done at the door: run longer, end, or book on the spot.
 - **Styling.** Plain SCSS. Design tokens (colors, the brand's gradients, spacing, radius,
   shadows) and shared building blocks (`.btn`, `.field`, `.input`, `.card`, `.alert-error`,
   `.brand-panel`, `.empty`) live in `src/styles.scss`. Component styles use those variables

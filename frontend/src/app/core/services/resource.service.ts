@@ -7,6 +7,7 @@ import { Reservation } from '../models/reservation.model';
 import {
   AvailabilityQuery,
   CheckInCode,
+  DoorScreenLink,
   CreateResourceRequest,
   Resource,
   ResourceFilter,
@@ -104,6 +105,22 @@ export class ResourceService {
       `${this.baseUrl}/${encodeURIComponent(id)}/check-in-code`,
       null,
     );
+  }
+
+  /**
+   * A link for a screen at the resource's door (ADR-0034), shown once. From then on only the
+   * screen's changing code checks in; setting up again cuts off the old screen.
+   */
+  setUpDoorScreen(id: string): Observable<DoorScreenLink> {
+    return this.http.post<DoorScreenLink>(
+      `${this.baseUrl}/${encodeURIComponent(id)}/door-screen`,
+      null,
+    );
+  }
+
+  /** No more door screen: its link stops working, and the printed code checks in again. */
+  turnOffDoorScreen(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${encodeURIComponent(id)}/door-screen`);
   }
 
   /**

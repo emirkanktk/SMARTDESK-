@@ -135,6 +135,9 @@
   <data name="Booking_TakenResource" xml:space="preserve">
     <value>Kaynak bu sürenin bir kısmında zaten rezerve edilmiş.</value>
   </data>
+  <data name="CheckIn_CodeExpired" xml:space="preserve">
+    <value>Bu kodun süresi doldu. {0} kapısındaki ekrandaki kodu yeniden okutun.</value>
+  </data>
   <data name="CheckIn_NotUsed" xml:space="preserve">
     <value>{0} için check-in kullanılmıyor.</value>
   </data>
@@ -275,6 +278,12 @@
   </data>
   <data name="Error_TooManyAssistantRequests" xml:space="preserve">
     <value>Son bir dakikada asistana çok fazla soru soruldu. Biraz bekleyip yeniden deneyin.</value>
+  </data>
+  <data name="Error_TooManyCheckIns" xml:space="preserve">
+    <value>Çok fazla check-in denemesi yapıldı. Bir dakika bekleyip tekrar deneyin.</value>
+  </data>
+  <data name="Error_TooManyDoorScreenRequests" xml:space="preserve">
+    <value>Kapı ekranı çok sık istekte bulundu. Bir dakika sonra yeniden deneyecek.</value>
   </data>
   <data name="Error_TooManySignIns" xml:space="preserve">
     <value>Çok fazla giriş denemesi yapıldı. Lütfen bir dakika bekleyip tekrar deneyin.</value>
@@ -482,6 +491,9 @@
   </data>
   <data name="Reservations_EndedCantChange" xml:space="preserve">
     <value>Bu rezervasyon sona erdi; değiştirilemez.</value>
+  </data>
+  <data name="Reservations_EndNotStarted" xml:space="preserve">
+    <value>Rezervasyon henüz başlamadı; bunun yerine iptal edin.</value>
   </data>
   <data name="Reservations_ExtensionOptions" xml:space="preserve">
     <value>Şu sürelerden biriyle uzatın: {0} dakika.</value>

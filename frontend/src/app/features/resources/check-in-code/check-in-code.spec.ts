@@ -12,6 +12,8 @@ describe('CheckInCodePanel', () => {
 
   let getCheckInCode: ReturnType<typeof vi.fn>;
   let replaceCheckInCode: ReturnType<typeof vi.fn>;
+  let setUpDoorScreen: ReturnType<typeof vi.fn>;
+  let turnOffDoorScreen: ReturnType<typeof vi.fn>;
   let success: ReturnType<typeof vi.fn>;
   let error: ReturnType<typeof vi.fn>;
   let fixture: ComponentFixture<CheckInCodePanel>;
@@ -20,12 +22,22 @@ describe('CheckInCodePanel', () => {
   beforeEach(() => {
     getCheckInCode = vi.fn(() => of(printed));
     replaceCheckInCode = vi.fn(() => of(fresh));
+    setUpDoorScreen = vi.fn(() =>
+      of({
+        url: `http://localhost:4200/door/res-1#${'c'.repeat(64)}`,
+        setUpAt: '2026-10-01T09:00:00Z',
+      }),
+    );
+    turnOffDoorScreen = vi.fn(() => of(undefined));
     success = vi.fn();
     error = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: ResourceService, useValue: { getCheckInCode, replaceCheckInCode } },
+        {
+          provide: ResourceService,
+          useValue: { getCheckInCode, replaceCheckInCode, setUpDoorScreen, turnOffDoorScreen },
+        },
         { provide: NotificationService, useValue: { success, error } },
       ],
     });
@@ -113,5 +125,57 @@ describe('CheckInCodePanel', () => {
 
     expect(element.textContent).toContain('The QR code could not be loaded.');
     expect(element.querySelector('svg')).toBeNull();
+  });
+
+  describe('a door screen (ADR-0034)', () => {
+    const text = () => element.textContent!.replace(/\s+/g, ' ');
+
+    it('is offered, and its link is shown once when it is set up', async () => {
+      await render();
+      expect(text()).toContain('A screen at the door, for more safety');
+
+      button('Set up a door screen').click();
+      await fixture.whenStable();
+
+      expect(setUpDoorScreen).toHaveBeenCalledWith('res-1');
+      const link = element.querySelector<HTMLAnchorElement>('.screen-link a.link')!;
+      expect(link.href).toBe(`http://localhost:4200/door/res-1#${'c'.repeat(64)}`);
+      expect(text()).toContain('A door screen is set up');
+      expect(text()).toContain("The printed code below doesn't work while the screen is on.");
+      expect(element.querySelector('.check-in-code')!.classList).toContain('idle');
+    });
+
+    it('asks before a new link, which cuts off the screen at the door', async () => {
+      getCheckInCode.mockReturnValue(of({ ...printed, doorScreenSince: '2026-09-30T08:00:00Z' }));
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      await render();
+
+      button('New screen link').click();
+      expect(setUpDoorScreen).not.toHaveBeenCalled();
+      expect(confirmSpy.mock.calls[0][0]).toContain('stops working');
+
+      confirmSpy.mockReturnValue(true);
+      button('New screen link').click();
+      await fixture.whenStable();
+      expect(setUpDoorScreen).toHaveBeenCalledTimes(1);
+      confirmSpy.mockRestore();
+    });
+
+    it('turns off after asking, and the printed code is back in use', async () => {
+      getCheckInCode.mockReturnValue(of({ ...printed, doorScreenSince: '2026-09-30T08:00:00Z' }));
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      await render();
+
+      button('Turn off the door screen').click();
+      await fixture.whenStable();
+
+      expect(turnOffDoorScreen).toHaveBeenCalledWith('res-1');
+      expect(success).toHaveBeenCalledWith(
+        'The door screen is off. The printed QR code checks in again.',
+      );
+      expect(text()).toContain('A screen at the door, for more safety');
+      expect(element.querySelector('.check-in-code')!.classList).not.toContain('idle');
+      confirmSpy.mockRestore();
+    });
   });
 });

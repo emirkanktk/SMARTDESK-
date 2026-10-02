@@ -59,6 +59,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.Property(e => e.Location).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.CheckInCode).IsRequired().HasMaxLength(CheckInRules.CodeLength);
+            // SHA-256 of a door screen's token, as 64 hex digits (ADR-0034).
+            entity.Property(e => e.DoorScreenTokenHash).HasMaxLength(64);
 
             entity.HasOne(e => e.ResourceType)
                 .WithMany(rt => rt.Resources)

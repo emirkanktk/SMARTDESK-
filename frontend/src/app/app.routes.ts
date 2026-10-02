@@ -59,6 +59,13 @@ export const routes: Routes = [
       import('./features/check-in-poster/check-in-poster').then((m) => m.CheckInPoster),
   },
   {
+    // The screen at a resource's door (ADR-0034): no user and no shell, just the room and its
+    // changing QR code. The link it's opened with carries the screen's own token.
+    path: 'door/:resourceId',
+    title: $localize`:@@title.door:Door screen · SmartDesk`,
+    loadComponent: () => import('./features/door-screen/door-screen').then((m) => m.DoorScreen),
+  },
+  {
     // Every signed-in screen renders inside the shell. canActivateChild re-checks the
     // session on each navigation, so an expired token is caught before the screen loads.
     path: '',

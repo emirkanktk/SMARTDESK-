@@ -46,6 +46,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   there. The resource form shows the code and a sheet to print; switched off, nothing changes
   ([ADR-0030](docs/DECISIONS.md)). To try it on one machine, switch it on for a room, book the
   room for a few minutes from now, and open the link under its QR code.
+- **A door screen** - a tablet at the door shows the room's day and a QR code that changes every
+  30 seconds, so only someone standing there can check in. At the door you can also book a free
+  room on the spot, make a booking run longer or end it, and five minutes before a release
+  everyone on the booking is warned ([ADR-0034](docs/DECISIONS.md)).
 - **Running over** - ten minutes before a booking ends, its owner is asked whether they need
   longer, and extends it by 15, 30 or 60 minutes with a click, only as far as the room is free;
   everyone invited is told ([ADR-0033](docs/DECISIONS.md)). A booking in progress also has
@@ -275,12 +279,13 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
 | Running over | `GET /api/reservations/{id}/extension`, `POST /api/reservations/{id}/extend` (ADR-0033) |
+| Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |
 | Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |
 | Inbox | `GET /api/inbox`, `GET /api/inbox/unread-count`, `POST /api/inbox/{id}/read`, `POST /api/inbox/read-all` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
 | Reports | `GET /api/reports/usage?from=&to=&timeZone=` (Admin) |
 | Assistant | `GET /api/assistant`, `POST /api/assistant/messages` (optional, ADR-0029) |
-| Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled`; to one user: `ReservationStartingSoon`, `ReservationReleased`, `ReservationEndingSoon`, `InboxMessageReceived` |
+| Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled`; to one user: `ReservationStartingSoon`, `ReservationReleased`, `ReservationReleaseWarning`, `ReservationEndingSoon`, `InboxMessageReceived` |
 | Ops | `GET /health` |
 
 ## Frontend setup

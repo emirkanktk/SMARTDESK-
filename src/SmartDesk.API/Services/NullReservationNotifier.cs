@@ -25,4 +25,8 @@ public sealed class NullReservationNotifier : IReservationNotifier
 
     public Task ReservationEndingSoonAsync(ReservationDto reservation, CancellationToken cancellationToken) =>
         Task.CompletedTask;
+
+    public Task ReservationReleaseWarningAsync(
+        ReservationDto reservation, IReadOnlyCollection<Guid> recipients, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 }

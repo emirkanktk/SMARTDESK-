@@ -35,6 +35,10 @@ public sealed class SignalRReservationNotifier(
     public Task ReservationReleasedAsync(ReservationDto reservation, CancellationToken cancellationToken) =>
         SendAsync(OwnerOf(reservation), ReservationHub.Released, reservation);
 
+    public Task ReservationReleaseWarningAsync(
+        ReservationDto reservation, IReadOnlyCollection<Guid> recipients, CancellationToken cancellationToken) =>
+        SendAsync(hub.Clients.Users(recipients.Distinct().Select(id => id.ToString()).ToList()), ReservationHub.ReleaseWarning, reservation);
+
     public Task ReservationEndingSoonAsync(ReservationDto reservation, CancellationToken cancellationToken) =>
         SendAsync(OwnerOf(reservation), ReservationHub.EndingSoon, reservation);
 

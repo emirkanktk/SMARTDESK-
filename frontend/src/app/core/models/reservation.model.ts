@@ -28,6 +28,9 @@ export interface Reservation {
   checkedInAt: string | null;
   /** When it was released because nobody checked in; its status is then Cancelled. */
   releasedAt: string | null;
+  /** Who checked it in, and their name: the owner or someone invited (ADR-0034). */
+  checkedInBy?: string | null;
+  checkedInByName?: string | null;
   /**
    * Who booked it: "First Last", or the email if both are blank. Null when the API can't
    * resolve the user any more, e.g. a deleted account.

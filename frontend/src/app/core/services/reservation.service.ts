@@ -27,6 +27,14 @@ export class ReservationService {
     return this.http.get<Reservation[]>(`${this.baseUrl}/invited`);
   }
 
+  /**
+   * Ends a booking under way now, so the room is free at once (ADR-0034); owner or Admin. 409
+   * for one that hasn't started (cancel it instead) or is over.
+   */
+  end(id: string): Observable<Reservation> {
+    return this.http.post<Reservation>(`${this.baseUrl}/${encodeURIComponent(id)}/end`, null);
+  }
+
   /** How much longer the booking can run: the extension options that still fit (ADR-0033). */
   getExtensionOptions(id: string): Observable<ExtensionOptions> {
     return this.http.get<ExtensionOptions>(`${this.baseUrl}/${encodeURIComponent(id)}/extension`);

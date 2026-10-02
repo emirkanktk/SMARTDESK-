@@ -259,6 +259,23 @@ one there's no **Assistant** button anywhere, and nothing else changes.
 - Point out: only the end moves - a check-in still holds, nobody invited has to answer again,
   and they're told it runs longer (ADR-0033).
 
+### 16. A door screen
+
+- As the admin, **Edit** Board Room (check-in on) → **Set up a door screen**. The link appears
+  once: open it in a third window, as if on a tablet at the door. The address loses its token,
+  and the screen shows the room, free or in use, the rest of today and a QR code, with a bar
+  that runs down to its change every 30 seconds.
+- As Ayşe, book Board Room from now. The screen shows "In use", waiting for a check-in. Open
+  the printed code's link (still on the resource form, now greyed out): **Check in** is refused,
+  "Scan the code on the door screen". Now open the link in the screen's QR code: on one
+  machine, `document.querySelector('.scan').dataset.url` in the screen window's console gives
+  it. **Check in** works, and the screen shows **Checked in** on its next look. A link older
+  than a minute is refused, "This code has expired".
+- On her check-in page, **We're done: free the room** ends the booking, and the screen turns
+  **Free**. Point out: a photo of the screen is good for a minute at most; five minutes before
+  a release everyone on the booking is warned; and at a free room the page books it on the
+  spot (ADR-0034).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

@@ -176,8 +176,10 @@ first come, first served, under the usual overlap rule.
 | PUT | `/api/resources/{id}/photo` | Admin or Manager | `SetResourcePhotoCommand` | `multipart/form-data` with the file in the field `photo` → 200 with the resource. Sets or replaces it. A JPEG, PNG or WebP of at most 2 MB, recognised by its first bytes, whatever name or type the upload gives (400 on `Photo` otherwise; no SVG). The request itself may be up to 8 MB, so a photo a little over the limit still gets that message. Who may: as for PUT. |
 | DELETE | `/api/resources/{id}/photo` | Admin or Manager | `RemoveResourcePhotoCommand` | 204. Its type's picture shows instead; removing a photo that isn't there is fine. Who may: as for PUT. |
 | POST | `/api/resources/{id}/check-in` | any authenticated user | `CheckInCommand` | body: `{ "code": "…" }`, the secret from the resource's QR code → 200 with the reservation, `checkedInAt` set. Checks in the caller's own booking of this resource whose check-in is open now; checking in twice is fine. Errors under Check-in below. |
-| GET | `/api/resources/{id}/check-in-code` | Admin or Manager | `GetCheckInCodeQuery` | → 200 `{ "code": "…", "url": "https://…/check-in/{id}?code=…" }`: the QR code to print. `url` is built from `App:FrontendUrl`, like the links in emails. Every resource has a code, check-in on or off. Who may: as for PUT (403 otherwise). The secret appears nowhere else. |
+| GET | `/api/resources/{id}/check-in-code` | Admin or Manager | `GetCheckInCodeQuery` | → 200 `{ "code": "…", "url": "https://…/check-in/{id}?code=…", "doorScreenSince": null }`: the QR code to print, and since when a door screen is set up (ADR-0034), when one is. `url` is built from `App:FrontendUrl`, like the links in emails. Every resource has a code, check-in on or off. Who may: as for PUT (403 otherwise). The secret appears nowhere else. |
 | POST | `/api/resources/{id}/check-in-code` | Admin or Manager | `ReplaceCheckInCodeCommand` | → 200 with a new `{ code, url }`. The printed code stops working at once. Who may: as for PUT. |
+| POST | `/api/resources/{id}/door-screen` | Admin or Manager | `SetUpDoorScreenCommand` | → 200 `{ "url": "https://…/door/{id}#<token>", "setUpAt": "…" }`: a link for the screen at the door, shown this once (only the token's hash is kept). From now on only the screen's changing code checks in. Again: a new link, and the old screen stops. Who may: as for PUT. See Door screen. |
+| DELETE | `/api/resources/{id}/door-screen` | Admin or Manager | `TurnOffDoorScreenCommand` | → 204. The screen's link stops working, and the printed code checks in again. Twice: nothing to do. |
 
 Every resource endpoint returns the same shape:
 
@@ -226,6 +228,7 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 | POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes?, attendeeIds? }` → 201. The owner is always the caller. `reminderMinutes`: 5, 15, 30 or 60, or null / omitted for no reminder (see Real-time). `attendeeIds`: who's invited (see Meetings). Another team's resource is 404 (ADR-0022). |
 | GET | `/api/reservations/{id}` | any authenticated user | `GetReservationByIdQuery` | one reservation, any status; 404 if it doesn't exist. For the edit form and for opening a calendar entry. Your own reservation always; anyone else's only on a resource you may use (404 otherwise, ADR-0022). |
 | PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes?, attendeeIds? }` - full replace → 200, so leaving `reminderMinutes` out turns the reminder off, and leaving `attendeeIds` out takes everyone off the list. Rules below. |
+| POST | `/api/reservations/{id}/end` | owner or Admin | `EndReservationCommand` | → 200: a booking under way ends now, so the room is free at once (ADR-0034). 409 for one that hasn't started (cancel it instead), is cancelled or is over. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
 | GET | `/api/reservations/invited` | any authenticated user | `GetMyInvitationsQuery` | other people's `Confirmed` meetings the caller is invited to and that aren't over, soonest first (ADR-0032) |
@@ -250,6 +253,8 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
   "checkInRequired": true,         // has to be checked in at the door, or it's released
   "checkedInAt": null,             // when the owner checked in
   "releasedAt": null,              // when it was released because nobody did (status is then "Cancelled")
+  "checkedInBy": null,             // who checked it in: the owner or someone invited (ADR-0034)
+  "checkedInByName": null,
   "userDisplayName": "Ayşe Yılmaz", // who booked it: "First Last", or the email if both are blank
   "attendees": [                   // who's invited, by name (ADR-0032); usually empty
     { "id": "…", "name": "Mehmet Demir", "response": "Accepted" }  // "Pending" | "Accepted" | "Declined"
@@ -403,14 +408,39 @@ which opens `/check-in/{id}?code=…` in the app, and checks in there
 - **Several bookings.** When two of the caller's bookings are open at once (back to back), the
   one still waiting goes first.
 
+**Door screen (ADR-0034).** A screen at the door shows a code that changes every 30 seconds:
+an HMAC-SHA256 of the 30-second step, keyed by the resource's secret, as 20 hex digits. While
+one is set up, only that code checks in, and the step before is still taken; the printed code
+is refused.
+
+| Method | Path | Auth | Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/door/{resourceId}?timeZone=` | the screen's token, in `X-Door-Token` (no user) | `GetDoorScreenQuery` | the room, today's bookings that aren't over (times only, at most 8), blocked windows, and the check-in link with the current code until `changesAt`; `checkIn` is null when the resource uses no check-in. "Today" is in `timeZone` (UTC when left out). A wrong or old token is the same 404 as no resource. 429 after 600 a minute from one address (`RateLimiting:DoorScreenPermitsPerMinute`): a screen asks about six times a minute, and a building's screens usually share an address. |
+
+```json
+{
+  "resourceName": "Board Room", "location": "5th Floor", "capacity": 8, "status": "Active",
+  "now": "2026-10-05T10:02:00Z",
+  "bookings": [{ "startDateTime": "…", "endDateTime": "…", "checkInNeeded": true, "checkedIn": false }],
+  "blocks": [{ "startDateTime": "…", "endDateTime": "…", "reason": "Cleaning" }],
+  "checkIn": { "url": "https://…/check-in/{id}?code=0f3a…", "changesAt": "2026-10-05T10:02:30Z" }
+}
+```
+
+- **The warning.** Five minutes before a booking nobody checked in to is released, its owner
+  and those invited get `ReservationReleaseWarning` (see Real-time), once.
+- **Who checked in.** A reservation carries `checkedInBy` and `checkedInByName`; moving it to a
+  new start or another resource clears them with `checkedInAt`.
+
 **Check-in - errors**
 
 | Status | When |
 |---|---|
 | 400 | no `code`, or longer than a code |
-| 403 | the code isn't the resource's current one: printed before it was replaced (`"This QR code is no longer valid. Scan the current code for Board Room."`) |
+| 403 | the code isn't the resource's current one: printed before it was replaced (`"This QR code is no longer valid. Scan the current code for Board Room."`), or, with a door screen, not this step's or the last one's (`"This code has expired. Scan the code on the door screen of Board Room again."`) |
 | 404 | the resource doesn't exist, or belongs to other teams |
 | 409 | the resource doesn't use check-in (`code: "check-in-not-used"`), or none of the caller's bookings of it is open for one now (`code: "nothing-to-check-in"`, `"You have no booking of Board Room to check in to right now. Check-in opens 10 minutes before the start and closes 15 minutes after it."`) |
+| 429 | more than 20 check-ins a minute from one user (`RateLimiting:CheckInPermitsPerMinute`) |
 
 ## Resource blocks
 
@@ -552,7 +582,7 @@ Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). `ReservationEndingSoon` - to the owner only: their booking under way ends within ten minutes; do they need longer (ADR-0033)? Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). `ReservationReleaseWarning` - to the owner and those invited: nobody has checked in yet, and it's released in five minutes (ADR-0034). `ReservationEndingSoon` - to the owner only: their booking under way ends within ten minutes; do they need longer (ADR-0033)? Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
 
 All three events carry the reservation object shown under Reservations above, as it is after
 the change. For `ReservationUpdated` the resource or the times may be different from

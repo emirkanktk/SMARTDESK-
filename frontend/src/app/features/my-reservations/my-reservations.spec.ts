@@ -582,6 +582,30 @@ describe('MyReservations', () => {
       expect(itemText('Desk 12')).not.toContain('Check in');
     });
 
+    it('says who checked in when it was someone else of the meeting', async () => {
+      getMine.mockReturnValue(
+        of([
+          {
+            ...soon,
+            checkInRequired: true,
+            checkedInAt: utc('2026-10-05T10:05'),
+            checkedInBy: 'u-mehmet',
+            checkedInByName: 'Mehmet Demir',
+          },
+          {
+            ...later,
+            checkInRequired: true,
+            checkedInAt: utc('2026-10-05T10:05'),
+            checkedInBy: OWNER_ID,
+          },
+        ]),
+      );
+      await render();
+
+      expect(itemText('Meeting Room A')).toContain('checked in by Mehmet Demir');
+      expect(itemText('Desk 12')).not.toContain('checked in by');
+    });
+
     it('marks a booking released because nobody checked in, and when', async () => {
       getMine.mockReturnValue(
         of([

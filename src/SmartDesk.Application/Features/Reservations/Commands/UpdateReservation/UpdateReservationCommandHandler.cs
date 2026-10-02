@@ -150,6 +150,7 @@ public sealed class UpdateReservationCommandHandler(
             if (startChanged || resourceChanged)
             {
                 reservation.CheckedInAt = null;
+                reservation.CheckedInByUserId = null;
             }
 
             reservation.ReminderMinutes = request.ReminderMinutes;
