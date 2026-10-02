@@ -128,6 +128,11 @@ export const routes: Routes = [
           import('./features/my-reservations/my-reservations').then((m) => m.MyReservations),
       },
       {
+        path: 'inbox',
+        title: $localize`:@@title.inbox:Inbox · SmartDesk`,
+        loadComponent: () => import('./features/inbox/inbox').then((m) => m.Inbox),
+      },
+      {
         path: 'profile',
         title: $localize`:@@title.profile:My profile · SmartDesk`,
         loadComponent: () => import('./features/profile/profile').then((m) => m.Profile),

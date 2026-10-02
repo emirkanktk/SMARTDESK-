@@ -16,6 +16,8 @@ public interface IApplicationDbContext
     DbSet<ResourceBlock> ResourceBlocks { get; }
     DbSet<ResourceTeam> ResourceTeams { get; }
     DbSet<ResourcePhoto> ResourcePhotos { get; }
+    DbSet<ReservationAttendee> ReservationAttendees { get; }
+    DbSet<InboxMessage> InboxMessages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

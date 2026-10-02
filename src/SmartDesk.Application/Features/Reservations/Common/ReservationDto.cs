@@ -34,6 +34,9 @@ public sealed record ReservationDto(
     // fill it afterwards with WithUserNamesAsync.
     public string? UserDisplayName { get; init; }
 
+    // The people invited to it (ADR-0032), named like UserDisplayName by WithUserNamesAsync.
+    public IReadOnlyList<ReservationAttendeeDto> Attendees { get; init; } = [];
+
     public static readonly Expression<Func<Reservation, ReservationDto>> Projection = r => new ReservationDto(
         r.Id,
         r.ResourceId,
@@ -50,5 +53,13 @@ public sealed record ReservationDto(
         // CheckInRules.Needed, spelled out: an expression can't call another one.
         r.CheckInRequired && r.Resource.CheckInRequired,
         r.CheckedInAt,
-        r.ReleasedAt);
+        r.ReleasedAt)
+    {
+        Attendees = r.Attendees.Select(a => new ReservationAttendeeDto(a.UserId, null, a.Response)).ToList(),
+    };
 }
+
+// Someone invited to a booking: their account id, name and answer. Name is null when the
+// account is gone. Why someone can't come isn't here: everyone who can see the booking gets
+// this, and that's for the organizer only (their inbox has it).
+public sealed record ReservationAttendeeDto(Guid Id, string? Name, AttendeeResponse Response);

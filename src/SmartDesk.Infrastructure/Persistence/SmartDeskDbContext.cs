@@ -23,6 +23,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<ResourceBlock> ResourceBlocks => Set<ResourceBlock>();
     public DbSet<ResourceTeam> ResourceTeams => Set<ResourceTeam>();
     public DbSet<ResourcePhoto> ResourcePhotos => Set<ResourcePhoto>();
+    public DbSet<ReservationAttendee> ReservationAttendees => Set<ReservationAttendee>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -164,6 +166,37 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
 
             entity.ToTable(t => t.HasCheckConstraint(
                 "CK_ResourceBlocks_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\""));
+        });
+
+        // ADR-0032. The attendee is an account id, with no foreign key across the Identity
+        // boundary; indexed for "the meetings I'm invited to".
+        builder.Entity<ReservationAttendee>(entity =>
+        {
+            entity.HasKey(e => new { e.ReservationId, e.UserId });
+            entity.HasIndex(e => e.UserId);
+            entity.Property(e => e.DeclineReason).HasMaxLength(500);
+            entity.HasOne(e => e.Reservation)
+                .WithMany(r => r.Attendees)
+                .HasForeignKey(e => e.ReservationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // A message keeps its own copy of the meeting, so it outlives the booking it links to.
+        builder.Entity<InboxMessage>(entity =>
+        {
+            entity.Property(e => e.ResourceName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.HasOne<Reservation>()
+                .WithMany()
+                .HasForeignKey(e => e.ReservationId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Someone's inbox, newest first; and how many they haven't read, which the app asks
+            // for on every page.
+            entity.HasIndex(e => new { e.RecipientId, e.CreatedAt });
+            entity.HasIndex(e => e.RecipientId, "IX_InboxMessages_Unread")
+                .HasFilter("\"ReadAt\" IS NULL");
         });
     }
 

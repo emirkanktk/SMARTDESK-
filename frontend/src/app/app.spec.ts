@@ -5,6 +5,7 @@ import { environment } from '../environments/environment';
 import { fakeJwt } from '../testing/fake-jwt';
 import { App } from './app';
 import { AuthService } from './core/services/auth.service';
+import { InboxService } from './core/services/inbox.service';
 import { ReminderAlertsService } from './core/services/reminder-alerts.service';
 import { ReservationHubService } from './core/services/reservation-hub.service';
 
@@ -14,12 +15,14 @@ describe('App', () => {
     disconnect: vi.fn(),
   };
   const reminderAlerts = { start: vi.fn() };
+  const inbox = { start: vi.fn() };
 
   beforeEach(async () => {
     localStorage.clear();
     hub.connect.mockClear();
     hub.disconnect.mockClear();
     reminderAlerts.start.mockClear();
+    inbox.start.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
@@ -27,6 +30,7 @@ describe('App', () => {
         provideHttpClientTesting(),
         { provide: ReservationHubService, useValue: hub },
         { provide: ReminderAlertsService, useValue: reminderAlerts },
+        { provide: InboxService, useValue: inbox },
       ],
     }).compileComponents();
   });
@@ -44,10 +48,11 @@ describe('App', () => {
     });
   }
 
-  it('starts showing reservation reminders', () => {
+  it('starts showing reservation reminders and inbox messages', () => {
     TestBed.createComponent(App).detectChanges();
 
     expect(reminderAlerts.start).toHaveBeenCalledTimes(1);
+    expect(inbox.start).toHaveBeenCalledTimes(1);
   });
 
   it('disconnects the hub when nobody is signed in', () => {

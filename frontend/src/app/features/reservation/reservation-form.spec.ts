@@ -4,6 +4,7 @@ import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { CurrentUser } from '../../core/models/auth.model';
 import { ApiError } from '../../core/models/api-error.model';
+import { Invitee } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
@@ -12,7 +13,7 @@ import { ResourceService } from '../../core/services/resource.service';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { DESK_TYPE, fakeResource } from '../../../testing/resource-fixtures';
 import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
-import { ReservationForm } from './reservation-form';
+import { ATTENDEE_SEARCH_FROM, ReservationForm } from './reservation-form';
 
 // Local wall-clock time -> the UTC ISO string the API uses, whatever zone the tests run in.
 const utc = (local: string) => new Date(local).toISOString();
@@ -39,7 +40,9 @@ describe('ReservationForm', () => {
 
   const currentUser = signal<CurrentUser | null>(owner);
   const isAdmin = signal(false);
+  const isManager = signal(false);
   let getResources: ReturnType<typeof vi.fn>;
+  let getInvitees: ReturnType<typeof vi.fn>;
   let getReservation: ReturnType<typeof vi.fn>;
   let create: ReturnType<typeof vi.fn>;
   let update: ReturnType<typeof vi.fn>;
@@ -59,7 +62,9 @@ describe('ReservationForm', () => {
     vi.setSystemTime(NOW);
     currentUser.set(owner);
     isAdmin.set(false);
+    isManager.set(false);
     getResources = vi.fn(() => of([room, desk]));
+    getInvitees = vi.fn(() => of([]));
     getReservation = vi.fn(() => of(fakeReservation()));
     create = vi.fn(() => of(fakeReservation()));
     update = vi.fn(() => of(fakeReservation()));
@@ -76,8 +81,11 @@ describe('ReservationForm', () => {
       providers: [
         provideRouter([]),
         { provide: ResourceService, useValue: { getResources } },
-        { provide: ReservationService, useValue: { getReservation, create, update, cancel } },
-        { provide: AuthService, useValue: { currentUser, isAdmin } },
+        {
+          provide: ReservationService,
+          useValue: { getReservation, getInvitees, create, update, cancel },
+        },
+        { provide: AuthService, useValue: { currentUser, isAdmin, isManager } },
         { provide: NotificationService, useValue: { success } },
         { provide: ReminderAlertsService, useValue: reminderAlerts },
         RESOURCE_PHOTO_STUB,
@@ -196,6 +204,7 @@ describe('ReservationForm', () => {
         endDateTime: utc('2026-10-07T15:30'),
         note: 'Sprint planning',
         reminderMinutes: 15,
+        attendeeIds: [],
       });
       expect(success.mock.calls[0][0]).toContain('Meeting Room A is booked for');
       expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
@@ -406,6 +415,7 @@ describe('ReservationForm', () => {
         endDateTime: utc('2026-10-07T17:00'),
         note: 'Retro',
         reminderMinutes: null,
+        attendeeIds: [],
       });
       expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
     });
@@ -428,6 +438,7 @@ describe('ReservationForm', () => {
         endDateTime: utc('2026-10-05T11:30'),
         note: 'Sprint planning',
         reminderMinutes: null,
+        attendeeIds: [],
       });
     });
 
@@ -634,6 +645,304 @@ describe('ReservationForm', () => {
 
       expect(element.textContent).toContain('The reservation could not be cancelled.');
       expect(cancelButton()!.disabled).toBe(false);
+    });
+  });
+
+  describe('inviting people (ADR-0032)', () => {
+    const mehmet: Invitee = {
+      id: 'u-mehmet',
+      name: 'Mehmet Demir',
+      email: 'mehmet@company.example',
+    };
+    const can: Invitee = { id: 'u-can', name: 'Can Öztürk', email: 'can@company.example' };
+
+    function people(): string[] {
+      return Array.from(element.querySelectorAll('.person-name')).map((n) => n.textContent!.trim());
+    }
+
+    function ticked(): string[] {
+      return Array.from(element.querySelectorAll<HTMLLabelElement>('.person'))
+        .filter((label) => label.querySelector('input')!.checked)
+        .map((label) => label.querySelector('.person-name')!.textContent!.trim());
+    }
+
+    async function tick(name: string): Promise<void> {
+      Array.from(element.querySelectorAll<HTMLLabelElement>('.person'))
+        .find((label) => label.textContent!.includes(name))!
+        .querySelector('input')!
+        .click();
+      await fixture.whenStable();
+    }
+
+    function attendeeHint(): string {
+      return element
+        .querySelector('.attendees .hint, .attendees .field-error')!
+        .textContent!.trim();
+    }
+
+    it('offers no list to an employee, and asks nobody for one', async () => {
+      await render({ resourceId: room.id });
+
+      expect(getInvitees).not.toHaveBeenCalled();
+      expect(element.querySelector('.attendees')).toBeNull();
+    });
+
+    it('lets a manager tick people from the team, and sends them with the booking', async () => {
+      isManager.set(true);
+      getInvitees.mockReturnValue(of([mehmet, can]));
+      await render({ resourceId: room.id });
+
+      expect(people()).toEqual(['Can Öztürk', 'Mehmet Demir']);
+      expect(element.querySelector('.person-email')!.textContent).toBe('can@company.example');
+      expect(attendeeHint()).toContain(
+        'Each person you invite gets a message in their SmartDesk inbox',
+      );
+
+      await tick('Mehmet Demir');
+      expect(attendeeHint()).toMatch(/^1 invited\./);
+      await submit();
+
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ attendeeIds: ['u-mehmet'] }));
+      expect(success.mock.calls[0][0]).toMatch(/is booked for .*\. Your invitations were sent\.$/);
+    });
+
+    it('lets a tick be taken back', async () => {
+      isManager.set(true);
+      getInvitees.mockReturnValue(of([mehmet, can]));
+      await render({ resourceId: room.id });
+      await tick('Mehmet Demir');
+      await tick('Can Öztürk');
+      await tick('Mehmet Demir');
+      await submit();
+
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ attendeeIds: ['u-can'] }));
+    });
+
+    it('says when the resource has no room for everyone, the organizer counted', async () => {
+      isManager.set(true);
+      getInvitees.mockReturnValue(of([mehmet]));
+      await render({ resourceId: desk.id });
+      await tick('Mehmet Demir');
+
+      expect(attendeeHint()).toBe('Desk 12 has room for 1, and with you the meeting is 2.');
+      await submit();
+      expect(create).not.toHaveBeenCalled();
+
+      await set('#resource', room.id);
+      expect(attendeeHint()).toMatch(/^1 invited\./);
+    });
+
+    it("shows the API's reason next to the list", async () => {
+      isManager.set(true);
+      getInvitees.mockReturnValue(of([mehmet]));
+      create.mockReturnValue(
+        throwError(
+          () =>
+            new ApiError(400, 'Invalid', null, {
+              AttendeeIds: ['Mehmet Demir is no longer in your team.'],
+            }),
+        ),
+      );
+      await render({ resourceId: room.id });
+      await tick('Mehmet Demir');
+      await submit();
+
+      expect(element.querySelector('.attendees .field-error')!.textContent).toBe(
+        'Mehmet Demir is no longer in your team.',
+      );
+    });
+
+    it('keeps who is invited when changing a booking, and lets someone who left the team go', async () => {
+      isManager.set(true);
+      getInvitees.mockReturnValue(of([mehmet]));
+      getReservation.mockReturnValue(
+        of(
+          fakeReservation({
+            attendees: [
+              { id: 'u-mehmet', name: 'Mehmet Demir', response: 'Pending' },
+              { id: 'u-left', name: 'Burcu Aydın', response: 'Pending' },
+            ],
+          }),
+        ),
+      );
+      await render({ id: 'rsv-1' });
+
+      expect(people()).toEqual(['Burcu Aydın', 'Mehmet Demir']);
+      expect(ticked()).toEqual(['Burcu Aydın', 'Mehmet Demir']);
+
+      await tick('Burcu Aydın');
+      await submit();
+
+      expect(update).toHaveBeenCalledWith(
+        'rsv-1',
+        expect.objectContaining({ attendeeIds: ['u-mehmet'] }),
+      );
+      // Nobody new: nothing was sent.
+      expect(success.mock.calls[0][0]).not.toContain('invitations');
+    });
+
+    it("sends the list back as it is when an employee changes a booking someone's invited to", async () => {
+      getReservation.mockReturnValue(
+        of(
+          fakeReservation({
+            attendees: [{ id: 'u-mehmet', name: 'Mehmet Demir', response: 'Pending' }],
+          }),
+        ),
+      );
+      await render({ id: 'rsv-1' });
+      await set('#note', 'Retro');
+      await submit();
+
+      expect(getInvitees).not.toHaveBeenCalled();
+      expect(update).toHaveBeenCalledWith(
+        'rsv-1',
+        expect.objectContaining({ attendeeIds: ['u-mehmet'] }),
+      );
+    });
+
+    it("leaves the booking's owner off the list when an admin changes it", async () => {
+      isAdmin.set(true);
+      getInvitees.mockReturnValue(of([mehmet, can]));
+      getReservation.mockReturnValue(
+        of(fakeReservation({ userId: 'u-mehmet', userDisplayName: 'Mehmet Demir' })),
+      );
+      await render({ id: 'rsv-1' });
+
+      expect(people()).toEqual(['Can Öztürk']);
+    });
+
+    it('searches by name or email once the list is long', async () => {
+      isAdmin.set(true);
+      const many = Array.from({ length: ATTENDEE_SEARCH_FROM - 1 }, (_, i) => ({
+        id: `u-${i}`,
+        name: `Person ${i}`,
+        email: `person${i}@company.example`,
+      }));
+      getInvitees.mockReturnValue(of([...many, mehmet]));
+      await render({ resourceId: room.id });
+      const search = field('.attendee-search');
+
+      search.value = 'MEHMET@';
+      search.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(people()).toEqual(['Mehmet Demir']);
+
+      search.value = 'nobody';
+      search.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(element.querySelector('.no-match')!.textContent).toContain('Nobody matches');
+    });
+
+    it('has no search box for a short list', async () => {
+      isManager.set(true);
+      getInvitees.mockReturnValue(of([mehmet, can]));
+      await render({ resourceId: room.id });
+
+      expect(element.querySelector('.attendee-search')).toBeNull();
+    });
+
+    it('says so when the list of people could not be loaded', async () => {
+      isManager.set(true);
+      getInvitees.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+      await render({ resourceId: room.id });
+
+      expect(element.textContent).toContain('The list of people to invite could not be loaded.');
+    });
+
+    it('tells someone invited who organized the meeting, and who else is coming', async () => {
+      currentUser.set({ ...owner, id: 'u-mehmet' });
+      getReservation.mockReturnValue(
+        of(
+          fakeReservation({
+            startDateTime: utc('2026-10-07T14:00'),
+            endDateTime: utc('2026-10-07T15:30'),
+            userDisplayName: 'Zeynep Kaya',
+            attendees: [
+              { id: 'u-mehmet', name: 'Mehmet Demir', response: 'Pending' },
+              { id: 'u-gone', name: null, response: 'Pending' },
+            ],
+          }),
+        ),
+      );
+      await render({ id: 'rsv-1' });
+
+      expect(element.querySelector('.notice')!.textContent).toContain(
+        'Zeynep Kaya invited you to this meeting. Only they or an admin can change it.',
+      );
+      expect(element.querySelector('.attendee-names')!.textContent).toBe(
+        'Mehmet Demir (no answer yet), Unknown user (no answer yet)',
+      );
+      expect(element.querySelector('app-meeting-answer')!.textContent).toContain('Will you come?');
+    });
+  });
+
+  describe('answers to the invitation (ADR-0032)', () => {
+    const answered = (response: 'Accepted' | 'Declined' | 'Pending') =>
+      fakeReservation({
+        startDateTime: utc('2026-10-07T14:00'),
+        endDateTime: utc('2026-10-07T15:30'),
+        userDisplayName: 'Zeynep Kaya',
+        attendees: [
+          { id: 'u-mehmet', name: 'Mehmet Demir', response },
+          { id: 'u-burcu', name: 'Burcu Aydın', response: 'Declined' },
+        ],
+      });
+
+    it('shows the organizer what each person on the list answered', async () => {
+      isManager.set(true);
+      getInvitees.mockReturnValue(
+        of([
+          { id: 'u-mehmet', name: 'Mehmet Demir', email: 'mehmet@company.example' },
+          { id: 'u-can', name: 'Can Öztürk', email: 'can@company.example' },
+        ]),
+      );
+      getReservation.mockReturnValue(of(answered('Accepted')));
+      await render({ id: 'rsv-1' });
+
+      const tags = Array.from(element.querySelectorAll('.person')).map((person) => [
+        person.querySelector('.person-name')!.textContent!.trim(),
+        person.querySelector('.response')?.textContent?.trim() ?? null,
+      ]);
+      expect(tags).toEqual([
+        ['Burcu Aydın', "can't come"],
+        ['Can Öztürk', null], // not invited yet
+        ['Mehmet Demir', 'coming'],
+      ]);
+    });
+
+    it('lets someone invited answer from the meeting', async () => {
+      currentUser.set({ ...owner, id: 'u-mehmet' });
+      getReservation.mockReturnValue(of(answered('Pending')));
+      const respond = vi.fn(() => of(answered('Accepted')));
+      TestBed.inject(ReservationService).respond = respond;
+      await render({ id: 'rsv-1' });
+
+      Array.from(element.querySelectorAll<HTMLButtonElement>('app-meeting-answer button'))
+        .find((b) => b.textContent!.trim() === "I'm coming")!
+        .click();
+      await fixture.whenStable();
+
+      expect(respond).toHaveBeenCalledWith('rsv-1', { response: 'Accepted' });
+      expect(element.querySelector('.attendee-names')!.textContent).toContain(
+        'Mehmet Demir (coming)',
+      );
+    });
+
+    it('asks nothing once the meeting is over or cancelled', async () => {
+      currentUser.set({ ...owner, id: 'u-mehmet' });
+      getReservation.mockReturnValue(of({ ...answered('Pending'), status: 'Cancelled' as const }));
+      await render({ id: 'rsv-1' });
+      expect(element.querySelector('app-meeting-answer')).toBeNull();
+
+      getReservation.mockReturnValue(
+        of({
+          ...answered('Pending'),
+          startDateTime: utc('2026-10-05T08:00'),
+          endDateTime: utc('2026-10-05T09:00'),
+        }),
+      );
+      await render({ id: 'rsv-1' });
+      expect(element.querySelector('app-meeting-answer')).toBeNull();
     });
   });
 

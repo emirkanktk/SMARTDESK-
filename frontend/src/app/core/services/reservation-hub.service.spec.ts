@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import * as signalR from '@microsoft/signalr';
+import { InboxMessage } from '../models/inbox.model';
 import { Reservation } from '../models/reservation.model';
 import { fakeReservation } from '../../../testing/reservation-fixtures';
 import { AuthService } from './auth.service';
@@ -10,9 +11,10 @@ describe('ReservationHubService', () => {
   // The real builder runs, but build() hands back a connection that records its handlers, so a
   // test can play the part of the server. Spying on the prototype, rather than mocking the
   // module, can't be defeated by another test file having loaded the real module first.
-  const handlers = new Map<string, (payload: Reservation) => void>();
+  const handlers = new Map<string, (payload: Reservation | InboxMessage) => void>();
   const connection = {
-    on: (event: string, handler: (payload: Reservation) => void) => handlers.set(event, handler),
+    on: (event: string, handler: (payload: Reservation | InboxMessage) => void) =>
+      handlers.set(event, handler),
     onreconnected: vi.fn(),
     start: vi.fn(() => Promise.resolve()),
     stop: vi.fn(() => Promise.resolve()),
@@ -48,12 +50,14 @@ describe('ReservationHubService', () => {
     hub.cancelled$.subscribe((r) => seen.push(`cancelled ${r.id}`));
     hub.startingSoon$.subscribe((r) => seen.push(`starting soon ${r.id}`));
     hub.released$.subscribe((r) => seen.push(`released ${r.id}`));
+    hub.inboxMessage$.subscribe((m) => seen.push(`message ${m.id} ${m.kind}`));
 
     handlers.get('ReservationCreated')!(fakeReservation({ id: 'a' }));
     handlers.get('ReservationUpdated')!(fakeReservation({ id: 'b' }));
     handlers.get('ReservationCancelled')!(fakeReservation({ id: 'c' }));
     handlers.get('ReservationStartingSoon')!(fakeReservation({ id: 'd' }));
     handlers.get('ReservationReleased')!(fakeReservation({ id: 'e' }));
+    handlers.get('InboxMessageReceived')!({ id: 'f', kind: 'MeetingInvitation' } as InboxMessage);
 
     expect(seen).toEqual([
       'created a',
@@ -61,6 +65,7 @@ describe('ReservationHubService', () => {
       'cancelled c',
       'starting soon d',
       'released e',
+      'message f MeetingInvitation',
     ]);
   });
 
@@ -112,7 +117,7 @@ describe('ReservationHubService', () => {
 
   it('returns nothing to the server from a handler', () => {
     // SignalR treats a returned value as an answer the server didn't ask for and logs an error.
-    expect(handlers.size).toBe(5);
+    expect(handlers.size).toBe(6);
     for (const handler of handlers.values()) {
       expect(handler(fakeReservation())).toBeUndefined();
     }

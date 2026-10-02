@@ -101,11 +101,13 @@ public sealed class CheckInCommandHandler(
         return dto;
     }
 
-    // The caller's own Confirmed bookings of this resource that need a check-in and are open
-    // for one at `now`. Only the owner checks in: they're the one the release would hit.
+    // The Confirmed bookings of this resource the caller owns or is invited to (ADR-0032) that
+    // need a check-in and are open for one at `now`. Whoever of the meeting gets to the door
+    // first keeps the room; nobody else can.
     private IQueryable<Reservation> OpenBookings(Guid resourceId, Guid userId, DateTime now) =>
         db.Reservations
-            .Where(r => r.ResourceId == resourceId && r.UserId == userId && r.Status == ReservationStatus.Confirmed)
+            .Where(r => r.ResourceId == resourceId && r.Status == ReservationStatus.Confirmed)
+            .Where(r => r.UserId == userId || r.Attendees.Any(a => a.UserId == userId))
             .Where(CheckInRules.Needed)
             .Where(CheckInRules.OpenAt(now));
 }

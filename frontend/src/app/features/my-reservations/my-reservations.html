@@ -45,6 +45,11 @@
             <p i18n="@@mine.noUpcoming">You have no upcoming reservations.</p>
             <a routerLink="/availability" i18n="@@dashboard.findFree">Find a free resource</a>
           }
+          @case ('invited') {
+            <p i18n="@@mine.noInvitations">
+              Nobody has invited you to a meeting that's still to come.
+            </p>
+          }
           @case ('past') {
             <p i18n="@@mine.noPast">No past reservations yet.</p>
           }
@@ -90,6 +95,9 @@
               </div>
               <p class="text-muted meta">
                 {{ item.reservation.resourceTypeName }} · {{ item.reservation.resourceLocation }}
+                @if (item.organizer; as organizer) {
+                  · <span>{{ organizer }}</span>
+                }
                 @if (item.reminder; as reminder) {
                   · <span class="reminder">{{ reminder }}</span>
                 }
@@ -100,12 +108,31 @@
                   · <span>{{ note }}</span>
                 }
               </p>
+              @if (item.attendees; as attendees) {
+                <p class="text-muted meta attendees">{{ attendees }}</p>
+              }
               @if (item.reservation.note) {
                 <p class="note">{{ item.reservation.note }}</p>
               }
+              @if (activeTab() === 'invited') {
+                <app-meeting-answer
+                  class="answer"
+                  [reservation]="item.reservation"
+                  (answered)="onAnswered($event)"
+                />
+              }
             </div>
 
-            @if (activeTab() === 'upcoming') {
+            @if (activeTab() === 'invited') {
+              <div class="actions">
+                <a
+                  class="btn btn-secondary btn-sm"
+                  [routerLink]="['/reservations', item.reservation.id, 'edit']"
+                  i18n="@@mine.details"
+                  >Details</a
+                >
+              </div>
+            } @else if (activeTab() === 'upcoming') {
               <div class="actions">
                 <a
                   class="btn btn-secondary btn-sm"

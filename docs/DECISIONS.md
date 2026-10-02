@@ -810,7 +810,8 @@ new tables.
   checks in there. Only those who may edit the resource see the code: its own endpoint, never
   in resource responses. Replacing it retires the printed one.
 - **The window.** From 10 minutes before the start until 15 minutes after, and never once the
-  booking is over. Only the owner checks in, only a `Confirmed` booking.
+  booking is over. Only the owner checks in, only a `Confirmed` booking. (Anyone invited to it
+  may too, since ADR-0032.)
 - **Release.** A booking nobody checked in to when its window closes is released: `Cancelled`,
   with `ReleasedAt`. A background job looks every 30 seconds. Calendars free the slot through
   the usual `ReservationCancelled`; the owner also gets `ReservationReleased`, a toast saying why.
@@ -886,3 +887,52 @@ new tables.
     which lines to change.
   - nginx's error log still shows a failing request's query string. Errors are rare, and that
     log isn't kept anywhere.
+
+    (ADR-0032 lets anyone invited to a meeting check it in.)
+
+## ADR-0032: Meetings: people invited to a booking, their answers, and an inbox
+
+**Decision:**
+- **Who invites whom.** A booking can have a list of people invited to it
+  (`ReservationAttendee`). A Manager may invite their own team's active members, an Admin any
+  active account, an Employee nobody. Whoever is added must be able to use the resource
+  (ADR-0022), and the room must hold everyone, the organizer included. Someone already on the
+  list stays on it after leaving the team; they can only be taken off.
+- **The organizer stays the owner.** When an Admin changes a meeting, its owner is still the
+  organizer, and the Admin is named as the sender of the messages the change causes.
+- **An inbox.** Each user has messages (`InboxMessage`) about the meetings they're invited to:
+  invited, moved to a new time or room, cancelled or released, taken off the list. The
+  organizer gets one for each answer. A message keeps its own copy of the meeting (room, times,
+  note), so it reads the same later, and the app writes the sentence from its kind, in the
+  reader's language. `GET /api/inbox` lists the newest 100, read or not, with an unread count
+  for the badge.
+- **Answers.** Someone invited answers coming or not (`POST /api/reservations/{id}/response`);
+  not coming needs a reason. The organizer gets a message either way, the reason in it. A new
+  start or another room asks everyone to answer again.
+- **Live.** Each message is pushed to its recipient only (`InboxMessageReceived`), once the
+  change is committed. An answer reaches every screen showing the meeting as
+  `ReservationUpdated`.
+- **Check-in (amends ADR-0030).** Anyone invited may check the meeting in at the door; whoever
+  gets there first keeps the room for everyone.
+
+**Why:**
+- A manager meeting the team in a room picks from a list whom to meet, and those people are
+  told. The inbox is where that stays, and where they answer.
+- Managers invite their own team because that's whom they manage, and the team already shares
+  their resources (ADR-0022). Admins run the office and can invite anyone who may use the room.
+  Inviting colleagues at will would turn the inbox into noise.
+- A message keeps its own copy of the meeting because the booking changes or goes away: "moved
+  to 14:00" must still say so after a second move.
+- The words are written by the app, at read time, in the reader's language (ADR-0025), rather
+  than by the API in the sender's.
+- A reason for not coming goes to the organizer only. The booking, with its list and answers,
+  is visible to everyone who may use the resource and sent to their screens; "I'm at the
+  doctor's" isn't for them.
+- An answer to 10:00 isn't an answer to 14:00, or to another building. A meeting that only
+  runs longer is the same meeting, and keeps its answers (ADR-0033).
+- **Trade-offs:**
+  - Who's invited, and what each answered, is as visible as who booked it. Reasons aren't.
+  - The inbox lists the newest 100 messages; older ones stay in the database.
+  - A message pushed while its reader is offline isn't pushed again. The inbox and its count
+    catch up when they open the app or reconnect.
+  - Changing only the note tells nobody.

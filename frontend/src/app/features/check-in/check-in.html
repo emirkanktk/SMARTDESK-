@@ -29,11 +29,19 @@
       } @else {
         @let current = visit();
         @if (current.kind === 'open') {
-          <p class="status" i18n="@@checkIn.open">
-            Your booking from {{ when(current.reservation.startDateTime) }} to
-            {{ when(current.reservation.endDateTime) }} can be checked in until
-            {{ when(current.closesAt) }}. If nobody checks in by then, it's released.
-          </p>
+          @if (invited(current.reservation)) {
+            <p class="status" i18n="@@checkIn.openInvited">
+              The meeting you're invited to, from {{ when(current.reservation.startDateTime) }} to
+              {{ when(current.reservation.endDateTime) }}, can be checked in until
+              {{ when(current.closesAt) }}. If nobody checks in by then, it's released.
+            </p>
+          } @else {
+            <p class="status" i18n="@@checkIn.open">
+              Your booking from {{ when(current.reservation.startDateTime) }} to
+              {{ when(current.reservation.endDateTime) }} can be checked in until
+              {{ when(current.closesAt) }}. If nobody checks in by then, it's released.
+            </p>
+          }
           @if (code()) {
             <button
               type="button"
@@ -53,25 +61,54 @@
             </p>
           }
         } @else if (current.kind === 'checkedIn') {
-          <p class="status done" i18n="@@checkIn.done">
-            You're checked in for {{ when(current.reservation.startDateTime) }} to
-            {{ when(current.reservation.endDateTime) }}. The booking is yours.
-          </p>
+          @if (invited(current.reservation)) {
+            <p class="status done" i18n="@@checkIn.doneInvited">
+              The meeting from {{ when(current.reservation.startDateTime) }} to
+              {{ when(current.reservation.endDateTime) }} is checked in, so the room is kept for it.
+            </p>
+          } @else {
+            <p class="status done" i18n="@@checkIn.done">
+              You're checked in for {{ when(current.reservation.startDateTime) }} to
+              {{ when(current.reservation.endDateTime) }}. The booking is yours.
+            </p>
+          }
         } @else if (current.kind === 'closed') {
-          <p class="status released" i18n="@@checkIn.closed">
-            The check-in for your booking at {{ when(current.reservation.startDateTime) }} closed at
-            {{ when(current.closedAt) }} with nobody checked in, so it's about to be released.
-          </p>
+          @if (invited(current.reservation)) {
+            <p class="status released" i18n="@@checkIn.closedInvited">
+              The check-in for the meeting you're invited to at
+              {{ when(current.reservation.startDateTime) }} closed at {{ when(current.closedAt) }}
+              with nobody checked in, so it's about to be released.
+            </p>
+          } @else {
+            <p class="status released" i18n="@@checkIn.closed">
+              The check-in for your booking at {{ when(current.reservation.startDateTime) }} closed
+              at {{ when(current.closedAt) }} with nobody checked in, so it's about to be released.
+            </p>
+          }
         } @else if (current.kind === 'later') {
-          <p class="status" i18n="@@checkIn.later">
-            Your booking at {{ when(current.reservation.startDateTime) }} can be checked in from
-            {{ when(current.opensAt) }}.
-          </p>
+          @if (invited(current.reservation)) {
+            <p class="status" i18n="@@checkIn.laterInvited">
+              The meeting you're invited to at {{ when(current.reservation.startDateTime) }} can be
+              checked in from {{ when(current.opensAt) }}.
+            </p>
+          } @else {
+            <p class="status" i18n="@@checkIn.later">
+              Your booking at {{ when(current.reservation.startDateTime) }} can be checked in from
+              {{ when(current.opensAt) }}.
+            </p>
+          }
         } @else if (current.kind === 'released') {
-          <p class="status released" i18n="@@checkIn.released">
-            Your booking at {{ when(current.reservation.startDateTime) }} was released at
-            {{ when(current.reservation.releasedAt!) }} because nobody checked in.
-          </p>
+          @if (invited(current.reservation)) {
+            <p class="status released" i18n="@@checkIn.releasedInvited">
+              The meeting you were invited to at {{ when(current.reservation.startDateTime) }} was
+              released at {{ when(current.reservation.releasedAt!) }} because nobody checked in.
+            </p>
+          } @else {
+            <p class="status released" i18n="@@checkIn.released">
+              Your booking at {{ when(current.reservation.startDateTime) }} was released at
+              {{ when(current.reservation.releasedAt!) }} because nobody checked in.
+            </p>
+          }
           <a
             class="btn btn-secondary"
             routerLink="/reservations/new"

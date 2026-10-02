@@ -223,11 +223,14 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` → 201. The owner is always the caller. `reminderMinutes`: 5, 15, 30 or 60, or null / omitted for no reminder (see Real-time). Another team's resource is 404 (ADR-0022). |
+| POST | `/api/reservations` | any authenticated user | `CreateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes?, attendeeIds? }` → 201. The owner is always the caller. `reminderMinutes`: 5, 15, 30 or 60, or null / omitted for no reminder (see Real-time). `attendeeIds`: who's invited (see Meetings). Another team's resource is 404 (ADR-0022). |
 | GET | `/api/reservations/{id}` | any authenticated user | `GetReservationByIdQuery` | one reservation, any status; 404 if it doesn't exist. For the edit form and for opening a calendar entry. Your own reservation always; anyone else's only on a resource you may use (404 otherwise, ADR-0022). |
-| PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes? }` - full replace → 200, so leaving `reminderMinutes` out turns the reminder off. Rules below. |
+| PUT | `/api/reservations/{id}` | owner or Admin | `UpdateReservationCommand` | body: `{ resourceId, startDateTime, endDateTime, note?, reminderMinutes?, attendeeIds? }` - full replace → 200, so leaving `reminderMinutes` out turns the reminder off, and leaving `attendeeIds` out takes everyone off the list. Rules below. |
 | POST | `/api/reservations/{id}/cancel` | owner or Admin | `CancelReservationCommand` | → 200 with the cancelled reservation. Idempotent: cancelling an already-cancelled reservation is a no-op, not an error, and sends no second event. |
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
+| GET | `/api/reservations/invited` | any authenticated user | `GetMyInvitationsQuery` | other people's `Confirmed` meetings the caller is invited to and that aren't over, soonest first (ADR-0032) |
+| GET | `/api/reservations/invitees` | any authenticated user | `GetInviteesQuery` | who the caller may invite: `[{ id, name, email }]`, by name - a Manager's active team members, every active account for an Admin, nobody for an Employee |
+| POST | `/api/reservations/{id}/response` | someone invited | `RespondToInvitationCommand` | body: `{ response: "Accepted" \| "Declined", reason? }` → 200 with the meeting. Declining needs a `reason` (max 500), which goes to the organizer only. See Meetings. |
 | GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. Only reservations on resources the caller may use (ADR-0022). |
 
 Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
@@ -245,7 +248,10 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
   "checkInRequired": true,         // has to be checked in at the door, or it's released
   "checkedInAt": null,             // when the owner checked in
   "releasedAt": null,              // when it was released because nobody did (status is then "Cancelled")
-  "userDisplayName": "Ayşe Yılmaz"  // who booked it: "First Last", or the email if both are blank
+  "userDisplayName": "Ayşe Yılmaz", // who booked it: "First Last", or the email if both are blank
+  "attendees": [                   // who's invited, by name (ADR-0032); usually empty
+    { "id": "…", "name": "Mehmet Demir", "response": "Accepted" }  // "Pending" | "Accepted" | "Declined"
+  ]
 }
 ```
 
@@ -286,6 +292,67 @@ booking can still be shortened or ended early. Other errors: 400 for the
 same shape rules as create, 403 for someone who is neither the owner nor an Admin, 404 for an
 unknown reservation. A PUT that changes nothing returns 200 and sends no event.
 
+## Meetings (ADR-0032)
+
+A booking can invite people. The organizer is the booking's owner; everyone invited gets a
+message in their inbox and answers it.
+
+- **Who may invite.** A Manager their own team's active members, an Admin any active account,
+  an Employee nobody (`GET /api/reservations/invitees` lists them). Each person added must be
+  able to use the resource (ADR-0022), and the room's `capacity` must hold everyone, the
+  organizer included. At most 50 people. The organizer is never on their own list, and nobody
+  is on it twice.
+- **Changing the list.** `attendeeIds` on create and update is the whole list. Whoever is added
+  is invited; whoever is taken off is told; someone already on it stays even after leaving the
+  team. A new time or room tells everyone still invited and asks them to answer again (a new
+  start or another room; a longer meeting keeps the answers). Changing only the note tells
+  nobody. Cancelling, or a release, tells everyone.
+- **Answers.** `POST /api/reservations/{id}/response`, by someone on the list, while the meeting
+  is `Confirmed` and not over. `Declined` needs a `reason`. The organizer gets a message with
+  the answer, and the reason; every screen showing the meeting gets it as `ReservationUpdated`.
+  The same answer again changes nothing and tells nobody. A reason is never part of a
+  reservation: only the organizer's message has it.
+- **Check-in.** Anyone invited may check the meeting in (ADR-0030): whoever is first keeps the
+  room for everyone.
+
+**Meetings - errors**
+
+| Status | When |
+|---|---|
+| 400 | on create or update: an Employee adds someone (`"Only team managers and administrators can invite people."`), someone added isn't one the caller may invite, can't use the resource (`"Mehmet Demir can't use Board Room: it belongs to another team."`), the room is too small (`"Board Room has room for 6; with you, 8 people would come."`), more than 50 people. On an answer: `response` isn't `Accepted` or `Declined`, or declining without a `reason` (`"Say why you can't come."`). All under `AttendeeIds`, `Response` or `Reason` |
+| 403 | answering a meeting the caller isn't invited to (`"You're not on this meeting's list."`) |
+| 404 | the meeting doesn't exist |
+| 409 | answering a meeting that was cancelled, or is over |
+
+## Inbox (ADR-0032)
+
+The signed-in user's own messages; nobody sees anyone else's.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/inbox` | any authenticated user | `GetInboxQuery` | the newest 100 messages, read or not, newest first |
+| GET | `/api/inbox/unread-count` | any authenticated user | `GetUnreadInboxCountQuery` | `{ unread }`, for the badge |
+| POST | `/api/inbox/{id}/read` | the recipient | `MarkInboxMessageReadCommand` | → 204; again changes nothing; someone else's message is 404 |
+| POST | `/api/inbox/read-all` | any authenticated user | `MarkAllInboxMessagesReadCommand` | → 204 |
+
+```json
+{
+  "id": "…", "recipientId": "…",
+  "kind": "MeetingInvitation",   // MeetingInvitation | MeetingChanged | MeetingCancelled | MeetingUninvited
+                                 // | MeetingAccepted | MeetingDeclined (the last two to the organizer)
+  "reservationId": "…",          // null once the booking is gone
+  "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release, which nobody sent
+  "resourceName": "Board Room",  // the meeting as it was when the message was sent
+  "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:00:00Z",
+  "note": "Sprint planning",
+  "reason": null,                // why someone can't come, in a MeetingDeclined
+  "createdAt": "2026-10-01T09:00:00Z",
+  "readAt": null                 // null while unread
+}
+```
+
+The app writes the sentence from `kind`, in the reader's language.
+
 ## Check-in (ADR-0030)
 
 A resource with `checkInRequired` has a QR code at its door. Whoever booked it scans the code,
@@ -293,7 +360,8 @@ which opens `/check-in/{id}?code=…` in the app, and checks in there
 (`POST /api/resources/{id}/check-in`).
 
 - **The window.** From 10 minutes before the start until 15 minutes after, and never once the
-  booking is over. Only the owner checks in, and only a `Confirmed` booking.
+  booking is over. The owner checks in, or anyone invited to it (ADR-0032), and only a
+  `Confirmed` booking.
 - **Release.** A booking nobody checked in to by then is released: its `status` becomes
   `Cancelled` and `releasedAt` is set. A background job looks every 30 seconds
   (`CheckIn:IntervalSeconds`; `CheckIn:Enabled: false` switches releasing off), so a release
@@ -459,7 +527,7 @@ Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
 
 All three events carry the reservation object shown under Reservations above, as it is after
 the change. For `ReservationUpdated` the resource or the times may be different from
@@ -480,6 +548,10 @@ has passed, so it can be up to one interval late, never early. It isn't sent for
 reservation, or once the reservation has started. Moving the start or changing `reminderMinutes`
 re-arms it for the new moment, while changing only the end or the note doesn't. A reminder that
 finds the owner offline isn't queued or repeated.
+
+**Inbox (ADR-0032).** `InboxMessageReceived` carries the message as `GET /api/inbox` returns it,
+sent once its change is committed, to its recipient's connections only. One that finds them
+offline isn't repeated: the inbox and `unread-count` have it.
 
 **Check-in (ADR-0030).** A check-in is a `ReservationUpdated` with `checkedInAt` set. A release
 reaches everyone who may see the resource as `ReservationCancelled`, with `releasedAt` set, so

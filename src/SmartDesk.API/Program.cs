@@ -50,6 +50,8 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 // Registered before the TryAdd below, so this wins and the null notifier stays a fallback.
 builder.Services.AddScoped<IReservationNotifier, SignalRReservationNotifier>();
 builder.Services.TryAddScoped<IReservationNotifier, NullReservationNotifier>();
+builder.Services.AddScoped<IInboxNotifier, SignalRInboxNotifier>();
+builder.Services.TryAddScoped<IInboxNotifier, NullInboxNotifier>();
 builder.Services.AddHostedService<ReservationReminderWorker>();
 builder.Services.AddHostedService<NoShowReleaseWorker>();
 // Replaces Infrastructure's no-op fallback: a change to an account cuts its hub connections.

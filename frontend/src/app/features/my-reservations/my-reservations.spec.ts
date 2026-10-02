@@ -3,13 +3,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
-import { Reservation } from '../../core/models/reservation.model';
+import { Reservation, ReservationAttendee } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
-import { MyReservations } from './my-reservations';
+import { ATTENDEES_SHOWN, MyReservations } from './my-reservations';
 
 // Local wall-clock time -> the UTC ISO string the API uses, whatever zone the tests run in.
 const utc = (local: string) => new Date(local).toISOString();
@@ -37,6 +37,8 @@ describe('MyReservations', () => {
   });
 
   let getMine: ReturnType<typeof vi.fn>;
+  let getInvited: ReturnType<typeof vi.fn>;
+  let respond: ReturnType<typeof vi.fn>;
   let cancel: ReturnType<typeof vi.fn>;
   let success: ReturnType<typeof vi.fn>;
   let error: ReturnType<typeof vi.fn>;
@@ -54,6 +56,8 @@ describe('MyReservations', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     getMine = vi.fn(() => of([lastWeek, friday, running, soon, called, later]));
+    getInvited = vi.fn(() => of([]));
+    respond = vi.fn();
     cancel = vi.fn((id: string) => of({ ...soon, id, status: 'Cancelled' }));
     success = vi.fn();
     error = vi.fn();
@@ -69,7 +73,7 @@ describe('MyReservations', () => {
       imports: [MyReservations],
       providers: [
         provideRouter([]),
-        { provide: ReservationService, useValue: { getMine, cancel } },
+        { provide: ReservationService, useValue: { getMine, getInvited, respond, cancel } },
         { provide: ReservationHubService, useValue: hub },
         { provide: AuthService, useValue: { currentUser: signal({ id: OWNER_ID }) } },
         { provide: NotificationService, useValue: { success, error } },
@@ -163,6 +167,7 @@ describe('MyReservations', () => {
     await render();
 
     expect(tabText('Upcoming')).toBe('Upcoming 3');
+    expect(tabText('Invitations')).toBe('Invitations 0');
     expect(tabText('Past')).toBe('Past 2');
     expect(tabText('Cancelled')).toBe('Cancelled 1');
   });
@@ -313,6 +318,179 @@ describe('MyReservations', () => {
 
       expect(getMine).toHaveBeenCalledTimes(2);
       expect(names()).toEqual(['Meeting Room A']);
+    });
+  });
+
+  describe('meetings the user is invited to (ADR-0032)', () => {
+    const invitation = (extra: Partial<Reservation> = {}) =>
+      booking('rsv-20', 'Planning Room', '2026-10-06T11:00', '2026-10-06T12:00', {
+        userId: 'u-zeynep',
+        userDisplayName: 'Zeynep Kaya',
+        note: 'Quarterly plan',
+        reminderMinutes: 15,
+        attendees: [{ id: OWNER_ID, name: 'Ayşe Yılmaz', response: 'Pending' }],
+        ...extra,
+      });
+
+    function itemText(): string {
+      return element.querySelector('.item')!.textContent!.replace(/\s+/g, ' ');
+    }
+
+    it('lists them under Invitations, with who organized each, and only a way to see it', async () => {
+      getInvited.mockReturnValue(of([invitation()]));
+      await render();
+
+      expect(names()).not.toContain('Planning Room');
+      expect(tabText('Invitations')).toBe('Invitations 1');
+      await openTab('Invitations');
+
+      expect(names()).toEqual(['Planning Room']);
+      expect(itemText()).toContain('Organized by Zeynep Kaya');
+      expect(itemText()).toContain('Quarterly plan');
+      expect(itemText()).not.toContain('Reminder'); // the organizer's, not theirs
+      const links = element.querySelectorAll<HTMLAnchorElement>('.item .actions a');
+      expect(links).toHaveLength(1);
+      expect(links[0].textContent!.trim()).toBe('Details');
+      expect(links[0].getAttribute('href')).toBe('/reservations/rsv-20/edit');
+      expect(element.querySelector('.item button.cancel')).toBeNull();
+    });
+
+    it('tells them when to check in, since they may do it too', async () => {
+      getInvited.mockReturnValue(of([invitation({ checkInRequired: true })]));
+      await render();
+      await openTab('Invitations');
+
+      expect(itemText()).toContain('Check in at the door 10:50-11:15');
+    });
+
+    it('says so when there are none', async () => {
+      await render();
+      await openTab('Invitations');
+
+      expect(element.textContent).toContain(
+        "Nobody has invited you to a meeting that's still to come.",
+      );
+    });
+
+    it("names who is invited to the user's own bookings by their answer, the first few of each", async () => {
+      const pending = ['Can Öztürk', 'Deniz Ak', 'Elif Şahin', 'Fatma Koç', 'Gül Ay'].map(
+        (name, i): ReservationAttendee => ({ id: `u-${i}`, name, response: 'Pending' }),
+      );
+      getMine.mockReturnValue(
+        of([
+          {
+            ...soon,
+            attendees: [
+              { id: 'u-a', name: 'Ayşe Yılmaz', response: 'Accepted' },
+              { id: 'u-m', name: 'Mehmet Demir', response: 'Declined' },
+              pending[0],
+            ],
+          },
+          { ...later, attendees: [...pending, { id: 'u-gone', name: null, response: 'Pending' }] },
+          running,
+        ]),
+      );
+      await render();
+
+      const lines = Array.from(element.querySelectorAll('.item')).map(
+        (item) => item.querySelector('.attendees')?.textContent ?? null,
+      );
+      expect(ATTENDEES_SHOWN).toBe(3);
+      expect(lines).toEqual([
+        null, // Board Room
+        "Coming: Ayşe Yılmaz · Can't come: Mehmet Demir · No answer yet: Can Öztürk",
+        'No answer yet: Can Öztürk, Deniz Ak, Elif Şahin and 3 more',
+      ]);
+    });
+
+    it('lets them answer an invitation right there', async () => {
+      getInvited.mockReturnValue(of([invitation()]));
+      respond.mockReturnValue(
+        of(
+          invitation({ attendees: [{ id: OWNER_ID, name: 'Ayşe Yılmaz', response: 'Accepted' }] }),
+        ),
+      );
+      await render();
+      await openTab('Invitations');
+      expect(itemText()).toContain('Will you come?');
+
+      Array.from(element.querySelectorAll<HTMLButtonElement>('app-meeting-answer button'))
+        .find((b) => b.textContent!.trim() === "I'm coming")!
+        .click();
+      await fixture.whenStable();
+
+      expect(respond).toHaveBeenCalledWith('rsv-20', { response: 'Accepted' });
+      expect(itemText()).toContain("You said you're coming.");
+    });
+
+    it('has no answer to give on their own bookings', async () => {
+      await render();
+
+      expect(element.querySelector('app-meeting-answer')).toBeNull();
+    });
+
+    it('adds an invitation sent meanwhile, and drops it when the user is taken off', async () => {
+      await render();
+
+      hub.created$.next(invitation());
+      await fixture.whenStable();
+      expect(tabText('Invitations')).toBe('Invitations 1');
+
+      hub.updated$.next(
+        invitation({ attendees: [{ id: 'u-other', name: 'Can Öztürk', response: 'Pending' }] }),
+      );
+      await fixture.whenStable();
+      expect(tabText('Invitations')).toBe('Invitations 0');
+    });
+
+    it('drops a meeting that is cancelled, and follows one that moves', async () => {
+      getInvited.mockReturnValue(of([invitation()]));
+      await render();
+      await openTab('Invitations');
+
+      hub.updated$.next(invitation({ resourceName: 'Board Room' }));
+      await fixture.whenStable();
+      expect(names()).toEqual(['Board Room']);
+
+      hub.cancelled$.next(invitation({ status: 'Cancelled' }));
+      await fixture.whenStable();
+      expect(names()).toEqual([]);
+    });
+
+    it('ignores other meetings the user is not invited to', async () => {
+      await render();
+      hub.created$.next(invitation({ attendees: [] }));
+      await fixture.whenStable();
+
+      expect(tabText('Invitations')).toBe('Invitations 0');
+      expect(names()).not.toContain('Planning Room');
+    });
+
+    it('keeps an invitation that arrives while the lists are still loading', async () => {
+      const response = new Subject<Reservation[]>();
+      getInvited.mockReturnValue(response);
+      await render();
+
+      hub.created$.next(invitation());
+      response.next([]); // queried before the invitation was committed
+      response.complete();
+      await fixture.whenStable();
+
+      expect(tabText('Invitations')).toBe('Invitations 1');
+    });
+
+    it('lets an invitation go once the meeting is over', async () => {
+      getInvited.mockReturnValue(of([invitation()]));
+      await render();
+      expect(tabText('Invitations')).toBe('Invitations 1');
+
+      // A refresh re-reads the clock, as the page does every minute; the list it gets still
+      // has the meeting, which ended just now.
+      vi.setSystemTime(new Date('2026-10-06T12:00'));
+      hub.reconnected$.next();
+      await fixture.whenStable();
+
+      expect(tabText('Invitations')).toBe('Invitations 0');
     });
   });
 

@@ -31,6 +31,9 @@
   @if (reservation(); as r) {
     <section class="card form">
       <p class="notice" role="status">{{ readOnlyReason() }}</p>
+      @if (canAnswer()) {
+        <app-meeting-answer class="answer" [reservation]="r" (answered)="onAnswered($event)" />
+      }
       <dl class="details">
         <dt i18n="@@field.resource">Resource</dt>
         <dd>
@@ -50,6 +53,10 @@
             <ng-container i18n="@@common.unknownUser">Unknown user</ng-container>
           }
         </dd>
+        @if (r.attendees.length > 0) {
+          <dt i18n="@@reservationForm.invitedLabel">Invited</dt>
+          <dd class="attendee-names">{{ attendeeNames(r) }}</dd>
+        }
         <dt i18n="@@field.status">Status</dt>
         <dd>{{ statusLabel(r.status) }}</dd>
         @if (r.note) {
@@ -193,6 +200,61 @@
         <span class="text-muted hint">{{ noteLength() }} / {{ limits.noteMaxLength }}</span>
       }
     </div>
+
+    @if (people().length > 0) {
+      <fieldset class="field attendees">
+        <legend i18n="@@reservationForm.attendees">
+          Invite people <span class="text-muted">(optional)</span>
+        </legend>
+        @if (people().length >= attendeeSearchFrom) {
+          <input
+            type="search"
+            class="input attendee-search"
+            [value]="attendeeSearch()"
+            (input)="onAttendeeSearch($event)"
+            placeholder="Search by name or email"
+            i18n-placeholder="@@reservationForm.attendeeSearch"
+            aria-label="Search people to invite"
+            i18n-aria-label="@@reservationForm.attendeeSearchLabel"
+          />
+        }
+        <ul class="people" [class.invalid]="attendeesError()">
+          @for (person of visiblePeople(); track person.id) {
+            <li>
+              <label class="person">
+                <input
+                  type="checkbox"
+                  [checked]="selectedAttendees().has(person.id)"
+                  (change)="toggleAttendee(person.id, $any($event.target).checked)"
+                />
+                <span class="person-name">{{ person.name }}</span>
+                @if (person.email) {
+                  <span class="text-muted person-email">{{ person.email }}</span>
+                }
+                @if (person.response; as response) {
+                  <span class="response" [class.accepted]="response === 'Accepted'">{{
+                    responseLabel(response)
+                  }}</span>
+                }
+              </label>
+            </li>
+          } @empty {
+            <li class="text-muted no-match" i18n="@@reservationForm.noMatch">
+              Nobody matches the search.
+            </li>
+          }
+        </ul>
+        @if (attendeesError(); as error) {
+          <span class="field-error">{{ error }}</span>
+        } @else {
+          <span class="text-muted hint">{{ attendeesHint() }}</span>
+        }
+      </fieldset>
+    } @else if (inviteesFailed()) {
+      <p class="text-muted hint" i18n="@@reservationForm.inviteesFailed">
+        The list of people to invite could not be loaded.
+      </p>
+    }
 
     @if (mode() !== 'inProgress') {
       <div class="field">

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Observable, Subject, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { InboxMessage } from '../models/inbox.model';
 import { Reservation } from '../models/reservation.model';
 import { AuthService } from './auth.service';
 
@@ -25,6 +26,7 @@ export class ReservationHubService {
   private readonly cancelled = new Subject<Reservation>();
   private readonly startingSoon = new Subject<Reservation>();
   private readonly released = new Subject<Reservation>();
+  private readonly inboxMessage = new Subject<InboxMessage>();
   private readonly reconnected = new Subject<void>();
 
   readonly created$: Observable<Reservation> = this.created.asObservable();
@@ -37,6 +39,8 @@ export class ReservationHubService {
    * owner only. Everyone, the owner included, also gets the booking in `cancelled$`.
    */
   readonly released$: Observable<Reservation> = this.released.asObservable();
+  /** Messages to the signed-in user's inbox (ADR-0032); the API sends each to its recipient only. */
+  readonly inboxMessage$: Observable<InboxMessage> = this.inboxMessage.asObservable();
   readonly reconnected$: Observable<void> = this.reconnected.asObservable();
 
   connect(): void {
@@ -71,6 +75,9 @@ export class ReservationHubService {
     );
     connection.on('ReservationReleased', (reservation: Reservation) =>
       this.released.next(reservation),
+    );
+    connection.on('InboxMessageReceived', (message: InboxMessage) =>
+      this.inboxMessage.next(message),
     );
     connection.onreconnected(() => this.reconnected.next());
 

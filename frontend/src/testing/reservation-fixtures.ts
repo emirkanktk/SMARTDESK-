@@ -21,6 +21,7 @@ export function fakeReservation(overrides: Partial<Reservation> = {}): Reservati
     checkedInAt: null,
     releasedAt: null,
     userDisplayName: 'Ayşe Yılmaz',
+    attendees: [],
     ...overrides,
   };
 }

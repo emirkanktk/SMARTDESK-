@@ -22,6 +22,9 @@ public class ReservationHub(HubConnectionRegistry connections) : Hub
     // Everyone else hears ReservationCancelled, which frees the slot on their screens.
     public const string Released = "ReservationReleased";
 
+    // A message reached the user's inbox (ADR-0032); sent to that user only, with the message.
+    public const string InboxMessageReceived = "InboxMessageReceived";
+
     // Events about a team's resource go to its teams and the Admins only (ADR-0022).
     public const string AdminsGroup = "admins";
 

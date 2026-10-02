@@ -152,6 +152,61 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.InboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EndDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReservationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResourceName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("SenderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReservationId");
+
+                    b.HasIndex("RecipientId", "CreatedAt");
+
+                    b.HasIndex(new[] { "RecipientId" }, "IX_InboxMessages_Unread")
+                        .HasFilter("\"ReadAt\" IS NULL");
+
+                    b.ToTable("InboxMessages");
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -207,6 +262,31 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Reservations_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\"");
                         });
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ReservationAttendee", b =>
+                {
+                    b.Property<Guid>("ReservationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Response")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ReservationId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ReservationAttendees");
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.Resource", b =>
@@ -584,6 +664,14 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.InboxMessage", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Reservation", null)
+                        .WithMany()
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>
                 {
                     b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
@@ -593,6 +681,17 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Resource");
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.ReservationAttendee", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Reservation", "Reservation")
+                        .WithMany("Attendees")
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Reservation");
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.Resource", b =>
@@ -663,6 +762,11 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>
+                {
+                    b.Navigation("Attendees");
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.Resource", b =>

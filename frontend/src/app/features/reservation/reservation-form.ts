@@ -15,8 +15,11 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize, map } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import {
+  AttendeeResponse,
   CHECK_IN,
   DEFAULT_REMINDER_MINUTES,
+  Invitee,
+  MAX_ATTENDEES,
   REMINDER_OPTIONS,
   RESERVATION_LIMITS,
   Reservation,
@@ -28,6 +31,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
+import { MeetingAnswer } from '../../shared/components/meeting-answer/meeting-answer';
 import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
 import {
   addMinutes,
@@ -45,11 +49,13 @@ import {
   RANGE_MESSAGES,
   dateRangeValidator,
 } from '../../shared/validators/date-range.validator';
-import { reservationStatusLabel } from '../../core/i18n/labels';
+import { attendeeResponseLabel, reservationStatusLabel } from '../../core/i18n/labels';
 
 const L = RESERVATION_LIMITS;
 const DEFAULT_DURATION_MIN = 60;
 const RANGE_FORMAT = 'EEE d MMM, HH:mm';
+/** From this many people on, the list of who to invite gets a search box. */
+export const ATTENDEE_SEARCH_FROM = 8;
 
 /**
  * What the form allows, following the API's update rules. `inProgress`: started, not ended -
@@ -70,9 +76,23 @@ interface ResourceOption {
   checkInRequired: boolean;
 }
 
-/** Book a resource (`/reservations/new`) or change a booking (`/reservations/:id/edit`). */
+/** Someone who can be on the booking's list of who's invited (ADR-0032). */
+interface Person {
+  id: string;
+  name: string;
+  /** Null for someone already on the list whom the caller may no longer invite. */
+  email: string | null;
+  /** Their answer, for someone already on the list; null for anyone not invited yet. */
+  response: AttendeeResponse | null;
+}
+
+/**
+ * Book a resource (`/reservations/new`) or change a booking (`/reservations/:id/edit`). Managers
+ * and Admins can invite people to it, who get a message in their inbox (ADR-0032). Anyone else
+ * who opens a booking, e.g. someone invited to it, sees it read-only.
+ */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, ResourcePhoto],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, MeetingAnswer, ResourcePhoto],
   selector: 'app-reservation-form',
   styleUrl: './reservation-form.scss',
   templateUrl: './reservation-form.html',
@@ -107,6 +127,7 @@ export class ReservationForm implements OnInit {
       endDateTime: ['', Validators.required],
       note: ['', Validators.maxLength(L.noteMaxLength)],
       reminderMinutes: [DEFAULT_REMINDER_MINUTES as number | null],
+      attendeeIds: [[] as string[]],
     },
     { validators: dateRangeValidator(rangeRules('create')) },
   );
@@ -116,6 +137,7 @@ export class ReservationForm implements OnInit {
   protected readonly reservation = signal<Reservation | null>(null);
   protected readonly readOnlyReason = signal<string | null>(null);
   protected readonly statusLabel = reservationStatusLabel;
+  protected readonly responseLabel = attendeeResponseLabel;
   /** Who booked it, when an admin is changing someone else's reservation. */
   protected readonly bookedBy = computed(() => {
     const reservation = this.reservation();
@@ -152,6 +174,12 @@ export class ReservationForm implements OnInit {
   });
   protected readonly resourceGroups = computed(() => groupByType(this.resourceOptions()));
 
+  /** Who the caller may invite; only Managers and Admins ask. */
+  private readonly invitees = signal<Invitee[]>([]);
+  protected readonly inviteesFailed = signal(false);
+  protected readonly attendeeSearch = signal('');
+  protected readonly attendeeSearchFrom = ATTENDEE_SEARCH_FROM;
+
   protected readonly loading = signal(false);
   protected readonly loadFailed = signal(false);
   protected readonly saving = signal(false);
@@ -176,10 +204,67 @@ export class ReservationForm implements OnInit {
   });
   protected readonly noteLength = computed(() => this.formValue().note.length);
 
+  /**
+   * Everyone who can be on the list: the people the caller may invite, and whoever is on it
+   * already, even if they may no longer be invited - they can stay, or be taken off. Never the
+   * booking's owner, who is there anyway.
+   */
+  protected readonly people = computed(() => {
+    const reservation = this.reservation();
+    const ownerId = reservation?.userId ?? this.authService.currentUser()?.id;
+    const byId = new Map<string, Person>();
+    for (const attendee of reservation?.attendees ?? []) {
+      const name = attendee.name ?? $localize`:@@common.unknownUser:Unknown user`;
+      byId.set(attendee.id, { id: attendee.id, name, email: null, response: attendee.response });
+    }
+    for (const invitee of this.invitees()) {
+      byId.set(invitee.id, { ...invitee, response: byId.get(invitee.id)?.response ?? null });
+    }
+    if (ownerId) {
+      byId.delete(ownerId);
+    }
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, this.locale));
+  });
+  protected readonly visiblePeople = computed(() => {
+    const term = this.attendeeSearch().trim().toLowerCase();
+    return term
+      ? this.people().filter(
+          (p) => p.name.toLowerCase().includes(term) || p.email?.toLowerCase().includes(term),
+        )
+      : this.people();
+  });
+  protected readonly selectedAttendees = computed(() => new Set(this.formValue().attendeeIds));
+  /** Someone invited to this meeting, who can answer it here: it's still on and not over. */
+  protected readonly canAnswer = computed(() => {
+    const reservation = this.reservation();
+    const userId = this.authService.currentUser()?.id;
+    return (
+      !!reservation &&
+      reservation.status === 'Confirmed' &&
+      new Date(reservation.endDateTime).getTime() > Date.now() &&
+      reservation.attendees.some((a) => a.id === userId)
+    );
+  });
+  /** The resource holds fewer people than the meeting would have, the owner included. */
+  private readonly roomTooSmall = computed(() => {
+    const resource = this.selectedResource();
+    const people = this.formValue().attendeeIds.length + 1;
+    return resource?.capacity != null && people > resource.capacity
+      ? { name: resource.name, capacity: resource.capacity, people }
+      : null;
+  });
+
   /** Earliest value offered by the start picker, on the quarter-hour grid its step expects. */
   protected readonly minStart = toDateTimeLocal(floorToQuarterHour());
 
   ngOnInit(): void {
+    if (this.authService.isManager() || this.authService.isAdmin()) {
+      this.reservationService.getInvitees().subscribe({
+        next: (invitees) => this.invitees.set(invitees),
+        error: () => this.inviteesFailed.set(true),
+      });
+    }
+
     this.resourceService.getResources({ status: 'Active' }).subscribe({
       next: (resources) => this.activeResources.set(resources.map(toOption)),
       error: () =>
@@ -222,7 +307,7 @@ export class ReservationForm implements OnInit {
   protected submit(): void {
     // Re-run the time rules: the page may have been open since the start was picked.
     this.form.updateValueAndValidity();
-    if (this.form.invalid) {
+    if (this.form.invalid || this.attendeesProblem()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -240,12 +325,17 @@ export class ReservationForm implements OnInit {
     this.saving.set(true);
     this.formError.set(null);
     this.conflict.set(null);
+    const before = new Set(reservation?.attendees.map((a) => a.id) ?? []);
+    const invites = body.attendeeIds.some((id) => !before.has(id));
     request.pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (saved) => {
+        const done = reservation
+          ? $localize`:@@reservationForm.saved:Your changes to the ${saved.resourceName}:resource: reservation were saved.`
+          : $localize`:@@reservationForm.booked:${saved.resourceName}:resource: is booked for ${this.formatRange(saved)}:when:.`;
         this.notifications.success(
-          reservation
-            ? $localize`:@@reservationForm.saved:Your changes to the ${saved.resourceName}:resource: reservation were saved.`
-            : $localize`:@@reservationForm.booked:${saved.resourceName}:resource: is booked for ${this.formatRange(saved)}:when:.`,
+          invites
+            ? `${done} ${$localize`:@@reservationForm.invitesSent:Your invitations were sent.`}`
+            : done,
         );
         void this.router.navigateByUrl('/reservations/mine');
       },
@@ -287,6 +377,58 @@ export class ReservationForm implements OnInit {
     return null;
   }
 
+  /** "Ayşe Yılmaz (coming), Mehmet Demir (no answer yet)": who's invited, for the read-only view. */
+  protected attendeeNames(reservation: Reservation): string {
+    return reservation.attendees
+      .map((a) => {
+        const name = a.name ?? $localize`:@@common.unknownUser:Unknown user`;
+        return `${name} (${attendeeResponseLabel(a.response)})`;
+      })
+      .join(', ');
+  }
+
+  /** An invitee answered from the read-only view: show the meeting as the API now has it. */
+  protected onAnswered(meeting: Reservation): void {
+    this.reservation.set(meeting);
+  }
+
+  /** Ticks or unticks someone on the list of who's invited. */
+  protected toggleAttendee(id: string, invited: boolean): void {
+    const control = this.form.controls.attendeeIds;
+    const others = control.value.filter((existing) => existing !== id);
+    control.setValue(invited ? [...others, id] : others);
+    control.markAsTouched();
+  }
+
+  protected onAttendeeSearch(event: Event): void {
+    this.attendeeSearch.set((event.target as HTMLInputElement).value);
+  }
+
+  /** What's wrong with the list of who's invited, as the API would say it. */
+  protected attendeesError(): string | null {
+    const control = this.form.controls.attendeeIds;
+    if (control.hasError('server')) return control.getError('server') as string;
+    return this.attendeesProblem();
+  }
+
+  protected attendeesHint(): string {
+    const count = this.formValue().attendeeIds.length;
+    return count > 0
+      ? $localize`:@@reservationForm.attendeesHintCount:${count}:count: invited. Each gets a message in their SmartDesk inbox, and another if the meeting moves or is cancelled.`
+      : $localize`:@@reservationForm.attendeesHint:Each person you invite gets a message in their SmartDesk inbox, and another if the meeting moves or is cancelled.`;
+  }
+
+  private attendeesProblem(): string | null {
+    const count = this.formValue().attendeeIds.length;
+    if (count > MAX_ATTENDEES) {
+      return $localize`:@@reservationForm.tooManyAttendees:Invite at most ${MAX_ATTENDEES}:max: people.`;
+    }
+    const tooSmall = this.roomTooSmall();
+    return tooSmall
+      ? $localize`:@@reservationForm.roomTooSmall:${tooSmall.name}:resource: has room for ${tooSmall.capacity}:capacity:, and with you the meeting is ${tooSmall.people}:people:.`
+      : null;
+  }
+
   protected noteError(): string | null {
     const control = this.form.controls.note;
     if (!control.touched || !control.errors) return null;
@@ -311,6 +453,7 @@ export class ReservationForm implements OnInit {
       endDateTime: toDateTimeLocal(end),
       note: '',
       reminderMinutes: DEFAULT_REMINDER_MINUTES,
+      attendeeIds: [],
     });
     if (linkStart && linkEnd && this.form.invalid) {
       this.form.markAllAsTouched(); // e.g. an old link whose start is now in the past
@@ -388,7 +531,9 @@ export class ReservationForm implements OnInit {
       const owner =
         reservation.userDisplayName ??
         $localize`:@@reservationForm.theBooker:the person who booked it`;
-      readOnlyReason = $localize`:@@reservationForm.onlyOwner:Only ${owner}:owner: or an admin can change this reservation.`;
+      readOnlyReason = reservation.attendees.some((a) => a.id === user?.id)
+        ? $localize`:@@reservationForm.invitedYou:${owner}:owner: invited you to this meeting. Only they or an admin can change it.`
+        : $localize`:@@reservationForm.onlyOwner:Only ${owner}:owner: or an admin can change this reservation.`;
     } else if (reservation.status === 'Cancelled') {
       readOnlyReason = $localize`:@@reservationForm.wasCancelled:This reservation was cancelled, so it can no longer be changed.`;
     } else if (end.getTime() <= now) {
@@ -410,6 +555,7 @@ export class ReservationForm implements OnInit {
       endDateTime: toDateTimeLocal(end),
       note: reservation.note ?? '',
       reminderMinutes: reservation.reminderMinutes,
+      attendeeIds: reservation.attendees.map((a) => a.id),
     });
     if (mode === 'inProgress') {
       this.form.controls.resourceId.disable();
@@ -434,6 +580,8 @@ export class ReservationForm implements OnInit {
       endDateTime: toIso(value.endDateTime, original?.endDateTime),
       note: value.note.trim() || null,
       reminderMinutes: value.reminderMinutes,
+      // Always the whole list: a PUT without it would take everyone off.
+      attendeeIds: value.attendeeIds,
     };
   }
 
