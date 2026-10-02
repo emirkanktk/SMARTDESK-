@@ -33,6 +33,9 @@ public sealed class PostgresApiFixture : WebApplicationFactory<Program>, IAsyncL
     {
         builder.UseSetting("ConnectionStrings:DefaultConnection", _postgres.GetConnectionString());
         builder.UseSetting("Jwt:Key", new string('k', 32));
+        // Development reads the developer's user secrets: an assistant key there must not turn
+        // the assistant on in tests that expect it off. Tests that want one set their own.
+        builder.UseSetting("Assistant:ApiKey", string.Empty);
         builder.UseEnvironment("Development");
     }
 }

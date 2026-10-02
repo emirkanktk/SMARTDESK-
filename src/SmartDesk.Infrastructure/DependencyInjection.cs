@@ -116,14 +116,25 @@ public static class DependencyInjection
         services.AddScoped<BootstrapAdminSeeder>();
         services.AddScoped<DemoResourceSeeder>();
 
-        // The assistant (ADR-0029): Claude through the official SDK. Without Assistant:ApiKey it's
-        // off, and nothing else notices.
+        // The assistant (ADR-0029): Claude through the official SDK, or Gemini over its REST API
+        // (ADR-0036), as Assistant:Provider says. Without Assistant:ApiKey it's off, and nothing
+        // else notices.
         services.AddOptions<AssistantOptions>()
             .Bind(configuration.GetSection(AssistantOptions.SectionName))
             .Validate(o => o.MaxTokens > 0 && o.MaxToolRounds > 0 && o.TimeoutSeconds > 0,
                 "Assistant:MaxTokens, Assistant:MaxToolRounds and Assistant:TimeoutSeconds must be positive.")
+            .Validate(o => o.HasKnownProvider, "Assistant:Provider must be Anthropic or Gemini.")
             .ValidateOnStart();
-        services.AddSingleton<IAssistantModel, ClaudeAssistantModel>();
+        services.AddHttpClient(GeminiAssistantModel.HttpClientName);
+        // Claude's SDK keeps its own HTTP client, as before.
+        services.AddSingleton(sp => new ClaudeAssistantModel(
+            sp.GetRequiredService<IOptions<AssistantOptions>>(),
+            sp.GetRequiredService<ILogger<ClaudeAssistantModel>>(),
+            sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<GeminiAssistantModel>();
+        services.AddSingleton<IAssistantModel>(sp => sp.GetRequiredService<IOptions<AssistantOptions>>().Value.UsesGemini
+            ? sp.GetRequiredService<GeminiAssistantModel>()
+            : sp.GetRequiredService<ClaudeAssistantModel>());
 
         return services;
     }
