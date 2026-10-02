@@ -936,3 +936,37 @@ new tables.
   - A message pushed while its reader is offline isn't pushed again. The inbox and its count
     catch up when they open the app or reconnect.
   - Changing only the note tells nobody.
+
+## ADR-0033: Asked before a booking ends whether it needs longer, and extended with a click
+
+**Decision:**
+- **The question.** Ten minutes before a booking under way ends, its owner is asked whether
+  they need longer (`ReservationEndingSoon`, to them only): a card in the app, and a desktop
+  notification when allowed. A background job looks every 30 seconds
+  (`EndingSoon:IntervalSeconds`; `EndingSoon:Enabled: false` switches it off) and asks once
+  per end (`EndingSoonSentAt`); a new end, however it comes, is asked about again.
+- **The answer is a button.** 15, 30 or 60 minutes more, only those that end before the
+  resource's next booking or blocked window (`GET /api/reservations/{id}/extension`).
+  `POST /api/reservations/{id}/extend` adds one, for the owner or an Admin, under the same locks
+  and booking checks as moving a booking: only the extra time is a new claim on the resource.
+- **The same visit.** Only the end moves. The check-in (ADR-0030), the reminder and the answers
+  to the invitation (ADR-0032) stay as they are, and everyone invited is told it runs longer
+  (`MeetingExtended`).
+- **Also from the list.** A booking in progress has **Extend** in My reservations, with the
+  same buttons.
+
+**Why:**
+- A meeting that runs over is the usual reason to change a booking while it's on, and the edit
+  form makes that a hunt for the end field and a new time. A question at the right moment, with
+  answers that are known to fit, makes it one click.
+- Offering only what fits, rather than letting the click fail, because the next booking is
+  usually the reason it can't run on.
+- The same checks as a move, because the extra time is a claim like any other: a room switched
+  to maintenance or blocked meanwhile can't be taken.
+- Not a new visit, because the people in the room are the same: a check-in made at 10:00 still
+  holds, and nobody has to answer the invitation again.
+- **Trade-offs:**
+  - The question can come up to one job interval late, and only to screens that are open: one
+    that finds the owner offline isn't repeated. The **Extend** button is always there.
+  - Only the owner (or an Admin) can extend, not someone invited.
+  - 15, 30 or 60 minutes; anything else goes through the edit form.

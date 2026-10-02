@@ -35,6 +35,9 @@ public sealed class SignalRReservationNotifier(
     public Task ReservationReleasedAsync(ReservationDto reservation, CancellationToken cancellationToken) =>
         SendAsync(OwnerOf(reservation), ReservationHub.Released, reservation);
 
+    public Task ReservationEndingSoonAsync(ReservationDto reservation, CancellationToken cancellationToken) =>
+        SendAsync(OwnerOf(reservation), ReservationHub.EndingSoon, reservation);
+
     // `cancellationToken` is the caller's request token and is intentionally not used: the row
     // is already committed, and aborting the HTTP request must not cancel the push that tells
     // everyone else.

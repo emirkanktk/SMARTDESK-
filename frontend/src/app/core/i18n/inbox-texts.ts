@@ -23,6 +23,8 @@ export function inboxHeadline(message: InboxMessage): string {
       return $localize`:@@inbox.accepted:${sender}:sender: is coming to your meeting`;
     case 'MeetingDeclined':
       return $localize`:@@inbox.declined:${sender}:sender: can't come to your meeting`;
+    case 'MeetingExtended':
+      return $localize`:@@inbox.extended:${sender}:sender: extended a meeting you're invited to`;
   }
 }
 

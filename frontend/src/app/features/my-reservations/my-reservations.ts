@@ -20,6 +20,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
+import { ExtendBooking } from '../../shared/components/extend-booking/extend-booking';
 import { MeetingAnswer } from '../../shared/components/meeting-answer/meeting-answer';
 import { formatDuration } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
@@ -59,7 +60,7 @@ interface Item {
  * cancelled elsewhere - an invitation too - shows up without a reload.
  */
 @Component({
-  imports: [RouterLink, DatePipe, MeetingAnswer],
+  imports: [RouterLink, DatePipe, ExtendBooking, MeetingAnswer],
   selector: 'app-my-reservations',
   styleUrl: './my-reservations.scss',
   templateUrl: './my-reservations.html',
@@ -86,6 +87,8 @@ export class MyReservations implements OnInit {
   protected readonly loadFailed = signal(false);
   /** Id of the reservation being cancelled, to disable its button meanwhile. */
   protected readonly cancellingId = signal<string | null>(null);
+  /** Id of the booking in progress whose ways to run longer are open (ADR-0033). */
+  protected readonly extendingId = signal<string | null>(null);
 
   /** Each value starts a load; true shows the loading state, false refreshes quietly. */
   private readonly loads = new Subject<boolean>();
@@ -227,6 +230,16 @@ export class MyReservations implements OnInit {
           this.load(false); // whatever happened, show the reservation as it is now
         },
       });
+  }
+
+  /** Opens or closes the ways to make a booking in progress run longer. */
+  protected toggleExtend(item: Item): void {
+    this.extendingId.update((id) => (id === item.reservation.id ? null : item.reservation.id));
+  }
+
+  protected onExtended(booking: Reservation): void {
+    this.extendingId.set(null);
+    this.upsert(booking);
   }
 
   /** An answer to an invitation was sent: the meeting is as the API now has it. */

@@ -405,6 +405,9 @@
   <data name="Property_MinCapacity" xml:space="preserve">
     <value>En az kapasite</value>
   </data>
+  <data name="Property_Minutes" xml:space="preserve">
+    <value>Dakika</value>
+  </data>
   <data name="Property_Name" xml:space="preserve">
     <value>Ad</value>
   </data>
@@ -479,6 +482,12 @@
   </data>
   <data name="Reservations_EndedCantChange" xml:space="preserve">
     <value>Bu rezervasyon sona erdi; değiştirilemez.</value>
+  </data>
+  <data name="Reservations_ExtensionOptions" xml:space="preserve">
+    <value>Şu sürelerden biriyle uzatın: {0} dakika.</value>
+  </data>
+  <data name="Reservations_ExtensionTaken" xml:space="preserve">
+    <value>{0} hemen sonrasında dolu; rezervasyon {1} dakika uzatılamıyor.</value>
   </data>
   <data name="Reservations_MaxDuration" xml:space="preserve">
     <value>Bir rezervasyon en fazla {0} gün sürebilir.</value>

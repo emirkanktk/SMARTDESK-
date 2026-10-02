@@ -164,7 +164,8 @@ registered with `TryAdd` and only applies if the SignalR notifier is not registe
 
 Two events go to the reservation's owner alone: the reminder (`ReservationStartingSoon`,
 ADR-0018) and the notice that a booking was released because nobody checked in
-(`ReservationReleased`, ADR-0030). Both come from timed jobs rather than a request.
+(`ReservationReleased`, ADR-0030), and the question whether a booking about to end needs longer
+(`ReservationEndingSoon`, ADR-0033). They come from timed jobs rather than a request.
 
 Inbox messages (ADR-0032) go to their recipient alone, through `IInboxNotifier`
 (`SignalRInboxNotifier`, `InboxMessageReceived`). Handlers write them with the change, in the
@@ -330,6 +331,11 @@ picker drops seconds and any difference would count as a change.
   new message as a toast (and a desktop notification when allowed). `/inbox` lists the messages
   and lets an invitation be answered there (`<app-meeting-answer>`, also in **My reservations**
   and on the meeting's page). `core/i18n/inbox-texts.ts` writes each message's sentence.
+- **Running over (ADR-0033).** `<app-ending-soon>` in the shell shows the question when
+  `ReservationEndingSoon` arrives: a card in the corner with `<app-extend-booking>`, the
+  extension options that still fit as buttons. One booking at a time; one extended or cancelled
+  elsewhere leaves by itself. **My reservations** has the same buttons behind **Extend** for a
+  booking in progress.
 - **Styling.** Plain SCSS. Design tokens (colors, the brand's gradients, spacing, radius,
   shadows) and shared building blocks (`.btn`, `.field`, `.input`, `.card`, `.alert-error`,
   `.brand-panel`, `.empty`) live in `src/styles.scss`. Component styles use those variables

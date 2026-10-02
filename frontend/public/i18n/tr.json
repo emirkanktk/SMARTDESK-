@@ -347,6 +347,7 @@
     "mine.coming": "Katılıyor",
     "mine.notComing": "Katılamıyor",
     "mine.noAnswer": "Henüz yanıt yok",
+    "mine.extend": "Uzat",
     "nav.admin": "Yönetim",
     "nav.availability": "Müsaitlik",
     "nav.calendar": "Takvim",
@@ -667,6 +668,7 @@
     "inbox.capped": "Yalnızca son mesajlarınız gösteriliyor.",
     "inbox.accepted": "{$sender} toplantınıza katılıyor",
     "inbox.declined": "{$sender} toplantınıza katılamıyor",
+    "inbox.extended": "{$sender} davetli olduğunuz bir toplantıyı uzattı",
     "attendee.accepted": "katılıyor",
     "attendee.declined": "katılamıyor",
     "attendee.pending": "henüz yanıt yok",
@@ -684,6 +686,19 @@
     "answer.reasonRequired": "Neden katılamayacağınızı yazın.",
     "answer.sentTo": "Yanıtınız düzenleyene iletildi: {$name}.",
     "answer.sent": "Yanıtınız gönderildi.",
-    "answer.failed": "Yanıtınız gönderilemedi. Tekrar deneyin."
+    "answer.failed": "Yanıtınız gönderilemedi. Tekrar deneyin.",
+    "endingSoon.title": "{$INTERPOLATION}: bitiş saati {$INTERPOLATION_1}",
+    "endingSoon.question": "Daha fazla zamana mı ihtiyacınız var? Yeni bir bitiş saati seçmek yerine buradan uzatın.",
+    "endingSoon.notNow": "Şimdi değil",
+    "endingSoon.desktopTitle": "Rezervasyonunuz birazdan bitiyor",
+    "endingSoon.desktopBody": "{$resource}: bitiş saati {$time}. Daha fazla zamana mı ihtiyacınız var? SmartDesk'ten uzatın.",
+    "extend.group": "Uzat",
+    "extend.extending": "Uzatılıyor…",
+    "extend.none": "{$INTERPOLATION} hemen sonrasında dolu; rezervasyon daha fazla uzatılamıyor.",
+    "extend.loading": "Ne kadar uzatılabileceğine bakılıyor…",
+    "extend.hours": "+{$hours} sa",
+    "extend.minutes": "+{$minutes} dk",
+    "extend.done": "{$resource} rezervasyonunuz {$time} saatine kadar uzatıldı.",
+    "extend.failed": "Uzatılamadı. Tekrar deneyin."
   }
 }

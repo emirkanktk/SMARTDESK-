@@ -39,6 +39,8 @@ describe('MyReservations', () => {
   let getMine: ReturnType<typeof vi.fn>;
   let getInvited: ReturnType<typeof vi.fn>;
   let respond: ReturnType<typeof vi.fn>;
+  let getExtensionOptions: ReturnType<typeof vi.fn>;
+  let extend: ReturnType<typeof vi.fn>;
   let cancel: ReturnType<typeof vi.fn>;
   let success: ReturnType<typeof vi.fn>;
   let error: ReturnType<typeof vi.fn>;
@@ -58,6 +60,16 @@ describe('MyReservations', () => {
     getMine = vi.fn(() => of([lastWeek, friday, running, soon, called, later]));
     getInvited = vi.fn(() => of([]));
     respond = vi.fn();
+    getExtensionOptions = vi.fn(() => of({ minutes: [15, 30, 60] }));
+    extend = vi.fn((id: string, minutes: number) =>
+      of({
+        ...running,
+        id,
+        endDateTime: new Date(
+          new Date(running.endDateTime).getTime() + minutes * 60_000,
+        ).toISOString(),
+      }),
+    );
     cancel = vi.fn((id: string) => of({ ...soon, id, status: 'Cancelled' }));
     success = vi.fn();
     error = vi.fn();
@@ -73,7 +85,10 @@ describe('MyReservations', () => {
       imports: [MyReservations],
       providers: [
         provideRouter([]),
-        { provide: ReservationService, useValue: { getMine, getInvited, respond, cancel } },
+        {
+          provide: ReservationService,
+          useValue: { getMine, getInvited, respond, getExtensionOptions, extend, cancel },
+        },
         { provide: ReservationHubService, useValue: hub },
         { provide: AuthService, useValue: { currentUser: signal({ id: OWNER_ID }) } },
         { provide: NotificationService, useValue: { success, error } },
@@ -491,6 +506,49 @@ describe('MyReservations', () => {
       await fixture.whenStable();
 
       expect(tabText('Invitations')).toBe('Invitations 0');
+    });
+  });
+
+  describe('running longer (ADR-0033)', () => {
+    function extendToggle(name: string): HTMLButtonElement | null {
+      const item = Array.from(element.querySelectorAll('.item')).find((i) =>
+        i.querySelector('h2')!.textContent!.includes(name),
+      )!;
+      return item.querySelector<HTMLButtonElement>('.extend-toggle');
+    }
+
+    it('offers Extend on a booking in progress only', async () => {
+      await render();
+
+      expect(extendToggle('Board Room')).not.toBeNull(); // 09:30-11:00, it's 10:07
+      expect(extendToggle('Meeting Room A')).toBeNull();
+      expect(extendToggle('Desk 12')).toBeNull();
+    });
+
+    it('extends from the list and shows the new end', async () => {
+      await render();
+      extendToggle('Board Room')!.click();
+      await fixture.whenStable();
+      expect(extendToggle('Board Room')!.getAttribute('aria-expanded')).toBe('true');
+
+      Array.from(element.querySelectorAll<HTMLButtonElement>('app-extend-booking button'))
+        .find((b) => b.textContent!.trim() === '+30 min')!
+        .click();
+      await fixture.whenStable();
+
+      expect(extend).toHaveBeenCalledWith('rsv-2', 30);
+      expect(element.querySelector('app-extend-booking')).toBeNull();
+      expect(element.querySelector('.item')!.textContent).toContain('09:30-11:30');
+    });
+
+    it('closes again with a second click', async () => {
+      await render();
+      extendToggle('Board Room')!.click();
+      await fixture.whenStable();
+      extendToggle('Board Room')!.click();
+      await fixture.whenStable();
+
+      expect(element.querySelector('app-extend-booking')).toBeNull();
     });
   });
 

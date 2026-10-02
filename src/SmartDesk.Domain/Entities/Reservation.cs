@@ -19,6 +19,10 @@ public class Reservation
     // changes, so a moved reservation is reminded again.
     public DateTime? ReminderSentAt { get; set; }
 
+    // When its owner was asked whether they need longer (ADR-0033). Cleared when the end
+    // moves, so a meeting that runs on is asked again before its new end.
+    public DateTime? EndingSoonSentAt { get; set; }
+
     // Whether its resource asked for a check-in when it was booked or last moved (ADR-0030).
     // It's released unchecked only while the resource still asks (CheckInRules.Needed).
     public bool CheckInRequired { get; set; }

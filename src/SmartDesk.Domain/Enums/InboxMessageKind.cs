@@ -21,4 +21,7 @@ public enum InboxMessageKind
 
     // To the organizer: someone invited can't come, and why.
     MeetingDeclined = 5,
+
+    // It runs longer: its end moved later from the ending-soon notice (ADR-0033).
+    MeetingExtended = 6,
 }

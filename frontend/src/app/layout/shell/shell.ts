@@ -9,6 +9,7 @@ import { LanguageSwitch } from '../../shared/components/language-switch/language
 import { Logo } from '../../shared/components/logo/logo';
 import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
 import { Assistant } from '../assistant/assistant';
+import { EndingSoon } from '../ending-soon/ending-soon';
 import { ProfileMenu } from '../profile-menu/profile-menu';
 
 interface NavItem {
@@ -27,7 +28,8 @@ interface NavItem {
  * card at the bottom; on narrower ones a bar on top, its links in a row that scrolls sideways.
  * That bar gets out of the way while the page scrolls down and is back on the way up. The
  * assistant's button sits in the bottom corner when the server has one (ADR-0029). The Inbox
- * link counts the unread messages (ADR-0032).
+ * link counts the unread messages (ADR-0032), and a booking about to end asks in the other
+ * corner whether it needs longer (ADR-0033).
  */
 @Component({
   imports: [
@@ -35,6 +37,7 @@ interface NavItem {
     RouterLinkActive,
     RouterOutlet,
     Assistant,
+    EndingSoon,
     HideOnScroll,
     Icon,
     LanguageSwitch,
