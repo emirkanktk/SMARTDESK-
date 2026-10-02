@@ -55,7 +55,7 @@
         <span i18n="@@dashboard.today">Today</span>
       </h2>
       @if (today().length === 0) {
-        <div class="empty">
+        <div class="empty-note">
           <span class="empty-icon"><app-icon name="calendar-check" /></span>
           <p class="text-muted" i18n="@@dashboard.noneToday">No reservations today.</p>
         </div>
@@ -91,7 +91,7 @@
           <span i18n="@@dashboard.inUseNow">In use now</span>
         </h2>
         @if (inUseNow().length === 0) {
-          <div class="empty">
+          <div class="empty-note">
             <span class="empty-icon"><app-icon name="clock" /></span>
             <p class="text-muted" i18n="@@dashboard.nothingInUse">Nothing is in use right now.</p>
           </div>
@@ -118,7 +118,7 @@
           <span i18n="@@dashboard.yourNext">Your next reservations</span>
         </h2>
         @if (myUpcoming().length === 0) {
-          <div class="empty">
+          <div class="empty-note">
             <span class="empty-icon"><app-icon name="sparkles" /></span>
             <p class="text-muted" i18n="@@dashboard.noUpcoming">
               You have no upcoming reservations.

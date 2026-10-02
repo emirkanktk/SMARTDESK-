@@ -405,8 +405,9 @@ code {
   color: var(--color-text-muted);
 }
 
-// "Nothing here yet": an icon in a soft circle beside the sentence.
-.empty {
+// "Nothing here yet": an icon in a soft circle beside the sentence. Not `.empty`: screens use
+// that name for their own centred messages, and a global flex row would undo their centring.
+.empty-note {
   display: flex;
   align-items: center;
   gap: var(--space-3);
