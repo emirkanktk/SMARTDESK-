@@ -50,6 +50,11 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   30 seconds, so only someone standing there can check in. At the door you can also book a free
   room on the spot, make a booking run longer or end it, and five minutes before a release
   everyone on the booking is warned ([ADR-0034](docs/DECISIONS.md)).
+- **Bookings that repeat** - every day, every weekday, every week or every 2 weeks until a last
+  day: the form lists the dates first, those that aren't free with why, and books them all at
+  once or only the free ones. Each date is a booking of its own; the rest of a series can be
+  cancelled from any date, and those invited answer once for every date
+  ([ADR-0035](docs/DECISIONS.md)).
 - **Running over** - ten minutes before a booking ends, its owner is asked whether they need
   longer, and extends it by 15, 30 or 60 minutes with a click, only as far as the room is free;
   everyone invited is told ([ADR-0033](docs/DECISIONS.md)). A booking in progress also has
@@ -278,6 +283,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin), `PATCH /api/resources/{id}/status` (Admin) |
 | Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
+| Series | `GET /api/reservations/series/preview`, `POST /api/reservations/series`, `POST /api/reservations/{id}/cancel-following` (ADR-0035) |
 | Running over | `GET /api/reservations/{id}/extension`, `POST /api/reservations/{id}/extend` (ADR-0033) |
 | Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |
 | Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |

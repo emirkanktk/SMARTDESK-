@@ -276,6 +276,19 @@ one there's no **Assistant** button anywhere, and nothing else changes.
   a release everyone on the booking is warned; and at a free room the page books it on the
   spot (ADR-0034).
 
+### 17. A weekly meeting
+
+- As Zeynep, **Find a free resource** → Board Room next Monday 10:00-11:00 → **Book**. Under
+  **Repeat** choose **Every week**: the last day is four weeks on, and the five Mondays appear
+  below, each free. Tick Thursday too: nine dates.
+- As Mehmet, book Board Room on one of those Thursdays. Back as Zeynep, change the last day and
+  back again: that Thursday is crossed out with why, and the button says **Book the 8 free
+  dates**. Invite Ayşe and book.
+- Point out: one transaction, under the room's lock, so nothing half-booked; Ayşe's inbox has one
+  invitation for the series, answered once for every date ("Your answer is for this date and
+  every later one"); in **My reservations** each date says how it repeats, and **Cancel this
+  and later dates** ends the series early, with one message to Ayşe (ADR-0035).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

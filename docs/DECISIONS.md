@@ -1020,3 +1020,59 @@ new tables.
     shown once and meant to be opened on the tablet only.
   - With the screen off or broken, nobody can check in until someone turns it off or replaces
     the link; the warning still goes out, and the release follows as usual.
+
+## ADR-0035: Bookings that repeat
+
+**Decision:**
+- **A series is its rule and one booking a date.** `ReservationSeries` keeps the rule it was
+  made with: daily or weekly, every 1 to 4, the days of a weekly one, the last day it may come
+  back on, and the booker's time zone. Each date is an ordinary `Reservation` with its
+  `SeriesId`, booked when the series is.
+- **Dates in the booker's time zone.** The first date is the booking asked for; the others keep
+  its local time of day and its length, so a meeting at 10:00 stays at 10:00 when the clocks
+  change. Weeks are counted from Monday: "every 2 weeks" is the first date's week, the one two
+  weeks on, and so on. A time the clocks skip moves to the first minute after it. A weekly series
+  has to include the day it starts on.
+- **As far ahead as any booking.** The last date may start at most 180 days ahead (issue #41),
+  so a daily series has at most 181 dates. At least two dates, and none running into the next.
+- **Seen first, then booked at once.** `GET /api/reservations/series/preview` lists the dates
+  and which are free. `POST /api/reservations/series` checks every date under the resource's
+  lock and books them in one transaction. One date that isn't free stops the lot (409,
+  `series-conflicts`) unless the booker asked to skip such dates (`skipConflicts`); the answer
+  lists the dates booked and those skipped, and why.
+- **One date at a time, or the rest.** A date is moved or cancelled like any booking. `POST
+  /api/reservations/{id}/cancel-following` cancels a date and every later one still to come.
+  The rule is never edited: a different rhythm is a new series.
+- **One message for a series.** Those invited get one `SeriesInvitation` for every date, not one
+  each, and answer once with `following` for the date and every later one they're invited to
+  (`SeriesAccepted`, `SeriesDeclined`). Cancelling the rest sends one `SeriesCancelled`. A change
+  to one date tells them about that date, as before.
+- **The form.** A new booking has a Repeat choice: every day, every weekday, every week, every
+  2 weeks, with the days of a weekly one and a last day four weeks on to begin with. The form
+  asks for the dates as it changes, lists them, those that aren't free with why, and its button
+  books them all or the free ones.
+
+**Why:**
+- Every date being a booking of its own means everything a booking does - the overlap rule and
+  its constraint, reminders, check-in and release, running over, meetings, the calendar and the
+  live events - works for each date unchanged. Expanding a rule on every read would have had to
+  teach all of them about series, and the overlap check couldn't lean on the database any more.
+- One transaction under the resource's lock is the guarantee a single booking has (ADR-0011):
+  what was checked is what's booked, and nothing half-booked is left behind.
+- Refusing the lot by default means nothing is booked that the booker didn't see; the preview
+  makes skipping a choice made knowingly, and booking checks again, so a date taken meanwhile
+  is never double-booked.
+- Local times in the booker's zone are what a person means by "every Monday at 10:00"; fixed
+  UTC times would drift by an hour twice a year in zones with summer time.
+- The 180-day limit already stops one person holding a room for years; a series is held to it,
+  so it needs no other cap.
+- One message per series: a weekly meeting for six months would otherwise fill an inbox with 26
+  invitations to answer one by one.
+- **Trade-offs:**
+  - A daily series for six months is 181 rows and 181 live events at once. Fine for an office;
+    the events let open calendars patch themselves without a reload.
+  - Changing a series' time means cancelling the rest and booking a new one; an "edit every
+    date" would have to re-check them all, and say which failed.
+  - A date moved on its own stays in its series; "cancel the rest" cancels it too.
+  - A resource with a long series ahead can't go into maintenance until those dates are
+    cancelled (issue #41), as with single bookings.
