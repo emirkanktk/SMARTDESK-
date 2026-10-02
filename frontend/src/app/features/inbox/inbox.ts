@@ -3,7 +3,7 @@ import { Component, LOCALE_ID, OnInit, computed, inject, signal } from '@angular
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Subject, catchError, finalize, forkJoin, merge, of, switchMap, tap } from 'rxjs';
-import { inboxHeadline, meetingWhen } from '../../core/i18n/inbox-texts';
+import { inboxHeadline, messageWhen } from '../../core/i18n/inbox-texts';
 import { INBOX_PAGE_SIZE, InboxMessage, InboxMessageKind } from '../../core/models/inbox.model';
 import { Reservation } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -22,6 +22,10 @@ const KIND_ICONS: Record<InboxMessageKind, IconName> = {
   MeetingAccepted: 'calendar-check',
   MeetingDeclined: 'close',
   MeetingExtended: 'clock',
+  SeriesInvitation: 'calendar-plus',
+  SeriesCancelled: 'close',
+  SeriesAccepted: 'calendar-check',
+  SeriesDeclined: 'close',
 };
 
 /** News of a meeting the reader is still invited to, which they can answer. */
@@ -29,9 +33,17 @@ const ABOUT_AN_INVITATION: readonly InboxMessageKind[] = [
   'MeetingInvitation',
   'MeetingChanged',
   'MeetingExtended',
+  'SeriesInvitation',
 ];
 /** Answers to the reader's own invitations. */
-const ABOUT_AN_ANSWER: readonly InboxMessageKind[] = ['MeetingAccepted', 'MeetingDeclined'];
+const ABOUT_AN_ANSWER: readonly InboxMessageKind[] = [
+  'MeetingAccepted',
+  'MeetingDeclined',
+  'SeriesAccepted',
+  'SeriesDeclined',
+];
+/** Why someone can't come: shown to the organizer. */
+const DECLINED: readonly InboxMessageKind[] = ['MeetingDeclined', 'SeriesDeclined'];
 
 interface Item {
   message: InboxMessage;
@@ -51,9 +63,11 @@ interface Item {
   link: string[] | null;
   /**
    * The meeting to answer, on the newest message about one the reader is still invited to;
-   * older messages about it don't ask again.
+   * older messages about it don't ask again. For a meeting that repeats, its next date.
    */
   meeting: Reservation | null;
+  /** The answer is for that date and every later one: an invitation to a series (ADR-0035). */
+  following: boolean;
 }
 
 /**
@@ -94,29 +108,37 @@ export class Inbox implements OnInit {
     const asked = new Set<string>();
     return this.messages().map((message): Item => {
       const id = message.reservationId;
+      const seriesId = message.series?.id ?? null;
       const invitation = ABOUT_AN_INVITATION.includes(message.kind);
       const answer = ABOUT_AN_ANSWER.includes(message.kind);
-      // Newest first, so the first message about a meeting is the one that asks.
-      const meeting =
-        invitation && id !== null && !asked.has(id) ? (invitations.get(id) ?? null) : null;
-      if (meeting) {
-        asked.add(meeting.id);
+      // Newest first, so the first message about a meeting is the one that asks. A series is
+      // asked about from its next date the reader is still invited to.
+      const key = seriesId ?? id;
+      const found =
+        !invitation || key === null || asked.has(key)
+          ? null
+          : seriesId
+            ? nextDate(invitations.values(), seriesId)
+            : (invitations.get(id!) ?? null);
+      if (found && key) {
+        asked.add(key);
       }
+      const target = found?.id ?? id;
       return {
         message,
         headline: inboxHeadline(message),
-        when: `${message.resourceName} · ${meetingWhen(message, this.locale)}`,
+        when: `${message.resourceName} · ${messageWhen(message, this.locale)}`,
         received: this.receivedAt(new Date(message.createdAt), now),
         icon: KIND_ICONS[message.kind],
         unread: message.readAt === null,
-        quote:
-          message.kind === 'MeetingDeclined'
-            ? message.reason
-            : answer || message.kind === 'MeetingUninvited'
-              ? null
-              : message.note,
-        link: id !== null && (invitation || answer) ? ['/reservations', id, 'edit'] : null,
-        meeting,
+        quote: DECLINED.includes(message.kind)
+          ? message.reason
+          : answer || message.kind === 'MeetingUninvited'
+            ? null
+            : message.note,
+        link: target !== null && (invitation || answer) ? ['/reservations', target, 'edit'] : null,
+        meeting: found,
+        following: message.kind === 'SeriesInvitation',
       };
     });
   });
@@ -267,4 +289,15 @@ export class Inbox implements OnInit {
           : 'd MMM y';
     return formatDate(date, format, this.locale);
   }
+}
+
+/** The soonest date of a series among the meetings the reader is invited to. */
+function nextDate(meetings: Iterable<Reservation>, seriesId: string): Reservation | null {
+  let next: Reservation | null = null;
+  for (const meeting of meetings) {
+    if (meeting.series?.id === seriesId && (!next || meeting.startDateTime < next.startDateTime)) {
+      next = meeting;
+    }
+  }
+  return next;
 }

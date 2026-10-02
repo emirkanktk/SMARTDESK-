@@ -110,6 +110,9 @@
                 @if (item.checkedInBy; as by) {
                   · <span class="checked-in-by">{{ by }}</span>
                 }
+                @if (item.series; as series) {
+                  · <span class="series">{{ series }}</span>
+                }
               </p>
               @if (item.attendees; as attendees) {
                 <p class="text-muted meta attendees">{{ attendees }}</p>
@@ -173,6 +176,22 @@
                     <ng-container i18n="@@common.cancel">Cancel</ng-container>
                   }
                 </button>
+                @if (item.reservation.series) {
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm cancel-following"
+                    [disabled]="cancellingFollowingId() === item.reservation.id"
+                    (click)="cancelFollowing(item)"
+                  >
+                    @if (cancellingFollowingId() === item.reservation.id) {
+                      <ng-container i18n="@@reservationForm.cancelling">Cancelling…</ng-container>
+                    } @else {
+                      <ng-container i18n="@@mine.cancelFollowing"
+                        >Cancel this and later dates</ng-container
+                      >
+                    }
+                  </button>
+                }
               </div>
             }
           </li>

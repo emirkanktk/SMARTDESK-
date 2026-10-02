@@ -15,7 +15,8 @@ let nextId = 1;
 /**
  * The signed-in user's answer to a meeting they're invited to (ADR-0032): coming, or not and
  * why, for the organizer only. Shows what they answered, and lets them change it. Shows
- * nothing for someone who isn't on the meeting's list.
+ * nothing for someone who isn't on the meeting's list. With `following`, the answer is for this
+ * date of a meeting that repeats and every later one (ADR-0035).
  */
 @Component({
   selector: 'app-meeting-answer',
@@ -28,6 +29,8 @@ export class MeetingAnswer {
   private readonly notifications = inject(NotificationService);
 
   readonly reservation = input.required<Reservation>();
+  /** Answer for this date and every later one of its series. */
+  readonly following = input(false);
   /** The meeting as it is after the answer. */
   readonly answered = output<Reservation>();
 
@@ -79,7 +82,11 @@ export class MeetingAnswer {
     this.sending.set(true);
     this.error.set(null);
     this.reservationService
-      .respond(this.reservation().id, reason === undefined ? { response } : { response, reason })
+      .respond(this.reservation().id, {
+        response,
+        ...(reason === undefined ? {} : { reason }),
+        ...(this.following() ? { following: true } : {}),
+      })
       .pipe(finalize(() => this.sending.set(false)))
       .subscribe({
         next: (meeting) => {

@@ -38,6 +38,11 @@
       </form>
     } @else if (current === 'Pending' || changing()) {
       <p class="question" i18n="@@answer.question">Will you come?</p>
+      @if (following()) {
+        <p class="text-muted hint" i18n="@@answer.following">
+          Your answer is for this date and every later one.
+        </p>
+      }
       <div class="buttons">
         <button
           type="button"
