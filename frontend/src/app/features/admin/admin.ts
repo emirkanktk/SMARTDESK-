@@ -36,6 +36,7 @@ import {
   toDateParam,
 } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
+import { searchKey } from '../../shared/utils/search';
 
 const DEFAULT_DAYS = 7;
 
@@ -135,13 +136,13 @@ export class Admin {
   protected readonly rows = computed((): Row[] => {
     const now = this.now();
     const userId = this.authService.currentUser()?.id;
-    const term = this.search().trim().toLowerCase();
+    const term = searchKey(this.search().trim());
     return this.reservations()
       .filter(
         (r) =>
           !term ||
           [r.resourceName, r.resourceLocation, r.userDisplayName ?? '', r.note ?? ''].some((text) =>
-            text.toLowerCase().includes(term),
+            searchKey(text).includes(term),
           ),
       )
       .sort((a, b) => a.startDateTime.localeCompare(b.startDateTime))

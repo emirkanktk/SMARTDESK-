@@ -203,6 +203,27 @@ describe('Admin', () => {
     expect(getCalendar).toHaveBeenCalledTimes(1);
   });
 
+  it('finds a Turkish name however it is typed ("ilker" finds "İlker Işık")', async () => {
+    getCalendar.mockReturnValue(
+      of([
+        mine,
+        booking('rsv-7', '2026-10-07T09:00', '2026-10-07T10:00', {
+          userId: 'u-ilker',
+          userDisplayName: 'İlker Işık',
+        }),
+      ]),
+    );
+    await render();
+    const search = element.querySelector<HTMLInputElement>('#search')!;
+
+    for (const term of ['ilker', 'ışık', 'isik']) {
+      search.value = term;
+      search.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(text(element.querySelector('.summary')!)).toContain('1 of 2 confirmed reservations');
+    }
+  });
+
   it('uses the range from the query string, last day included', async () => {
     await render({ from: '2026-10-01', to: '2026-10-03' });
 

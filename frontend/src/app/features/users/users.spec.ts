@@ -148,6 +148,27 @@ describe('Users', () => {
     expect(names()).toEqual(['Zeynep Kaya']);
   });
 
+  it('finds a Turkish name however its capitals and accents are typed', async () => {
+    const ilker = account({
+      id: 'u-ilker',
+      firstName: 'İlker',
+      lastName: 'Işık',
+      email: 'u7@company.example',
+    });
+    accounts['getAccounts'].mockReturnValue(of([member, ilker]));
+    fixture = TestBed.createComponent(Users);
+    element = fixture.nativeElement;
+    await fixture.whenStable();
+
+    const search = element.querySelector<HTMLInputElement>('#search')!;
+    for (const term of ['ilker', 'ışık', 'isik']) {
+      search.value = term;
+      search.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(names()).toEqual(['İlker Işık']);
+    }
+  });
+
   it('offers approve and reject for a waiting sign-up, and nothing else', () => {
     const row = rowOf(waiting);
 

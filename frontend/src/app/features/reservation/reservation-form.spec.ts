@@ -847,6 +847,26 @@ describe('ReservationForm', () => {
       expect(element.querySelector('.no-match')!.textContent).toContain('Nobody matches');
     });
 
+    it('finds a Turkish name however its capitals and accents are typed', async () => {
+      isAdmin.set(true);
+      const many = Array.from({ length: ATTENDEE_SEARCH_FROM - 1 }, (_, i) => ({
+        id: `u-${i}`,
+        name: `Person ${i}`,
+        email: `person${i}@company.example`,
+      }));
+      const ilker = { id: 'u-ilker', name: 'İlker Işık', email: 'ilker@smartdesk.local' };
+      getInvitees.mockReturnValue(of([...many, ilker]));
+      await render({ resourceId: room.id });
+      const search = field('.attendee-search');
+
+      for (const term of ['ilker', 'İLK', 'ışık', 'isik']) {
+        search.value = term;
+        search.dispatchEvent(new Event('input'));
+        await fixture.whenStable();
+        expect(people()).toEqual(['İlker Işık']);
+      }
+    });
+
     it('has no search box for a short list', async () => {
       isManager.set(true);
       getInvitees.mockReturnValue(of([mehmet, can]));
