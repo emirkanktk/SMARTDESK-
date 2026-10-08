@@ -41,4 +41,8 @@ public enum InboxMessageKind
     // To whoever reported a problem with a resource: it's fixed (ADR-0037). The times are
     // when it was reported and when it was resolved, the note is what they wrote.
     IssueResolved = 11,
+
+    // To a booking's owner and everyone invited: it was cancelled because its resource was
+    // blocked for that time, e.g. while a problem is fixed (ADR-0038). The reason is the block's.
+    CancelledByBlock = 12,
 }

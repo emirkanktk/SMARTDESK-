@@ -428,12 +428,15 @@ The signed-in user's own messages; nobody sees anyone else's.
                                  // | IssueResolved (ADR-0037: to whoever reported a problem, once
                                  //   it's fixed; the times are when it was reported and resolved,
                                  //   the note what they wrote)
+                                 // | CancelledByBlock (ADR-0038: to the owner and those invited,
+                                 //   the reason is the block's)
   "reservationId": "…",          // null once the booking is gone
   "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release, which nobody sent
   "resourceName": "Board Room",  // the meeting as it was when the message was sent
   "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:00:00Z",
   "note": "Sprint planning",
-  "reason": null,                // why someone can't come, in a MeetingDeclined or SeriesDeclined
+  "reason": null,                // why someone can't come, in a MeetingDeclined or SeriesDeclined;
+                                 // the block's reason in a CancelledByBlock
   "series": null,                // for a Series* message: the rule; the times are then its first
                                  // date the message covers ("from Mon 5 Oct, every Monday ...")
   "issueCategory": null,         // for an IssueResolved message: what the problem was
@@ -559,7 +562,7 @@ car at the service - without changing its status. Blocks use the same half-open
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
 | GET | `/api/resource-blocks?from=&to=&resourceId=` | any authenticated user | `GetResourceBlocksQuery` | blocks overlapping `[from, to)`, earliest first; same limit as the calendar (42 days plus an hour). Drawn next to the calendar's reservations. Only blocks on resources the caller may use. |
-| POST | `/api/resource-blocks` | Admin or Manager | `CreateResourceBlockCommand` | body: `{ resourceId, startDateTime, endDateTime, reason }` → 201. A Manager may block only a resource that belongs to their team alone (403 for a shared one; 404 for another team's, ADR-0022). |
+| POST | `/api/resource-blocks` | Admin or Manager | `CreateResourceBlockCommand` | body: `{ resourceId, startDateTime, endDateTime, reason, cancelReservations }` → 201. `cancelReservations` (false when left out, ADR-0038) cancels the window's bookings with it. A Manager may block only a resource that belongs to their team alone (403 for a shared one; 404 for another team's, ADR-0022). |
 | DELETE | `/api/resource-blocks/{id}` | Admin or Manager | `DeleteResourceBlockCommand` | → 204; 404 if it doesn't exist. A Manager, as for POST. |
 
 ```json
@@ -579,8 +582,12 @@ car at the service - without changing its status. Blocks use the same half-open
 | 404 | the resource doesn't exist |
 | 409 | another block on the resource overlaps (`code: "block-overlaps-block"`, `"Meeting Room A is already blocked for part of that time."`), or `Confirmed` reservations overlap (`code: "block-overlaps-reservations"`, `"2 confirmed reservation(s) on Meeting Room A overlap this window. Cancel or move them first."`) |
 
-Existing reservations are never cancelled by a block. The admin cancels or moves them first,
-with the reservation endpoints, and then blocks. While a block exists, booking or moving a
+Without `cancelReservations`, existing reservations are never cancelled by a block: the admin
+cancels or moves them first, with the reservation endpoints, and then blocks. With it
+(ADR-0038), the `Confirmed` reservations in the window, one under way included, are cancelled
+in the same transaction as the block. Their owners and everyone invited get a
+`CancelledByBlock` inbox message with the block's reason, and every screen hears
+`ReservationCancelled`. While a block exists, booking or moving a
 reservation into its window returns 409 with the block's `reason`, and availability search
 leaves the resource out.
 

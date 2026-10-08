@@ -1162,3 +1162,36 @@ new tables.
   - A report can't be edited or withdrawn. Whoever manages the resource resolves a mistaken one.
   - Beyond the live events and the list, nothing tells those who manage the resource: no email.
   - Reports are never deleted, and the list isn't paged yet.
+
+## ADR-0038: A block can take its window's bookings with it, when asked
+
+**Decision** (amends ADR-0015):
+- **Asked, not by default.** `POST /api/resource-blocks` takes `cancelReservations`. Without
+  it nothing changes: `Confirmed` bookings in the window are a 409 that counts them. With it,
+  they're cancelled in the same transaction that creates the block. A booking under way is in
+  the window too.
+- **Everyone on them hears why.** The owner and everyone invited get a `CancelledByBlock`
+  inbox message with the block's reason, from whoever blocked it (they themselves get none).
+  Every screen that may see the resource hears `ReservationCancelled`.
+- **The usual lock order.** The bookings are locked first, one by one in id order, and then
+  the resource, the order every other handler takes them in (ADR-0011). A booking made after
+  they were found but before the resource was locked means looking again, three times at most,
+  and then the usual 409.
+- **What uses it.** Taking a resource out of use from a problem report (ADR-0037) closes it
+  until a chosen time. The screen says how many bookings that cancels before it asks.
+
+**Why:**
+- A broken room has to close now, and ADR-0015's "cancel or move them first" means one booking
+  at a time, just when time matters. The person closing it still decides: the count is shown
+  first, and nothing is cancelled without the flag.
+- A block rather than the `Maintenance` status: a block ends by itself, so a TV that's fixed by
+  tomorrow doesn't cancel next month's bookings, and the calendar shows the window with its
+  reason. `Maintenance` still waits for the bookings to go (ADR-0024).
+- The inbox, because cancelling someone else's booking otherwise only reaches the screens they
+  have open, and they may not have any.
+- Locking in the usual order means someone moving one of those bookings at that moment
+  can't end up waiting on this handler while it waits on them.
+- **Trade-offs:**
+  - A meeting under way is cancelled as a whole, not cut short, so its time so far drops out of
+    the usage report.
+  - Lifting the block early (deleting it) doesn't bring the cancelled bookings back.
