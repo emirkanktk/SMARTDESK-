@@ -641,15 +641,20 @@ Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
 |---|---|---|
 | `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). `ReservationReleaseWarning` - to the owner and those invited: nobody has checked in yet, and it's released in five minutes (ADR-0034). `ReservationEndingSoon` - to the owner only: their booking under way ends within ten minutes; do they need longer (ADR-0033)? Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
 
+Connecting takes the access token in the `access_token` query parameter, since a browser
+can't put a header on a WebSocket handshake. The rules under Auth apply: a guest or a dead
+token gets 401, an account still on a temporary password 403, and signing out or a change to
+the account cuts its open connections.
+
 All three events carry the reservation object shown under Reservations above, as it is after
 the change. For `ReservationUpdated` the resource or the times may be different from
 before, so screens should replace the entry by `id` rather than patch it in place. Every
 event includes
 `userDisplayName`, so a screen can say who just booked or cancelled. Handlers raise them
 through `IReservationNotifier` only after the change is committed.
-`SignalRReservationNotifier` sends each event to every connected client, and does not
-use the HTTP request's cancellation token: a closed tab must not swallow a change that
-already committed. Enum values in the payload are names (`"Confirmed"`), same as the
+`SignalRReservationNotifier` sends each event to everyone who may see the resource (above),
+and does not use the HTTP request's cancellation token: a closed tab must not swallow a change
+that already committed. Enum values in the payload are names (`"Confirmed"`), same as the
 HTTP API. A client that missed events while disconnected catches up by refetching when
 the connection comes back; the broadcast is not a queue.
 
