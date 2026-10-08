@@ -291,9 +291,36 @@ one there's no **Assistant** button anywhere, and nothing else changes.
 
 ### 18. The guide
 
-- **Guide** at the bottom of the menu: the app in ten short parts, each with a link to its page.
+- **Guide** at the bottom of the menu: the app in short parts, each with a link to its page.
   Sign in as Zeynep and then as the admin: each sees the part for their role, and the assistant's
   part appears only on a server with an assistant.
+
+### 19. A problem at the door
+
+This one is best on a phone: see "On a phone" in the frontend README. On one machine, a third
+window does.
+
+- As the admin, **Resources** → **QR labels**: every resource's code, eight to an A4 sheet with
+  lines to cut along, check-in or not. Print one, or show the print preview. Each opens its
+  resource's page.
+- As Mehmet, open Board Room's code (on its form, under **Check-in**, or scanned from a label).
+  The page has the room as its title, its day, and **Problems here**. **Report a problem** →
+  **Screen or TV**, "The TV doesn't turn on", a photo if on a phone (it opens the back camera),
+  tick **It can't be used until this is fixed** → **Send the report**.
+- The admin's window shows a toast at once, and **Problems** in the menu counts 1. Open it: the
+  report is on top, marked as unusable, with its photo.
+- As Ayşe, open the same code: the problem is listed, and choosing **Screen or TV** says it's
+  already reported instead of sending it again.
+- Back as the admin: **Take it out of use** → **the end of today**. It says first how many
+  bookings that cancels → **Close it**. The Calendar shows the window blocked with the problem
+  as its reason, and everyone who had a booking in it has a message in their inbox saying why.
+- **Mark resolved**: Mehmet's inbox says the problem he reported is resolved, and the screen asks
+  whether to open Board Room again → **OK**.
+- Point out: one report per problem (the same kind on the same resource while it isn't fixed,
+  except "Something else"); whoever may manage the resource follows it up - the admins, or the
+  manager of the one team it belongs to; photos are kept like a resource's, made smaller on the
+  phone first; and a door screen's codes are keyed by the screen, so the printed code can't
+  compute them (ADR-0037, ADR-0038, ADR-0039).
 
 ## Talking points
 
@@ -328,4 +355,6 @@ one there's no **Assistant** button anywhere, and nothing else changes.
 | A new block doesn't show in the Calendar | Blocks send no live events - reload, or move to another week and back. |
 | "Your session has expired" | The session ended: 14 days without use (30 days at most), a password change, or an admin's change to the account. Sign in again. |
 | No **Assistant** button | The API has no `Assistant:ApiKey`. The assistant is optional, and everything else works without it. |
+| The phone can't open a QR code | The code carries the API's `App:FrontendUrl`, `localhost` by default, which a phone can't reach. Use the computer's IP or a tunnel, and set `App__FrontendUrl` to it (frontend README, "On a phone"). |
+| On a phone, a reload asks to sign in again | Over plain http the phone doesn't keep the session cookie, which is `Secure`. A tunnel gives https and keeps it. |
 | Old bookings from rehearsals | Clear them as in DEMO.md, step 3. |

@@ -948,6 +948,15 @@
     "qrLabels.sheets": "{$INTERPOLATION} etiket, {$INTERPOLATION_1} A4 sayfada (sayfa başına {$INTERPOLATION_2}).",
     "qrLabels.missing": "{$INTERPOLATION} etiketin kodu yüklenemedi.",
     "qrLabels.howCheckIn": "Check-in yapmak ya da sorun bildirmek için okutun.",
-    "qrLabels.how": "Gününü görmek, rezerve etmek ya da sorun bildirmek için okutun."
+    "qrLabels.how": "Gününü görmek, rezerve etmek ya da sorun bildirmek için okutun.",
+    "guide.problem.title": "Sorun bildirin",
+    "guide.problem.where": "Bir odada ya da rezerve ettiğiniz başka bir şeyde sorun mu var? Kapısındaki QR kodu okutun ve Sorun bildir’e basın; rezervasyonunuz olmasa da olur.",
+    "guide.problem.what": "Neyle ilgili olduğunu seçip birkaç kelime yazın. Telefonunuzla çektiğiniz bir fotoğraf işe yarar; o arada kullanılamıyorsa bunu da işaretleyin.",
+    "guide.problem.once": "Orada daha önce bildirilen sorunlar en başta listelenir ve aynı sorun iki kez gönderilmez. Sorun çözülünce gelen kutunuza haber gelir.",
+    "guide.problems.title": "Sorunları takip edin",
+    "guide.problems.live": "İlgilendiğiniz kaynaklarda bildirilen sorunlar anında gelir: bir mesaj çıkar ve menüdeki Arıza talepleri yenilerini sayar.",
+    "guide.problems.resolve": "Birini işleme alın, düzelince çözüldü olarak işaretleyin; bildiren kişiye haber verilir.",
+    "guide.problems.close": "O arada kullanılamıyorsa seçtiğiniz bir zamana kadar bakıma alın. Önce bunun kaç rezervasyonu iptal edeceğini görürsünüz; sahiplerine nedeni bildirilir.",
+    "guide.problems.link": "Arıza talepleri"
   }
 }
