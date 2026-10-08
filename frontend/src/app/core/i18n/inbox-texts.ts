@@ -39,6 +39,9 @@ export function inboxHeadline(message: InboxMessage): string {
     // A problem the reader reported at a resource (ADR-0037).
     case 'IssueResolved':
       return $localize`:@@inbox.issueResolved:The problem you reported is resolved`;
+    // Its resource was closed for that time, e.g. while a problem is fixed (ADR-0038).
+    case 'CancelledByBlock':
+      return $localize`:@@inbox.cancelledByBlock:${sender}:sender: closed a resource, so a booking you're on was cancelled`;
   }
 }
 

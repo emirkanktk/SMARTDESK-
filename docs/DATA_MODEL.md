@@ -132,13 +132,13 @@ the booking it's about.
 |---|---|---|
 | Id | Guid | version 7, so ids sort like `CreatedAt` |
 | RecipientId | Guid | an account id; no FK across the Identity boundary |
-| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined / MeetingExtended (ADR-0033) / SeriesInvitation / SeriesCancelled / SeriesAccepted / SeriesDeclined (ADR-0035) / IssueResolved (ADR-0037) |
+| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined / MeetingExtended (ADR-0033) / SeriesInvitation / SeriesCancelled / SeriesAccepted / SeriesDeclined (ADR-0035) / IssueResolved (ADR-0037) / CancelledByBlock (ADR-0038) |
 | SenderId | Guid? | who caused it; null for a release |
 | ReservationId | Guid? | FK → `Reservation.Id`, set null when the booking is deleted |
 | ResourceName | string (200) | the meeting when the message was sent: the room's name, |
 | StartDateTime, EndDateTime | DateTime | its times, |
 | Note | string? (500) | and the organizer's note |
-| Reason | string? (500) | why someone can't come, in a MeetingDeclined or SeriesDeclined |
+| Reason | string? (500) | why someone can't come, in a MeetingDeclined or SeriesDeclined; the block's reason in a CancelledByBlock |
 | SeriesId | Guid? | FK → `ReservationSeries.Id` (set null), for a Series* message: which series; its times are then the first date it covers |
 | IssueCategory | IssueCategory? | for an IssueResolved message: what the problem was. Its times are then when it was reported and resolved, and its note what the reporter wrote |
 | CreatedAt | DateTime | |
@@ -396,8 +396,8 @@ erDiagram
 6. A reservation cannot be created for a start time in the past (5 minutes of grace, so
    booking "from now" isn't rejected by clock drift). A reservation lasts at most 31 days.
 7. A resource can't be booked, or a reservation moved, into a window covered by a
-   `ResourceBlock`. A block can't be created over `Confirmed` reservations or over another
-   block of the same resource. Creating a block takes the same per-resource lock as booking,
+   `ResourceBlock`. A block can't be created over `Confirmed` reservations, unless it's asked to
+   cancel them with it (ADR-0038), nor over another block of the same resource. Creating a block takes the same per-resource lock as booking,
    so a block and a reservation can never both claim one slot (ADR-0015).
 8. **Accounts (ADR-0020).** Each account has one role. Only an `Employee` has a manager, and
    that manager is an active `Manager`. A Manager manages only their own team; an Admin

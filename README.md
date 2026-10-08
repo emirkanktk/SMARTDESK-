@@ -50,6 +50,16 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   30 seconds, so only someone standing there can check in. At the door you can also book a free
   room on the spot, make a booking run longer or end it, and five minutes before a release
   everyone on the booking is warned ([ADR-0034](docs/DECISIONS.md)).
+- **Reporting a problem at the door** - the QR code at a resource's door also opens a way to
+  report a problem with it: what it's about, a few words, a photo from the phone's camera, and
+  whether it can't be used meanwhile. The page lists the problems already reported and not fixed
+  yet, and the same problem isn't reported twice. Every resource has a QR code now, check-in or
+  not ([ADR-0037](docs/DECISIONS.md)).
+- **Reported problems** - Admins, and managers for their team's own resources, see reports come
+  in live, with a toast and a count in the menu. They take them up and resolve them, and the
+  reporter is told in their inbox. A broken resource can be taken out of use until a chosen time:
+  the screen first says how many bookings that cancels, and their people are told why
+  ([ADR-0038](docs/DECISIONS.md)).
 - **Bookings that repeat** - every day, every weekday, every week or every 2 weeks until a last
   day: the form lists the dates first, those that aren't free with why, and books them all at
   once or only the free ones. Each date is a booking of its own; the rest of a series can be

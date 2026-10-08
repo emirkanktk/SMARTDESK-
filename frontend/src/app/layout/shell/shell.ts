@@ -3,6 +3,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Role, Roles } from '../../core/constants/roles';
 import { AuthService } from '../../core/services/auth.service';
 import { InboxService } from '../../core/services/inbox.service';
+import { IssueAlertsService } from '../../core/services/issue-alerts.service';
 import { Icon, IconName } from '../../shared/components/icon/icon';
 import { HideOnScroll } from '../../shared/directives/hide-on-scroll';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
@@ -20,6 +21,8 @@ interface NavItem {
   roles?: readonly Role[];
   /** A number next to the label while it isn't 0, e.g. unread messages. */
   count?: Signal<number>;
+  /** What the number counts, for screen readers: unread messages unless it says otherwise. */
+  counts?: 'new';
 }
 
 /**
@@ -52,6 +55,7 @@ interface NavItem {
 export class Shell {
   private readonly authService = inject(AuthService);
   protected readonly inbox = inject(InboxService);
+  private readonly issueAlerts = inject(IssueAlertsService);
 
   /** The assistant's button is showing: the page leaves room below its end for it. */
   protected readonly assistantShown = signal(false);
@@ -78,6 +82,15 @@ export class Shell {
       count: this.inbox.unread,
     },
     { path: '/team', label: $localize`:@@nav.team:My team`, icon: 'team', roles: [Roles.Manager] },
+    {
+      // Reported problems nobody has taken up yet (ADR-0037).
+      path: '/issues',
+      label: $localize`:@@nav.issues:Problems`,
+      icon: 'wrench',
+      roles: [Roles.Admin, Roles.Manager],
+      count: this.issueAlerts.open,
+      counts: 'new',
+    },
     { path: '/admin', label: $localize`:@@nav.admin:Admin`, icon: 'sliders', roles: [Roles.Admin] },
     {
       path: '/admin/users',

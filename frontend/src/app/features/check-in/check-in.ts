@@ -14,7 +14,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, merge, of } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { issueCategoryLabel, issueStatusLabel } from '../../core/i18n/labels';
-import { IssueReport } from '../../core/models/issue.model';
+import { IssueReport, compareIssues } from '../../core/models/issue.model';
 import { Reservation, checkInWindow } from '../../core/models/reservation.model';
 import { ResourceBlock } from '../../core/models/resource-block.model';
 import { Resource } from '../../core/models/resource.model';
@@ -267,7 +267,9 @@ export class CheckIn implements OnInit {
   /** The report went in: it's one of the known problems now, and the form closes. */
   protected onReported(issue: IssueReport): void {
     this.reporting.set(false);
-    this.openIssues.update((list) => sortIssues([issue, ...list.filter((i) => i.id !== issue.id)]));
+    this.openIssues.update((list) =>
+      [issue, ...list.filter((i) => i.id !== issue.id)].sort(compareIssues),
+    );
     this.notifications.success(
       $localize`:@@checkIn.reported:Thanks. The problem is reported, and whoever looks after ${issue.resourceName}:resource: is told.`,
     );
@@ -429,13 +431,4 @@ export function roomNowFor(
     .filter((start) => start > now)
     .sort((a, b) => a - b)[0];
   return { kind: 'free', until: next === undefined ? null : new Date(next) };
-}
-
-/** As the API lists them: those that make the resource unusable first, then the newest. */
-export function sortIssues(issues: IssueReport[]): IssueReport[] {
-  return [...issues].sort(
-    (a, b) =>
-      Number(b.isBlocking) - Number(a.isBlocking) ||
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
 }

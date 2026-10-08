@@ -6,6 +6,7 @@ import { fakeJwt } from '../testing/fake-jwt';
 import { App } from './app';
 import { AuthService } from './core/services/auth.service';
 import { InboxService } from './core/services/inbox.service';
+import { IssueAlertsService } from './core/services/issue-alerts.service';
 import { ReminderAlertsService } from './core/services/reminder-alerts.service';
 import { ReservationHubService } from './core/services/reservation-hub.service';
 
@@ -16,6 +17,7 @@ describe('App', () => {
   };
   const reminderAlerts = { start: vi.fn() };
   const inbox = { start: vi.fn() };
+  const issueAlerts = { start: vi.fn() };
 
   beforeEach(async () => {
     localStorage.clear();
@@ -23,6 +25,7 @@ describe('App', () => {
     hub.disconnect.mockClear();
     reminderAlerts.start.mockClear();
     inbox.start.mockClear();
+    issueAlerts.start.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
@@ -31,6 +34,7 @@ describe('App', () => {
         { provide: ReservationHubService, useValue: hub },
         { provide: ReminderAlertsService, useValue: reminderAlerts },
         { provide: InboxService, useValue: inbox },
+        { provide: IssueAlertsService, useValue: issueAlerts },
       ],
     }).compileComponents();
   });
@@ -48,11 +52,12 @@ describe('App', () => {
     });
   }
 
-  it('starts showing reservation reminders and inbox messages', () => {
+  it('starts showing reservation reminders, inbox messages and reported problems', () => {
     TestBed.createComponent(App).detectChanges();
 
     expect(reminderAlerts.start).toHaveBeenCalledTimes(1);
     expect(inbox.start).toHaveBeenCalledTimes(1);
+    expect(issueAlerts.start).toHaveBeenCalledTimes(1);
   });
 
   it('disconnects the hub when nobody is signed in', () => {

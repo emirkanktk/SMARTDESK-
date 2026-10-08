@@ -41,6 +41,7 @@ const ADMIN: Screen[] = [
   { path: '/admin/users' },
   { path: '/admin/reports' },
   { path: '/admin/blocks' },
+  { path: '/issues' },
   { path: '/guide' },
   { path: '/change-password' },
 ];
@@ -49,6 +50,7 @@ const ADMIN: Screen[] = [
 // answers.
 const MANAGER: Screen[] = [
   { path: '/team' },
+  { path: '/issues' },
   { path: '/resources' },
   { path: '/reservations/new' },
   { path: '/inbox' },

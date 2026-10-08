@@ -7,6 +7,7 @@ import { CurrentUser } from '../../core/models/auth.model';
 import { AssistantService } from '../../core/services/assistant.service';
 import { AuthService } from '../../core/services/auth.service';
 import { InboxService } from '../../core/services/inbox.service';
+import { IssueAlertsService } from '../../core/services/issue-alerts.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { Shell } from './shell';
@@ -14,6 +15,7 @@ import { Shell } from './shell';
 describe('Shell', () => {
   const currentUser = signal<CurrentUser | null>(null);
   const unread = signal(0);
+  const openIssues = signal(0);
   let logout: ReturnType<typeof vi.fn>;
   let assistantEnabled: boolean;
 
@@ -30,6 +32,7 @@ describe('Shell', () => {
   beforeEach(async () => {
     signInAs(Roles.Employee);
     unread.set(0);
+    openIssues.set(0);
     logout = vi.fn();
     assistantEnabled = false;
     const hasRole = (role: Role) => currentUser()?.roles.includes(role) ?? false;
@@ -54,6 +57,7 @@ describe('Shell', () => {
         },
         { provide: ReservationService, useValue: {} },
         { provide: InboxService, useValue: { unread } },
+        { provide: IssueAlertsService, useValue: { open: openIssues } },
         {
           provide: ReservationHubService,
           useValue: {
@@ -85,6 +89,7 @@ describe('Shell', () => {
     expect(navLabels(element)).not.toContain('Admin');
     expect(navLabels(element)).not.toContain('Users');
     expect(navLabels(element)).not.toContain('My team');
+    expect(navLabels(element)).not.toContain('Problems');
     expect(badge(element)).toBeUndefined();
   });
 
@@ -92,7 +97,7 @@ describe('Shell', () => {
     signInAs(Roles.Admin);
     const element = await render();
 
-    expect(navLabels(element)).toEqual(expect.arrayContaining(['Admin', 'Users']));
+    expect(navLabels(element)).toEqual(expect.arrayContaining(['Admin', 'Users', 'Problems']));
     expect(navLabels(element)).not.toContain('My team');
     expect(badge(element)).toBe('Admin');
   });
@@ -101,7 +106,7 @@ describe('Shell', () => {
     signInAs(Roles.Manager);
     const element = await render();
 
-    expect(navLabels(element)).toContain('My team');
+    expect(navLabels(element)).toEqual(expect.arrayContaining(['My team', 'Problems']));
     expect(navLabels(element)).not.toContain('Admin');
     expect(navLabels(element)).not.toContain('Users');
     expect(badge(element)).toBe('Manager');
@@ -129,6 +134,25 @@ describe('Shell', () => {
     expect(bell().getAttribute('aria-label')).toBe('Inbox, 3 unread');
     expect(bell().querySelector('.nav-count')!.textContent!.trim()).toBe('3');
     expect(bell().getAttribute('href')).toBe('/inbox');
+  });
+
+  it('counts the problems nobody has taken up yet next to the Problems link (ADR-0037)', async () => {
+    signInAs(Roles.Admin);
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    const element: HTMLElement = fixture.nativeElement;
+    const problems = () =>
+      Array.from(element.querySelectorAll<HTMLAnchorElement>('.nav-link')).find((a) =>
+        a.textContent!.includes('Problems'),
+      )!;
+
+    expect(problems().getAttribute('href')).toBe('/issues');
+    expect(problems().querySelector('.nav-count')).toBeNull();
+
+    openIssues.set(2);
+    await fixture.whenStable();
+
+    expect(problems().querySelector('.nav-count')!.textContent!.trim()).toBe('2 new');
   });
 
   it("shows the assistant's button only when the server has an assistant, and keeps room for it", async () => {

@@ -407,6 +407,28 @@ describe('Inbox', () => {
     expect(element.textContent).not.toContain('Only your latest messages are shown.');
   });
 
+  it('tells everyone on a booking that it was cancelled because its resource closed, and why (ADR-0038)', async () => {
+    list.mockReturnValue(
+      of([
+        inboxMessage({
+          id: 'm-block',
+          kind: 'CancelledByBlock',
+          senderName: 'Selin Kaya',
+          reason: 'Air conditioning: too hot to sit in',
+        }),
+      ]),
+    );
+    await render();
+    const [message] = messages();
+
+    expect(headlines()).toEqual([
+      "Selin Kaya closed a resource, so a booking you're on was cancelled",
+    ]);
+    expect(text(message.querySelector('.meeting')!)).toBe('Board Room · Mon 5 Oct, 10:00-11:00');
+    expect(text(message.querySelector('.note')!)).toBe('Air conditioning: too hot to sit in');
+    expect(message.querySelector('app-meeting-answer')).toBeNull();
+  });
+
   it('tells a reporter their problem is resolved, with what it was and their own words (ADR-0037)', async () => {
     list.mockReturnValue(
       of([

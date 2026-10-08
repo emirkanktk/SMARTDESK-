@@ -33,7 +33,7 @@ public sealed class ConflictCodeTests : IDisposable
     private async Task BlockAsync(Guid resourceId, int from, int to)
     {
         await using var context = _database.CreateContext();
-        await new CreateResourceBlockCommandHandler(context, new FakeCurrentUser(UserId, Roles.Admin))
+        await TestBlocks.Handler(context, new FakeCurrentUser(UserId, Roles.Admin))
             .Handle(new CreateResourceBlockCommand(resourceId, At(from), At(to), "Desk repair"), CancellationToken.None);
     }
 

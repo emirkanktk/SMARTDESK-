@@ -27,7 +27,7 @@ public class ResourceBlockHandlerTests : IDisposable
     private async Task<ResourceBlockDto> BlockAsync(Guid resourceId, double startHour, double endHour, string reason = "Projector replacement")
     {
         await using var context = _database.CreateContext();
-        return await new CreateResourceBlockCommandHandler(context, new FakeCurrentUser(AdminId, Roles.Admin))
+        return await TestBlocks.Handler(context, new FakeCurrentUser(AdminId, Roles.Admin))
             .Handle(new CreateResourceBlockCommand(resourceId, At(startHour), At(endHour), $"  {reason} "), CancellationToken.None);
     }
 

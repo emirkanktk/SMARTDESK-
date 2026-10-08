@@ -1,0 +1,170 @@
+<div class="page-header">
+  <h1 i18n="@@issues.title">Reported problems</h1>
+</div>
+
+<div class="card filters">
+  <div class="field">
+    <label for="issue-status" i18n="@@issues.statusFilter">Show</label>
+    <select id="issue-status" class="input" (change)="setStatus($event)">
+      <option value="unresolved" [selected]="status() === 'unresolved'" i18n="@@issues.unresolved">
+        Still to fix
+      </option>
+      <option value="Open" [selected]="status() === 'Open'">{{ statusLabel('Open') }}</option>
+      <option value="InProgress" [selected]="status() === 'InProgress'">
+        {{ statusLabel('InProgress') }}
+      </option>
+      <option value="Resolved" [selected]="status() === 'Resolved'">
+        {{ statusLabel('Resolved') }}
+      </option>
+      <option value="all" [selected]="status() === 'all'" i18n="@@issues.all">All</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="issue-resource" i18n="@@issues.resourceFilter">Resource</label>
+    <select id="issue-resource" class="input" (change)="setResource($event)">
+      <option value="" [selected]="!resourceId()" i18n="@@issues.allResources">
+        All resources
+      </option>
+      @for (resource of resources(); track resource.id) {
+        <option [value]="resource.id" [selected]="resource.id === resourceId()">
+          {{ resource.name }}
+        </option>
+      }
+    </select>
+  </div>
+  @if (!loading() && !loadFailed()) {
+    <p class="summary" i18n="@@issues.summary">
+      {{ counts().open }} open, {{ counts().inProgress }} in progress
+    </p>
+  }
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status" i18n="@@common.loading">Loading…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span i18n="@@issues.loadFailed">The reported problems could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="load()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
+  </div>
+} @else if (items().length === 0) {
+  <div class="card empty">
+    <app-icon name="wrench" />
+    @if (status() === 'unresolved' && !resourceId()) {
+      <p i18n="@@issues.noneToFix">
+        Nothing to fix. Problems reported from the QR code at a resource's door show up here.
+      </p>
+    } @else {
+      <p i18n="@@issues.noneMatch">No reported problems match these filters.</p>
+    }
+  </div>
+} @else {
+  <ul class="list" aria-live="polite">
+    @for (item of items(); track item.issue.id) {
+      @let issue = item.issue;
+      <li
+        class="card issue"
+        [class.blocking]="issue.isBlocking && issue.status !== 'Resolved'"
+        [class.resolved]="issue.status === 'Resolved'"
+      >
+        <div class="head">
+          <h2 class="what">{{ categoryLabel(issue.category) }} · {{ issue.resourceName }}</h2>
+          <span class="badge status" [attr.data-status]="issue.status">{{
+            statusLabel(issue.status)
+          }}</span>
+          @if (issue.isBlocking && issue.status !== 'Resolved') {
+            <span class="badge blocking-badge" i18n="@@checkIn.issueBlocking">Can't be used</span>
+          }
+        </div>
+
+        <div class="body">
+          @if (issue.hasPhoto) {
+            <app-issue-photo [issueId]="issue.id" [label]="photoLabel(issue)" />
+          }
+          <div>
+            <p class="description">{{ issue.description }}</p>
+            <p class="text-muted meta">{{ item.meta }}</p>
+          </div>
+        </div>
+
+        @if (item.closure; as closure) {
+          <p class="closed" i18n="@@issues.closedUntil">
+            Closed until {{ item.closedUntil }}: {{ closure.reason }}
+          </p>
+        }
+
+        @if (issue.status !== 'Resolved' || item.closure) {
+          <div class="actions">
+            @if (issue.status === 'Open') {
+              <button
+                type="button"
+                class="btn btn-secondary"
+                [disabled]="moving().has(issue.id)"
+                (click)="move(issue, 'InProgress')"
+                i18n="@@issues.takeUp"
+              >
+                Start on it
+              </button>
+            }
+            @if (issue.status === 'InProgress') {
+              <button
+                type="button"
+                class="btn btn-secondary"
+                [disabled]="moving().has(issue.id)"
+                (click)="move(issue, 'Open')"
+                i18n="@@issues.putBack"
+              >
+                Back to open
+              </button>
+            }
+            @if (issue.status !== 'Resolved') {
+              <button
+                type="button"
+                class="btn btn-primary"
+                [disabled]="moving().has(issue.id)"
+                (click)="move(issue, 'Resolved')"
+                i18n="@@issues.resolve"
+              >
+                Mark resolved
+              </button>
+            }
+            @if (item.closure; as closure) {
+              <button
+                type="button"
+                class="btn btn-secondary"
+                [disabled]="reopening() === closure.id"
+                (click)="reopen(closure)"
+                i18n="@@issues.reopen"
+              >
+                Open it again
+              </button>
+            } @else if (issue.status !== 'Resolved' && closing() !== issue.id) {
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="closing.set(issue.id)"
+                i18n="@@issues.takeOutOfUse"
+              >
+                Take it out of use
+              </button>
+            }
+          </div>
+        }
+
+        @if (closing() === issue.id && !item.closure) {
+          <app-take-out-of-use
+            [issue]="issue"
+            (closed)="onClosed(issue, $event)"
+            (cancelled)="closing.set(null)"
+          />
+        }
+      </li>
+    }
+  </ul>
+}

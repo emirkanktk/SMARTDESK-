@@ -222,7 +222,7 @@ public sealed class TeamResourceTests : IDisposable
         async Task Block(Resource resource)
         {
             await using var context = _database.CreateContext();
-            await new CreateResourceBlockCommandHandler(context, ZeynepManager)
+            await TestBlocks.Handler(context, ZeynepManager)
                 .Handle(new CreateResourceBlockCommand(resource.Id, At(13), At(14), "Cleaning"), CancellationToken.None);
         }
 

@@ -27,6 +27,7 @@ const KIND_ICONS: Record<InboxMessageKind, IconName> = {
   SeriesAccepted: 'calendar-check',
   SeriesDeclined: 'close',
   IssueResolved: 'check',
+  CancelledByBlock: 'close',
 };
 
 /** News of a meeting the reader is still invited to, which they can answer. */
@@ -43,8 +44,12 @@ const ABOUT_AN_ANSWER: readonly InboxMessageKind[] = [
   'SeriesAccepted',
   'SeriesDeclined',
 ];
-/** Why someone can't come: shown to the organizer. */
-const DECLINED: readonly InboxMessageKind[] = ['MeetingDeclined', 'SeriesDeclined'];
+/** Messages whose quote is their reason: why someone can't come, or why a resource closed. */
+const WITH_A_REASON: readonly InboxMessageKind[] = [
+  'MeetingDeclined',
+  'SeriesDeclined',
+  'CancelledByBlock',
+];
 
 interface Item {
   message: InboxMessage;
@@ -132,7 +137,7 @@ export class Inbox implements OnInit {
         received: this.receivedAt(new Date(message.createdAt), now),
         icon: KIND_ICONS[message.kind],
         unread: message.readAt === null,
-        quote: DECLINED.includes(message.kind)
+        quote: WITH_A_REASON.includes(message.kind)
           ? message.reason
           : answer || message.kind === 'MeetingUninvited'
             ? null

@@ -64,3 +64,17 @@ export function sameProblem(
     ? open.find((issue) => issue.category === category && issue.status !== 'Resolved')
     : undefined;
 }
+
+/**
+ * As the API lists reports: unresolved first, the ones that make a resource unusable first
+ * among those, then the newest.
+ */
+export function compareIssues(a: IssueReport, b: IssueReport): number {
+  const resolved = (issue: IssueReport) => Number(issue.status === 'Resolved');
+  const blocking = (issue: IssueReport) => Number(issue.isBlocking);
+  return (
+    resolved(a) - resolved(b) ||
+    blocking(b) - blocking(a) ||
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+}

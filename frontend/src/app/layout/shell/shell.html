@@ -28,9 +28,15 @@
         <app-icon [name]="item.icon" />
         <span>{{ item.label }}</span>
         @if (item.count?.(); as count) {
-          <span class="nav-count" i18n="@@nav.unread"
-            >{{ count }}<span class="visually-hidden"> unread</span></span
-          >
+          @if (item.counts === 'new') {
+            <span class="nav-count" i18n="@@nav.new"
+              >{{ count }}<span class="visually-hidden"> new</span></span
+            >
+          } @else {
+            <span class="nav-count" i18n="@@nav.unread"
+              >{{ count }}<span class="visually-hidden"> unread</span></span
+            >
+          }
         }
       </a>
     }

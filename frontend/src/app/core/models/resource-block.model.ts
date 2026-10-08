@@ -23,6 +23,11 @@ export interface CreateResourceBlockRequest {
   startDateTime: string;
   endDateTime: string;
   reason: string;
+  /**
+   * The Confirmed bookings in the window are cancelled with it, and their people told why
+   * (ADR-0038). Without it, they're a 409 to deal with first.
+   */
+  cancelReservations?: boolean;
 }
 
 // Validation limits enforced by the API; the form mirrors them for fast feedback.
