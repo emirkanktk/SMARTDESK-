@@ -1,0 +1,116 @@
+<form class="report" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <fieldset
+    class="categories"
+    [attr.aria-describedby]="invalid('category') ? 'issue-category-error' : null"
+  >
+    <legend i18n="@@reportIssue.whatsWrong">What's the problem with?</legend>
+    <div class="category-options">
+      @for (category of categories; track category) {
+        <label class="category-option">
+          <input type="radio" formControlName="category" [value]="category" />
+          <span>{{ categoryLabel(category) }}</span>
+        </label>
+      }
+    </div>
+    @if (invalid('category')) {
+      <span id="issue-category-error" class="field-error" i18n="@@reportIssue.categoryRequired"
+        >Choose what the problem is with.</span
+      >
+    }
+  </fieldset>
+
+  @if (duplicate(); as known) {
+    <p class="already" role="status" i18n="@@reportIssue.alreadyKnown">
+      This is already reported and isn't fixed yet: “{{ known.description }}”. There's no need to
+      report it again.
+    </p>
+  }
+
+  <div class="field">
+    <label for="issue-description" i18n="@@reportIssue.description">What's wrong?</label>
+    <textarea
+      id="issue-description"
+      class="input"
+      rows="3"
+      formControlName="description"
+      [attr.maxlength]="limits.descriptionMaxLength"
+      [attr.aria-invalid]="invalid('description')"
+      [attr.aria-describedby]="invalid('description') ? 'issue-description-error' : null"
+      placeholder="For example: the TV doesn't turn on"
+      i18n-placeholder="@@reportIssue.descriptionPlaceholder"
+    ></textarea>
+    @if (invalid('description')) {
+      <span
+        id="issue-description-error"
+        class="field-error"
+        i18n="@@reportIssue.descriptionRequired"
+        >Describe the problem in a few words.</span
+      >
+    }
+  </div>
+
+  <div class="field photo-field">
+    <span class="photo-label" i18n="@@reportIssue.photo"
+      >Photo <span class="text-muted">(optional)</span></span
+    >
+    @if (photo(); as chosen) {
+      <div class="photo-row">
+        <img class="preview" [src]="chosen.preview" alt="" />
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          (click)="removePhoto()"
+          i18n="@@reportIssue.removePhoto"
+        >
+          Remove photo
+        </button>
+      </div>
+    } @else {
+      <label class="btn btn-secondary file-button" [class.disabled]="preparingPhoto()">
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          class="visually-hidden"
+          [disabled]="preparingPhoto()"
+          (change)="choosePhoto($event)"
+        />
+        <ng-container i18n="@@reportIssue.takePhoto">Take a photo</ng-container>
+      </label>
+    }
+    @if (preparingPhoto()) {
+      <span class="text-muted hint" role="status" i18n="@@reportIssue.preparingPhoto"
+        >Preparing the photo…</span
+      >
+    }
+    @if (photoError(); as message) {
+      <span class="field-error" role="alert">{{ message }}</span>
+    }
+  </div>
+
+  <label class="check-option">
+    <input type="checkbox" formControlName="isBlocking" />
+    <span i18n="@@reportIssue.blocking">It can't be used until this is fixed</span>
+  </label>
+
+  @if (error(); as message) {
+    <div class="alert-error" role="alert">{{ message }}</div>
+  }
+
+  <div class="actions">
+    <button
+      type="submit"
+      class="btn btn-primary send"
+      [disabled]="sending() || preparingPhoto() || !!duplicate()"
+    >
+      @if (sending()) {
+        <ng-container i18n="@@reportIssue.sending">Sending…</ng-container>
+      } @else {
+        <ng-container i18n="@@reportIssue.send">Send the report</ng-container>
+      }
+    </button>
+    <button type="button" class="btn btn-secondary" (click)="cancelled.emit()">
+      <ng-container i18n="@@common.cancel">Cancel</ng-container>
+    </button>
+  </div>
+</form>

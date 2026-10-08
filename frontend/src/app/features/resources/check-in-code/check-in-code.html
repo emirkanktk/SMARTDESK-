@@ -1,75 +1,86 @@
 @if (code(); as current) {
-  <div class="door-screen" [class.on]="current.doorScreenSince">
-    @if (current.doorScreenSince) {
-      <p class="screen-title" i18n="@@doorScreen.on">
-        A door screen is set up, since {{ current.doorScreenSince | date: 'd MMM y, HH:mm' }}.
-      </p>
-      <p class="text-muted hint" i18n="@@doorScreen.onHint">
-        Only the screen's code checks in now, and it changes every 30 seconds, so a photo or a
-        shared link can't be used from anywhere else. The printed code below doesn't work while the
-        screen is on.
-      </p>
-    } @else {
-      <p class="screen-title" i18n="@@doorScreen.offTitle">A screen at the door, for more safety</p>
-      <p class="text-muted hint" i18n="@@doorScreen.offHint">
-        A tablet at the door can show the room's day and a QR code that changes every 30 seconds.
-        Then only someone standing at the door can check in: a photo of a printed code, or its link,
-        stops working.
-      </p>
-    }
+  @if (checkIn()) {
+    <div class="door-screen" [class.on]="current.doorScreenSince">
+      @if (current.doorScreenSince) {
+        <p class="screen-title" i18n="@@doorScreen.on">
+          A door screen is set up, since {{ current.doorScreenSince | date: 'd MMM y, HH:mm' }}.
+        </p>
+        <p class="text-muted hint" i18n="@@doorScreen.onHint">
+          Only the screen's code checks in now, and it changes every 30 seconds, so a photo or a
+          shared link can't be used from anywhere else. The printed code below doesn't work while
+          the screen is on.
+        </p>
+      } @else {
+        <p class="screen-title" i18n="@@doorScreen.offTitle">
+          A screen at the door, for more safety
+        </p>
+        <p class="text-muted hint" i18n="@@doorScreen.offHint">
+          A tablet at the door can show the room's day and a QR code that changes every 30 seconds.
+          Then only someone standing at the door can check in: a photo of a printed code, or its
+          link, stops working.
+        </p>
+      }
 
-    @if (screenLink(); as link) {
-      <div class="screen-link" role="status">
-        <span class="hint" i18n="@@doorScreen.linkHint"
-          >Open this link on the tablet at the door. It's shown only now, so open or copy it before
-          you leave this page.</span
-        >
-        <a class="link" [href]="link.url" target="_blank" rel="noopener">{{ link.url }}</a>
+      @if (screenLink(); as link) {
+        <div class="screen-link" role="status">
+          <span class="hint" i18n="@@doorScreen.linkHint"
+            >Open this link on the tablet at the door. It's shown only now, so open or copy it
+            before you leave this page.</span
+          >
+          <a class="link" [href]="link.url" target="_blank" rel="noopener">{{ link.url }}</a>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="copy(link.url)"
+            i18n="@@checkInCode.copy"
+          >
+            Copy link
+          </button>
+        </div>
+      }
+
+      <div class="actions">
         <button
           type="button"
           class="btn btn-secondary"
-          (click)="copy(link.url)"
-          i18n="@@checkInCode.copy"
-        >
-          Copy link
-        </button>
-      </div>
-    }
-
-    <div class="actions">
-      <button
-        type="button"
-        class="btn btn-secondary"
-        [disabled]="screenBusy()"
-        (click)="setUpScreen()"
-      >
-        @if (current.doorScreenSince) {
-          <ng-container i18n="@@doorScreen.newLink">New screen link</ng-container>
-        } @else {
-          <ng-container i18n="@@doorScreen.setUp">Set up a door screen</ng-container>
-        }
-      </button>
-      @if (current.doorScreenSince) {
-        <button
-          type="button"
-          class="btn text-button"
           [disabled]="screenBusy()"
-          (click)="turnOffScreen()"
-          i18n="@@doorScreen.turnOff"
+          (click)="setUpScreen()"
         >
-          Turn off the door screen
+          @if (current.doorScreenSince) {
+            <ng-container i18n="@@doorScreen.newLink">New screen link</ng-container>
+          } @else {
+            <ng-container i18n="@@doorScreen.setUp">Set up a door screen</ng-container>
+          }
         </button>
-      }
+        @if (current.doorScreenSince) {
+          <button
+            type="button"
+            class="btn text-button"
+            [disabled]="screenBusy()"
+            (click)="turnOffScreen()"
+            i18n="@@doorScreen.turnOff"
+          >
+            Turn off the door screen
+          </button>
+        }
+      </div>
     </div>
-  </div>
+  }
 
-  <div class="check-in-code" [class.idle]="current.doorScreenSince">
+  <div class="check-in-code" [class.idle]="checkIn() && current.doorScreenSince">
     <app-qr-code class="qr" [value]="current.url" [label]="qrLabel()" />
     <div class="details">
-      <span class="text-muted hint" i18n="@@checkInCode.hint"
-        >Print it and put it up at the door. Anyone with the link below can check in, so share it
-        only with whoever puts the code up.</span
-      >
+      @if (checkIn()) {
+        <span class="text-muted hint" i18n="@@checkInCode.hint"
+          >Print it and put it up at the door. Anyone with the link below can check in, so share it
+          only with whoever puts the code up.</span
+        >
+      } @else {
+        <span class="text-muted hint" i18n="@@checkInCode.hintNoCheckIn"
+          >Print it and put it up at the door. Scanning it opens the resource's page: its day, a
+          booking on the spot, and a way to report a problem.</span
+        >
+      }
       <a class="link" [href]="current.url" target="_blank" rel="noopener">{{ current.url }}</a>
       <div class="actions">
         <a

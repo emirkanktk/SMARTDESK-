@@ -1,5 +1,15 @@
 <div class="page-header">
-  <h1 i18n="@@checkIn.title">Check in</h1>
+  @if (resource(); as room) {
+    <div>
+      <h1>{{ room.name }}</h1>
+      <p class="text-muted room-facts">
+        {{ room.location }} ·
+        <ng-container i18n="@@availability.people.count">{{ room.capacity }} people</ng-container>
+      </p>
+    </div>
+  } @else {
+    <h1 i18n="@@checkIn.title">Check in</h1>
+  }
 </div>
 
 @if (loading()) {
@@ -9,7 +19,7 @@
     This resource could not be loaded. It may have been removed, or it isn't one you can use.
   </div>
 } @else if (resource(); as room) {
-  <section class="card visit" aria-labelledby="resource-name">
+  <section class="card visit">
     <app-resource-photo
       class="photo"
       [resourceId]="room.id"
@@ -17,15 +27,8 @@
       [photoUpdatedAt]="room.photoUpdatedAt"
     />
     <div class="body" aria-live="polite">
-      <div>
-        <h2 id="resource-name" class="name">{{ room.name }}</h2>
-        <p class="text-muted location">{{ room.location }}</p>
-      </div>
-
       @if (!room.checkInRequired) {
-        <p i18n="@@checkIn.notUsed">
-          {{ room.name }} doesn't use check-in, so there's nothing to do here.
-        </p>
+        <p class="status" i18n="@@checkIn.notNeeded">{{ room.name }} doesn't need a check-in.</p>
       } @else {
         @let current = visit();
         @if (current.kind === 'open') {
@@ -221,5 +224,53 @@
         <div class="alert-error" role="alert">{{ message }}</div>
       }
     </div>
+  </section>
+
+  <section class="card issues" aria-labelledby="issues-heading">
+    <h2 id="issues-heading" class="issues-title" i18n="@@checkIn.problems">Problems here</h2>
+    @if (openIssues().length > 0) {
+      <ul class="issue-list">
+        @for (issue of openIssues(); track issue.id) {
+          <li class="issue" [class.blocking]="issue.isBlocking">
+            <div class="issue-head">
+              <strong>{{ categoryLabel(issue.category) }}</strong>
+              @if (issue.isBlocking) {
+                <span class="badge blocking-badge" i18n="@@checkIn.issueBlocking"
+                  >Can't be used</span
+                >
+              }
+              @if (issue.status === 'InProgress') {
+                <span class="badge">{{ statusLabel(issue.status) }}</span>
+              }
+            </div>
+            <p class="issue-text">{{ issue.description }}</p>
+            <p class="text-muted issue-when" i18n="@@checkIn.issueSince">
+              Reported {{ when(issue.createdAt) }}
+            </p>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="text-muted no-issues" i18n="@@checkIn.noIssues">No problems reported here.</p>
+    }
+
+    @if (reporting()) {
+      <app-report-issue
+        [resourceId]="room.id"
+        [open]="openIssues()"
+        (reported)="onReported($event)"
+        (alreadyReported)="refreshIssues()"
+        (cancelled)="reporting.set(false)"
+      />
+    } @else {
+      <button
+        type="button"
+        class="btn btn-secondary report-button"
+        (click)="reporting.set(true)"
+        i18n="@@checkIn.reportProblem"
+      >
+        Report a problem
+      </button>
+    }
   </section>
 }

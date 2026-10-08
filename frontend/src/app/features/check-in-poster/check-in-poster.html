@@ -17,15 +17,28 @@
   @if (code(); as current) {
     <article class="sheet">
       <app-logo class="logo" />
-      <h1 class="title" i18n="@@poster.title">Check in here</h1>
+      @if (room.checkInRequired) {
+        <h1 class="title" i18n="@@poster.title">Check in here</h1>
+      } @else {
+        <h1 class="title" i18n="@@poster.titleNoCheckIn">Scan with your phone</h1>
+      }
       <p class="resource-name">{{ room.name }}</p>
       <p class="resource-location">{{ room.location }}</p>
       <app-qr-code class="qr" [value]="current.url" [label]="qrLabel()" />
-      <p class="how" i18n="@@poster.how">
-        Booked it? Scan the code with your phone's camera, from
-        {{ checkIn.opensBeforeMinutes }} minutes before your start until
-        {{ checkIn.graceMinutes }} minutes after. A booking nobody checks in to is released for
-        others to use.
+      @if (room.checkInRequired) {
+        <p class="how" i18n="@@poster.how">
+          Booked it? Scan the code with your phone's camera, from
+          {{ checkIn.opensBeforeMinutes }} minutes before your start until
+          {{ checkIn.graceMinutes }} minutes after. A booking nobody checks in to is released for
+          others to use.
+        </p>
+      } @else {
+        <p class="how" i18n="@@poster.howNoCheckIn">
+          Scan the code with your phone's camera to see its day and book it on the spot.
+        </p>
+      }
+      <p class="how report" i18n="@@poster.report">
+        Something wrong with it? Scan the code to report the problem.
       </p>
     </article>
   }

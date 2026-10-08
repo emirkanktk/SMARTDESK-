@@ -5,11 +5,14 @@ import { Subject, of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { Reservation } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
+import { IssueService } from '../../core/services/issue.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ResourceBlockService } from '../../core/services/resource-block.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
+import { fakeIssue } from '../../../testing/issue-fixtures';
+import { fakeObjectUrls } from '../../../testing/object-urls';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { fakeResource } from '../../../testing/resource-fixtures';
 import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
@@ -189,6 +192,8 @@ describe('CheckIn', () => {
   let end: ReturnType<typeof vi.fn>;
   let success: ReturnType<typeof vi.fn>;
   let checkIn: ReturnType<typeof vi.fn>;
+  let getOpen: ReturnType<typeof vi.fn>;
+  let report: ReturnType<typeof vi.fn>;
   let updated: Subject<Reservation>;
   let fixture: ComponentFixture<CheckIn>;
   let element: HTMLElement;
@@ -213,6 +218,17 @@ describe('CheckIn', () => {
     end = vi.fn((id: string) => of(booking({ id, endDateTime: new Date().toISOString() })));
     success = vi.fn();
     checkIn = vi.fn(() => of(booking({ checkedInAt: iso('09:55') })));
+    getOpen = vi.fn(() => of([]));
+    report = vi.fn((_resourceId: string, body: { category: string; description: string }) =>
+      of(
+        fakeIssue({
+          id: 'iss-new',
+          category: body.category as 'Display',
+          description: body.description,
+          createdAt: new Date().toISOString(),
+        }),
+      ),
+    );
     updated = new Subject();
 
     TestBed.configureTestingModule({
@@ -231,6 +247,7 @@ describe('CheckIn', () => {
           },
         },
         { provide: ResourceBlockService, useValue: { getBlocks } },
+        { provide: IssueService, useValue: { getOpen, report } },
         { provide: NotificationService, useValue: { success } },
         {
           provide: ReservationHubService,
@@ -260,7 +277,7 @@ describe('CheckIn', () => {
   it('checks in the open booking with the code from the QR code', async () => {
     await render();
 
-    expect(element.querySelector('h2')!.textContent).toBe('Meeting Room A');
+    expect(element.querySelector('h1')!.textContent).toBe('Meeting Room A');
     expect(element.textContent).toContain(
       'Your booking from 10:00 to 11:00 can be checked in until 10:15.',
     );
@@ -306,7 +323,7 @@ describe('CheckIn', () => {
     getResource.mockReturnValue(of(fakeResource({ checkInRequired: false })));
     await render();
 
-    expect(element.textContent).toContain("Meeting Room A doesn't use check-in");
+    expect(element.textContent).toContain("Meeting Room A doesn't need a check-in.");
     expect(checkInButton()).toBeNull();
   });
 
@@ -590,6 +607,220 @@ describe('CheckIn', () => {
       await render();
 
       expect(element.textContent).toContain("Meeting Room A can't be booked right now.");
+    });
+  });
+
+  describe('problems at the door (ADR-0037)', () => {
+    // Each problem's parts, as they read: what, how bad, the words, when.
+    const problems = () =>
+      [...element.querySelectorAll('.issue')].map((li) =>
+        [...li.querySelectorAll('strong, .badge, p')]
+          .map((part) => part.textContent!.replace(/\s+/g, ' ').trim())
+          .join(' '),
+      );
+    const button = (text: string) =>
+      [...element.querySelectorAll<HTMLButtonElement>('button')].find(
+        (b) => b.textContent!.trim() === text,
+      );
+    const sendButton = () =>
+      element.querySelector<HTMLButtonElement>('app-report-issue button[type="submit"]')!;
+
+    async function openForm(): Promise<void> {
+      button('Report a problem')!.click();
+      await fixture.whenStable();
+    }
+
+    /** Picks what the problem is with, by the words on its tile. */
+    async function choose(label: string): Promise<void> {
+      const tile = [...element.querySelectorAll('.category-option')].find(
+        (option) => option.textContent!.trim() === label,
+      )!;
+      tile.querySelector('input')!.click();
+      await fixture.whenStable();
+    }
+
+    async function describeIt(text: string): Promise<void> {
+      const area = element.querySelector<HTMLTextAreaElement>('#issue-description')!;
+      area.value = text;
+      area.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+    }
+
+    async function send(): Promise<void> {
+      element.querySelector('app-report-issue form')!.dispatchEvent(new Event('submit'));
+      await fixture.whenStable();
+    }
+
+    it('has the room as its title, with where it is and how many it holds', async () => {
+      await render();
+
+      expect(element.querySelector('h1')!.textContent).toBe('Meeting Room A');
+      expect(element.querySelector('.room-facts')!.textContent!.replace(/\s+/g, ' ').trim()).toBe(
+        '2nd Floor · 8 people',
+      );
+    });
+
+    it('lists the problems still open, the ones that make it unusable first', async () => {
+      getOpen.mockReturnValue(
+        of([
+          fakeIssue({
+            id: 'a',
+            category: 'AirConditioning',
+            description: 'Too hot',
+            isBlocking: true,
+          }),
+          fakeIssue({ id: 'b', status: 'InProgress' }),
+        ]),
+      );
+      await render();
+
+      expect(getOpen).toHaveBeenCalledWith('res-1');
+      expect(problems()).toEqual([
+        "Air conditioning Can't be used Too hot Reported 09:30",
+        "Screen or TV In progress The TV doesn't turn on Reported 09:30",
+      ]);
+    });
+
+    it('says so when nothing is reported, and works without the list', async () => {
+      await render();
+      expect(element.textContent).toContain('No problems reported here.');
+
+      getOpen.mockReturnValue(throwError(() => new ApiError(0, 'Unknown')));
+      await render();
+      expect(element.querySelector('h1')!.textContent).toBe('Meeting Room A');
+      expect(button('Report a problem')).toBeDefined();
+    });
+
+    it('reports a problem in a few words, with or without a booking, and lists it', async () => {
+      getMine.mockReturnValue(of([]));
+      await render();
+      await openForm();
+      await choose('Projector');
+      await describeIt('  No signal from HDMI ');
+      element.querySelector<HTMLInputElement>('input[formControlName="isBlocking"]')!.click();
+      await send();
+
+      expect(report).toHaveBeenCalledWith('res-1', {
+        category: 'Projector',
+        description: 'No signal from HDMI',
+        isBlocking: true,
+        photo: null,
+      });
+      expect(success).toHaveBeenCalledWith(
+        'Thanks. The problem is reported, and whoever looks after Meeting Room A is told.',
+      );
+      expect(element.querySelector('app-report-issue')).toBeNull();
+      expect(problems()[0]).toContain('No signal from HDMI');
+    });
+
+    it('asks what the problem is with, and for a few words, before sending', async () => {
+      await render();
+      await openForm();
+      await describeIt('   ');
+      await send();
+
+      expect(report).not.toHaveBeenCalled();
+      expect(element.textContent).toContain('Choose what the problem is with.');
+      expect(element.textContent).toContain('Describe the problem in a few words.');
+    });
+
+    it("won't send a problem that's already reported, though something else always goes", async () => {
+      getOpen.mockReturnValue(of([fakeIssue()]));
+      await render();
+      await openForm();
+
+      await choose('Screen or TV');
+      expect(element.textContent).toContain(
+        "This is already reported and isn't fixed yet: “The TV doesn't turn on”.",
+      );
+      expect(sendButton().disabled).toBe(true);
+
+      await choose('Something else');
+      expect(sendButton().disabled).toBe(false);
+    });
+
+    it('shows why the API refused it, and the report someone sent meanwhile', async () => {
+      const reason =
+        "This problem with Meeting Room A has already been reported and isn't fixed yet.";
+      report.mockReturnValue(
+        throwError(() => new ApiError(409, 'Conflict', reason, {}, 'issue-already-reported')),
+      );
+      await render();
+      getOpen.mockReturnValue(of([fakeIssue()]));
+      await openForm();
+      await choose('Screen or TV');
+      await describeIt('Black screen');
+      await send();
+
+      expect(element.querySelector('app-report-issue [role="alert"]')!.textContent).toBe(reason);
+      expect(getOpen).toHaveBeenCalledTimes(2);
+      expect(problems()).toHaveLength(1);
+    });
+
+    it('closes the form without sending anything', async () => {
+      await render();
+      await openForm();
+      button('Cancel')!.click();
+      await fixture.whenStable();
+
+      expect(element.querySelector('app-report-issue')).toBeNull();
+      expect(report).not.toHaveBeenCalled();
+    });
+
+    describe('with a photo', () => {
+      // The test DOM can neither decode nor draw pictures, so both are stood in for.
+      let urls: ReturnType<typeof fakeObjectUrls>;
+      const written = new Blob(['webp'], { type: 'image/webp' });
+
+      beforeEach(() => {
+        urls = fakeObjectUrls();
+        vi.stubGlobal(
+          'createImageBitmap',
+          vi.fn(async () => ({ width: 4000, height: 3000, close: vi.fn() })),
+        );
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+          drawImage: vi.fn(),
+          fillRect: vi.fn(),
+        } as unknown as CanvasRenderingContext2D);
+        vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(
+          (callback: BlobCallback) => callback(written),
+        );
+      });
+
+      afterEach(() => {
+        urls.restore();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+      });
+
+      it("takes it with the phone's back camera, made smaller, and sends it along", async () => {
+        await render();
+        await openForm();
+        const input = element.querySelector<HTMLInputElement>(
+          'app-report-issue input[type="file"]',
+        )!;
+        expect(input.getAttribute('capture')).toBe('environment');
+        expect(input.accept).toBe('image/*');
+
+        Object.defineProperty(input, 'files', {
+          value: [new File(['jpeg'], 'tv.jpg', { type: 'image/jpeg' })],
+        });
+        input.dispatchEvent(new Event('change'));
+        // Getting the picture ready is asynchronous work Angular doesn't track.
+        await new Promise((resolve) => setTimeout(resolve));
+        await fixture.whenStable();
+        expect(element.querySelector('app-report-issue img.preview')!.getAttribute('src')).toBe(
+          'blob:test-1',
+        );
+
+        await choose('Screen or TV');
+        await describeIt('Cracked screen');
+        await send();
+
+        expect(report).toHaveBeenCalledWith('res-1', expect.objectContaining({ photo: written }));
+        // The form is gone, and so is its preview.
+        expect(urls.revoked).toEqual(['blob:test-1']);
+      });
     });
   });
 

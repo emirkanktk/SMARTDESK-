@@ -6,11 +6,14 @@ import { CheckInCode, DoorScreenLink } from '../../../core/models/resource.model
 import { NotificationService } from '../../../core/services/notification.service';
 import { ResourceService } from '../../../core/services/resource.service';
 import { QrCode } from '../../../shared/components/qr-code/qr-code';
+import { qrCodeLabel } from '../../../shared/utils/qr';
 
 /**
- * A resource's QR code for checking in (ADR-0030), on its edit form: the code, its link, a
- * page to print it from, and a way to replace it when the printed one has got around. And a
- * screen at the door instead (ADR-0034): set up, a new link, or turned off.
+ * A resource's QR code (ADR-0030), on its edit form: the code, its link, a page to print it
+ * from, and a way to replace it when the printed one has got around. Every resource has one,
+ * since anyone at the door may report a problem from the page it opens (ADR-0037). With
+ * check-in, a screen at the door can show a changing code instead (ADR-0034): set up, a new
+ * link, or turned off.
  */
 @Component({
   imports: [DatePipe, QrCode, RouterLink],
@@ -21,6 +24,8 @@ import { QrCode } from '../../../shared/components/qr-code/qr-code';
 export class CheckInCodePanel implements OnInit {
   readonly resourceId = input.required<string>();
   readonly resourceName = input.required<string>();
+  /** Its bookings must be checked in: then the door screen matters too. */
+  readonly checkIn = input(true);
 
   private readonly resourceService = inject(ResourceService);
   private readonly notifications = inject(NotificationService);
@@ -31,10 +36,7 @@ export class CheckInCodePanel implements OnInit {
   /** A door screen's link, just set up: shown this once, as only its hash is kept. */
   protected readonly screenLink = signal<DoorScreenLink | null>(null);
   protected readonly screenBusy = signal(false);
-  protected readonly qrLabel = computed(
-    () =>
-      $localize`:@@checkInCode.qrLabel:QR code for checking in to ${this.resourceName()}:resource:`,
-  );
+  protected readonly qrLabel = computed(() => qrCodeLabel(this.resourceName()));
 
   ngOnInit(): void {
     this.resourceService.getCheckInCode(this.resourceId()).subscribe({

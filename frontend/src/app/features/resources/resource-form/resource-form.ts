@@ -99,7 +99,7 @@ export class ResourceForm implements OnInit {
   });
 
   protected readonly checkIn = CHECK_IN;
-  /** Whether the box is ticked now, saved or not: the QR code shows as soon as it is. */
+  /** Whether the box is ticked now, saved or not: the door screen's part shows as soon as it is. */
   protected readonly checkInOn = toSignal(this.form.controls.checkInRequired.valueChanges, {
     initialValue: false,
   });

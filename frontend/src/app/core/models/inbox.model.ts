@@ -1,5 +1,6 @@
 // Shapes of the inbox endpoints - see docs/API_CONTRACTS.md, Inbox (ADR-0032).
 
+import { IssueCategory } from './issue.model';
 import { ReservationSeries } from './reservation.model';
 
 export const INBOX_MESSAGE_KINDS = [
@@ -14,6 +15,7 @@ export const INBOX_MESSAGE_KINDS = [
   'SeriesCancelled',
   'SeriesAccepted',
   'SeriesDeclined',
+  'IssueResolved',
 ] as const;
 export type InboxMessageKind = (typeof INBOX_MESSAGE_KINDS)[number];
 
@@ -21,7 +23,9 @@ export type InboxMessageKind = (typeof INBOX_MESSAGE_KINDS)[number];
  * A message about a meeting the reader is, or was, invited to - or, for its organizer, an
  * answer to their invitation. It keeps the meeting as it was when the message was sent, and
  * the app writes the sentence in the reader's language. Also the payload of the hub's
- * InboxMessageReceived event, which only its recipient gets.
+ * InboxMessageReceived event, which only its recipient gets. Since ADR-0037 it also tells
+ * someone that a problem they reported is resolved (IssueResolved): its times are then when
+ * it was reported and resolved, and its note what they wrote.
  */
 export interface InboxMessage {
   id: string;
@@ -45,6 +49,8 @@ export interface InboxMessage {
    * first date the message covers.
    */
   series?: ReservationSeries | null;
+  /** What the problem an IssueResolved message is about was. */
+  issueCategory?: IssueCategory | null;
   createdAt: string;
   /** When the reader marked it read; null while it's unread. */
   readAt: string | null;

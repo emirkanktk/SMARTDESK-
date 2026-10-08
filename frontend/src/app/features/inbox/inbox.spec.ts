@@ -406,6 +406,33 @@ describe('Inbox', () => {
 
     expect(element.textContent).not.toContain('Only your latest messages are shown.');
   });
+
+  it('tells a reporter their problem is resolved, with what it was and their own words (ADR-0037)', async () => {
+    list.mockReturnValue(
+      of([
+        inboxMessage({
+          id: 'm-issue',
+          kind: 'IssueResolved',
+          reservationId: null,
+          resourceName: 'Board Room',
+          startDateTime: utc('2026-10-05T09:30'),
+          endDateTime: utc('2026-10-05T11:00'),
+          note: "The TV doesn't turn on",
+          issueCategory: 'Display',
+        }),
+      ]),
+    );
+    await render();
+    const [message] = messages();
+
+    expect(headlines()).toEqual(['The problem you reported is resolved']);
+    expect(text(message.querySelector('.meeting')!)).toBe(
+      'Board Room · Screen or TV, reported Mon 5 Oct, 09:30',
+    );
+    expect(text(message.querySelector('.note')!)).toBe("The TV doesn't turn on");
+    expect(message.querySelector('a')).toBeNull(); // no meeting to open
+    expect(message.querySelector('app-meeting-answer')).toBeNull();
+  });
   describe('a meeting that repeats (ADR-0035)', () => {
     const series = {
       id: 'series-1',

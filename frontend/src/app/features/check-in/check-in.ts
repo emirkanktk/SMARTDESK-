@@ -13,10 +13,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, merge, of } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
+import { issueCategoryLabel, issueStatusLabel } from '../../core/i18n/labels';
+import { IssueReport } from '../../core/models/issue.model';
 import { Reservation, checkInWindow } from '../../core/models/reservation.model';
 import { ResourceBlock } from '../../core/models/resource-block.model';
 import { Resource } from '../../core/models/resource.model';
 import { AuthService } from '../../core/services/auth.service';
+import { IssueService } from '../../core/services/issue.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
@@ -25,6 +28,7 @@ import { ResourceService } from '../../core/services/resource.service';
 import { ExtendBooking } from '../../shared/components/extend-booking/extend-booking';
 import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
 import { addDays, startOfDay } from '../../shared/utils/date-time';
+import { ReportIssue } from './report-issue/report-issue';
 
 /** What the page offers for the caller's bookings of the resource, at a given moment. */
 export type Visit =
@@ -60,9 +64,13 @@ export type RoomNow =
  * as soon as it's read; a booking checked in says who did it, and its owner can make it run
  * longer or end it there; and someone with nothing to check in to sees whether the room is
  * free, and can book it on the spot, checked in at once.
+ *
+ * And anyone there can report a problem with it (ADR-0037), seeing first the ones already
+ * reported and not fixed yet. That's why the page is the resource's own, whether or not its
+ * bookings need a check-in.
  */
 @Component({
-  imports: [RouterLink, ExtendBooking, ResourcePhoto],
+  imports: [RouterLink, ExtendBooking, ResourcePhoto, ReportIssue],
   selector: 'app-check-in',
   styleUrl: './check-in.scss',
   templateUrl: './check-in.html',
@@ -78,6 +86,7 @@ export class CheckIn implements OnInit {
   private readonly hub = inject(ReservationHubService);
   private readonly auth = inject(AuthService);
   private readonly blocks = inject(ResourceBlockService);
+  private readonly issues = inject(IssueService);
   private readonly notifications = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -106,6 +115,12 @@ export class CheckIn implements OnInit {
   protected readonly checkingIn = signal(false);
   protected readonly error = signal<string | null>(null);
   private readonly now = signal(Date.now());
+
+  /** The problems reported here and not fixed yet; blocking ones first, then the newest. */
+  protected readonly openIssues = signal<IssueReport[]>([]);
+  protected readonly reporting = signal(false);
+  protected readonly categoryLabel = issueCategoryLabel;
+  protected readonly statusLabel = issueStatusLabel;
 
   protected readonly visit = computed(() => visitFor(this.mine(), this.resourceId(), this.now()));
   protected readonly roomNow = computed(() => {
@@ -139,16 +154,18 @@ export class CheckIn implements OnInit {
       resource: this.resourceService.getResource(this.resourceId()),
       mine: this.reservationService.getMine(),
       invited: this.reservationService.getInvited(),
-      // Only for the room's status: the page works without it.
+      // Only for the room's status and its known problems: the page works without them.
       bookings: this.reservationService.getCalendar(range).pipe(catchError(() => of([]))),
       blocks: this.blocks.getBlocks(range).pipe(catchError(() => of([]))),
+      issues: this.issues.getOpen(this.resourceId()).pipe(catchError(() => of([]))),
     })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: ({ resource, mine, invited, bookings, blocks }) => {
+        next: ({ resource, mine, invited, bookings, blocks, issues }) => {
           this.resource.set(resource);
           this.mine.set([...mine, ...invited]);
           this.day.set({ bookings, blocks });
+          this.openIssues.set(issues);
         },
         error: () => this.loadFailed.set(true),
       });
@@ -244,6 +261,27 @@ export class CheckIn implements OnInit {
           this.notifications.success($localize`:@@checkIn.ended:${name}:resource: is free again.`);
         },
         error: (error: unknown) => this.error.set(this.reason(error)),
+      });
+  }
+
+  /** The report went in: it's one of the known problems now, and the form closes. */
+  protected onReported(issue: IssueReport): void {
+    this.reporting.set(false);
+    this.openIssues.update((list) => sortIssues([issue, ...list.filter((i) => i.id !== issue.id)]));
+    this.notifications.success(
+      $localize`:@@checkIn.reported:Thanks. The problem is reported, and whoever looks after ${issue.resourceName}:resource: is told.`,
+    );
+  }
+
+  /** Someone reported the same problem meanwhile: show it, so it's clear why. */
+  protected refreshIssues(): void {
+    this.issues
+      .getOpen(this.resourceId())
+      .pipe(catchError(() => of(null)))
+      .subscribe((issues) => {
+        if (issues) {
+          this.openIssues.set(issues);
+        }
       });
   }
 
@@ -391,4 +429,13 @@ export function roomNowFor(
     .filter((start) => start > now)
     .sort((a, b) => a - b)[0];
   return { kind: 'free', until: next === undefined ? null : new Date(next) };
+}
+
+/** As the API lists them: those that make the resource unusable first, then the newest. */
+export function sortIssues(issues: IssueReport[]): IssueReport[] {
+  return [...issues].sort(
+    (a, b) =>
+      Number(b.isBlocking) - Number(a.isBlocking) ||
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 }
