@@ -1,0 +1,99 @@
+<div class="toolbar">
+  <a class="btn btn-secondary" routerLink="/resources" i18n="@@qrLabels.back">Back to resources</a>
+  <h1 class="title" i18n="@@qrLabels.title">QR labels</h1>
+  <button
+    type="button"
+    class="btn btn-primary"
+    [disabled]="loading() || labels().length === 0"
+    (click)="print()"
+    i18n="@@qrLabels.print"
+  >
+    Print
+  </button>
+</div>
+
+@if (loading()) {
+  <p class="text-muted center" role="status" i18n="@@qrLabels.loading">Loading the QR codes…</p>
+} @else if (failed()) {
+  <div class="alert-error center" role="alert" i18n="@@qrLabels.failed">
+    The resources could not be loaded.
+  </div>
+} @else if (resources().length === 0) {
+  <p class="text-muted center" i18n="@@qrLabels.none">
+    There are no resources here you can print labels for.
+  </p>
+} @else {
+  <section class="card chooser" aria-labelledby="chooser-title">
+    <div class="chooser-head">
+      <h2 id="chooser-title" i18n="@@qrLabels.which">Which labels</h2>
+      <label class="pick">
+        <span class="visually-hidden" i18n="@@qrLabels.pickLabel">Choose</span>
+        <select class="input" (change)="pick($event)">
+          <option value="" disabled selected i18n="@@qrLabels.pickPrompt">Choose…</option>
+          <option value="all" i18n="@@qrLabels.pickAll">All of them</option>
+          <option value="none" i18n="@@qrLabels.pickNone">None</option>
+          @for (type of typesHere(); track type.id) {
+            <option [value]="type.id">{{ type.name }}</option>
+          }
+        </select>
+      </label>
+    </div>
+    <ul class="choices">
+      @for (resource of resources(); track resource.id) {
+        <li>
+          <label class="choice">
+            <input
+              type="checkbox"
+              [checked]="selected().has(resource.id)"
+              (change)="toggle(resource.id, $event)"
+            />
+            <span>{{ resource.name }}</span>
+          </label>
+        </li>
+      }
+    </ul>
+    <p class="summary" role="status">
+      @if (sheets() === 1) {
+        <span i18n="@@qrLabels.oneSheet"
+          >{{ labels().length }} labels, on 1 A4 sheet ({{ perSheet }} to a sheet).</span
+        >
+      } @else {
+        <span i18n="@@qrLabels.sheets"
+          >{{ labels().length }} labels, on {{ sheets() }} A4 sheets ({{ perSheet }} to a
+          sheet).</span
+        >
+      }
+      @if (missing() > 0) {
+        <span class="field-error" i18n="@@qrLabels.missing"
+          >The code of {{ missing() }} could not be loaded.</span
+        >
+      }
+    </p>
+  </section>
+
+  <div class="labels">
+    @for (label of labels(); track label.resource.id) {
+      <article class="label">
+        <div class="qr">
+          @if (label.url; as url) {
+            <app-qr-code [value]="url" [label]="label.qrLabel" />
+          }
+        </div>
+        <div class="text">
+          <app-logo class="logo" />
+          <p class="resource-name">{{ label.resource.name }}</p>
+          <p class="resource-location">{{ label.resource.location }}</p>
+          @if (label.resource.checkInRequired) {
+            <p class="how" i18n="@@qrLabels.howCheckIn">
+              Scan to check in, or to report a problem.
+            </p>
+          } @else {
+            <p class="how" i18n="@@qrLabels.how">
+              Scan to see its day, book it, or report a problem.
+            </p>
+          }
+        </div>
+      </article>
+    }
+  </div>
+}

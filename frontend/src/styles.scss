@@ -135,6 +135,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+// Paper is white whatever the theme, background graphics printed or not: the QR sheets set
+// their own colours on it.
+@media print {
+  body {
+    background: #fff;
+  }
+}
+
 h1,
 h2,
 h3 {

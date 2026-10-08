@@ -59,6 +59,14 @@ export const routes: Routes = [
       import('./features/check-in-poster/check-in-poster').then((m) => m.CheckInPoster),
   },
   {
+    // Many resources' QR codes as labels, eight to an A4 sheet (ADR-0037). Outside the shell,
+    // so only the labels print.
+    path: 'resources/qr-labels',
+    canActivate: [authGuard, resourceEditorGuard],
+    title: $localize`:@@title.qrLabels:QR labels · SmartDesk`,
+    loadComponent: () => import('./features/qr-labels/qr-labels').then((m) => m.QrLabels),
+  },
+  {
     // The screen at a resource's door (ADR-0034): no user and no shell, just the room and its
     // changing QR code. The link it's opened with carries the screen's own token.
     path: 'door/:resourceId',

@@ -1,7 +1,12 @@
 <div class="page-header">
   <h1 i18n="@@nav.resources">Resources</h1>
   @if (canCreate()) {
-    <a class="btn btn-primary" routerLink="/resources/new" i18n="@@resources.new">New resource</a>
+    <div class="header-actions">
+      <a class="btn btn-secondary" routerLink="/resources/qr-labels" i18n="@@resources.qrLabels"
+        >QR labels</a
+      >
+      <a class="btn btn-primary" routerLink="/resources/new" i18n="@@resources.new">New resource</a>
+    </div>
   }
 </div>
 
