@@ -1,6 +1,7 @@
 import { formatDate } from '@angular/common';
 import { describeSeries } from '../../shared/utils/recurrence';
 import { InboxMessage } from '../models/inbox.model';
+import { issueCategoryLabel } from './labels';
 
 // The sentences of the inbox (ADR-0032). The API sends what happened and to which meeting;
 // the words are written here, in the reader's language.
@@ -35,6 +36,9 @@ export function inboxHeadline(message: InboxMessage): string {
       return $localize`:@@inbox.seriesAccepted:${sender}:sender: is coming to your meeting that repeats`;
     case 'SeriesDeclined':
       return $localize`:@@inbox.seriesDeclined:${sender}:sender: can't come to your meeting that repeats`;
+    // A problem the reader reported at a resource (ADR-0037).
+    case 'IssueResolved':
+      return $localize`:@@inbox.issueResolved:The problem you reported is resolved`;
   }
 }
 
@@ -56,6 +60,14 @@ export function meetingWhen(
  * 12 Oct, every Monday until 2 Nov 2026, 10:00-11:00".
  */
 export function messageWhen(message: InboxMessage, locale: string): string {
+  if (message.kind === 'IssueResolved') {
+    // Its times are when the problem was reported and when it was resolved.
+    const what = message.issueCategory ? issueCategoryLabel(message.issueCategory) : '';
+    const reported = formatDate(message.startDateTime, 'EEE d MMM, HH:mm', locale);
+    return what
+      ? $localize`:@@inbox.issueWhen:${what}:category:, reported ${reported}:date:`
+      : $localize`:@@inbox.issueReportedAt:reported ${reported}:date:`;
+  }
   if (!message.series) {
     return meetingWhen(message, locale);
   }

@@ -270,14 +270,16 @@
         released, so others can use it. Bookings made before this was switched on don't need
         one.</span
       >
-      @if (checkInOn()) {
-        @if (id(); as resourceId) {
-          <app-check-in-code [resourceId]="resourceId" [resourceName]="loadedName()" />
-        } @else {
-          <span class="text-muted hint" i18n="@@resourceForm.checkInCodeAfterSave"
-            >Its QR code shows here once the resource is saved.</span
-          >
-        }
+      @if (id(); as resourceId) {
+        <app-check-in-code
+          [resourceId]="resourceId"
+          [resourceName]="loadedName()"
+          [checkIn]="checkInOn()"
+        />
+      } @else {
+        <span class="text-muted hint" i18n="@@resourceForm.checkInCodeAfterSave"
+          >Its QR code shows here once the resource is saved.</span
+        >
       }
     </fieldset>
 

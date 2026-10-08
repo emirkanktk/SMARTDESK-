@@ -26,6 +26,7 @@ const KIND_ICONS: Record<InboxMessageKind, IconName> = {
   SeriesCancelled: 'close',
   SeriesAccepted: 'calendar-check',
   SeriesDeclined: 'close',
+  IssueResolved: 'check',
 };
 
 /** News of a meeting the reader is still invited to, which they can answer. */

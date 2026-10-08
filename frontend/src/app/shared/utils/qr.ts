@@ -26,3 +26,8 @@ export function qrModules(text: string): QrModules {
   }
   return { size, path };
 }
+
+/** What a resource's QR code is read out as, in place of the picture: "QR code for Board Room". */
+export function qrCodeLabel(resourceName: string): string {
+  return $localize`:@@qr.label:QR code for ${resourceName}:resource:`;
+}

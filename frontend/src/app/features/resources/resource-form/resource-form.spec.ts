@@ -288,18 +288,21 @@ describe('ResourceForm', () => {
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ checkInRequired: true }));
   });
 
-  it('shows the QR code of a resource with check-in, until check-in is switched off', async () => {
+  it('keeps the QR code when check-in is switched off, only without the door screen', async () => {
     getResource.mockReturnValue(of(fakeResource({ checkInRequired: true })));
     await render('res-1');
 
     expect(getCheckInCode).toHaveBeenCalledWith('res-1');
     expect(element.querySelector('app-check-in-code svg')!.getAttribute('aria-label')).toBe(
-      'QR code for checking in to Meeting Room A',
+      'QR code for Meeting Room A',
     );
     expect(element.textContent).toContain('http://localhost:4200/check-in/res-1?code=c0de');
+    expect(element.querySelector('app-check-in-code .door-screen')).not.toBeNull();
 
+    // Anyone at the door may still report a problem from the page it opens (ADR-0037).
     await tick('input[formControlName="checkInRequired"]');
-    expect(element.querySelector('app-check-in-code')).toBeNull();
+    expect(element.querySelector('app-check-in-code svg')).not.toBeNull();
+    expect(element.querySelector('app-check-in-code .door-screen')).toBeNull();
 
     await submit();
     expect(update).toHaveBeenCalledWith(

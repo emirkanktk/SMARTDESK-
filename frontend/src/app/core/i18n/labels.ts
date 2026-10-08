@@ -1,5 +1,6 @@
 import { Role, Roles } from '../constants/roles';
 import { AccountStatus } from '../models/account.model';
+import { IssueCategory, IssueStatus } from '../models/issue.model';
 import { AttendeeResponse, ReservationStatus } from '../models/reservation.model';
 import { ResourceStatus } from '../models/resource.model';
 
@@ -57,5 +58,37 @@ export function roleLabel(role: Role): string {
       return $localize`:@@role.manager:Manager`;
     case Roles.Employee:
       return $localize`:@@role.employee:Employee`;
+  }
+}
+
+/** What a reported problem is about (ADR-0037). */
+export function issueCategoryLabel(category: IssueCategory): string {
+  switch (category) {
+    case 'Display':
+      return $localize`:@@issue.category.display:Screen or TV`;
+    case 'Projector':
+      return $localize`:@@issue.category.projector:Projector`;
+    case 'AudioVideo':
+      return $localize`:@@issue.category.audioVideo:Camera or sound`;
+    case 'AirConditioning':
+      return $localize`:@@issue.category.airConditioning:Air conditioning`;
+    case 'Cleaning':
+      return $localize`:@@issue.category.cleaning:Cleaning`;
+    case 'Furniture':
+      return $localize`:@@issue.category.furniture:Furniture`;
+    case 'Other':
+      return $localize`:@@issue.category.other:Something else`;
+  }
+}
+
+/** Where a reported problem stands. */
+export function issueStatusLabel(status: IssueStatus): string {
+  switch (status) {
+    case 'Open':
+      return $localize`:@@issue.status.open:Open`;
+    case 'InProgress':
+      return $localize`:@@issue.status.inProgress:In progress`;
+    case 'Resolved':
+      return $localize`:@@issue.status.resolved:Resolved`;
   }
 }

@@ -1,0 +1,123 @@
+// One column, big targets: it's filled in standing at a door, phone in hand.
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.categories {
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    margin-bottom: var(--space-2);
+    padding: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+}
+
+// Two to a row even on a narrow phone, so the form stays short.
+.category-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.25rem), 1fr));
+  gap: var(--space-2);
+}
+
+// A radio that looks like a button: the whole tile is the target.
+.category-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  cursor: pointer;
+
+  &:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+    font-weight: 600;
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.already {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-surface-2);
+}
+
+.field {
+  margin-bottom: 0;
+}
+
+.photo-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.photo-field {
+  align-items: flex-start;
+}
+
+.photo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.preview {
+  width: 7rem;
+  height: 5.25rem;
+  border-radius: var(--radius);
+  object-fit: cover;
+}
+
+// The file input itself is hidden: its label is the button, and shows the input's focus.
+.file-button {
+  &:focus-within {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  &.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.check-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+
+  input {
+    margin-top: 0.3rem;
+  }
+}
+
+.alert-error {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.send {
+  min-width: 12rem;
+  min-height: 3rem;
+}

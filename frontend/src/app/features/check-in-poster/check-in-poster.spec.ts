@@ -10,19 +10,15 @@ import { CheckInPoster } from './check-in-poster';
 describe('CheckInPoster', () => {
   const code = { code: 'c0de', url: 'http://localhost:4200/check-in/res-1?code=c0de' };
   let getCheckInCode: ReturnType<typeof vi.fn>;
+  let getResource: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getCheckInCode = vi.fn(() => of(code));
+    getResource = vi.fn(() => of(fakeResource({ checkInRequired: true })));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        {
-          provide: ResourceService,
-          useValue: {
-            getResource: () => of(fakeResource({ checkInRequired: true })),
-            getCheckInCode,
-          },
-        },
+        { provide: ResourceService, useValue: { getResource, getCheckInCode } },
       ],
     });
   });
@@ -47,6 +43,20 @@ describe('CheckInPoster', () => {
     );
     expect(element.querySelector('.how')!.textContent).toContain(
       'from 10 minutes before your start until 15 minutes after',
+    );
+    expect(element.querySelector('.report')!.textContent).toContain('report the problem');
+  });
+
+  it("for a resource without check-in, says what scanning is for, and doesn't ask to check in", async () => {
+    getResource.mockReturnValue(of(fakeResource({ checkInRequired: false })));
+    const element = await render();
+
+    expect(element.querySelector('h1')!.textContent).toBe('Scan with your phone');
+    expect(element.textContent).not.toContain('minutes before your start');
+    expect(element.textContent).toContain('book it on the spot');
+    expect(element.querySelector('.report')!.textContent).toContain('report the problem');
+    expect(element.querySelector('app-qr-code svg')!.getAttribute('aria-label')).toBe(
+      'QR code for Meeting Room A',
     );
   });
 

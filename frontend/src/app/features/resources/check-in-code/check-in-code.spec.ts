@@ -61,9 +61,7 @@ describe('CheckInCodePanel', () => {
     await render();
 
     expect(getCheckInCode).toHaveBeenCalledWith('res-1');
-    expect(element.querySelector('svg')!.getAttribute('aria-label')).toBe(
-      'QR code for checking in to Board Room',
-    );
+    expect(element.querySelector('svg')!.getAttribute('aria-label')).toBe('QR code for Board Room');
     const link = element.querySelector<HTMLAnchorElement>('a.link')!;
     expect(link.href).toBe(printed.url);
     const print = [...element.querySelectorAll('a')].find(
@@ -125,6 +123,20 @@ describe('CheckInCodePanel', () => {
 
     expect(element.textContent).toContain('The QR code could not be loaded.');
     expect(element.querySelector('svg')).toBeNull();
+  });
+
+  it('without check-in, is the code for the page at the door, with no door screen', async () => {
+    fixture = TestBed.createComponent(CheckInCodePanel);
+    fixture.componentRef.setInput('resourceId', 'res-1');
+    fixture.componentRef.setInput('resourceName', 'Board Room');
+    fixture.componentRef.setInput('checkIn', false);
+    element = fixture.nativeElement;
+    await fixture.whenStable();
+
+    expect(element.querySelector('svg')).not.toBeNull();
+    expect(element.querySelector('.door-screen')).toBeNull();
+    expect(element.textContent).toContain('a way to report a problem');
+    expect(element.textContent).not.toContain('can check in');
   });
 
   describe('a door screen (ADR-0034)', () => {
