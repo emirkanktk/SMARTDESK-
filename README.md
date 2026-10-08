@@ -54,7 +54,8 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   report a problem with it: what it's about, a few words, a photo from the phone's camera, and
   whether it can't be used meanwhile. The page lists the problems already reported and not fixed
   yet, and the same problem isn't reported twice. Every resource has a QR code now, check-in or
-  not ([ADR-0037](docs/DECISIONS.md)).
+  not, and **QR labels** prints many at once, eight to an A4 sheet with lines to cut along
+  ([ADR-0037](docs/DECISIONS.md)).
 - **Reported problems** - Admins, and managers for their team's own resources, see reports come
   in live, with a toast and a count in the menu. They take them up and resolve them, and the
   reporter is told in their inbox. A broken resource can be taken out of use until a chosen time:

@@ -1,3 +1,9 @@
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .filters {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr auto;

@@ -1,0 +1,173 @@
+:host {
+  display: block;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.center {
+  text-align: center;
+}
+
+.chooser {
+  margin-bottom: var(--space-5);
+}
+
+.chooser-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+
+  h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+  }
+}
+
+.pick .input {
+  min-width: 12rem;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-4) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 600;
+}
+
+// The sheet as it prints: paper is white whatever the theme, so labels set their own colours.
+.labels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-3);
+}
+
+.label {
+  --color-text: #0f172a;
+  --color-text-muted: #475569;
+
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px dashed #94a3b8;
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--color-text);
+  break-inside: avoid;
+}
+
+.qr {
+  flex: none;
+  width: 9rem;
+  aspect-ratio: 1;
+}
+
+.text {
+  min-width: 0;
+
+  p {
+    margin: 0;
+  }
+
+  .resource-name,
+  .how {
+    margin-top: var(--space-2);
+  }
+}
+
+.logo {
+  font-size: 0.875rem;
+}
+
+.resource-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.resource-location {
+  color: var(--color-text-muted);
+}
+
+.how {
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+// Eight labels to an A4 sheet, two across and four down, with dashed lines to cut along. The
+// code is 45 mm wide: a phone reads it from half a metre away.
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  :host {
+    max-width: none;
+    padding: 0;
+  }
+
+  .toolbar,
+  .chooser {
+    display: none;
+  }
+
+  .labels {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4mm;
+  }
+
+  .label {
+    height: 64mm;
+    padding: 4mm;
+    border-radius: 0;
+  }
+
+  .qr {
+    width: 45mm;
+  }
+
+  .resource-name {
+    font-size: 14pt;
+  }
+
+  .how {
+    font-size: 9pt;
+  }
+}

@@ -64,6 +64,14 @@ import { Component, input } from '@angular/core';
         -webkit-text-fill-color: transparent;
       }
     }
+    /* On paper, gradient text prints with a stray edge: the brand's violet instead. */
+    @media print {
+      .desk {
+        background: none;
+        color: #7c3aed;
+        -webkit-text-fill-color: currentColor;
+      }
+    }
 
     :host(.light) {
       color: #fff;
