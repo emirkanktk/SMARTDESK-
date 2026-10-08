@@ -255,6 +255,12 @@
   <data name="Entity_InboxMessage" xml:space="preserve">
     <value>Mesaj</value>
   </data>
+  <data name="Entity_IssueReport" xml:space="preserve">
+    <value>Sorun bildirimi</value>
+  </data>
+  <data name="Entity_IssueReportPhoto" xml:space="preserve">
+    <value>Fotoğraf</value>
+  </data>
   <data name="Entity_Reservation" xml:space="preserve">
     <value>Rezervasyon</value>
   </data>
@@ -285,6 +291,9 @@
   <data name="Error_TooManyDoorScreenRequests" xml:space="preserve">
     <value>Kapı ekranı çok sık istekte bulundu. Bir dakika sonra yeniden deneyecek.</value>
   </data>
+  <data name="Error_TooManyIssueReports" xml:space="preserve">
+    <value>Kısa sürede çok fazla sorun bildirildi. Bir dakika bekleyip tekrar deneyin.</value>
+  </data>
   <data name="Error_TooManySignIns" xml:space="preserve">
     <value>Çok fazla giriş denemesi yapıldı. Lütfen bir dakika bekleyip tekrar deneyin.</value>
   </data>
@@ -308,6 +317,15 @@
   </data>
   <data name="Identity_PasswordTooShort" xml:space="preserve">
     <value>Parola en az {0} karakter olmalı.</value>
+  </data>
+  <data name="Issues_AlreadyReported" xml:space="preserve">
+    <value>Bu sorun {0} için zaten bildirildi ve henüz çözülmedi.</value>
+  </data>
+  <data name="Issues_AlreadyResolved" xml:space="preserve">
+    <value>Bu bildirim zaten çözüldü. Sorun yeniden çıktıysa yeni bir bildirim yapın.</value>
+  </data>
+  <data name="Issues_DescriptionMissing" xml:space="preserve">
+    <value>Sorunu birkaç kelimeyle anlatın.</value>
   </data>
   <data name="Meetings_AnswerCancelled" xml:space="preserve">
     <value>Bu toplantı iptal edildi; yanıtlanacak bir şey yok.</value>
@@ -374,6 +392,9 @@
   </data>
   <data name="Property_Capacity" xml:space="preserve">
     <value>Kapasite</value>
+  </data>
+  <data name="Property_Category" xml:space="preserve">
+    <value>Kategori</value>
   </data>
   <data name="Property_Code" xml:space="preserve">
     <value>Kod</value>

@@ -27,6 +27,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<ReservationAttendee> ReservationAttendees => Set<ReservationAttendee>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<ReservationSeries> ReservationSeries => Set<ReservationSeries>();
+    public DbSet<IssueReport> IssueReports => Set<IssueReport>();
+    public DbSet<IssueReportPhoto> IssueReportPhotos => Set<IssueReportPhoto>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -220,6 +222,35 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.HasIndex(e => new { e.RecipientId, e.CreatedAt });
             entity.HasIndex(e => e.RecipientId, "IX_InboxMessages_Unread")
                 .HasFilter("\"ReadAt\" IS NULL");
+        });
+
+        // ADR-0037. The reporter is an account id, with no foreign key across the Identity
+        // boundary. Reports go with their resource, like its bookings.
+        builder.Entity<IssueReport>(entity =>
+        {
+            entity.Property(e => e.Description).IsRequired().HasMaxLength(IssueRules.MaxDescriptionLength);
+            entity.HasOne(e => e.Resource)
+                .WithMany()
+                .HasForeignKey(e => e.ResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // "Is this problem already reported here?" on every report, and the problems still
+            // open on a resource, which the page its QR code opens asks for.
+            entity.HasIndex(e => new { e.ResourceId, e.Status, e.Category });
+            // The list for those who look after resources: newest first.
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // A report's photo: one row keyed by the report, deleted with it.
+        builder.Entity<IssueReportPhoto>(entity =>
+        {
+            entity.HasKey(e => e.IssueReportId);
+            entity.Property(e => e.ContentType).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Data).IsRequired();
+            entity.HasOne<IssueReport>()
+                .WithOne(i => i.Photo)
+                .HasForeignKey<IssueReportPhoto>(e => e.IssueReportId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

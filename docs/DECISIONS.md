@@ -1114,3 +1114,51 @@ new tables.
   - The `-latest` alias moves when Google ships a new Flash; pin a model in
     `Assistant:GeminiModel` to keep the same one.
   - The provider is one setting for the whole server; nobody chooses per question.
+
+## ADR-0037: Problems reported at the door, followed up by those who manage the resource
+
+**Decision:**
+- **Anyone who may use a resource reports a problem with it**, booked or not, usually from the
+  page its QR code opens (ADR-0030). A report has a category (a screen or TV, the projector, the
+  camera and sound, air conditioning, cleaning, furniture, other), what's wrong in up to 500
+  characters, whether it makes the resource unusable, and optionally a photo taken there. It's
+  an `IssueReport`, with its photo in `IssueReportPhotos`.
+- **One report per problem.** While a report of a category is unresolved on a resource, another
+  of the same category is refused with 409 `issue-already-reported`. The page at the door lists
+  the open ones, so people see them first. `Other` is never a duplicate. Reporting takes the
+  resource's lock (ADR-0011), so two people reporting at once can't both get in.
+- **Those who manage the resource follow it up:** the Admins, and the Manager of the one team it
+  belongs to (ADR-0022).
+  - They see its reports (`GET /api/issues`), unresolved first and the blocking ones first
+    among those.
+  - They hear about new reports and changes live, as `IssueReported` and `IssueUpdated`. The
+    events go to the Admins' group and that Manager only.
+  - They move a report from `Open` to `InProgress` and back, and then to `Resolved`, which is
+    final.
+- **The reporter hears back.** Resolving sends them an `IssueResolved` inbox message (ADR-0032)
+  with the category and their own words, unless they resolved it themselves.
+- **Photos as for a resource (ADR-0027):** JPEG, PNG or WebP, recognised by their bytes, at most
+  2 MB, made smaller in the browser first, and kept in the database. Anyone who may use the
+  resource may fetch one.
+- **A limit:** 10 reports a minute per user.
+
+**Why:**
+- The person standing in the room is the first to see a broken TV, and the QR code at the door
+  already brings them into the app. Reporting there takes seconds and needs nothing installed.
+- Categories as well as free text, because they decide "the same problem" without anyone
+  reading. `Other` is too broad for that.
+- A duplicate is refused rather than kept: ten reports of one dead projector are noise for
+  whoever fixes it, and listing the open ones at the door tells people it's known.
+- The same people as for the resource itself: whoever may switch it off or block it should hear
+  that it's broken. An Employee only uses it.
+- Resolved is final because reopening could break the one-report rule: the same problem may have
+  been reported again meanwhile. A problem that comes back is a new report, with its own time.
+- The inbox, because a reporter is rarely still at the door when the fix comes, and a toast
+  would be missed.
+- Photos in the database, for ADR-0027's reasons: a few hundred KB each, and nothing else to back
+  up or deploy.
+- **Trade-offs:**
+  - Who reported a problem is visible to anyone who may use the resource, like who booked it.
+  - A report can't be edited or withdrawn. Whoever manages the resource resolves a mistaken one.
+  - Beyond the live events and the list, nothing tells those who manage the resource: no email.
+  - Reports are never deleted, and the list isn't paged yet.

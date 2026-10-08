@@ -164,6 +164,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("EndDateTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("IssueCategory")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Kind")
                         .HasColumnType("integer");
 
@@ -210,6 +213,66 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasFilter("\"ReadAt\" IS NULL");
 
                     b.ToTable("InboxMessages");
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.IssueReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsBlocking")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ReportedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ResourceId", "Status", "Category");
+
+                    b.ToTable("IssueReports");
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.IssueReportPhoto", b =>
+                {
+                    b.Property<Guid>("IssueReportId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("IssueReportId");
+
+                    b.ToTable("IssueReportPhotos");
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>
@@ -742,6 +805,26 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Navigation("Series");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.IssueReport", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
+                        .WithMany()
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Resource");
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.IssueReportPhoto", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.IssueReport", null)
+                        .WithOne("Photo")
+                        .HasForeignKey("SmartDesk.Domain.Entities.IssueReportPhoto", "IssueReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>
                 {
                     b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
@@ -839,6 +922,11 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.IssueReport", b =>
+                {
+                    b.Navigation("Photo");
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>

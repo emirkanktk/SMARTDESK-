@@ -37,4 +37,8 @@ public enum InboxMessageKind
 
     // To the organizer: someone invited can't come from one date on, and why.
     SeriesDeclined = 10,
+
+    // To whoever reported a problem with a resource: it's fixed (ADR-0037). The times are
+    // when it was reported and when it was resolved, the note is what they wrote.
+    IssueResolved = 11,
 }
