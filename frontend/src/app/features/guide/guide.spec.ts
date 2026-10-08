@@ -57,6 +57,7 @@ describe('Guide', () => {
       'Find a free resource',
       'Book it',
       'Check in at the door',
+      'Report a problem',
       'Meetings and your inbox',
       'Running over',
       'Your reservations',
@@ -67,13 +68,15 @@ describe('Guide', () => {
   it("gives a manager their team's part, and an admin the office's", async () => {
     roles = [Roles.Manager];
     await render();
-    expect(titles()).toContain('Your team');
+    expect(titles()).toEqual(expect.arrayContaining(['Your team', 'Following up problems']));
     expect(titles()).not.toContain('Running the office');
 
     fixture.destroy();
     roles = [Roles.Admin];
     await render();
-    expect(titles()).toContain('Running the office');
+    expect(titles()).toEqual(
+      expect.arrayContaining(['Following up problems', 'Running the office']),
+    );
     expect(titles()).not.toContain('Your team');
   });
 

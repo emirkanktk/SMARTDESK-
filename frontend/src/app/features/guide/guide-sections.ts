@@ -57,6 +57,16 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
     ],
   },
   {
+    id: 'problem',
+    icon: 'wrench',
+    title: $localize`:@@guide.problem.title:Report a problem`,
+    steps: [
+      $localize`:@@guide.problem.where:Something wrong with a room or anything else you book? Scan the QR code at its door and press Report a problem, booked or not.`,
+      $localize`:@@guide.problem.what:Say what it's about and write a few words. A photo from your phone helps, and tick it if it can't be used meanwhile.`,
+      $localize`:@@guide.problem.once:The problems already reported there are listed first, and the same one isn't sent twice. Your inbox tells you when it's fixed.`,
+    ],
+  },
+  {
     id: 'meetings',
     icon: 'team',
     title: $localize`:@@guide.meetings.title:Meetings and your inbox`,
@@ -97,6 +107,18 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
     ],
     link: { path: '/team', label: $localize`:@@guide.team.link:My team` },
     roles: [Roles.Manager],
+  },
+  {
+    id: 'problems',
+    icon: 'wrench',
+    title: $localize`:@@guide.problems.title:Following up problems`,
+    steps: [
+      $localize`:@@guide.problems.live:Problems reported at the resources you look after come in as they're made: a message pops up, and Problems in the menu counts the new ones.`,
+      $localize`:@@guide.problems.resolve:Start on one, and mark it resolved once it's fixed; whoever reported it is told.`,
+      $localize`:@@guide.problems.close:If it can't be used meanwhile, take it out of use until a time you choose. You see first how many bookings that cancels, and their people are told why.`,
+    ],
+    link: { path: '/issues', label: $localize`:@@guide.problems.link:Reported problems` },
+    roles: [Roles.Admin, Roles.Manager],
   },
   {
     id: 'admin',

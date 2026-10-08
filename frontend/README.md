@@ -29,11 +29,11 @@ Development only, and the front page lists them there.
 The app always calls `/api` and `/hubs` on its own origin. `ng serve` proxies them to the API,
 so the session cookie is a same-site cookie in development too (ADR-0026):
 
-| Configuration | Proxied to | When |
-|---|---|---|
-| `development` (the `ng serve` default) | `https://localhost:7065` (`proxy.conf.json`) | the API from `dotnet run` |
+| Configuration                                | Proxied to                                    | When                                                     |
+| -------------------------------------------- | --------------------------------------------- | -------------------------------------------------------- |
+| `development` (the `ng serve` default)       | `https://localhost:7065` (`proxy.conf.json`)  | the API from `dotnet run`                                |
 | `docker` (`ng serve --configuration docker`) | `http://localhost:8080` (`proxy.docker.json`) | the API container from `docker compose --profile api up` |
-| `production` (`ng build`) | nothing - `/api` on the same host | served behind the API or a reverse proxy |
+| `production` (`ng build`)                    | nothing - `/api` on the same host             | served behind the API or a reverse proxy                 |
 
 `frontend/Dockerfile` serves the `production` build with nginx, which passes `/api` and `/hubs` on
 to the API container: `docker compose --profile app up -d --build` runs the whole app at
@@ -42,6 +42,24 @@ to the API container: `docker compose --profile app up -d --build` runs the whol
 
 If the lists stay empty and the console shows a certificate error, the browser doesn't trust
 the dev certificate yet: `dotnet dev-certs https --trust`.
+
+### On a phone
+
+A resource's QR code opens its page on the phone that scans it (ADR-0030, ADR-0037), so it's
+worth trying on a real one. A phone can't reach `localhost` on the computer; give it an address
+it can reach, and start the API with `App__FrontendUrl` set to that address, so the QR codes it
+makes point there:
+
+- **The same Wi-Fi:** `ng serve --host 0.0.0.0`, then open `http://<the computer's IP>:4200` on
+  the phone (`ipconfig` shows the IP; Windows Firewall has to let port 4200 in). Only that port
+  needs to be open: the dev server passes `/api` and `/hubs` on to the API. Over plain http the
+  phone doesn't keep the session cookie, which is `Secure` (ADR-0026), so a reload asks you to
+  sign in again.
+- **A tunnel:** VS Code's Ports view (Forward a Port, 4200, visibility Public), ngrok or
+  Cloudflare Tunnel give an https address, which keeps the cookie. Start
+  `ng serve --allowed-hosts` so the dev server answers to the tunnel's host name.
+- A printed code keeps the address it was made with: print the ones for the doors once the app
+  has its final domain.
 
 ## Before a pull request
 
@@ -68,30 +86,32 @@ CI runs all of these on every pull request, and the browser tests too (see Brows
 
 ## Screens
 
-| Route | Who | What |
-|---|---|---|
-| `/` | visitors | Front page; signed-in users go to the dashboard |
-| `/login`, `/forgot-password`, `/reset-password` | anyone | Sign-in, and a password reset by emailed link |
-| `/register` | visitors | Sign-up: a team member gives their manager's email and waits for that manager; a manager waits for an admin |
-| `/change-password` | signed in | Change your password. Forced, before anything else, after signing in with a temporary password |
-| `/profile` | signed in | Your own name, which you can change, and your email and role, which an admin changes. Open it, the password page or sign out from the menu under your name: at the bottom of the sidebar, or in the top right on narrower screens |
-| `/dashboard` | signed in | Today's reservations, what's in use now, your next bookings |
-| `/resources` | signed in | Your team's resources and the shared ones; admins see every resource. Each row says whose team it belongs to, or "Shared" |
-| `/resources/new`, `/resources/:id/edit` | Admin, Manager | Admins create and edit any resource and pick the teams that may use it (none: shared by everyone). A manager adds resources to their own team, and edits, activates and deactivates only the ones that belong to their team alone (ADR-0022). Switching on check-in shows the resource's QR code here (ADR-0030) |
-| `/resources/:id/check-in-poster` | Admin, Manager | The QR code on a sheet to print and put up at the door. Outside the shell, so only the sheet prints |
-| `/check-in/:resourceId?code=…` | signed in | Where a resource's QR code leads: your booking of it, and a button to check in while that's open. The code leaves the address once read; at a free room, book it on the spot; checked in, run longer or end it (ADR-0034) |
-| `/door/:resourceId#<token>` | the door screen, no sign-in | The tablet at a resource's door: free or in use, today's bookings as times, and a QR code that changes every 30 seconds (ADR-0034) |
-| `/availability` | signed in | What's free for a time range, by type and capacity |
-| `/calendar` | signed in | The shared office calendar: who booked what |
-| `/reservations/new`, `/reservations/:id/edit` | signed in | Book, change or cancel; managers and admins invite people (ADR-0032). A new booking can repeat, its dates listed first (ADR-0035). Read-only for anyone but the owner or an admin, where someone invited answers |
-| `/reservations/mine` | signed in | Your upcoming, past and cancelled reservations, and the meetings you're invited to. A booking in progress can be extended here (ADR-0033) |
-| `/guide` | signed in | How SmartDesk works: each part of the app in a few steps, with a link to where it's done; a manager's and an admin's parts for them only, the assistant's only when the server has one. Each part has its own address (`/guide#door`) |
-| `/inbox` | signed in | Your messages: invitations to answer, meetings moved or cancelled, and who's coming to yours. The **Inbox** link counts the unread ones |
-| `/admin` | Admin | Resource counts, and every reservation in a date range to change or cancel |
-| `/admin/reports` | Admin | Usage report |
-| `/admin/blocks` | Admin | Blocked windows: take a resource out of booking for a while |
-| `/admin/users` | Admin | Every account: approve or reject sign-ups, add accounts with a temporary password, change roles and teams, set temporary passwords, disable and enable |
-| `/team` | Manager | Your team: approve or reject requests to join, add members with a temporary password, set temporary passwords, disable, enable, remove |
+| Route                                           | Who                         | What                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                                             | visitors                    | Front page; signed-in users go to the dashboard                                                                                                                                                                                                                                                                                                                                  |
+| `/login`, `/forgot-password`, `/reset-password` | anyone                      | Sign-in, and a password reset by emailed link                                                                                                                                                                                                                                                                                                                                    |
+| `/register`                                     | visitors                    | Sign-up: a team member gives their manager's email and waits for that manager; a manager waits for an admin                                                                                                                                                                                                                                                                      |
+| `/change-password`                              | signed in                   | Change your password. Forced, before anything else, after signing in with a temporary password                                                                                                                                                                                                                                                                                   |
+| `/profile`                                      | signed in                   | Your own name, which you can change, and your email and role, which an admin changes. Open it, the password page or sign out from the menu under your name: at the bottom of the sidebar, or in the top right on narrower screens                                                                                                                                                |
+| `/dashboard`                                    | signed in                   | Today's reservations, what's in use now, your next bookings                                                                                                                                                                                                                                                                                                                      |
+| `/resources`                                    | signed in                   | Your team's resources and the shared ones; admins see every resource. Each row says whose team it belongs to, or "Shared"                                                                                                                                                                                                                                                        |
+| `/resources/new`, `/resources/:id/edit`         | Admin, Manager              | Admins create and edit any resource and pick the teams that may use it (none: shared by everyone). A manager adds resources to their own team, and edits, activates and deactivates only the ones that belong to their team alone (ADR-0022). A saved resource shows its QR code here (ADR-0030, ADR-0037); with check-in switched on, its door screen too                       |
+| `/resources/qr-labels`                          | Admin, Manager              | The QR codes of many resources as labels, eight to an A4 sheet with lines to cut along, picked one by one or by type (ADR-0037). Outside the shell, so only the labels print                                                                                                                                                                                                     |
+| `/resources/:id/check-in-poster`                | Admin, Manager              | The QR code on a sheet to print and put up at the door. Outside the shell, so only the sheet prints                                                                                                                                                                                                                                                                              |
+| `/check-in/:resourceId?code=…`                  | signed in                   | Where a resource's QR code leads: the resource's own page at the door. Your booking of it, and a button to check in while that's open. The code leaves the address once read; at a free room, book it on the spot; checked in, run longer or end it (ADR-0034). Anyone there sees the problems already reported and reports one, with a photo from the phone's camera (ADR-0037) |
+| `/door/:resourceId#<token>`                     | the door screen, no sign-in | The tablet at a resource's door: free or in use, today's bookings as times, and a QR code that changes every 30 seconds (ADR-0034)                                                                                                                                                                                                                                               |
+| `/availability`                                 | signed in                   | What's free for a time range, by type and capacity                                                                                                                                                                                                                                                                                                                               |
+| `/calendar`                                     | signed in                   | The shared office calendar: who booked what                                                                                                                                                                                                                                                                                                                                      |
+| `/reservations/new`, `/reservations/:id/edit`   | signed in                   | Book, change or cancel; managers and admins invite people (ADR-0032). A new booking can repeat, its dates listed first (ADR-0035). Read-only for anyone but the owner or an admin, where someone invited answers                                                                                                                                                                 |
+| `/reservations/mine`                            | signed in                   | Your upcoming, past and cancelled reservations, and the meetings you're invited to. A booking in progress can be extended here (ADR-0033)                                                                                                                                                                                                                                        |
+| `/guide`                                        | signed in                   | How SmartDesk works: each part of the app in a few steps, with a link to where it's done; a manager's and an admin's parts for them only, the assistant's only when the server has one. Each part has its own address (`/guide#door`)                                                                                                                                            |
+| `/inbox`                                        | signed in                   | Your messages: invitations to answer, meetings moved or cancelled, and who's coming to yours. The **Inbox** link counts the unread ones                                                                                                                                                                                                                                          |
+| `/admin`                                        | Admin                       | Resource counts, and every reservation in a date range to change or cancel                                                                                                                                                                                                                                                                                                       |
+| `/admin/reports`                                | Admin                       | Usage report                                                                                                                                                                                                                                                                                                                                                                     |
+| `/admin/blocks`                                 | Admin                       | Blocked windows: take a resource out of booking for a while                                                                                                                                                                                                                                                                                                                      |
+| `/issues`                                       | Admin, Manager              | Reported problems on the resources you look after, coming in live: take them up, resolve them (the reporter is told), and close a resource until a chosen time, cancelling the bookings in it, then open it again (ADR-0037, ADR-0038). The **Problems** link counts the ones nobody has taken up                                                                                |
+| `/admin/users`                                  | Admin                       | Every account: approve or reject sign-ups, add accounts with a temporary password, change roles and teams, set temporary passwords, disable and enable                                                                                                                                                                                                                           |
+| `/team`                                         | Manager                     | Your team: approve or reject requests to join, add members with a temporary password, set temporary passwords, disable, enable, remove                                                                                                                                                                                                                                           |
 
 The guards only hide screens. The API checks the role on every request.
 
