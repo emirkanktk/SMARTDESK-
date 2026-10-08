@@ -42,11 +42,12 @@ public sealed class CheckInCommandHandler(
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
         // With a door screen, only its changing code checks in, so a photo of it or a shared
-        // link stops working within a minute (ADR-0034). Without one, the printed code does,
-        // until it's replaced: then the page was opened from an old print or photo.
-        if (resource.DoorScreenTokenHash is not null)
+        // link stops working within a minute (ADR-0034). It's keyed by the screen's own key, not
+        // the printed secret, which can't compute it (ADR-0039). Without a screen, the printed
+        // code checks in, until it's replaced: then the page was opened from an old print or photo.
+        if (resource.DoorScreenTokenHash is { } screenKey)
         {
-            if (!CheckInRules.ChangingCodeMatches(resource.CheckInCode, request.Code, now))
+            if (!CheckInRules.ChangingCodeMatches(screenKey, request.Code, now))
             {
                 throw new ForbiddenAccessException(string.Format(Messages.CheckIn_CodeExpired, resource.Name));
             }

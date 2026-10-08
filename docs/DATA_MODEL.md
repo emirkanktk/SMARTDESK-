@@ -57,7 +57,7 @@ they next sign in.
 | Description | string? | |
 | CheckInRequired | bool | bookings must be checked in at the door with its QR code, or they're released (ADR-0030) |
 | CheckInCode | string | the secret in its QR code: 32 hex digits, random, required. Only those who may edit the resource see it; replacing it retires the printed code |
-| DoorScreenTokenHash | string? (64) | SHA-256 of the door screen's token, as hex; while set, only the screen's changing code checks in (ADR-0034) |
+| DoorScreenTokenHash | string? (64) | SHA-256 of the door screen's token, as hex; while set, only the screen's changing code checks in (ADR-0034), and it keys that code (ADR-0039) |
 | DoorScreenSetUpAt | DateTime? | when that screen was set up |
 
 ### ResourceFeature

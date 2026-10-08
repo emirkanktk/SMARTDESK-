@@ -88,23 +88,25 @@ public static class CheckInRules
     public static DateTime StepEndsAt(DateTime utcNow) =>
         DateTimeOffset.FromUnixTimeSeconds((StepAt(utcNow) + 1) * (long)CodeStep.TotalSeconds).UtcDateTime;
 
-    // The code for a step, keyed by the resource's secret: replacing the secret changes them too.
-    public static string ChangingCode(string secret, long step)
+    // The code for a step, keyed by the screen's own key (ADR-0039): its token's hash, which no
+    // endpoint ever returns. Not the printed code's secret: a photo of the printed code would
+    // then compute every screen code. A new screen link changes them too.
+    public static string ChangingCode(string screenKey, long step)
     {
         var message = new byte[8];
         System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(message, step);
-        var mac = HMACSHA256.HashData(Convert.FromHexString(secret), message);
+        var mac = HMACSHA256.HashData(Convert.FromHexString(screenKey), message);
         return Convert.ToHexStringLower(mac.AsSpan(0, ChangingCodeLength / 2));
     }
 
-    public static string ChangingCodeAt(string secret, DateTime utcNow) => ChangingCode(secret, StepAt(utcNow));
+    public static string ChangingCodeAt(string screenKey, DateTime utcNow) => ChangingCode(screenKey, StepAt(utcNow));
 
     // This step's code or the last one's, each compared in constant time.
-    public static bool ChangingCodeMatches(string secret, string? presented, DateTime utcNow)
+    public static bool ChangingCodeMatches(string screenKey, string? presented, DateTime utcNow)
     {
         var step = StepAt(utcNow);
-        var current = CodeMatches(ChangingCode(secret, step), presented);
-        var previous = CodeMatches(ChangingCode(secret, step - 1), presented);
+        var current = CodeMatches(ChangingCode(screenKey, step), presented);
+        var previous = CodeMatches(ChangingCode(screenKey, step - 1), presented);
         return current | previous;
     }
 

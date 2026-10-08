@@ -981,6 +981,8 @@ new tables.
 - **A changing code.** While a screen is set up, only its code checks in: an HMAC-SHA256 of the
   current 30-second step, keyed by the resource's secret, 20 hex digits. The step before is
   still taken, so a code scanned as it changes works. The printed code is refused, saying why.
+  (Since ADR-0039 the code is keyed by the screen's own key instead: the printed secret could
+  compute it.)
 - **What the screen shows.** It asks `GET /api/door/{id}` with its token in a header, without
   a user: the room, today's bookings as times only (a corridor is no place for names), blocked
   windows, and the check-in link with the current code. It asks again just after the code
@@ -1195,3 +1197,26 @@ new tables.
   - A meeting under way is cancelled as a whole, not cut short, so its time so far drops out of
     the usage report.
   - Lifting the block early (deleting it) doesn't bring the cancelled bookings back.
+
+## ADR-0039: A door screen's codes are keyed by the screen, not by the printed code
+
+**Decision** (supersedes the key in ADR-0034, fixes issue #101):
+- A door screen's changing code is an HMAC-SHA256 of the 30-second step keyed by the screen's
+  own key: `DoorScreenTokenHash`, the SHA-256 of the token in its link. It used to be keyed by
+  `CheckInCode`, the secret in the printed QR code.
+- Nothing else changes: the same 20 hex digits, the step before still taken, the printed code
+  refused while a screen is set up and taken again once it's turned off.
+
+**Why:**
+- The printed secret is in every printed code and in its link, and `GET
+  /api/resources/{id}/check-in-code` returns it. With the algorithm in the repo, anyone holding
+  the printed code - a photo taken before the screen went up, or the copied link - could compute
+  every screen code offline, and check in from anywhere for as long as the screen stayed. That's
+  exactly what the screen exists to stop.
+- The token's hash is never shown by any endpoint, and a new screen link makes a new one, so
+  the old screen's codes stop with it. Using it needs no migration and no new secret to look
+  after.
+- **Trade-offs:**
+  - A copy of the database can compute the codes, as it could compute the printed one's before.
+  - A new screen link changes every code at once; the screen picks up the new one on its next
+    look, within ten seconds.
