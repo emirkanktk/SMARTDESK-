@@ -846,6 +846,7 @@ new tables.
     code would close that, and is out of scope. (ADR-0034 adds that screen.)
   - The release can be up to one job interval late, never early.
   - Only the owner can check in. A colleague who arrives first can't keep the room for them.
+    (ADR-0032 lets anyone invited to a meeting check it in.)
 
 ## ADR-0031: The whole app in containers: nginx serves the build and passes /api and /hubs to the API
 
@@ -887,8 +888,6 @@ new tables.
     which lines to change.
   - nginx's error log still shows a failing request's query string. Errors are rare, and that
     log isn't kept anywhere.
-
-    (ADR-0032 lets anyone invited to a meeting check it in.)
 
 ## ADR-0032: Meetings: people invited to a booking, their answers, and an inbox
 
