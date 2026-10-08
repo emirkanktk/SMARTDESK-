@@ -58,7 +58,7 @@ public sealed class GetDoorScreenQueryHandler(IApplicationDbContext db, IFronten
         var resource = await db.Resources
             .AsNoTracking()
             .Where(r => r.Id == request.ResourceId)
-            .Select(r => new { r.Name, r.Location, r.Capacity, r.Status, r.CheckInRequired, r.CheckInCode, r.DoorScreenTokenHash })
+            .Select(r => new { r.Name, r.Location, r.Capacity, r.Status, r.CheckInRequired, r.DoorScreenTokenHash })
             .SingleOrDefaultAsync(cancellationToken);
         if (resource is null || !CheckInRules.DoorScreenTokenMatches(resource.DoorScreenTokenHash, request.Token))
         {
@@ -94,7 +94,7 @@ public sealed class GetDoorScreenQueryHandler(IApplicationDbContext db, IFronten
 
         var checkIn = resource.CheckInRequired
             ? new DoorCheckInDto(
-                links.CheckIn(request.ResourceId, CheckInRules.ChangingCodeAt(resource.CheckInCode, now)),
+                links.CheckIn(request.ResourceId, CheckInRules.ChangingCodeAt(resource.DoorScreenTokenHash!, now)),
                 CheckInRules.StepEndsAt(now))
             : null;
 

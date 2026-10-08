@@ -93,6 +93,13 @@ public sealed class DoorScreenTests : IDisposable
         return await context.Resources.Where(r => r.Id == roomId).Select(r => r.CheckInCode).SingleAsync();
     }
 
+    // What a screen's codes are keyed by (ADR-0039): its token's hash, never shown anywhere.
+    private async Task<string> ScreenKeyOfAsync(Guid roomId)
+    {
+        await using var context = _database.CreateContext();
+        return (await context.Resources.Where(r => r.Id == roomId).Select(r => r.DoorScreenTokenHash).SingleAsync())!;
+    }
+
     private async Task<string> SetUpScreenAsync(Guid roomId, FakeCurrentUser? user = null)
     {
         await using var context = _database.CreateContext();
@@ -140,17 +147,17 @@ public sealed class DoorScreenTests : IDisposable
     // --- The changing code ---
 
     [Fact]
-    public void The_code_changes_every_30_seconds_and_depends_on_the_secret()
+    public void The_code_changes_every_30_seconds_and_depends_on_the_screens_key()
     {
-        var secret = CheckInRules.NewCode();
+        var key = CheckInRules.HashDoorScreenToken(CheckInRules.NewDoorScreenToken());
         var at = Ten.AddSeconds(5);
 
-        var code = CheckInRules.ChangingCodeAt(secret, at);
+        var code = CheckInRules.ChangingCodeAt(key, at);
 
         code.Should().MatchRegex("^[0-9a-f]{20}$");
-        CheckInRules.ChangingCodeAt(secret, Ten.AddSeconds(29)).Should().Be(code, "the same 30-second step");
-        CheckInRules.ChangingCodeAt(secret, Ten.AddSeconds(30)).Should().NotBe(code);
-        CheckInRules.ChangingCodeAt(CheckInRules.NewCode(), at).Should().NotBe(code);
+        CheckInRules.ChangingCodeAt(key, Ten.AddSeconds(29)).Should().Be(code, "the same 30-second step");
+        CheckInRules.ChangingCodeAt(key, Ten.AddSeconds(30)).Should().NotBe(code);
+        CheckInRules.ChangingCodeAt(CheckInRules.HashDoorScreenToken(CheckInRules.NewDoorScreenToken()), at).Should().NotBe(code);
         CheckInRules.StepEndsAt(at).Should().Be(Ten.AddSeconds(30));
     }
 
@@ -161,11 +168,11 @@ public sealed class DoorScreenTests : IDisposable
     [InlineData(30, false)]  // not shown yet
     public void A_code_is_taken_during_its_step_and_the_next(int stepOffsetSeconds, bool taken)
     {
-        var secret = CheckInRules.NewCode();
+        var key = CheckInRules.HashDoorScreenToken(CheckInRules.NewDoorScreenToken());
         var now = Ten.AddSeconds(10);
-        var presented = CheckInRules.ChangingCodeAt(secret, now.AddSeconds(stepOffsetSeconds));
+        var presented = CheckInRules.ChangingCodeAt(key, now.AddSeconds(stepOffsetSeconds));
 
-        CheckInRules.ChangingCodeMatches(secret, presented, now).Should().Be(taken);
+        CheckInRules.ChangingCodeMatches(key, presented, now).Should().Be(taken);
     }
 
     [Fact]
@@ -254,7 +261,7 @@ public sealed class DoorScreenTests : IDisposable
         screen.Bookings.Should().AllSatisfy(b => b.CheckInNeeded.Should().BeTrue());
         screen.Blocks.Should().ContainSingle(b => b.Reason == "Cleaning");
         screen.CheckIn!.ChangesAt.Should().Be(Ten.AddMinutes(5).AddSeconds(30));
-        CodeIn(screen).Should().Be(CheckInRules.ChangingCodeAt(await SecretOfAsync(room.Id), Ten.AddMinutes(5)));
+        CodeIn(screen).Should().Be(CheckInRules.ChangingCodeAt(await ScreenKeyOfAsync(room.Id), Ten.AddMinutes(5)));
         screen.CheckIn.Url.Should().StartWith($"http://localhost:4200/check-in/{room.Id}?code=");
 
         (await CheckInAsync(room.Id, CodeIn(screen))).Id.Should().Be(now);
@@ -296,11 +303,44 @@ public sealed class DoorScreenTests : IDisposable
 
         (await FluentActions.Awaiting(() => CheckInAsync(room.Id, secret)).Should().ThrowAsync<ForbiddenAccessException>())
             .Which.Message.Should().Contain("door screen", "the printed code no longer works");
-        var stale = CheckInRules.ChangingCodeAt(secret, Ten.AddMinutes(-6));
+        var key = await ScreenKeyOfAsync(room.Id);
+        var stale = CheckInRules.ChangingCodeAt(key, Ten.AddMinutes(-6));
         await FluentActions.Awaiting(() => CheckInAsync(room.Id, stale)).Should().ThrowAsync<ForbiddenAccessException>();
 
-        var current = CheckInRules.ChangingCodeAt(secret, Ten.AddMinutes(-5));
+        var current = CheckInRules.ChangingCodeAt(key, Ten.AddMinutes(-5));
         (await CheckInAsync(room.Id, current)).CheckedInAt.Should().Be(Ten.AddMinutes(-5));
+    }
+
+    // Issue #101: the screen's codes were keyed by the printed secret, so a photo of the
+    // printed code, or its link, computed every screen code offline.
+    [Fact]
+    public async Task A_screen_code_computed_from_the_printed_secret_is_refused()
+    {
+        var room = await AddRoomAsync();
+        await BookAsync(room.Id);
+        var printed = await SecretOfAsync(room.Id);
+        await SetUpScreenAsync(room.Id);
+        ItIs(-5);
+
+        var forged = CheckInRules.ChangingCodeAt(printed, Ten.AddMinutes(-5));
+
+        await FluentActions.Awaiting(() => CheckInAsync(room.Id, forged)).Should().ThrowAsync<ForbiddenAccessException>();
+    }
+
+    [Fact]
+    public async Task A_new_screen_link_changes_the_codes_and_the_old_ones_stop()
+    {
+        var room = await AddRoomAsync();
+        await BookAsync(room.Id);
+        await SetUpScreenAsync(room.Id);
+        ItIs(-5);
+        var before = CheckInRules.ChangingCodeAt(await ScreenKeyOfAsync(room.Id), Ten.AddMinutes(-5));
+
+        await SetUpScreenAsync(room.Id);
+
+        await FluentActions.Awaiting(() => CheckInAsync(room.Id, before)).Should().ThrowAsync<ForbiddenAccessException>();
+        var after = CheckInRules.ChangingCodeAt(await ScreenKeyOfAsync(room.Id), Ten.AddMinutes(-5));
+        (await CheckInAsync(room.Id, after)).CheckedInAt.Should().Be(Ten.AddMinutes(-5));
     }
 
     [Fact]

@@ -473,9 +473,10 @@ which opens `/check-in/{id}?code=…` in the app, and checks in there
   one still waiting goes first.
 
 **Door screen (ADR-0034).** A screen at the door shows a code that changes every 30 seconds:
-an HMAC-SHA256 of the 30-second step, keyed by the resource's secret, as 20 hex digits. While
-one is set up, only that code checks in, and the step before is still taken; the printed code
-is refused.
+an HMAC-SHA256 of the 30-second step, as 20 hex digits, keyed by the screen's own key - the
+hash of its token, which nothing returns - so the printed code's secret can't compute it
+(ADR-0039). While one is set up, only that code checks in, and the step before is still taken;
+the printed code is refused.
 
 | Method | Path | Auth | Query | Notes |
 |---|---|---|---|---|
