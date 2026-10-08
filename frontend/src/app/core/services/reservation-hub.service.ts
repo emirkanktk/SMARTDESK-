@@ -3,6 +3,7 @@ import * as signalR from '@microsoft/signalr';
 import { Observable, Subject, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { InboxMessage } from '../models/inbox.model';
+import { IssueReport } from '../models/issue.model';
 import { Reservation } from '../models/reservation.model';
 import { AuthService } from './auth.service';
 
@@ -29,6 +30,8 @@ export class ReservationHubService {
   private readonly endingSoon = new Subject<Reservation>();
   private readonly releaseWarning = new Subject<Reservation>();
   private readonly inboxMessage = new Subject<InboxMessage>();
+  private readonly issueReported = new Subject<IssueReport>();
+  private readonly issueUpdated = new Subject<IssueReport>();
   private readonly reconnected = new Subject<void>();
 
   readonly created$: Observable<Reservation> = this.created.asObservable();
@@ -53,6 +56,12 @@ export class ReservationHubService {
   readonly releaseWarning$: Observable<Reservation> = this.releaseWarning.asObservable();
   /** Messages to the signed-in user's inbox (ADR-0032); the API sends each to its recipient only. */
   readonly inboxMessage$: Observable<InboxMessage> = this.inboxMessage.asObservable();
+  /**
+   * A problem reported at a resource the user may manage, or its report moved on (ADR-0037);
+   * the API sends them to the Admins and the manager of the team the resource belongs to alone.
+   */
+  readonly issueReported$: Observable<IssueReport> = this.issueReported.asObservable();
+  readonly issueUpdated$: Observable<IssueReport> = this.issueUpdated.asObservable();
   readonly reconnected$: Observable<void> = this.reconnected.asObservable();
 
   connect(): void {
@@ -97,6 +106,8 @@ export class ReservationHubService {
     connection.on('InboxMessageReceived', (message: InboxMessage) =>
       this.inboxMessage.next(message),
     );
+    connection.on('IssueReported', (issue: IssueReport) => this.issueReported.next(issue));
+    connection.on('IssueUpdated', (issue: IssueReport) => this.issueUpdated.next(issue));
     connection.onreconnected(() => this.reconnected.next());
     // The server ends a user's connections when their account or sessions change - a sign-in
     // on another device does (ADR-0021, ADR-0026) - for the app to come back through the token

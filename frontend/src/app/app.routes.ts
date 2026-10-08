@@ -174,6 +174,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/reports/usage-report').then((m) => m.UsageReport),
       },
       {
+        // Reported problems (ADR-0037): an admin's every one, a manager's on their team's own.
+        path: 'issues',
+        title: $localize`:@@title.issues:Reported problems · SmartDesk`,
+        canActivate: [resourceEditorGuard],
+        loadComponent: () => import('./features/issues/issues').then((m) => m.Issues),
+      },
+      {
         path: 'admin/blocks',
         title: $localize`:@@title.blocks:Blocked windows · SmartDesk`,
         canActivate: [adminGuard],

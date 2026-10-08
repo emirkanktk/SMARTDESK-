@@ -1,0 +1,89 @@
+<form class="close-form" [formGroup]="form" (ngSubmit)="close()" novalidate>
+  <fieldset class="for">
+    <legend i18n="@@takeOutOfUse.until">Closed from now until</legend>
+    <div class="options">
+      <label class="option">
+        <input type="radio" formControlName="for" value="today" />
+        <span i18n="@@takeOutOfUse.today">the end of today</span>
+      </label>
+      <label class="option">
+        <input type="radio" formControlName="for" value="tomorrow" />
+        <span i18n="@@takeOutOfUse.tomorrow">the end of tomorrow</span>
+      </label>
+      <label class="option">
+        <input type="radio" formControlName="for" value="week" />
+        <span i18n="@@takeOutOfUse.week">a week from today</span>
+      </label>
+      <label class="option">
+        <input type="radio" formControlName="for" value="until" />
+        <span i18n="@@takeOutOfUse.chosen">a time I choose</span>
+      </label>
+    </div>
+    @if (value().for === 'until') {
+      <label class="visually-hidden" for="close-until" i18n="@@takeOutOfUse.untilLabel"
+        >Closed until</label
+      >
+      <input id="close-until" class="input until" type="datetime-local" formControlName="until" />
+    }
+  </fieldset>
+
+  <div class="field">
+    <label for="close-reason" i18n="@@takeOutOfUse.reason"
+      >Reason, shown to anyone who tries to book</label
+    >
+    <input
+      id="close-reason"
+      class="input"
+      formControlName="reason"
+      [attr.maxlength]="limits.reasonMaxLength"
+    />
+    @if (triedToSave() && form.controls.reason.invalid) {
+      <span class="field-error" i18n="@@takeOutOfUse.reasonRequired">Say why it's closed.</span>
+    }
+  </div>
+
+  <p class="impact" role="status">
+    @if (endText(); as until) {
+      @if (affected() === null) {
+        <ng-container i18n="@@takeOutOfUse.counting"
+          >Closed until {{ until }}. Looking for bookings in that time…</ng-container
+        >
+      } @else if (affected() === 0) {
+        <ng-container i18n="@@takeOutOfUse.noBookings"
+          >Closed until {{ until }}. Nobody has booked it in that time.</ng-container
+        >
+      } @else if (affected() === 1) {
+        <ng-container i18n="@@takeOutOfUse.oneBooking"
+          >Closed until {{ until }}. 1 booking in that time is cancelled, and everyone on it is told
+          why.</ng-container
+        >
+      } @else {
+        <ng-container i18n="@@takeOutOfUse.bookings"
+          >Closed until {{ until }}. {{ affected() }} bookings in that time are cancelled, and
+          everyone on them is told why.</ng-container
+        >
+      }
+    } @else {
+      <ng-container i18n="@@takeOutOfUse.chooseEnd"
+        >Choose a time after now, at most {{ maxDays }} days ahead.</ng-container
+      >
+    }
+  </p>
+
+  @if (error(); as message) {
+    <div class="alert-error" role="alert">{{ message }}</div>
+  }
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary" [disabled]="saving() || !end()">
+      @if (saving()) {
+        <ng-container i18n="@@takeOutOfUse.closing">Closing…</ng-container>
+      } @else {
+        <ng-container i18n="@@takeOutOfUse.close">Close it</ng-container>
+      }
+    </button>
+    <button type="button" class="btn btn-secondary" (click)="cancelled.emit()">
+      <ng-container i18n="@@common.cancel">Cancel</ng-container>
+    </button>
+  </div>
+</form>

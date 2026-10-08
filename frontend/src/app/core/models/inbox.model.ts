@@ -16,6 +16,7 @@ export const INBOX_MESSAGE_KINDS = [
   'SeriesAccepted',
   'SeriesDeclined',
   'IssueResolved',
+  'CancelledByBlock',
 ] as const;
 export type InboxMessageKind = (typeof INBOX_MESSAGE_KINDS)[number];
 
@@ -42,7 +43,10 @@ export interface InboxMessage {
   startDateTime: string;
   endDateTime: string;
   note: string | null;
-  /** Why someone can't come, in a MeetingDeclined or SeriesDeclined message to the organizer. */
+  /**
+   * Why someone can't come, in a MeetingDeclined or SeriesDeclined message to the organizer;
+   * why the resource was closed, in a CancelledByBlock (ADR-0038).
+   */
   reason: string | null;
   /**
    * The repeating meeting a Series* message is about (ADR-0035); the times above are then its
