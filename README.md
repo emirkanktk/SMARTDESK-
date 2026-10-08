@@ -343,8 +343,7 @@ The same checks run on GitHub Actions for every pull request and every push to `
 - the whole app in Docker (`docker compose --profile app`, ADR-0031): both images are built,
   and some of the browser tests run through nginx.
 
-A PR's status checks show the result, so a reviewer can see "still builds and passes tests"
-before merging.
+A PR's status checks, or the run on `main`, show whether it still builds and passes its tests.
 
 ## Project structure
 
