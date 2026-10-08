@@ -14,7 +14,7 @@ namespace SmartDesk.IntegrationTests;
 // The reservation hub through the real pipeline on PostgreSQL, with SignalR's own client on a
 // WebSocket and the token in the query string, where the browser puts it. The unit tests check
 // who each event is addressed to; these check who actually hears it, and who can't listen at
-// all (ADR-0011, ADR-0018, ADR-0021, ADR-0022, ADR-0026).
+// all (ADR-0011, ADR-0018, ADR-0021, ADR-0022, ADR-0026, ADR-0037).
 [Collection(PostgresApiCollection.Name)]
 [Trait("Category", "Integration")]
 public sealed class RealtimeTests(PostgresApiFixture fixture)
@@ -127,6 +127,44 @@ public sealed class RealtimeTests(PostgresApiFixture fixture)
         adminHears.Heard.Should().NotContain(e => e.Name == ReservationHub.StartingSoon);
     }
 
+    [Fact]
+    public async Task A_reported_problem_is_heard_by_those_who_manage_the_resource_and_nobody_else()
+    {
+        // Meeting Room B belongs to the demo manager's team alone, which both demo employees
+        // are in: the manager and the Admins look after it, the employees only use it.
+        var manager = await SignInAsync("manager@smartdesk.local");
+        var admin = await SignInAsync("admin@smartdesk.local");
+        var reporter = await SignInAsync("employee2@smartdesk.local");
+        var member = await SignInAsync("employee1@smartdesk.local");
+
+        await using var managerHears = await ListenAsync(manager);
+        await using var adminHears = await ListenAsync(admin);
+        await using var memberHears = await ListenAsync(member);
+
+        var resources = (await Api(reporter).GetFromJsonAsync<List<ResourceRow>>("/api/resources"))!;
+        var room = resources.Single(r => r.Name == "Meeting Room B").Id;
+        var form = new MultipartFormDataContent
+        {
+            { new StringContent("Furniture"), "category" },
+            { new StringContent("A chair is broken"), "description" },
+        };
+        var reported = await Api(reporter).PostAsync($"/api/resources/{room}/issues", form);
+        reported.StatusCode.Should().Be(HttpStatusCode.Created);
+        var issue = (await reported.Content.ReadFromJsonAsync<ReservationEvent>())!.Id;
+
+        await managerHears.HearsAsync(ReservationHub.IssueReported, issue);
+        await adminHears.HearsAsync(ReservationHub.IssueReported, issue);
+
+        (await Api(manager).PatchAsJsonAsync($"/api/issues/{issue}", new { status = "Resolved" })).EnsureSuccessStatusCode();
+        await managerHears.HearsAsync(ReservationHub.IssueUpdated, issue);
+        await adminHears.HearsAsync(ReservationHub.IssueUpdated, issue);
+
+        // As above: once the member hears a later booking, the report would have arrived first.
+        var later = await BookAsync(member, room, DateTime.UtcNow.Date.AddDays(141).AddHours(9));
+        await memberHears.HearsAsync(ReservationHub.Created, later);
+        memberHears.Heard.Should().NotContain(e => e.ReservationId == issue);
+    }
+
     private HubConnection Connect(string? accessToken)
     {
         var server = fixture.Server;
@@ -226,7 +264,8 @@ public sealed class RealtimeTests(PostgresApiFixture fixture)
     private static string SessionCookie(HttpResponseMessage login) =>
         login.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith(CookieName + "=", StringComparison.Ordinal)).Split(';')[0];
 
-    // One hub connection and the reservation events it hears, in order.
+    // One hub connection and the reservation events it hears, in order. A problem's events
+    // carry an id too, so they're heard the same way.
     private sealed class Listener(HubConnection connection) : IAsyncDisposable
     {
         private readonly ConcurrentQueue<HeardEvent> _heard = new();
@@ -239,7 +278,11 @@ public sealed class RealtimeTests(PostgresApiFixture fixture)
 
         public async Task StartAsync()
         {
-            foreach (var name in new[] { ReservationHub.Created, ReservationHub.Updated, ReservationHub.Cancelled, ReservationHub.StartingSoon })
+            foreach (var name in new[]
+            {
+                ReservationHub.Created, ReservationHub.Updated, ReservationHub.Cancelled, ReservationHub.StartingSoon,
+                ReservationHub.IssueReported, ReservationHub.IssueUpdated,
+            })
             {
                 connection.On<ReservationEvent>(name, reservation =>
                 {

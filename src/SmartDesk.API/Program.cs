@@ -52,6 +52,8 @@ builder.Services.AddScoped<IReservationNotifier, SignalRReservationNotifier>();
 builder.Services.TryAddScoped<IReservationNotifier, NullReservationNotifier>();
 builder.Services.AddScoped<IInboxNotifier, SignalRInboxNotifier>();
 builder.Services.TryAddScoped<IInboxNotifier, NullInboxNotifier>();
+builder.Services.AddScoped<IIssueNotifier, SignalRIssueNotifier>();
+builder.Services.TryAddScoped<IIssueNotifier, NullIssueNotifier>();
 builder.Services.AddHostedService<ReservationReminderWorker>();
 builder.Services.AddHostedService<NoShowReleaseWorker>();
 builder.Services.AddHostedService<ReleaseWarningWorker>();

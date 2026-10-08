@@ -31,12 +31,17 @@ public sealed record InboxMessageDto(
     // 30 Nov".
     public ReservationSeriesDto? Series { get; init; }
 
+    // What the problem an IssueResolved message is about was (ADR-0037): with the note, what
+    // its reporter wrote, it says "the TV in Board Room you reported on 5 Oct is fixed".
+    public IssueCategory? IssueCategory { get; init; }
+
     public static readonly Expression<Func<InboxMessage, InboxMessageDto>> Projection = m => new InboxMessageDto(
         m.Id, m.RecipientId, m.Kind, m.ReservationId, m.SenderId, m.ResourceName, m.StartDateTime, m.EndDateTime, m.Note, m.Reason, m.CreatedAt, m.ReadAt)
     {
         Series = m.Series == null
             ? null
             : new ReservationSeriesDto(m.Series.Id, m.Series.Frequency, m.Series.Interval, m.Series.DaysOfWeek, m.Series.Until, m.Series.TimeZone),
+        IssueCategory = m.IssueCategory,
     };
 
     // For messages just written, compiled once (after Projection, which it needs).

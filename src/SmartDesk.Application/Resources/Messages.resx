@@ -255,6 +255,12 @@
   <data name="Entity_InboxMessage" xml:space="preserve">
     <value>Message</value>
   </data>
+  <data name="Entity_IssueReport" xml:space="preserve">
+    <value>Problem report</value>
+  </data>
+  <data name="Entity_IssueReportPhoto" xml:space="preserve">
+    <value>Photo</value>
+  </data>
   <data name="Entity_Reservation" xml:space="preserve">
     <value>Reservation</value>
   </data>
@@ -285,6 +291,9 @@
   <data name="Error_TooManyDoorScreenRequests" xml:space="preserve">
     <value>The door screen asked too often. It tries again in a minute.</value>
   </data>
+  <data name="Error_TooManyIssueReports" xml:space="preserve">
+    <value>Too many problem reports in a short time. Wait a minute and try again.</value>
+  </data>
   <data name="Error_TooManySignIns" xml:space="preserve">
     <value>Too many sign-in attempts. Please wait a minute and try again.</value>
   </data>
@@ -308,6 +317,15 @@
   </data>
   <data name="Identity_PasswordTooShort" xml:space="preserve">
     <value>Passwords must be at least {0} characters.</value>
+  </data>
+  <data name="Issues_AlreadyReported" xml:space="preserve">
+    <value>This problem with {0} has already been reported and isn't fixed yet.</value>
+  </data>
+  <data name="Issues_AlreadyResolved" xml:space="preserve">
+    <value>This report is already resolved. If the problem is back, report it again.</value>
+  </data>
+  <data name="Issues_DescriptionMissing" xml:space="preserve">
+    <value>Describe the problem in a few words.</value>
   </data>
   <data name="Meetings_AnswerCancelled" xml:space="preserve">
     <value>This meeting was cancelled, so there's nothing to answer.</value>
@@ -374,6 +392,9 @@
   </data>
   <data name="Property_Capacity" xml:space="preserve">
     <value>Capacity</value>
+  </data>
+  <data name="Property_Category" xml:space="preserve">
+    <value>Category</value>
   </data>
   <data name="Property_Code" xml:space="preserve">
     <value>Code</value>

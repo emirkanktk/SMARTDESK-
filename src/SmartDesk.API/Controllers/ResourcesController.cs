@@ -10,6 +10,9 @@ using SmartDesk.Application.Features.CheckIn.Commands.SetUpDoorScreen;
 using SmartDesk.Application.Features.CheckIn.Commands.TurnOffDoorScreen;
 using SmartDesk.Application.Features.CheckIn.Common;
 using SmartDesk.Application.Features.CheckIn.Queries.GetCheckInCode;
+using SmartDesk.Application.Features.Issues.Commands.CreateIssueReport;
+using SmartDesk.Application.Features.Issues.Common;
+using SmartDesk.Application.Features.Issues.Queries.GetOpenIssues;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Resources.Commands.ChangeResourceStatus;
 using SmartDesk.Application.Features.Resources.Commands.CreateResource;
@@ -197,4 +200,53 @@ public sealed class ResourcesController(ISender sender) : ControllerBase
         await sender.Send(new TurnOffDoorScreenCommand(id), cancellationToken);
         return NoContent();
     }
+
+    // The problems still open on the resource, for anyone who may use it (ADR-0037).
+    [HttpGet("{id:guid}/issues")]
+    [ProducesResponseType<IReadOnlyList<IssueReportDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<IReadOnlyList<IssueReportDto>> GetOpenIssues(Guid id, CancellationToken cancellationToken) =>
+        sender.Send(new GetOpenIssuesQuery(id), cancellationToken);
+
+    // Reports a problem with the resource, from the page its QR code opens (ADR-0037): anyone who
+    // may use it, booked or not. A form with category, description, isBlocking and an optional
+    // photo, a JPEG, PNG or WebP of at most 2 MB, as for a resource's photo.
+    [HttpPost("{id:guid}/issues")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(ResourcePhotoRules.MaxRequestBytes)]
+    [EnableRateLimiting(RateLimitingSetup.IssueReportPolicy)]
+    [ProducesResponseType<IssueReportDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<IssueReportDto>> ReportIssue(
+        Guid id, [FromForm] IssueReportForm form, CancellationToken cancellationToken)
+    {
+        byte[]? photo = null;
+        if (form.Photo is { Length: > 0 } file)
+        {
+            using var data = new MemoryStream();
+            await file.CopyToAsync(data, cancellationToken);
+            photo = data.ToArray();
+        }
+
+        var issue = await sender.Send(
+            new CreateIssueReportCommand(id, form.Category, form.Description ?? string.Empty, form.IsBlocking, photo),
+            cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, issue);
+    }
+}
+
+// The form a problem is reported with. Category is nullable so that a form without one is
+// refused by the validator, in the caller's language, rather than read as the first category.
+public sealed class IssueReportForm
+{
+    public IssueCategory? Category { get; init; }
+
+    public string? Description { get; init; }
+
+    public bool IsBlocking { get; init; }
+
+    public IFormFile? Photo { get; init; }
 }

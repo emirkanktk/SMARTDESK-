@@ -32,6 +32,11 @@ public class ReservationHub(HubConnectionRegistry connections) : Hub
     // A message reached the user's inbox (ADR-0032); sent to that user only, with the message.
     public const string InboxMessageReceived = "InboxMessageReceived";
 
+    // A problem was reported at a resource, or its report moved on (ADR-0037): to the Admins and
+    // the Manager of the team it belongs to alone, those who may manage it.
+    public const string IssueReported = "IssueReported";
+    public const string IssueUpdated = "IssueUpdated";
+
     // Events about a team's resource go to its teams and the Admins only (ADR-0022).
     public const string AdminsGroup = "admins";
 

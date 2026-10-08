@@ -132,7 +132,7 @@ the booking it's about.
 |---|---|---|
 | Id | Guid | version 7, so ids sort like `CreatedAt` |
 | RecipientId | Guid | an account id; no FK across the Identity boundary |
-| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined / MeetingExtended (ADR-0033) / SeriesInvitation / SeriesCancelled / SeriesAccepted / SeriesDeclined (ADR-0035) |
+| Kind | InboxMessageKind | MeetingInvitation / MeetingChanged / MeetingCancelled / MeetingUninvited / MeetingAccepted / MeetingDeclined / MeetingExtended (ADR-0033) / SeriesInvitation / SeriesCancelled / SeriesAccepted / SeriesDeclined (ADR-0035) / IssueResolved (ADR-0037) |
 | SenderId | Guid? | who caused it; null for a release |
 | ReservationId | Guid? | FK → `Reservation.Id`, set null when the booking is deleted |
 | ResourceName | string (200) | the meeting when the message was sent: the room's name, |
@@ -140,6 +140,7 @@ the booking it's about.
 | Note | string? (500) | and the organizer's note |
 | Reason | string? (500) | why someone can't come, in a MeetingDeclined or SeriesDeclined |
 | SeriesId | Guid? | FK → `ReservationSeries.Id` (set null), for a Series* message: which series; its times are then the first date it covers |
+| IssueCategory | IssueCategory? | for an IssueResolved message: what the problem was. Its times are then when it was reported and resolved, and its note what the reporter wrote |
 | CreatedAt | DateTime | |
 | ReadAt | DateTime? | null while unread |
 
@@ -177,6 +178,33 @@ A resource without a row here shows its type's picture, which ships with the app
 | EndDateTime | DateTime | must be > StartDateTime |
 | Reason | string | required, max 200 - shown to anyone whose booking the block refuses |
 | CreatedByUserId | Guid | the admin who created it (scalar, like `Reservation.UserId`) |
+
+### IssueReport
+
+A problem someone reported at a resource (ADR-0037).
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | version 7 |
+| ResourceId | Guid | FK → `Resource.Id`, cascade delete |
+| ReportedByUserId | Guid | an account id; no FK across the Identity boundary |
+| Category | IssueCategory | Display / Projector / AudioVideo / AirConditioning / Cleaning / Furniture / Other |
+| Description | string (500) | required: what's wrong |
+| IsBlocking | bool | the resource can't be used until it's fixed; such reports come first in the list |
+| Status | IssueStatus | Open / InProgress / Resolved. Resolved is final |
+| CreatedAt | DateTime | UTC |
+| ResolvedAt | DateTime? | UTC, set when it becomes Resolved |
+
+### IssueReportPhoto
+
+The photo of a reported problem, at most one per report and keyed by it. In a table of its own,
+so lists of reports never load it.
+
+| Field | Type | Notes |
+|---|---|---|
+| IssueReportId | Guid | key, and FK → `IssueReport.Id`, cascade delete |
+| ContentType | string | `image/jpeg`, `image/png` or `image/webp`, recognised from the first bytes when it was uploaded; max 32 |
+| Data | byte[] | the image, at most 2 MB (`bytea`) |
 
 ## Relationships
 
@@ -267,6 +295,19 @@ erDiagram
         uuid SeriesId FK "for Series messages"
         string ResourceName "the meeting as it was"
     }
+    IssueReport {
+        uuid Id PK
+        uuid ResourceId FK
+        uuid ReportedByUserId "who reported it"
+        int Category
+        int Status "Open, InProgress, Resolved"
+        bool IsBlocking
+    }
+    IssueReportPhoto {
+        uuid IssueReportId PK, FK
+        string ContentType
+        bytes Data "at most 2 MB"
+    }
 
     ApplicationUser |o--o{ ApplicationUser : manages
     ApplicationUser ||--o{ UserSession : "signs in with"
@@ -276,6 +317,8 @@ erDiagram
     Resource ||--o{ ResourceTeam : "belongs to"
     Resource ||--o{ ResourceBlock : "blocked by"
     Resource ||--o{ Reservation : "booked by"
+    Resource ||--o{ IssueReport : "has problems reported in"
+    IssueReport ||--o| IssueReportPhoto : "pictured by"
     ReservationSeries |o--|{ Reservation : "dates of"
     Reservation ||--o{ ReservationAttendee : invites
     Reservation |o--o{ InboxMessage : "told about in"
@@ -285,12 +328,13 @@ erDiagram
     ApplicationUser ||..o{ ReservationAttendee : "invited as"
     ApplicationUser ||..o{ InboxMessage : receives
     ApplicationUser ||..o{ ResourceTeam : "manages the team of"
+    ApplicationUser ||..o{ IssueReport : reports
 ```
 
 - A resource with no `ResourceTeam` rows is shared by everyone (ADR-0022).
 - A reservation, a block or a series is never deleted, only cancelled or ended, so nothing
-  cascades from them; a resource's own rows (features, photo, teams, blocks, reservations)
-  go with it.
+  cascades from them; a resource's own rows (features, photo, teams, blocks, reservations,
+  problem reports) go with it.
 
 ## Indexes
 
@@ -311,6 +355,9 @@ erDiagram
 - `InboxMessages(RecipientId, CreatedAt)` - someone's inbox, newest first; and
   `IX_InboxMessages_Unread` on `InboxMessages(RecipientId)`, only unread rows - the count the app
   asks for on every page.
+- `IssueReports(ResourceId, Status, Category)` - "is this problem already reported here?" on every
+  report, and the problems still open on a resource (ADR-0037); `IssueReports(CreatedAt)` - the
+  list of reports, newest first.
 
 ## Constraints
 
@@ -387,6 +434,12 @@ erDiagram
     stops them all unless the booker chose to skip such dates. The dates keep the first one's
     local time in the booker's time zone; the last starts at most 180 days ahead; a weekly
     series includes the day it starts on; no date runs into the next.
+13. **Problem reports (ADR-0037).** Anyone who may use a resource may report a problem with it.
+    While a report of a category is unresolved on a resource, another of the same category is
+    refused (`Other` excepted); reporting takes the resource's lock, so two at once can't both
+    get in. Only those who may manage the resource move a report on, and `Resolved` is final.
+    Resolving tells the reporter in their inbox, unless they resolved it themselves. The single
+    definition of "the same problem" lives in `SmartDesk.Domain.Rules.IssueRules`.
 
 ## Concurrency (formerly an open question)
 

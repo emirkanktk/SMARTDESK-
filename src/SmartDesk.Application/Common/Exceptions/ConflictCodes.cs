@@ -32,4 +32,10 @@ public static class ConflictCodes
     // Booking a series, some of its dates aren't free (ADR-0035): look at them again
     // (GET /api/reservations/series/preview), then book the others or choose another time.
     public const string SeriesConflicts = "series-conflicts";
+
+    // The same problem is already reported on the resource and isn't fixed yet (ADR-0037).
+    public const string IssueAlreadyReported = "issue-already-reported";
+
+    // A report that's resolved can't be moved back: the problem coming back is a new report.
+    public const string IssueResolved = "issue-resolved";
 }

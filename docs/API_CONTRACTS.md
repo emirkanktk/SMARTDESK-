@@ -425,6 +425,9 @@ The signed-in user's own messages; nobody sees anyone else's.
                                  // | MeetingAccepted | MeetingDeclined (the last two to the organizer)
                                  // | SeriesInvitation | SeriesCancelled | SeriesAccepted | SeriesDeclined
                                  //   (ADR-0035: one message for the dates of a series)
+                                 // | IssueResolved (ADR-0037: to whoever reported a problem, once
+                                 //   it's fixed; the times are when it was reported and resolved,
+                                 //   the note what they wrote)
   "reservationId": "…",          // null once the booking is gone
   "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release, which nobody sent
   "resourceName": "Board Room",  // the meeting as it was when the message was sent
@@ -433,6 +436,7 @@ The signed-in user's own messages; nobody sees anyone else's.
   "reason": null,                // why someone can't come, in a MeetingDeclined or SeriesDeclined
   "series": null,                // for a Series* message: the rule; the times are then its first
                                  // date the message covers ("from Mon 5 Oct, every Monday ...")
+  "issueCategory": null,         // for an IssueResolved message: what the problem was
   "createdAt": "2026-10-01T09:00:00Z",
   "readAt": null                 // null while unread
 }
@@ -498,6 +502,53 @@ is refused.
 | 404 | the resource doesn't exist, or belongs to other teams |
 | 409 | the resource doesn't use check-in (`code: "check-in-not-used"`), or none of the caller's bookings of it is open for one now (`code: "nothing-to-check-in"`, `"You have no booking of Board Room to check in to right now. Check-in opens 10 minutes before the start and closes 15 minutes after it."`) |
 | 429 | more than 20 check-ins a minute from one user (`RateLimiting:CheckInPermitsPerMinute`) |
+
+## Problem reports (ADR-0037)
+
+Anyone who may use a resource reports a problem with it, usually from the page its QR code
+opens: the TV doesn't work, the room needs cleaning. Those who may manage the resource - the
+Admins, and the Manager of the one team it belongs to - follow the reports up.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/resources/{id}/issues` | any authenticated user | `GetOpenIssuesQuery` | the problems still open on the resource (`Open` or `InProgress`), those that make it unusable first, then the newest. 404 for another team's resource. |
+| POST | `/api/resources/{id}/issues` | any authenticated user | `CreateIssueReportCommand` | `multipart/form-data`: `category`, `description` (up to 500 chars), `isBlocking` (false when left out) and an optional `photo`, a JPEG, PNG or WebP of at most 2 MB, as for a resource's photo → 201 with the report. 429 after 10 a minute from one user (`RateLimiting:IssueReportPermitsPerMinute`). |
+| GET | `/api/issues?status=&resourceId=` | Admin or Manager | `GetIssueReportsQuery` | every report for an Admin; for a Manager, those on resources that belong to their team alone. Unresolved first, the blocking ones first among those, then the newest. |
+| PATCH | `/api/issues/{id}` | Admin or Manager | `UpdateIssueStatusCommand` | body `{ status }`: `Open` and `InProgress` back and forth, then `Resolved`, which is final; resolving again changes nothing. Resolving sends the reporter an `IssueResolved` inbox message, unless they resolved it themselves. Only those who may manage the resource. |
+| GET | `/api/issues/{id}/photo` | any authenticated user | `GetIssuePhotoQuery` | the image, for anyone who may use the resource, with `Cache-Control: private, max-age=86400` (a report's photo never changes) and `X-Content-Type-Options: nosniff`; 404 when there's none |
+
+```json
+{
+  "id": "…", "resourceId": "…", "resourceName": "Board Room",
+  "category": "Display",         // Display | Projector | AudioVideo | AirConditioning | Cleaning
+                                 // | Furniture | Other
+  "description": "The TV doesn't turn on",
+  "isBlocking": true,            // the resource can't be used until it's fixed
+  "status": "Open",              // Open | InProgress | Resolved
+  "hasPhoto": true,
+  "reportedByUserId": "…", "reportedByName": "Ayşe Yılmaz",
+  "createdAt": "2026-10-08T10:00:00Z",
+  "resolvedAt": null
+}
+```
+
+- **One report per problem.** While a report of a category is still open on a resource, another
+  of the same category is refused: 409, `code: "issue-already-reported"`, `"This problem with
+  Board Room has already been reported and isn't fixed yet."`. `Other` is the exception, since
+  two of those are rarely the same thing. Reporting takes the resource's lock (ADR-0011), so two
+  people reporting at once can't both get in.
+- **Resolved is final.** Moving a resolved report anywhere else is 409, `code: "issue-resolved"`.
+  The problem coming back is a new report.
+
+**Problem reports - errors**
+
+| Status | When |
+|---|---|
+| 400 | no `category`, or one that isn't listed; `description` empty or over 500 chars; a `photo` over 2 MB, or not a JPEG, PNG or WebP (on `Photo`) |
+| 403 | moving a report on a resource the caller may use but not manage (a shared one, for a Manager); an Employee asking for the list or moving a report |
+| 404 | the resource or the report doesn't exist, or belongs to other teams |
+| 409 | `issue-already-reported`, `issue-resolved` (above) |
+| 429 | more than 10 reports a minute from one user |
 
 ## Resource blocks
 
@@ -639,7 +690,7 @@ Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). `ReservationReleaseWarning` - to the owner and those invited: nobody has checked in yet, and it's released in five minutes (ADR-0034). `ReservationEndingSoon` - to the owner only: their booking under way ends within ten minutes; do they need longer (ADR-0033)? Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). `ReservationReleaseWarning` - to the owner and those invited: nobody has checked in yet, and it's released in five minutes (ADR-0034). `ReservationEndingSoon` - to the owner only: their booking under way ends within ten minutes; do they need longer (ADR-0033)? `IssueReported`, `IssueUpdated` - a problem reported at a resource, or its report moved on, carrying the report; to the Admins and the Manager of the team the resource belongs to alone (ADR-0037). Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
 
 Connecting takes the access token in the `access_token` query parameter, since a browser
 can't put a header on a WebSocket handshake. The rules under Auth apply: a guest or a dead
@@ -676,6 +727,11 @@ offline isn't repeated.
 sent once its change is committed, to its recipient's connections only. One that finds them
 offline isn't repeated: the inbox and `unread-count` have it.
 
+**Problem reports (ADR-0037).** `IssueReported` and `IssueUpdated` carry the report as
+`GET /api/issues` returns it, once the change is committed, to the Admins' group and, when the
+resource belongs to one team alone, that team's Manager. Nobody else hears them. The reporter
+learns of the fix from an `IssueResolved` inbox message (`InboxMessageReceived`).
+
 **Check-in (ADR-0030).** A check-in is a `ReservationUpdated` with `checkedInAt` set. A release
 reaches everyone who may see the resource as `ReservationCancelled`, with `releasedAt` set, so
 calendars free the slot; the owner also gets `ReservationReleased` with the same reservation,
@@ -697,8 +753,8 @@ to be told why it's gone.
   (ADR-0008) - "none" in an Auth column above means `[AllowAnonymous]`.
 - Error status codes: 400 validation (`errors` holds a field → messages map), 401 missing/
   invalid token or failed login, 403 authenticated but not allowed (e.g. non-Admin), 409
-  business-rule conflict (e.g. overlapping reservation), 429 too many login attempts or
-  questions to the assistant, 500 unexpected, 503 the assistant is off or can't answer.
+  business-rule conflict (e.g. overlapping reservation), 429 too many login attempts,
+  questions to the assistant, check-ins or problem reports, 500 unexpected, 503 the assistant is off or can't answer.
 - **Languages (ADR-0023).** Every message a person reads - `title`, `detail`, validation
   messages, Identity's password rules - is in the language `Accept-Language` asks for:
   Turkish (`tr`, `tr-TR`, …) or English. No header, or any other language, gets English, so
@@ -710,7 +766,7 @@ to be told why it's gone.
     on the language: `resource-unavailable`, `resource-blocked`, `reservation-overlaps`,
     `resource-has-reservations`,
     `block-overlaps-block`, `block-overlaps-reservations`, `check-in-not-used`,
-    `nothing-to-check-in`. The 403 for a pending password
+    `nothing-to-check-in`, `issue-already-reported`, `issue-resolved`. The 403 for a pending password
     change has `code: "password-change-required"` (ADR-0021).
   - Emails are written in the recipient's language: the one they last signed in with, saved
     on their account. Until then, the language of the request that sends the email (for a new

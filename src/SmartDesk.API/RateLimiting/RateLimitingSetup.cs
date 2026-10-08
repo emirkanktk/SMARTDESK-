@@ -24,6 +24,10 @@ public static class RateLimitingSetup
     // hundred of them.
     public const string DoorScreenPolicy = "door-screen";
 
+    // Reporting a problem (ADR-0037): someone at a door reports one or two, and each may carry
+    // a photo of up to 2 MB, so a script sending them by the hundred is what this stops.
+    public const string IssueReportPolicy = "issue-report";
+
     // Identity's lockout (5 failures -> 5 minutes) protects one account at a time; this caps
     // how many sign-in attempts one client can make across all accounts, which is what a
     // password-spraying or credential-stuffing run looks like.
@@ -36,6 +40,7 @@ public static class RateLimitingSetup
         var assistantPermitsPerMinute = configuration.GetValue("RateLimiting:AssistantPermitsPerMinute", 20);
         var checkInPermitsPerMinute = configuration.GetValue("RateLimiting:CheckInPermitsPerMinute", 20);
         var doorScreenPermitsPerMinute = configuration.GetValue("RateLimiting:DoorScreenPermitsPerMinute", 600);
+        var issueReportPermitsPerMinute = configuration.GetValue("RateLimiting:IssueReportPermitsPerMinute", 10);
 
         services.AddRateLimiter(options =>
         {
@@ -78,6 +83,15 @@ public static class RateLimitingSetup
                     QueueLimit = 0,
                 }));
 
+            options.AddPolicy(IssueReportPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = issueReportPermitsPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+
             // Same ProblemDetails shape as every other error, plus Retry-After.
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -101,6 +115,7 @@ public static class RateLimitingSetup
                                 AssistantPolicy => Messages.Error_TooManyAssistantRequests,
                                 CheckInPolicy => Messages.Error_TooManyCheckIns,
                                 DoorScreenPolicy => Messages.Error_TooManyDoorScreenRequests,
+                                IssueReportPolicy => Messages.Error_TooManyIssueReports,
                                 _ => Messages.Error_TooManySignIns,
                             },
                         },

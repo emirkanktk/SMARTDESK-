@@ -4,7 +4,8 @@ namespace SmartDesk.Domain.Entities;
 
 // A message in someone's inbox (ADR-0032). It keeps what the meeting looked like when it was
 // sent - the room, the times, the organizer's note - so it reads the same later, whatever
-// happens to the booking. The app writes the words, in the reader's language.
+// happens to the booking. The app writes the words, in the reader's language. Since ADR-0037
+// it also tells people a problem they reported is fixed.
 public class InboxMessage
 {
     public Guid Id { get; set; }
@@ -31,6 +32,9 @@ public class InboxMessage
     public Guid? SeriesId { get; set; }
 
     public ReservationSeries? Series { get; set; }
+
+    // What the problem an IssueResolved message is about was (ADR-0037); null for the rest.
+    public IssueCategory? IssueCategory { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime? ReadAt { get; set; }
