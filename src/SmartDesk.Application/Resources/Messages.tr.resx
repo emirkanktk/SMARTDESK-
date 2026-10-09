@@ -576,6 +576,9 @@
   <data name="Resources_OwnTeamOnly" xml:space="preserve">
     <value>Ekip yöneticileri yalnızca kendi ekiplerine kaynak ekleyebilir.</value>
   </data>
+  <data name="Resources_PhotoDimensions" xml:space="preserve">
+    <value>Fotoğrafın eni ve boyu en fazla {0} piksel olabilir.</value>
+  </data>
   <data name="Resources_PhotoMissing" xml:space="preserve">
     <value>Yüklenecek bir fotoğraf seçin.</value>
   </data>
