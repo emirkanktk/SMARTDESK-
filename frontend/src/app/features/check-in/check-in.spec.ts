@@ -181,20 +181,24 @@ describe('roomNowFor', () => {
     ).toBe('free');
   });
 
-  it('is out of use when the resource is, or a block covers now', () => {
+  it('is out of use when the resource is, saying why, or a block covers now, until it ends', () => {
     expect(
-      roomNowFor(fakeResource({ status: 'Maintenance' }), { bookings: [], blocks: [] }, now).kind,
-    ).toBe('unavailable');
+      roomNowFor(fakeResource({ status: 'Maintenance' }), { bookings: [], blocks: [] }, now),
+    ).toEqual({ kind: 'unavailable', reason: 'Maintenance', until: null });
     const block = {
       id: 'b',
       resourceId: 'res-1',
       resourceName: 'A',
       startDateTime: iso('09:00'),
       endDateTime: iso('10:01'),
-      reason: 'x',
+      reason: 'The TV is being replaced',
       createdByUserId: 'u',
     };
-    expect(roomNowFor(room, { bookings: [], blocks: [block] }, now).kind).toBe('unavailable');
+    expect(roomNowFor(room, { bookings: [], blocks: [block] }, now)).toEqual({
+      kind: 'unavailable',
+      reason: 'The TV is being replaced',
+      until: at('10:01'),
+    });
   });
 });
 
@@ -289,6 +293,12 @@ describe('CheckIn', () => {
 
   function checkInButton(): HTMLButtonElement | null {
     return element.querySelector<HTMLButtonElement>('.check-in-button');
+  }
+
+  /** What the room is doing now, as it reads under its name. */
+  function state(): string | null {
+    const shown = element.querySelector('.room-state');
+    return shown ? shown.textContent!.replace(/\s+/g, ' ').trim() : null;
   }
 
   it('checks in the open booking with the code from the QR code', async () => {
@@ -584,6 +594,7 @@ describe('CheckIn', () => {
       await render();
 
       expect(element.textContent).toContain('Meeting Room A is free until 10:40.');
+      expect(state()).toBe('Free now');
       expect(buttons()).toContain('30 min');
       expect(buttons()).not.toContain('1 hour');
     });
@@ -603,6 +614,7 @@ describe('CheckIn', () => {
       await render();
 
       expect(element.textContent).toContain('Meeting Room A is in use until 11:00.');
+      expect(state()).toBe('In use until 11:00');
       expect(buttons()).not.toContain('30 min');
     });
 
@@ -624,6 +636,19 @@ describe('CheckIn', () => {
       await render();
 
       expect(element.textContent).toContain("Meeting Room A can't be booked right now.");
+      expect(element.querySelector('.room-why')!.textContent).toBe('Cleaning');
+      expect(state()).toBe('Not available until 12:00');
+    });
+
+    it('says why a resource out of use cannot be booked', async () => {
+      getMine.mockReturnValue(of([]));
+      getResource.mockReturnValue(
+        of(fakeResource({ checkInRequired: true, status: 'Maintenance' })),
+      );
+      await render();
+
+      expect(element.querySelector('.room-why')!.textContent).toBe('Maintenance');
+      expect(state()).toBe('Not available');
     });
   });
 
@@ -668,13 +693,30 @@ describe('CheckIn', () => {
       await fixture.whenStable();
     }
 
-    it('has the room as its title, with where it is and how many it holds', async () => {
+    it('has the room as its title, with where it is, how many it holds and what it has', async () => {
       await render();
 
       expect(element.querySelector('h1')!.textContent).toBe('Meeting Room A');
       expect(element.querySelector('.room-facts')!.textContent!.replace(/\s+/g, ' ').trim()).toBe(
+        '2nd Floor · 8 people · TV, Video Conference',
+      );
+    });
+
+    it('leaves out what it has when it has nothing listed', async () => {
+      getResource.mockReturnValue(of(fakeResource({ checkInRequired: true, features: [] })));
+      await render();
+
+      expect(element.querySelector('.room-facts')!.textContent!.replace(/\s+/g, ' ').trim()).toBe(
         '2nd Floor · 8 people',
       );
+    });
+
+    it("says what the room is doing now under its name, over the caller's own booking", async () => {
+      getCalendar.mockReturnValue(of([booking()]));
+      await render(); // 09:55: Ayşe's 10:00 booking is open for its check-in, the room is free
+
+      expect(state()).toBe('Free now');
+      expect(element.querySelector('.check-in-button')).not.toBeNull();
     });
 
     it('lists the problems still open, the ones that make it unusable first', async () => {

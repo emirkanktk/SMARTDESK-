@@ -310,7 +310,9 @@ window does.
   lines to cut along, check-in or not. Print one, or show the print preview. Each opens its
   resource's page.
 - As Mehmet, open Board Room's code (on its form, under **Check-in**, or scanned from a label).
-  The page has the room as its title, its day, and **Problems here**. **Report a problem** →
+  The page has the room as its title, with where it is, how many it holds and what it has, and
+  under it what the room is doing now - free, in use until when, or not available and why, as
+  its door screen says - then its day, and **Problems here**. **Report a problem** →
   **Screen or TV**, "The TV doesn't turn on", a photo if on a phone (it opens the back camera),
   tick **It can't be used until this is fixed** → **Send the report**.
 - The admin's window shows a toast at once, and **Problems** in the menu counts 1. Open it: the
@@ -349,6 +351,11 @@ window does.
 - **Accessibility:** every screen passes an axe-core WCAG 2.1 AA scan, in both themes. Text
   colours keep 4.5:1 contrast on their backgrounds, and the signed-out pages have a main
   landmark.
+- **A limit, said up front:** a photo of a printed QR code checks in from anywhere, as long as
+  the code isn't replaced; checking in proves you hold the code, not that you're at the door.
+  **Replace code** retires a code that got around, and a door screen closes the gap: its code
+  changes every 30 seconds, so a photo of it works for a minute at most (ADR-0030, ADR-0034,
+  ADR-0039).
 
 ## If something goes wrong
 

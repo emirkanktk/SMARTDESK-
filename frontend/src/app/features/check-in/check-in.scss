@@ -92,6 +92,36 @@
   margin: var(--space-1) 0 0;
 }
 
+// What the room is doing now, under its name (as its door screen says it): a glance at the
+// door, before anything else.
+.room-state {
+  display: inline-block;
+  margin: var(--space-2) 0 0;
+  padding: 0.125rem var(--space-2);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 700;
+
+  &.free {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+  }
+
+  &.busy {
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+  }
+
+  &.unavailable {
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
+}
+
+.room-why {
+  margin: 0;
+}
+
 // The problems known at this resource, and the way to report one (ADR-0037).
 .issues {
   display: flex;
