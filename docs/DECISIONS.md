@@ -693,7 +693,9 @@ new tables.
   nothing else to back up or deploy, and a resource's photo goes with it.
 - **Only real images.** The API recognises JPEG, PNG and WebP by their first bytes and stores
   the type it recognised; the name and type the upload claims don't count. No SVG, which can
-  carry script. Photos are served with `X-Content-Type-Options: nosniff`.
+  carry script. Photos are served with `X-Content-Type-Options: nosniff`. (Since 2026-10-09,
+  also at most 4096 pixels on a side, read from the header without decoding it: a 2 MB file
+  could otherwise open into a picture too big for a phone to draw.)
 - **Smaller before uploading.** The app draws the chosen picture at most 1600 pixels on its
   longest side and writes it as WebP (JPEG where the browser can't), so a phone photo of
   several MB goes up as a few hundred KB, without the location and the other details the

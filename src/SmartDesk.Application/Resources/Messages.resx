@@ -576,6 +576,9 @@
   <data name="Resources_OwnTeamOnly" xml:space="preserve">
     <value>Managers add resources to their own team only.</value>
   </data>
+  <data name="Resources_PhotoDimensions" xml:space="preserve">
+    <value>The photo can be at most {0} pixels wide and {0} pixels tall.</value>
+  </data>
   <data name="Resources_PhotoMissing" xml:space="preserve">
     <value>Choose a photo to upload.</value>
   </data>

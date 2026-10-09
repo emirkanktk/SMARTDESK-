@@ -15,8 +15,10 @@ public sealed class SetResourcePhotoCommandValidator : AbstractValidator<SetReso
             .WithMessage(_ => Messages.Resources_PhotoMissing)
             .Must(data => data.Length <= ResourcePhotoRules.MaxBytes)
             .WithMessage(_ => string.Format(Messages.Resources_PhotoTooLarge, ResourcePhotoRules.MaxBytes / (1024 * 1024)))
-            .Must(data => ResourcePhotoRules.DetectContentType(data) is not null)
+            .Must(data => ResourcePhotoRules.ReadSize(data) is not null)
             .WithMessage(_ => Messages.Resources_PhotoType)
+            .Must(data => ResourcePhotoRules.ReadSize(data) is { Width: <= ResourcePhotoRules.MaxSide, Height: <= ResourcePhotoRules.MaxSide })
+            .WithMessage(_ => string.Format(Messages.Resources_PhotoDimensions, ResourcePhotoRules.MaxSide))
             .OverridePropertyName("Photo");
     }
 }
