@@ -14,14 +14,15 @@ public sealed class ReleaseNoShowsCommandHandler(
     IIdentityService identityService,
     IReservationNotifier notifier,
     TimeProvider timeProvider,
-    MeetingInvitations invitations) : IRequestHandler<ReleaseNoShowsCommand, int>
+    MeetingInvitations invitations,
+    ICheckInTimes times) : IRequestHandler<ReleaseNoShowsCommand, int>
 {
     public async Task<int> Handle(ReleaseNoShowsCommand request, CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var due = await db.Reservations
             .AsNoTracking()
-            .Where(CheckInRules.DueForRelease(now))
+            .Where(CheckInRules.DueForRelease(now, times.Grace))
             .Select(r => r.Id)
             .ToListAsync(cancellationToken);
 
@@ -62,7 +63,7 @@ public sealed class ReleaseNoShowsCommandHandler(
 
         var reservation = await db.Reservations
             .Where(r => r.Id == id)
-            .Where(CheckInRules.DueForRelease(now))
+            .Where(CheckInRules.DueForRelease(now, times.Grace))
             .SingleOrDefaultAsync(cancellationToken);
         if (reservation is null)
         {

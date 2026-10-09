@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Auth.Common;
+using SmartDesk.Domain.Rules;
 using SmartDesk.Infrastructure.Assistant;
 using SmartDesk.Infrastructure.Email;
 using SmartDesk.Infrastructure.Identity;
@@ -73,6 +74,13 @@ public static class DependencyInjection
                 "App:FrontendUrl must be the absolute http(s) address the frontend is served on, e.g. http://localhost:4200.")
             .ValidateOnStart();
         services.AddSingleton<IFrontendLinks, FrontendLinks>();
+
+        services.AddOptions<CheckInOptions>()
+            .Bind(configuration.GetSection(CheckInOptions.SectionName))
+            .Validate(o => o.HasValidGrace,
+                $"CheckIn:GraceMinutes must be from {CheckInRules.MinGrace.TotalMinutes} to {CheckInRules.MaxGrace.TotalMinutes}.")
+            .ValidateOnStart();
+        services.AddSingleton<ICheckInTimes, CheckInTimes>();
 
         // Email (ADR-0019): handlers queue, a background worker sends - over SMTP when
         // Email:Smtp:Host is set, to the log otherwise. The log gets the whole email, reset

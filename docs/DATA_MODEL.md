@@ -412,7 +412,8 @@ erDiagram
    shared or given to another team.
 10. **Check-in (ADR-0030).** A booking of a resource with `CheckInRequired` is checked in by its
     owner at the door, from 10 minutes before its start until 15 minutes after (never once it's
-    over), with the resource's current `CheckInCode`. One nobody checked in to by then is
+    over; the 15 minutes are `CheckIn:GraceMinutes`, ADR-0040), with the resource's current
+    `CheckInCode`. One nobody checked in to by then is
     released: `Cancelled`, with `ReleasedAt`.
     - This applies only when the booking's own `CheckInRequired` and its resource's are both
       set, so switching check-in on doesn't catch bookings made without knowing, and switching

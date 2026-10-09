@@ -79,8 +79,9 @@ export class ReminderAlertsService {
   }
 
   /**
-   * Nobody has checked in yet, and it's released in five minutes (ADR-0034): to the owner and
-   * to those invited, any of whom may still get to the door.
+   * Nobody has checked in yet, and it's released in five minutes (ADR-0034), or less with a
+   * shorter grace (ADR-0040): to the owner and to those invited, any of whom may still get to
+   * the door.
    */
   private showReleaseWarning(reservation: Reservation): void {
     const closesAt = formatDate(checkInWindow(reservation).closesAt, 'HH:mm', this.locale);

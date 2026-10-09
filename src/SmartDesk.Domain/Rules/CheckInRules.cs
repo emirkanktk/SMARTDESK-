@@ -7,15 +7,25 @@ using SmartDesk.Domain.Enums;
 namespace SmartDesk.Domain.Rules;
 
 // Checking in at the door with the resource's QR code (ADR-0030). A booking that needs it can
-// be checked in from shortly before its start until a quarter of an hour after. One nobody has
-// checked in to by then is released, so the room goes back to people who are actually there.
+// be checked in from shortly before its start until its grace after, a quarter of an hour by
+// default. One nobody has checked in to by then is released, so the room goes back to people
+// who are actually there. The grace is a setting (ADR-0040), so the rules take it.
 public static class CheckInRules
 {
     public static readonly TimeSpan OpensBefore = TimeSpan.FromMinutes(10);
-    public static readonly TimeSpan Grace = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan DefaultGrace = TimeSpan.FromMinutes(15);
+
+    // The shortest and longest grace the setting takes: a demo can show a release in a minute,
+    // and an hour-long grace would keep most rooms waiting for no one.
+    public static readonly TimeSpan MinGrace = TimeSpan.FromMinutes(1);
+    public static readonly TimeSpan MaxGrace = TimeSpan.FromMinutes(60);
 
     // How long before the release the owner and those invited are warned (ADR-0034).
     public static readonly TimeSpan WarnBeforeRelease = TimeSpan.FromMinutes(5);
+
+    // The warning's lead for a grace: WarnBeforeRelease, or the whole grace when it's shorter,
+    // so the warning never comes before the start.
+    public static TimeSpan WarningLead(TimeSpan grace) => grace < WarnBeforeRelease ? grace : WarnBeforeRelease;
 
     // Its resource asked for a check-in when it was booked, and still does. So switching
     // check-in on doesn't catch bookings made without knowing, and switching it off lets every
@@ -23,21 +33,21 @@ public static class CheckInRules
     public static Expression<Func<Reservation, bool>> Needed =>
         r => r.CheckInRequired && r.Resource.CheckInRequired;
 
-    // Its window is open at `now`: [start - OpensBefore, start + Grace), and never once the
+    // Its window is open at `now`: [start - OpensBefore, start + grace), and never once the
     // booking is over.
-    public static Expression<Func<Reservation, bool>> OpenAt(DateTime now)
+    public static Expression<Func<Reservation, bool>> OpenAt(DateTime now, TimeSpan grace)
     {
         var startsBy = now + OpensBefore;
-        var startedAfter = now - Grace;
+        var startedAfter = now - grace;
         return r => r.StartDateTime <= startsBy && startedAfter < r.StartDateTime && now < r.EndDateTime;
     }
 
     // Released at `now`: Needed, Confirmed, nobody checked in, and the window has closed while
-    // the booking still has time left for someone else. Its start condition is exactly the
-    // opposite of OpenAt's, so a check-in and a release are never both allowed.
-    public static Expression<Func<Reservation, bool>> DueForRelease(DateTime now)
+    // the booking still has time left for someone else. With the same grace, its start condition
+    // is exactly the opposite of OpenAt's, so a check-in and a release are never both allowed.
+    public static Expression<Func<Reservation, bool>> DueForRelease(DateTime now, TimeSpan grace)
     {
-        var closedFor = now - Grace;
+        var closedFor = now - grace;
         return r => r.Status == ReservationStatus.Confirmed
             && r.CheckInRequired
             && r.Resource.CheckInRequired
@@ -47,11 +57,11 @@ public static class CheckInRules
     }
 
     // Warned at `now`: Needed, Confirmed, nobody checked in, not warned yet, and the window
-    // closes within WarnBeforeRelease - but hasn't closed: from then on, it's the release.
-    public static Expression<Func<Reservation, bool>> DueForReleaseWarning(DateTime now)
+    // closes within its WarningLead - but hasn't closed: from then on, it's the release.
+    public static Expression<Func<Reservation, bool>> DueForReleaseWarning(DateTime now, TimeSpan grace)
     {
-        var warnFrom = now - (Grace - WarnBeforeRelease);
-        var closedFor = now - Grace;
+        var warnFrom = now - (grace - WarningLead(grace));
+        var closedFor = now - grace;
         return r => r.Status == ReservationStatus.Confirmed
             && r.CheckInRequired
             && r.Resource.CheckInRequired

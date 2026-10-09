@@ -41,6 +41,8 @@ public sealed class DoorScreenTests : IDisposable
         [Ayse.UserId!.Value] = "Ayşe Yılmaz",
         [Mehmet.UserId!.Value] = "Mehmet Demir",
     });
+    // The setting's default; a test can set another (ADR-0040).
+    private ICheckInTimes _times = TestCheckInTimes.Default;
 
     public void Dispose() => _database.Dispose();
 
@@ -124,14 +126,14 @@ public sealed class DoorScreenTests : IDisposable
     private async Task<ReservationDto> CheckInAsync(Guid roomId, string code, FakeCurrentUser? user = null)
     {
         await using var context = _database.CreateContext();
-        return await new CheckInCommandHandler(context, user ?? Ayse, _names, _notifier.Object, _clock)
+        return await new CheckInCommandHandler(context, user ?? Ayse, _names, _notifier.Object, _clock, _times)
             .Handle(new CheckInCommand(code) { ResourceId = roomId }, CancellationToken.None);
     }
 
     private async Task<int> WarnAsync()
     {
         await using var context = _database.CreateContext();
-        return await new WarnBeforeReleaseCommandHandler(context, _names, _notifier.Object, _clock)
+        return await new WarnBeforeReleaseCommandHandler(context, _names, _notifier.Object, _clock, _times)
             .Handle(new WarnBeforeReleaseCommand(), CancellationToken.None);
     }
 
@@ -418,6 +420,21 @@ public sealed class DoorScreenTests : IDisposable
         ItIs(70 + 15); // the late one's window has closed: it's the release now, not a warning
         (await WarnAsync()).Should().Be(0);
         (await ReadAsync(late)).ReleaseWarningSentAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task With_a_grace_shorter_than_five_minutes_the_warning_comes_at_the_start()
+    {
+        _times = TestCheckInTimes.WithGrace(1);
+        var room = await AddRoomAsync();
+        var id = await BookAsync(room.Id);
+
+        ItIs(-0.01);
+        (await WarnAsync()).Should().Be(0, "never before the start");
+        ItIs(0);
+        (await WarnAsync()).Should().Be(1);
+
+        (await ReadAsync(id)).ReleaseWarningSentAt.Should().Be(Ten);
     }
 
     // --- Ending at the door ---

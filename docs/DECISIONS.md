@@ -811,7 +811,7 @@ new tables.
   in resource responses. Replacing it retires the printed one.
 - **The window.** From 10 minutes before the start until 15 minutes after, and never once the
   booking is over. Only the owner checks in, only a `Confirmed` booking. (Anyone invited to it
-  may too, since ADR-0032.)
+  may too, since ADR-0032. Since ADR-0040 the 15 minutes are a setting, `CheckIn:GraceMinutes`.)
 - **Release.** A booking nobody checked in to when its window closes is released: `Cancelled`,
   with `ReleasedAt`. A background job looks every 30 seconds. Calendars free the slot through
   the usual `ReservationCancelled`; the owner also gets `ReservationReleased`, a toast saying why.
@@ -994,7 +994,8 @@ new tables.
   once.
 - **A warning before the release.** Five minutes before a booking nobody checked in to is
   released, its owner and those invited get `ReservationReleaseWarning`, once
-  (`ReleaseWarningSentAt`), from its own job on the check-in schedule.
+  (`ReleaseWarningSentAt`), from its own job on the check-in schedule. (Since ADR-0040, at the
+  start when the grace is shorter than five minutes.)
 - **Rate limits.** Checking in: 20 a minute per user. The door screen: 600 a minute per
   address.
 
@@ -1220,3 +1221,31 @@ new tables.
   - A copy of the database can compute the codes, as it could compute the printed one's before.
   - A new screen link changes every code at once; the screen picks up the new one on its next
     look, within ten seconds.
+
+## ADR-0040: The check-in grace is a setting
+
+**Decision** (amends ADR-0030 and ADR-0034):
+- How long after its start a booking that needs a check-in waits for one before it's released
+  is `CheckIn:GraceMinutes`: 15 by default, from 1 to 60. The API doesn't start with another
+  value. The window still opens 10 minutes before the start.
+- The warning before a release comes five minutes before it, as before, or at the start when
+  the grace is shorter: never before the booking begins.
+- `GET /api/check-in/times`, open to anyone, gives the window's lengths. The app reads them once
+  as it starts, before the first page, and says and counts every check-in time with them: the
+  check-in page, the forms, the poster, the guide, the door screen, the reminders. The
+  assistant's instructions take the grace too.
+
+**Why:**
+- The demo in the plan shows a booking nobody checked in to being released. With a quarter of
+  an hour that's a long wait in front of an audience; with one minute it happens while they
+  watch.
+- Everything that states or counts the window takes it from the one setting, so the app can't
+  say "15 minutes" while the API releases after one. An office may want another grace too.
+- Only the grace moves: the opening stays fixed, and nothing asked for it.
+- **Trade-offs:**
+  - A booking's window isn't stored, so a new grace applies at once to every booking, the ones
+    waiting at the door too.
+  - The English texts that give the grace in minutes say "1 minutes" for a one-minute grace.
+    It's a demo setting, and the Turkish texts have no plural there.
+  - The app waits for the times as it starts, five seconds at most, and goes on with the
+    defaults without them.

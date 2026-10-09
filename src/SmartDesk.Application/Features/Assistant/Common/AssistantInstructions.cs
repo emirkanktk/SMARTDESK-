@@ -1,14 +1,16 @@
 using System.Globalization;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Domain.Constants;
+using SmartDesk.Domain.Rules;
 
 namespace SmartDesk.Application.Features.Assistant.Common;
 
-// What the model is told (ADR-0029). Text is the same for every request, so the provider can
-// cache it; Context changes with each one and goes after it.
+// What the model is told (ADR-0029). Text is the same for every request - the check-in grace in
+// it is a setting, fixed while the API runs (ADR-0040) - so the provider can cache it; Context
+// changes with each one and goes after it.
 public static class AssistantInstructions
 {
-    public const string Text = """
+    public static string Text(TimeSpan checkInGrace) => $"""
         You are the assistant inside SmartDesk, the web app an office uses to book what it
         shares: meeting rooms, desks, company cars, projectors, cameras and the like. You talk
         with one signed-in person at a time.
@@ -45,7 +47,7 @@ public static class AssistantInstructions
           when changing a booking.
         - Administrators can close a resource for maintenance; a closed window can't be booked.
         - A resource with checkInRequired asks for a check-in: whoever booked it scans the QR
-          code at the door from 10 minutes before the start until 15 minutes after. A booking
+          code at the door from {(int)CheckInRules.OpensBefore.TotalMinutes} minutes before the start until {(int)checkInGrace.TotalMinutes} minutes after. A booking
           nobody checks in to is released, so others can use it. Say so when offering one.
         - Some resources belong to a team; people see and book their team's and the shared ones.
         - The calendar, the dashboard and "My reservations" update live, without a reload.

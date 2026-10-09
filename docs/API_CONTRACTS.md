@@ -453,9 +453,9 @@ A resource with `checkInRequired` has a QR code at its door. Whoever booked it s
 which opens `/check-in/{id}?code=…` in the app, and checks in there
 (`POST /api/resources/{id}/check-in`).
 
-- **The window.** From 10 minutes before the start until 15 minutes after, and never once the
-  booking is over. The owner checks in, or anyone invited to it (ADR-0032), and only a
-  `Confirmed` booking.
+- **The window.** From 10 minutes before the start until its grace after - 15 minutes, or
+  `CheckIn:GraceMinutes`, from 1 to 60 (ADR-0040) - and never once the booking is over. The owner
+  checks in, or anyone invited to it (ADR-0032), and only a `Confirmed` booking.
 - **Release.** A booking nobody checked in to by then is released: its `status` becomes
   `Cancelled` and `releasedAt` is set. A background job looks every 30 seconds
   (`CheckIn:IntervalSeconds`; `CheckIn:Enabled: false` switches releasing off), so a release
@@ -480,6 +480,7 @@ the printed code is refused.
 
 | Method | Path | Auth | Query | Notes |
 |---|---|---|---|---|
+| GET | `/api/check-in/times` | anyone, signed in or not | `GetCheckInTimesQuery` | → 200 `{ "opensBeforeMinutes": 10, "graceMinutes": 15, "warnBeforeReleaseMinutes": 5 }`: the window's lengths, so the app says and counts with the API's own (ADR-0040). `graceMinutes` is `CheckIn:GraceMinutes`; with a grace under five minutes, `warnBeforeReleaseMinutes` is the grace: the warning comes at the start. The app reads them once, as it starts. |
 | GET | `/api/door/{resourceId}?timeZone=` | the screen's token, in `X-Door-Token` (no user) | `GetDoorScreenQuery` | the room, today's bookings that aren't over (times only, at most 8), blocked windows, and the check-in link with the current code until `changesAt`; `checkIn` is null when the resource uses no check-in. "Today" is in `timeZone` (UTC when left out). A wrong or old token is the same 404 as no resource. 429 after 600 a minute from one address (`RateLimiting:DoorScreenPermitsPerMinute`): a screen asks about six times a minute, and a building's screens usually share an address. |
 
 ```json
@@ -493,7 +494,8 @@ the printed code is refused.
 ```
 
 - **The warning.** Five minutes before a booking nobody checked in to is released, its owner
-  and those invited get `ReservationReleaseWarning` (see Real-time), once.
+  and those invited get `ReservationReleaseWarning` (see Real-time), once. With a shorter
+  grace, at the start (ADR-0040).
 - **Who checked in.** A reservation carries `checkedInBy` and `checkedInByName`; moving it to a
   new start or another resource clears them with `checkedInAt`.
 
@@ -698,7 +700,7 @@ Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.
 
 | Hub | Path | Events |
 |---|---|---|
-| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). `ReservationReleaseWarning` - to the owner and those invited: nobody has checked in yet, and it's released in five minutes (ADR-0034). `ReservationEndingSoon` - to the owner only: their booking under way ends within ten minutes; do they need longer (ADR-0033)? `IssueReported`, `IssueUpdated` - a problem reported at a resource, or its report moved on, carrying the report; to the Admins and the Manager of the team the resource belongs to alone (ADR-0037). Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
+| `ReservationHub` | `/hubs/reservations` | `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled` - each carries enough of the reservation's shape for an open calendar/dashboard to patch its view without a refetch. `ReservationStartingSoon` - the owner's reminder, sent to that user only. `ReservationReleased` - also to the owner only: their booking was released because nobody checked in (ADR-0030). `InboxMessageReceived` - a message to the user's inbox, to that user only, carrying the message (ADR-0032). `ReservationReleaseWarning` - to the owner and those invited: nobody has checked in yet, and it's released in five minutes, or less with a shorter grace (ADR-0034, ADR-0040). `ReservationEndingSoon` - to the owner only: their booking under way ends within ten minutes; do they need longer (ADR-0033)? `IssueReported`, `IssueUpdated` - a problem reported at a resource, or its report moved on, carrying the report; to the Admins and the Manager of the team the resource belongs to alone (ADR-0037). Events on a shared resource go to everyone; on a team resource only to that resource's teams, the Admins and the reservation's owner (ADR-0022) - the owner may get such an event twice, so apply events by id. |
 
 Connecting takes the access token in the `access_token` query parameter, since a browser
 can't put a header on a WebSocket handshake. The rules under Auth apply: a guest or a dead

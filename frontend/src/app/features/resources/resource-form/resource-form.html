@@ -265,8 +265,8 @@
         >
       </label>
       <span id="check-in-hint" class="text-muted hint" i18n="@@resourceForm.checkInHint"
-        >Whoever booked it scans the code from {{ checkIn.opensBeforeMinutes }} minutes before the
-        start until {{ checkIn.graceMinutes }} minutes after. A booking nobody checks in to is
+        >Whoever booked it scans the code from {{ checkIn().opensBeforeMinutes }} minutes before the
+        start until {{ checkIn().graceMinutes }} minutes after. A booking nobody checks in to is
         released, so others can use it. Bookings made before this was switched on don't need
         one.</span
       >

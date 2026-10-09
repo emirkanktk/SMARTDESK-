@@ -7,22 +7,24 @@ using SmartDesk.Domain.Rules;
 namespace SmartDesk.Application.Features.CheckIn.Commands.WarnBeforeRelease;
 
 // Five minutes before a booking nobody has checked in to is released, its owner and those
-// invited hear about it, once (ADR-0034), while there's still time to get to the door. Run every
-// few seconds by ReleaseWarningWorker; returns how many were warned.
+// invited hear about it, once (ADR-0034), while there's still time to get to the door - or at
+// its start, with a shorter grace (ADR-0040). Run every few seconds by ReleaseWarningWorker;
+// returns how many were warned.
 public sealed record WarnBeforeReleaseCommand : IRequest<int>;
 
 public sealed class WarnBeforeReleaseCommandHandler(
     IApplicationDbContext db,
     IIdentityService identityService,
     IReservationNotifier notifier,
-    TimeProvider timeProvider) : IRequestHandler<WarnBeforeReleaseCommand, int>
+    TimeProvider timeProvider,
+    ICheckInTimes times) : IRequestHandler<WarnBeforeReleaseCommand, int>
 {
     public async Task<int> Handle(WarnBeforeReleaseCommand request, CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var due = await db.Reservations
             .AsNoTracking()
-            .Where(CheckInRules.DueForReleaseWarning(now))
+            .Where(CheckInRules.DueForReleaseWarning(now, times.Grace))
             .Select(r => r.Id)
             .ToListAsync(cancellationToken);
 
@@ -57,7 +59,7 @@ public sealed class WarnBeforeReleaseCommandHandler(
 
         var reservation = await db.Reservations
             .Where(r => r.Id == id)
-            .Where(CheckInRules.DueForReleaseWarning(now))
+            .Where(CheckInRules.DueForReleaseWarning(now, times.Grace))
             .SingleOrDefaultAsync(cancellationToken);
         if (reservation is null)
         {

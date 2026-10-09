@@ -28,8 +28,8 @@
       @if (room.checkInRequired) {
         <p class="how" i18n="@@poster.how">
           Booked it? Scan the code with your phone's camera, from
-          {{ checkIn.opensBeforeMinutes }} minutes before your start until
-          {{ checkIn.graceMinutes }} minutes after. A booking nobody checks in to is released for
+          {{ checkIn().opensBeforeMinutes }} minutes before your start until
+          {{ checkIn().graceMinutes }} minutes after. A booking nobody checks in to is released for
           others to use.
         </p>
       } @else {

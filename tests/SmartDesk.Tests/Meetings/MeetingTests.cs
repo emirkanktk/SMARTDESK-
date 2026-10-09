@@ -326,7 +326,7 @@ public sealed class MeetingTests : IDisposable
 
         await using (var context = _database.CreateContext())
         {
-            (await new ReleaseNoShowsCommandHandler(context, Names(), _reservations.Object, _clock, Invitations(context, new FakeCurrentUser(null)))
+            (await new ReleaseNoShowsCommandHandler(context, Names(), _reservations.Object, _clock, Invitations(context, new FakeCurrentUser(null)), TestCheckInTimes.Default)
                 .Handle(new ReleaseNoShowsCommand(), CancellationToken.None)).Should().Be(1);
         }
 
@@ -352,7 +352,7 @@ public sealed class MeetingTests : IDisposable
         async Task<ReservationDto> CheckIn(UserAccount who)
         {
             await using var context = _database.CreateContext();
-            return await new CheckInCommandHandler(context, As(who), Names(), _reservations.Object, _clock)
+            return await new CheckInCommandHandler(context, As(who), Names(), _reservations.Object, _clock, TestCheckInTimes.Default)
                 .Handle(new CheckInCommand(code) { ResourceId = room.Id }, CancellationToken.None);
         }
 

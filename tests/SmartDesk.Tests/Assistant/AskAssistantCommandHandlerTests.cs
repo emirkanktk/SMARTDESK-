@@ -14,6 +14,7 @@ using SmartDesk.Application.Features.Resources.Queries.GetAvailableResources;
 using SmartDesk.Application.Features.Resources.Queries.GetResourceById;
 using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
+using SmartDesk.Domain.Rules;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Tests.TestSupport;
 
@@ -34,14 +35,14 @@ public class AskAssistantCommandHandlerTests
             .ReturnsAsync(new UserProfile(UserId, "Ayşe", "Yılmaz", "ayse@smartdesk.local", [Roles.Employee]));
 
     private Task<AssistantReplyDto> AskAsync(string? timeZone, params AssistantMessageDto[] messages) =>
-        new AskAssistantCommandHandler(_model, _sender.Object, new FakeCurrentUser(UserId, Roles.Employee), _identity.Object, new FakeTimeProvider(Now))
+        new AskAssistantCommandHandler(_model, _sender.Object, new FakeCurrentUser(UserId, Roles.Employee), _identity.Object, new FakeTimeProvider(Now), TestCheckInTimes.Default)
             .Handle(new AskAssistantCommand(messages, timeZone), CancellationToken.None);
 
     [Fact]
     public async Task Handle_NoModelSetUp_IsUnavailable()
     {
         var act = () => new AskAssistantCommandHandler(new ScriptedModel(configured: false), _sender.Object,
-                new FakeCurrentUser(UserId, Roles.Employee), _identity.Object, new FakeTimeProvider(Now))
+                new FakeCurrentUser(UserId, Roles.Employee), _identity.Object, new FakeTimeProvider(Now), TestCheckInTimes.Default)
             .Handle(new AskAssistantCommand([new(AssistantMessageDto.User, "Hi")], null), CancellationToken.None);
 
         await act.Should().ThrowAsync<ServiceUnavailableException>().WithMessage(Messages.Assistant_NotConfigured);
@@ -56,7 +57,7 @@ public class AskAssistantCommandHandlerTests
             new(AssistantMessageDto.Assistant, "Merhaba! Ne arıyorsunuz?"),
             new(AssistantMessageDto.User, "  Yarın 10'da 4 kişilik oda var mı? "));
 
-        _model.Request!.Instructions.Should().Be(AssistantInstructions.Text);
+        _model.Request!.Instructions.Should().Be(AssistantInstructions.Text(CheckInRules.DefaultGrace));
         _model.Request.Context.Should().Be(
             "Now: Monday 2026-10-05 09:00 in Europe/Istanbul (UTC+03:00). Person: Ayşe Yılmaz (Employee). Language: Turkish.");
         _model.Request.Conversation.Should().Equal(
