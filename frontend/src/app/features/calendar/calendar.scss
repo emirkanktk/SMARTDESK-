@@ -142,6 +142,10 @@
 }
 
 .entry {
+  // Holds its visually hidden text ("Checked in"), which is absolutely positioned: placed
+  // against the page instead, it would stick out of the week's sideways scroll and widen the
+  // page on a phone.
+  position: relative;
   display: block;
   margin-bottom: var(--space-1);
   padding: var(--space-1) var(--space-2);
@@ -167,6 +171,14 @@
   display: block;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+// Checked in at the door (ADR-0030), in the colours of My reservations' "Checked in". First
+// on the name's line: a narrow day has no room for it after the time.
+.checked-in-mark {
+  margin-right: var(--space-1);
+  color: var(--color-primary);
+  font-weight: 700;
 }
 
 .entry-who {

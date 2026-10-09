@@ -48,6 +48,8 @@ interface Entry {
   time: string;
   who: string;
   mine: boolean;
+  /** Checked in at the door (ADR-0030): a tick, which turns up live as it happens. */
+  checkedIn: boolean;
   title: string;
 }
 
@@ -465,12 +467,16 @@ export class Calendar {
       ? $localize`:@@common.you:You`
       : (reservation.userDisplayName ?? $localize`:@@common.someone:Someone`);
     const note = reservation.note ? ` - ${reservation.note}` : '';
+    const checkedInAt = reservation.checkedInAt
+      ? `, ${$localize`:@@calendar.checkedInAt:checked in at ${formatDate(reservation.checkedInAt, 'HH:mm', this.locale)}:time:`}`
+      : '';
     return {
       reservation,
       mine,
       who,
+      checkedIn: reservation.checkedInAt !== null,
       time: this.timeInDay(start, end, day),
-      title: `${this.fullRange(start, end)}, ${who}${note}`,
+      title: `${this.fullRange(start, end)}, ${who}${note}${checkedInAt}`,
     };
   }
 

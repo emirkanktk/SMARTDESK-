@@ -22,6 +22,8 @@ interface Row {
   startFormat: string;
   endFormat: string;
   runningNow: boolean;
+  /** Checked in at the door (ADR-0030). */
+  checkedIn: boolean;
 }
 
 interface Tile {
@@ -155,6 +157,7 @@ export class Dashboard {
         startFormat: startFormat(start),
         endFormat: endFormat(end),
         runningNow: start <= now && end > now,
+        checkedIn: reservation.checkedInAt !== null,
       };
     });
   }

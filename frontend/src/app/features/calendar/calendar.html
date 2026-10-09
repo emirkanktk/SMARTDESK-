@@ -141,7 +141,15 @@
                       [title]="entry.title"
                     >
                       <span class="entry-time">{{ entry.time }}</span>
-                      <span class="entry-who">{{ entry.who }}</span>
+                      <span class="entry-who">
+                        @if (entry.checkedIn) {
+                          <span class="checked-in-mark" aria-hidden="true">✓</span>
+                          <span class="visually-hidden" i18n="@@calendar.checkedIn"
+                            >Checked in</span
+                          >
+                        }
+                        {{ entry.who }}</span
+                      >
                     </a>
                   }
                   @if (cell.book; as book) {
@@ -198,7 +206,15 @@
                           [title]="item.resourceName + ', ' + entry.title"
                         >
                           <span class="entry-time">{{ entry.time }}</span>
-                          <span class="entry-who">{{ item.resourceName }} · {{ entry.who }}</span>
+                          <span class="entry-who">
+                            @if (entry.checkedIn) {
+                              <span class="checked-in-mark" aria-hidden="true">✓</span>
+                              <span class="visually-hidden" i18n="@@calendar.checkedIn"
+                                >Checked in</span
+                              >
+                            }
+                            {{ item.resourceName }} · {{ entry.who }}</span
+                          >
                         </a>
                       } @else if (item.block; as b) {
                         <span class="entry blocked" [title]="b.title">
