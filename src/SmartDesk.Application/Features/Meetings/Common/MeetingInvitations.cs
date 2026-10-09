@@ -20,7 +20,8 @@ public sealed class MeetingInvitations(
     ICurrentUserService currentUser,
     IIdentityService identityService,
     IInboxNotifier notifier,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IUserAccounts accounts)
 {
     // `requested`: the list the booking should have (null or empty: nobody). `current`: who's
     // on it now, none for a new booking. Only people added must be ones the caller may invite;
@@ -76,6 +77,37 @@ public sealed class MeetingInvitations(
         }
 
         return new AttendeeChange(wanted, added, removed, resource.Name);
+    }
+
+    // A booking moved to another resource takes its owner and the people kept on its list
+    // along, and they must all be able to use it (ADR-0022): another team's room isn't there for
+    // them, so they couldn't even open the booking. The caller - an Admin, perhaps, moving
+    // someone else's - was checked when the resource was booked, and CheckAsync checks only the
+    // people added.
+    public async Task EnsureEveryoneMayUseAsync(
+        Guid resourceId, Guid ownerId, IEnumerable<Guid> kept, CancellationToken cancellationToken)
+    {
+        var resource = await db.Resources
+            .AsNoTracking()
+            .Where(r => r.Id == resourceId)
+            .Select(r => new { r.Name, Teams = r.Teams.Select(t => t.TeamId).ToList() })
+            .SingleAsync(cancellationToken);
+        if (resource.Teams.Count == 0)
+        {
+            return;
+        }
+
+        var people = kept.Where(id => id != ownerId).Distinct()
+            .Select(id => (Id: id, Field: "AttendeeIds"))
+            .Prepend((Id: ownerId, Field: "ResourceId"));
+        foreach (var (id, field) in people)
+        {
+            if (await accounts.FindAsync(id, cancellationToken) is { } person && !MayUse(person, resource.Teams))
+            {
+                throw new ValidationException(
+                    [new ValidationFailure(field, string.Format(Messages.Meetings_CantUseResource, person.DisplayName, resource.Name))]);
+            }
+        }
     }
 
     // Messages of one kind about `reservation` as it is now, to each of `recipients`, added to
