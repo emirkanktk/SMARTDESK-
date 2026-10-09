@@ -18,6 +18,33 @@ export function resourceStatusLabel(status: ResourceStatus): string {
   }
 }
 
+/**
+ * A kind of resource, in the app's language. The kinds come from the database, seeded in
+ * English (ResourceTypeSeedData), and stay English in the data: the default photos are picked by
+ * those names. Only the seeded ones are known here; any other keeps its own name.
+ */
+export function resourceTypeLabel(name: string): string {
+  switch (name) {
+    case 'Meeting Room':
+      return $localize`:@@resourceType.meetingRoom:Meeting Room`;
+    case 'Desk':
+      return $localize`:@@resourceType.desk:Desk`;
+    case 'Company Car':
+      return $localize`:@@resourceType.companyCar:Company Car`;
+    case 'Projector':
+      return $localize`:@@resourceType.projector:Projector`;
+    case 'Camera':
+      return $localize`:@@resourceType.camera:Camera`;
+    default:
+      return name;
+  }
+}
+
+/** Kinds of resources in the order their names read in the app's language, for a list. */
+export function byTypeLabel(a: { name: string }, b: { name: string }): number {
+  return resourceTypeLabel(a.name).localeCompare(resourceTypeLabel(b.name), 'en');
+}
+
 export function accountStatusLabel(status: AccountStatus): string {
   switch (status) {
     case 'Active':

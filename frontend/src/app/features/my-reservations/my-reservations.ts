@@ -25,6 +25,7 @@ import { MeetingAnswer } from '../../shared/components/meeting-answer/meeting-an
 import { formatDuration } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
 import { describeSeries } from '../../shared/utils/recurrence';
+import { resourceTypeLabel } from '../../core/i18n/labels';
 
 type Tab = 'upcoming' | 'invited' | 'past' | 'cancelled';
 
@@ -71,6 +72,8 @@ interface Item {
   templateUrl: './my-reservations.html',
 })
 export class MyReservations implements OnInit {
+  protected readonly typeLabel = resourceTypeLabel;
+
   private readonly reservationService = inject(ReservationService);
   private readonly hub = inject(ReservationHubService);
   private readonly authService = inject(AuthService);

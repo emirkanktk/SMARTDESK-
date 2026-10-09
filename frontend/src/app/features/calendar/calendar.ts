@@ -25,6 +25,7 @@ import {
   toMonthParam,
 } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
+import { resourceTypeLabel } from '../../core/i18n/labels';
 
 const WEEK_DAYS = 7;
 const DEFAULT_BOOKING_HOUR = 9;
@@ -114,6 +115,8 @@ interface LiveEvent {
   templateUrl: './calendar.html',
 })
 export class Calendar {
+  protected readonly typeLabel = resourceTypeLabel;
+
   private readonly reservationService = inject(ReservationService);
   private readonly resourceService = inject(ResourceService);
   private readonly blockService = inject(ResourceBlockService);
@@ -194,8 +197,10 @@ export class Calendar {
   private readonly sortedResources = computed(() =>
     [...this.resources()].sort(
       (a, b) =>
-        a.resourceTypeName.localeCompare(b.resourceTypeName, 'en') ||
-        a.name.localeCompare(b.name, 'en'),
+        resourceTypeLabel(a.resourceTypeName).localeCompare(
+          resourceTypeLabel(b.resourceTypeName),
+          'en',
+        ) || a.name.localeCompare(b.name, 'en'),
     ),
   );
 

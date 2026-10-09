@@ -27,6 +27,7 @@ import { keepDurationWhenStartMoves } from '../../shared/utils/keep-duration';
 import { applyServerErrors } from '../../shared/utils/server-errors';
 import { RANGE_MESSAGES, dateRangeValidator } from '../../shared/validators/date-range.validator';
 import { integerValidator } from '../../shared/validators/integer.validator';
+import { resourceTypeLabel } from '../../core/i18n/labels';
 
 const DEFAULT_DURATION_MIN = 60;
 
@@ -43,6 +44,8 @@ interface SearchResult {
   templateUrl: './availability.html',
 })
 export class Availability implements OnInit {
+  protected readonly typeLabel = resourceTypeLabel;
+
   private readonly resourceService = inject(ResourceService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

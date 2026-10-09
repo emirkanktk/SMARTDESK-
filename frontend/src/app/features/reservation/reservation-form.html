@@ -38,7 +38,9 @@
         <dt i18n="@@field.resource">Resource</dt>
         <dd>
           {{ r.resourceName }}
-          <span class="text-muted">· {{ r.resourceTypeName }}, {{ r.resourceLocation }}</span>
+          <span class="text-muted"
+            >· {{ typeLabel(r.resourceTypeName) }}, {{ r.resourceLocation }}</span
+          >
         </dd>
         <dt i18n="@@reservationForm.when">When</dt>
         <dd i18n="@@reservationForm.whenRange">
@@ -110,7 +112,7 @@
       >
         <option value="" disabled i18n="@@reservationForm.selectResource">Select a resource</option>
         @for (group of resourceGroups(); track group.typeName) {
-          <optgroup [label]="group.typeName">
+          <optgroup [label]="typeLabel(group.typeName)">
             @for (option of group.options; track option.id) {
               <option [value]="option.id">{{ option.name }}</option>
             }

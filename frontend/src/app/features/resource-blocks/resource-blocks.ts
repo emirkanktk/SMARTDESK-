@@ -41,7 +41,7 @@ import {
 import { keepDurationWhenStartMoves } from '../../shared/utils/keep-duration';
 import { applyServerErrors } from '../../shared/utils/server-errors';
 import { RANGE_MESSAGES, dateRangeValidator } from '../../shared/validators/date-range.validator';
-import { resourceStatusLabel } from '../../core/i18n/labels';
+import { resourceStatusLabel, resourceTypeLabel } from '../../core/i18n/labels';
 
 const L = RESOURCE_BLOCK_LIMITS;
 const DEFAULT_DAYS = 28;
@@ -83,6 +83,8 @@ interface ResourceGroup {
   templateUrl: './resource-blocks.html',
 })
 export class ResourceBlocks {
+  protected readonly typeLabel = resourceTypeLabel;
+
   private readonly blockService = inject(ResourceBlockService);
   private readonly resourceService = inject(ResourceService);
   private readonly notifications = inject(NotificationService);
@@ -150,7 +152,9 @@ export class ResourceBlocks {
           block,
           when: this.when(start, end),
           duration: formatDuration(start, end),
-          meta: resource ? `${resource.resourceTypeName} · ${resource.location}` : null,
+          meta: resource
+            ? `${resourceTypeLabel(resource.resourceTypeName)} · ${resource.location}`
+            : null,
           inProgress: start.getTime() <= now && end.getTime() > now,
           ended: end.getTime() <= now,
         };
@@ -463,5 +467,7 @@ function groupByType(resources: Resource[]): ResourceGroup[] {
   }
   return [...groups]
     .map(([typeName, grouped]) => ({ typeName, resources: grouped }))
-    .sort((a, b) => a.typeName.localeCompare(b.typeName, 'en'));
+    .sort((a, b) =>
+      resourceTypeLabel(a.typeName).localeCompare(resourceTypeLabel(b.typeName), 'en'),
+    );
 }

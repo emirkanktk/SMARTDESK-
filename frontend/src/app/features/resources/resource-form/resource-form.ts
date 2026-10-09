@@ -26,7 +26,7 @@ import { AccountService } from '../../../core/services/account.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ResourceService } from '../../../core/services/resource.service';
-import { resourceStatusLabel } from '../../../core/i18n/labels';
+import { resourceStatusLabel, resourceTypeLabel } from '../../../core/i18n/labels';
 import { ResourcePhoto } from '../../../shared/components/resource-photo/resource-photo';
 import { preparePhoto } from '../../../shared/utils/photo';
 import { canManageResource, teamName } from '../../../shared/utils/resource-access';
@@ -76,6 +76,7 @@ export class ResourceForm implements OnInit {
   protected readonly limits = L;
   protected readonly statuses = RESOURCE_STATUSES;
   protected readonly statusLabel = resourceStatusLabel;
+  protected readonly typeLabel = resourceTypeLabel;
   protected readonly teamName = teamName;
 
   protected readonly form = inject(NonNullableFormBuilder).group({

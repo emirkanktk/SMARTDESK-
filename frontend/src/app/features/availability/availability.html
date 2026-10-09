@@ -42,7 +42,7 @@
     <select id="type" class="input" formControlName="resourceTypeId">
       <option value="" i18n="@@availability.anyType">Any type</option>
       @for (type of types(); track type.id) {
-        <option [value]="type.id">{{ type.name }}</option>
+        <option [value]="type.id">{{ typeLabel(type.name) }}</option>
       }
     </select>
   </div>
@@ -120,7 +120,7 @@
             />
             <div class="resource-head">
               <h2>{{ resource.name }}</h2>
-              <span class="badge">{{ resource.resourceTypeName }}</span>
+              <span class="badge">{{ typeLabel(resource.resourceTypeName) }}</span>
             </div>
             <p class="text-muted meta">
               {{ resource.location }} ·

@@ -65,7 +65,7 @@
       <select id="type" class="input" (change)="selectType($event)">
         <option value="" [selected]="!type()" i18n="@@field.allTypes">All types</option>
         @for (t of types(); track t.id) {
-          <option [value]="t.id" [selected]="t.id === type()">{{ t.name }}</option>
+          <option [value]="t.id" [selected]="t.id === type()">{{ typeLabel(t.name) }}</option>
         }
       </select>
     </div>
@@ -137,7 +137,8 @@
                 <td>
                   <span class="name">{{ row.reservation.resourceName }}</span>
                   <span class="text-muted meta">
-                    {{ row.reservation.resourceTypeName }} · {{ row.reservation.resourceLocation }}
+                    {{ typeLabel(row.reservation.resourceTypeName) }} ·
+                    {{ row.reservation.resourceLocation }}
                   </span>
                 </td>
                 <td>{{ row.bookedBy }}</td>

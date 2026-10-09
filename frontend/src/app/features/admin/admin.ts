@@ -37,6 +37,7 @@ import {
 } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
 import { searchKey } from '../../shared/utils/search';
+import { resourceTypeLabel } from '../../core/i18n/labels';
 
 const DEFAULT_DAYS = 7;
 
@@ -69,6 +70,8 @@ interface Row {
   templateUrl: './admin.html',
 })
 export class Admin {
+  protected readonly typeLabel = resourceTypeLabel;
+
   private readonly reservationService = inject(ReservationService);
   private readonly resourceService = inject(ResourceService);
   private readonly hub = inject(ReservationHubService);

@@ -4,7 +4,7 @@ import turkish from '../../../../public/i18n/tr.json';
 import { formatDuration } from '../../shared/utils/date-time';
 import { missingRulesMessage } from '../../shared/validators/password.validator';
 import { Roles } from '../constants/roles';
-import { resourceStatusLabel, roleLabel } from './labels';
+import { byTypeLabel, resourceStatusLabel, resourceTypeLabel, roleLabel } from './labels';
 
 // Every text the app shows has a Turkish version with the same placeholders (#58). A missing
 // one would quietly show in English. After adding or changing a text, `npm run i18n:extract`
@@ -40,6 +40,25 @@ describe('Turkish translations', () => {
       expect(resourceStatusLabel('Maintenance')).toBe('Bakımda');
       expect(roleLabel(Roles.Manager)).toBe('Ekip yöneticisi');
       expect(missingRulesMessage(['bir rakam'])).toBe('Şunları ekleyin: bir rakam.');
+    });
+
+    it('name the seeded kinds of resources, sorted as they read, and leave any other as it is', () => {
+      const kinds = ['Meeting Room', 'Desk', 'Company Car', 'Projector', 'Camera', 'Laptop'];
+
+      expect(kinds.map(resourceTypeLabel)).toEqual([
+        'Toplantı odası',
+        'Masa',
+        'Şirket aracı',
+        'Projektör',
+        'Kamera',
+        'Laptop',
+      ]);
+      expect(
+        kinds
+          .map((name) => ({ name }))
+          .sort(byTypeLabel)
+          .map((kind) => resourceTypeLabel(kind.name)),
+      ).toEqual(['Kamera', 'Laptop', 'Masa', 'Projektör', 'Şirket aracı', 'Toplantı odası']);
     });
   });
 });

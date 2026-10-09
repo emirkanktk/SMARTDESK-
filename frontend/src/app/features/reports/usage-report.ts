@@ -14,6 +14,7 @@ import { ReportService } from '../../core/services/report.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { addDays, parseDateParam, startOfDay, toDateParam } from '../../shared/utils/date-time';
+import { resourceTypeLabel } from '../../core/i18n/labels';
 
 const DEFAULT_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -39,6 +40,8 @@ function daysBetween(a: Date, b: Date): number {
   templateUrl: './usage-report.html',
 })
 export class UsageReport {
+  protected readonly typeLabel = resourceTypeLabel;
+
   private readonly reportService = inject(ReportService);
   private readonly resourceService = inject(ResourceService);
   private readonly router = inject(Router);

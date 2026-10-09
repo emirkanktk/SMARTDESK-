@@ -8,6 +8,7 @@ import { Logo } from '../../shared/components/logo/logo';
 import { QrCode } from '../../shared/components/qr-code/qr-code';
 import { qrCodeLabel } from '../../shared/utils/qr';
 import { canManageResource } from '../../shared/utils/resource-access';
+import { resourceTypeLabel } from '../../core/i18n/labels';
 
 /** How many labels an A4 sheet holds: two across, four down. */
 export const LABELS_PER_SHEET = 8;
@@ -34,6 +35,8 @@ interface Label {
   templateUrl: './qr-labels.html',
 })
 export class QrLabels implements OnInit {
+  protected readonly typeLabel = resourceTypeLabel;
+
   private readonly resourceService = inject(ResourceService);
   private readonly auth = inject(AuthService);
 

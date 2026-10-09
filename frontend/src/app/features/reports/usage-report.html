@@ -43,7 +43,7 @@
     <select id="type" class="input" (change)="selectType($event)">
       <option value="" [selected]="!type()" i18n="@@field.allTypes">All types</option>
       @for (t of types(); track t.id) {
-        <option [value]="t.id" [selected]="t.id === type()">{{ t.name }}</option>
+        <option [value]="t.id" [selected]="t.id === type()">{{ typeLabel(t.name) }}</option>
       }
     </select>
   </div>
@@ -154,7 +154,7 @@
                 <tr>
                   <td>
                     <span class="name">{{ row.resourceName }}</span>
-                    <span class="text-muted type">{{ row.resourceTypeName }}</span>
+                    <span class="text-muted type">{{ typeLabel(row.resourceTypeName) }}</span>
                     @if (row.status !== 'Active') {
                       <app-status-badge [status]="row.status" />
                     }
@@ -194,7 +194,7 @@
             <tbody>
               @for (t of r.byType; track t.resourceTypeId) {
                 <tr>
-                  <td class="name">{{ t.resourceTypeName }}</td>
+                  <td class="name">{{ typeLabel(t.resourceTypeName) }}</td>
                   <td>
                     <div class="utilization">
                       <span class="bar" aria-hidden="true">
