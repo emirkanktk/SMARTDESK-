@@ -161,6 +161,15 @@ public sealed class UpdateReservationCommandHandler(
                 .Where(a => a.ReservationId == reservation.Id)
                 .Select(a => a.UserId)
                 .ToListAsync(cancellationToken);
+
+            // In another room, the owner and whoever stays on the list must be able to use it
+            // too, not only the caller, who may be an Admin moving someone else's (ADR-0022).
+            if (resourceChanged)
+            {
+                await invitations.EnsureEveryoneMayUseAsync(
+                    reservation.ResourceId, reservation.UserId, (request.AttendeeIds ?? []).Intersect(current), cancellationToken);
+            }
+
             var attendees = await invitations.CheckAsync(
                 reservation.UserId, reservation.ResourceId, request.AttendeeIds, current, cancellationToken);
             if (attendees.Changed)

@@ -60,6 +60,9 @@ public sealed class MeetingTests : IDisposable
             .ReturnsAsync((UserFilter filter, CancellationToken _) => _people
                 .Where(p => (filter.Status is null || p.Status == filter.Status) && (filter.ManagerId is null || p.ManagerId == filter.ManagerId))
                 .ToList());
+        _accounts
+            .Setup(a => a.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, CancellationToken _) => _people.SingleOrDefault(p => p.Id == id));
         _inbox
             .Setup(n => n.MessagesSentAsync(It.IsAny<IReadOnlyList<InboxMessageDto>>(), It.IsAny<CancellationToken>()))
             .Callback((IReadOnlyList<InboxMessageDto> messages, CancellationToken _) => _pushed.AddRange(messages))
@@ -106,13 +109,18 @@ public sealed class MeetingTests : IDisposable
     }
 
     private async Task<ReservationDto> UpdateAsync(
-        UserAccount caller, ReservationDto booking, IReadOnlyList<Guid>? attendees, DateTime? start = null, string? note = "Weekly sync")
+        UserAccount caller,
+        ReservationDto booking,
+        IReadOnlyList<Guid>? attendees,
+        DateTime? start = null,
+        string? note = "Weekly sync",
+        Guid? roomId = null)
     {
         var from = start ?? booking.StartDateTime;
         await using var context = _database.CreateContext();
         var user = As(caller);
         return await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user))
-            .Handle(new UpdateReservationCommand(booking.ResourceId, from, from.AddHours(1), note, null, attendees) { Id = booking.Id }, CancellationToken.None);
+            .Handle(new UpdateReservationCommand(roomId ?? booking.ResourceId, from, from.AddHours(1), note, null, attendees) { Id = booking.Id }, CancellationToken.None);
     }
 
     private async Task<List<InboxMessage>> MessagesAsync()
@@ -283,6 +291,66 @@ public sealed class MeetingTests : IDisposable
         var changed = await UpdateAsync(Zeynep, booking, [Ayse.Id, Mehmet.Id], start: Ten.AddHours(1));
 
         changed.Attendees.Select(a => a.Id).Should().BeEquivalentTo([Ayse.Id, Mehmet.Id]);
+    }
+
+    [Fact]
+    public async Task An_admin_moves_a_booking_only_to_a_room_its_owner_may_use()
+    {
+        var shared = await AddRoomAsync();
+        var okansRoom = await AddRoomAsync(team: OkanId);
+        var alone = await BookAsync(Ayse, shared.Id, null);
+        var meeting = await BookAsync(Zeynep, shared.Id, [Ayse.Id], start: Ten.AddHours(2));
+
+        // Okan's team's room isn't there for Ayşe or for Zeynep: they couldn't open their own booking.
+        var moveAlone = () => UpdateAsync(Admin, alone, null, roomId: okansRoom.Id);
+        var moveMeeting = () => UpdateAsync(Admin, meeting, [Ayse.Id], roomId: okansRoom.Id);
+
+        (await moveAlone.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e =>
+            e.PropertyName == "ResourceId" && e.ErrorMessage == $"Ayşe Yılmaz can't use {okansRoom.Name}: it belongs to another team.");
+        (await moveMeeting.Should().ThrowAsync<ValidationException>()).Which.Errors.Should().ContainSingle(e =>
+            e.PropertyName == "ResourceId" && e.ErrorMessage == $"Zeynep Kaya can't use {okansRoom.Name}: it belongs to another team.");
+        await using var context = _database.CreateContext();
+        (await context.Reservations.Select(r => r.ResourceId).Distinct().ToListAsync()).Should().Equal(shared.Id);
+    }
+
+    [Fact]
+    public async Task Moving_a_meeting_to_a_team_room_checks_the_people_kept_on_its_list()
+    {
+        var shared = await AddRoomAsync();
+        var zeynepsRoom = await AddRoomAsync(team: ZeynepId);
+        var booking = await BookAsync(Admin, shared.Id, [Ayse.Id, Selin.Id]);
+        _pushed.Clear();
+
+        var keepSelin = () => UpdateAsync(Admin, booking, [Ayse.Id, Selin.Id], roomId: zeynepsRoom.Id);
+
+        AttendeeError((await keepSelin.Should().ThrowAsync<ValidationException>()).Which)
+            .Should().Be($"Selin Er can't use {zeynepsRoom.Name}: it belongs to another team.");
+        _pushed.Should().BeEmpty("nothing changed");
+
+        // Taken off the list in the same change, she's no obstacle: she's told instead.
+        var moved = await UpdateAsync(Admin, booking, [Ayse.Id], roomId: zeynepsRoom.Id);
+
+        moved.ResourceId.Should().Be(zeynepsRoom.Id);
+        moved.Attendees.Select(a => a.Id).Should().Equal(Ayse.Id);
+        (await MessagesAsync()).Should().Contain(m => m.RecipientId == Selin.Id && m.Kind == InboxMessageKind.MeetingUninvited)
+            .And.Contain(m => m.RecipientId == Ayse.Id && m.Kind == InboxMessageKind.MeetingChanged);
+    }
+
+    [Fact]
+    public async Task Someone_who_left_the_team_stays_on_the_list_until_the_meeting_moves_to_a_team_room()
+    {
+        var shared = await AddRoomAsync();
+        var zeynepsRoom = await AddRoomAsync(team: ZeynepId);
+        var booking = await BookAsync(Zeynep, shared.Id, [Ayse.Id, Mehmet.Id]);
+        _people.Remove(Ayse);
+        _people.Add(Ayse with { ManagerId = OkanId });
+
+        var act = () => UpdateAsync(Zeynep, booking, [Ayse.Id, Mehmet.Id], roomId: zeynepsRoom.Id);
+
+        AttendeeError((await act.Should().ThrowAsync<ValidationException>()).Which)
+            .Should().Be($"Ayşe Yılmaz can't use {zeynepsRoom.Name}: it belongs to another team.");
+        (await UpdateAsync(Zeynep, booking, [Ayse.Id, Mehmet.Id], start: Ten.AddHours(1)))
+            .Attendees.Should().HaveCount(2, "a new time in the same shared room keeps her");
     }
 
     [Fact]

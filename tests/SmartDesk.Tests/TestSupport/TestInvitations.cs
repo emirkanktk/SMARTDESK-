@@ -14,12 +14,16 @@ public static class TestInvitations
         IUserAccounts? accounts = null,
         IInboxNotifier? notifier = null,
         TimeProvider? clock = null,
-        IIdentityService? identity = null) =>
-        new(
+        IIdentityService? identity = null)
+    {
+        var people = accounts ?? Mock.Of<IUserAccounts>();
+        return new(
             db,
-            new Invitees(accounts ?? Mock.Of<IUserAccounts>(), user),
+            new Invitees(people, user),
             user,
             identity ?? new FakeIdentityService(),
             notifier ?? Mock.Of<IInboxNotifier>(),
-            clock ?? TimeProvider.System);
+            clock ?? TimeProvider.System,
+            people);
+    }
 }

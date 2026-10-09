@@ -401,7 +401,7 @@ message in their inbox and answers it.
 
 | Status | When |
 |---|---|
-| 400 | on create or update: an Employee adds someone (`"Only team managers and administrators can invite people."`), someone added isn't one the caller may invite, can't use the resource (`"Mehmet Demir can't use Board Room: it belongs to another team."`), the room is too small (`"Board Room has room for 6; with you, 8 people would come."`), more than 50 people. On an answer: `response` isn't `Accepted` or `Declined`, or declining without a `reason` (`"Say why you can't come."`). All under `AttendeeIds`, `Response` or `Reason` |
+| 400 | on create or update: an Employee adds someone (`"Only team managers and administrators can invite people."`), someone added isn't one the caller may invite, can't use the resource (`"Mehmet Demir can't use Board Room: it belongs to another team."`), the room is too small (`"Board Room has room for 6; with you, 8 people would come."`), more than 50 people. On an update to another resource, everyone the booking keeps must be able to use it, not only the caller, who may be an Admin moving someone else's (ADR-0022): someone kept on the list who can't (the same message, under `AttendeeIds`), or the owner (under `ResourceId`). On an answer: `response` isn't `Accepted` or `Declined`, or declining without a `reason` (`"Say why you can't come."`). All under `AttendeeIds`, `ResourceId`, `Response` or `Reason` |
 | 403 | answering a meeting the caller isn't invited to (`"You're not on this meeting's list."`) |
 | 404 | the meeting doesn't exist |
 | 409 | answering a meeting that was cancelled, or is over |
