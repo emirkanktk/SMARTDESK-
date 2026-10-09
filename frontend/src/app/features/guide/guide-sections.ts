@@ -2,8 +2,6 @@ import { Role, Roles } from '../../core/constants/roles';
 import { CHECK_IN, EXTENSION_OPTIONS } from '../../core/models/reservation.model';
 import { IconName } from '../../shared/components/icon/icon';
 
-/** How long before the release everyone on a booking is warned (ADR-0034). */
-export const WARNED_BEFORE_RELEASE_MINUTES = 5;
 /** How long before its end a booking under way asks whether it needs longer (ADR-0033). */
 export const ASKED_BEFORE_END_MINUTES = 10;
 
@@ -49,12 +47,16 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
     id: 'door',
     icon: 'map-pin',
     title: $localize`:@@guide.door.title:Check in at the door`,
-    steps: [
-      $localize`:@@guide.door.window:Some rooms ask for a check-in: scan the QR code at the door from ${CHECK_IN.opensBeforeMinutes}:before: minutes before the start until ${CHECK_IN.graceMinutes}:after: minutes after.`,
-      $localize`:@@guide.door.released:If nobody checks in by then, the booking is released so others can use the room. Everyone on it is warned ${WARNED_BEFORE_RELEASE_MINUTES}:minutes: minutes before.`,
-      $localize`:@@guide.door.screen:A room with a screen at the door shows a code that changes every 30 seconds: scan the screen itself, not a photo of it.`,
-      $localize`:@@guide.door.end:Done early? End the booking from the check-in page, and the room is free again.`,
-    ],
+    // Read when shown: the times are the API's, and its grace is a setting (ADR-0040).
+    get steps() {
+      const { opensBeforeMinutes, graceMinutes, warnBeforeReleaseMinutes } = CHECK_IN();
+      return [
+        $localize`:@@guide.door.window:Some rooms ask for a check-in: scan the QR code at the door from ${opensBeforeMinutes}:before: minutes before the start until ${graceMinutes}:after: minutes after.`,
+        $localize`:@@guide.door.released:If nobody checks in by then, the booking is released so others can use the room. Everyone on it is warned ${warnBeforeReleaseMinutes}:minutes: minutes before.`,
+        $localize`:@@guide.door.screen:A room with a screen at the door shows a code that changes every 30 seconds: scan the screen itself, not a photo of it.`,
+        $localize`:@@guide.door.end:Done early? End the booking from the check-in page, and the room is free again.`,
+      ];
+    },
   },
   {
     id: 'problem',

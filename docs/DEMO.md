@@ -132,6 +132,8 @@ ADRs have the reasons.
 - Book it from now as employee1, then `POST /api/resources/{id}/check-in` with the code → **200**,
   `checkedInAt` set. Without a check-in, 15 minutes after the start `ReleaseNoShowsCommand`
   cancels the booking (`ReservationReleased`); five minutes before, everyone on it is warned.
+  `CheckIn__GraceMinutes=1` makes it a minute, to see a release without waiting (ADR-0040);
+  `GET /api/check-in/times` shows the times in use, without a token.
 - `POST /api/resources/{id}/door-screen` → a link shown once. `GET /api/door/{id}` with its
   token in `X-Door-Token` → the screen's view, with a code that changes every 30 seconds. While
   a screen is set up, the printed code is **403** `"This code has expired ..."`.

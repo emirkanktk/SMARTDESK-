@@ -3,7 +3,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
-import { Reservation } from '../../core/models/reservation.model';
+import {
+  DEFAULT_CHECK_IN_TIMES,
+  Reservation,
+  setCheckInTimes,
+} from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
 import { IssueService } from '../../core/services/issue.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -46,6 +50,19 @@ describe('visitFor', () => {
     });
     expect(visitFor([booking()], 'res-1', now('10:14')).kind).toBe('open');
     expect(visitFor([booking()], 'res-1', now('10:15')).kind).toBe('closed');
+  });
+
+  it("closes it with the API's grace, which a demo can make a minute", () => {
+    setCheckInTimes({ ...DEFAULT_CHECK_IN_TIMES, graceMinutes: 1 });
+    try {
+      expect(visitFor([booking()], 'res-1', now('10:00'))).toMatchObject({ closesAt: at('10:01') });
+      expect(visitFor([booking()], 'res-1', now('10:01'))).toMatchObject({
+        kind: 'closed',
+        closedAt: at('10:01'),
+      });
+    } finally {
+      setCheckInTimes(DEFAULT_CHECK_IN_TIMES);
+    }
   });
 
   it('says the check-in has closed while the booking waits to be released', () => {

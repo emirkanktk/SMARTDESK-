@@ -39,6 +39,8 @@ public sealed class CheckInTests : IDisposable
     private readonly Mock<IReservationNotifier> _notifier = new();
     // Starts the day before: a fake clock only moves forward, and each test sets its moment.
     private readonly FakeTimeProvider _clock = new(new DateTimeOffset(Ten.AddDays(-1)));
+    // The setting's default; a test can set another (ADR-0040).
+    private ICheckInTimes _times = TestCheckInTimes.Default;
 
     public void Dispose() => _database.Dispose();
 
@@ -97,14 +99,14 @@ public sealed class CheckInTests : IDisposable
     private async Task<ReservationDto> CheckInAsync(Guid roomId, string? code = null, FakeCurrentUser? user = null)
     {
         await using var context = _database.CreateContext();
-        return await new CheckInCommandHandler(context, user ?? Ayse, new FakeIdentityService(), _notifier.Object, _clock)
+        return await new CheckInCommandHandler(context, user ?? Ayse, new FakeIdentityService(), _notifier.Object, _clock, _times)
             .Handle(new CheckInCommand(code ?? await CodeOfAsync(roomId)) { ResourceId = roomId }, CancellationToken.None);
     }
 
     private async Task<int> ReleaseAsync()
     {
         await using var context = _database.CreateContext();
-        return await new ReleaseNoShowsCommandHandler(context, new FakeIdentityService(), _notifier.Object, _clock, TestInvitations.For(context, new FakeCurrentUser(null), clock: _clock))
+        return await new ReleaseNoShowsCommandHandler(context, new FakeIdentityService(), _notifier.Object, _clock, TestInvitations.For(context, new FakeCurrentUser(null), clock: _clock), _times)
             .Handle(new ReleaseNoShowsCommand(), CancellationToken.None);
     }
 
@@ -396,6 +398,46 @@ public sealed class CheckInTests : IDisposable
         (await ReadAsync(shortOne)).Status.Should().Be(ReservationStatus.Confirmed);
         (await ReadAsync(missedWhileTheJobWasDown)).ReleasedAt.Should().BeNull();
     }
+
+    // --- The grace is a setting (ADR-0040) ---
+
+    [Fact]
+    public async Task A_one_minute_grace_closes_the_check_in_and_releases_a_minute_after_the_start()
+    {
+        _times = TestCheckInTimes.WithGrace(1);
+        var room = await AddRoomAsync();
+        var id = await BookAsync(room.Id);
+
+        ItIs(0.999);
+        (await ReleaseAsync()).Should().Be(0);
+        ItIs(1);
+        (await FluentActions.Awaiting(() => CheckInAsync(room.Id)).Should().ThrowAsync<ConflictException>())
+            .Which.Code.Should().Be(ConflictCodes.NothingToCheckIn);
+        (await ReleaseAsync()).Should().Be(1);
+
+        (await ReadAsync(id)).ReleasedAt.Should().Be(Ten.AddMinutes(1));
+    }
+
+    [Fact]
+    public async Task The_message_gives_the_grace_in_use()
+    {
+        _times = TestCheckInTimes.WithGrace(1);
+        var room = await AddRoomAsync();
+        ItIs(-5);
+
+        var act = () => CheckInAsync(room.Id);
+
+        (await act.Should().ThrowAsync<ConflictException>()).WithMessage("*opens 10 minutes before the start and closes 1 minute*");
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    [InlineData(15, true)]
+    [InlineData(60, true)]
+    [InlineData(61, false)]
+    public void The_grace_is_from_one_minute_to_an_hour(int minutes, bool valid) =>
+        new CheckInOptions { GraceMinutes = minutes }.HasValidGrace.Should().Be(valid);
 
     [Theory]
     [InlineData(14.999, true)]

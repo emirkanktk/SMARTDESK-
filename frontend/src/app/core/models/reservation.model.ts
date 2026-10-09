@@ -1,5 +1,7 @@
 // Shapes of the reservation endpoints - see docs/API_CONTRACTS.md, Reservations.
 
+import { Signal, signal } from '@angular/core';
+
 export const RESERVATION_STATUSES = ['Confirmed', 'Cancelled'] as const;
 export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 
@@ -169,12 +171,34 @@ export const MAX_ATTENDEES = 50;
 /**
  * The check-in window the API enforces (ADR-0030): from `opensBeforeMinutes` before the start
  * until `graceMinutes` after it, and never once the booking is over. A booking nobody checked
- * in to is released when the window closes.
+ * in to is released when the window closes; everyone on it is warned
+ * `warnBeforeReleaseMinutes` before. `GET /api/check-in/times`.
  */
-export const CHECK_IN = {
+export interface CheckInTimes {
+  opensBeforeMinutes: number;
+  graceMinutes: number;
+  warnBeforeReleaseMinutes: number;
+}
+
+/** The API's defaults: what's used until its own arrive, or if they can't. */
+export const DEFAULT_CHECK_IN_TIMES: CheckInTimes = {
   opensBeforeMinutes: 10,
   graceMinutes: 15,
-} as const;
+  warnBeforeReleaseMinutes: 5,
+};
+
+const checkInTimes = signal<CheckInTimes>(DEFAULT_CHECK_IN_TIMES);
+
+/**
+ * The check-in times the API uses. The grace is a setting (ADR-0040), so the app reads them as
+ * it starts (`CheckInTimesService`) and every screen says and counts with the same ones.
+ */
+export const CHECK_IN: Signal<CheckInTimes> = checkInTimes.asReadonly();
+
+/** Replaces the check-in times: for `CheckInTimesService`, and for specs. */
+export function setCheckInTimes(times: CheckInTimes): void {
+  checkInTimes.set(times);
+}
 
 export interface CheckInWindow {
   opensAt: Date;
@@ -184,11 +208,12 @@ export interface CheckInWindow {
 export function checkInWindow(
   reservation: Pick<Reservation, 'startDateTime' | 'endDateTime'>,
 ): CheckInWindow {
+  const { opensBeforeMinutes, graceMinutes } = CHECK_IN();
   const start = new Date(reservation.startDateTime).getTime();
   const end = new Date(reservation.endDateTime).getTime();
   return {
-    opensAt: new Date(start - CHECK_IN.opensBeforeMinutes * 60_000),
-    closesAt: new Date(Math.min(start + CHECK_IN.graceMinutes * 60_000, end)),
+    opensAt: new Date(start - opensBeforeMinutes * 60_000),
+    closesAt: new Date(Math.min(start + graceMinutes * 60_000, end)),
   };
 }
 

@@ -228,7 +228,12 @@ one there's no **Assistant** button anywhere, and nothing else changes.
   calendar updates on its own.
 - Paste the same link into Mehmet's window: he has no booking there, so the page says so and
   offers to book.
-- Point out: a booking nobody checks in to within 15 minutes of its start is released, and
+- A release, while the audience watches: start the API with `CheckIn__GraceMinutes=1`
+  beforehand (ADR-0040; 15 minutes otherwise). As Mehmet, book Board Room from the next quarter
+  hour and don't check in. At the start a toast warns him that nobody has checked in yet, and
+  the time it's released, a minute later. Then the booking leaves the calendars, and he gets a
+  toast saying why. Every text in the app gives the setting's times.
+- Point out: a booking nobody checks in to within its grace after the start is released, and
   the owner gets a toast saying why. Switching check-in on doesn't catch bookings made before,
   and switching it off stops releases at once. **Replace code** retires a printed code that
   has got around (ADR-0030).

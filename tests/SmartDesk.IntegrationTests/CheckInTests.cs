@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Options;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence.Seed;
 
@@ -90,6 +92,28 @@ public sealed class CheckInTests(PostgresApiFixture fixture)
     }
 
     [Fact]
+    public async Task Anyone_can_read_the_check_in_times_and_the_grace_is_a_setting()
+    {
+        // Signed out, like a door screen: they say nothing about anyone (ADR-0040).
+        var times = await fixture.CreateClient().GetFromJsonAsync<TimesBody>("/api/check-in/times");
+        times.Should().Be(new TimesBody(10, 15, 5));
+
+        await using var demo = fixture.WithWebHostBuilder(builder => builder.UseSetting("CheckIn:GraceMinutes", "1"));
+        var oneMinute = await demo.CreateClient().GetFromJsonAsync<TimesBody>("/api/check-in/times");
+        oneMinute.Should().Be(new TimesBody(10, 1, 1), "the warning can't come before the start");
+    }
+
+    [Fact]
+    public void A_grace_out_of_range_stops_the_start()
+    {
+        using var app = fixture.WithWebHostBuilder(builder => builder.UseSetting("CheckIn:GraceMinutes", "0"));
+
+        var act = () => app.CreateClient();
+
+        act.Should().Throw<OptionsValidationException>().WithMessage("*CheckIn:GraceMinutes must be from 1 to 60*");
+    }
+
+    [Fact]
     public async Task Only_those_who_may_edit_a_resource_see_or_replace_its_code()
     {
         // The demo seed gives Meeting Room B to the demo manager's team; Board Room is shared.
@@ -166,4 +190,6 @@ public sealed class CheckInTests(PostgresApiFixture fixture)
     private sealed record ReservationBody(Guid Id, bool CheckInRequired, DateTime? CheckedInAt);
 
     private sealed record CodeBody(string Code, string Url);
+
+    private sealed record TimesBody(int OpensBeforeMinutes, int GraceMinutes, int WarnBeforeReleaseMinutes);
 }

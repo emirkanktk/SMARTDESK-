@@ -194,7 +194,7 @@ export function doorState(screen: DoorScreenData, now: number): DoorState {
   );
   if (current) {
     const closes = Math.min(
-      time(current.startDateTime) + CHECK_IN.graceMinutes * 60_000,
+      time(current.startDateTime) + CHECK_IN().graceMinutes * 60_000,
       time(current.endDateTime),
     );
     const waiting = current.checkInNeeded && !current.checkedIn && now < closes;

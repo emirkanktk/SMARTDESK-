@@ -12,7 +12,8 @@ public sealed class AskAssistantCommandHandler(
     ISender sender,
     ICurrentUserService currentUser,
     IIdentityService identityService,
-    TimeProvider timeProvider) : IRequestHandler<AskAssistantCommand, AssistantReplyDto>
+    TimeProvider timeProvider,
+    ICheckInTimes checkInTimes) : IRequestHandler<AskAssistantCommand, AssistantReplyDto>
 {
     public async Task<AssistantReplyDto> Handle(AskAssistantCommand request, CancellationToken cancellationToken)
     {
@@ -36,7 +37,7 @@ public sealed class AskAssistantCommandHandler(
         var context = AssistantInstructions.Context(timeProvider.GetUtcNow().UtcDateTime, zone, user, CultureInfo.CurrentUICulture);
 
         var reply = await model.AnswerAsync(
-            new AssistantRequest(AssistantInstructions.Text, context, conversation), toolbox, cancellationToken);
+            new AssistantRequest(AssistantInstructions.Text(checkInTimes.Grace), context, conversation), toolbox, cancellationToken);
         return new AssistantReplyDto(reply, toolbox.Proposals);
     }
 }

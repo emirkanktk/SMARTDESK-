@@ -16,7 +16,8 @@ public sealed class CheckInCommandHandler(
     ICurrentUserService currentUser,
     IIdentityService identityService,
     IReservationNotifier notifier,
-    TimeProvider timeProvider) : IRequestHandler<CheckInCommand, ReservationDto>
+    TimeProvider timeProvider,
+    ICheckInTimes times) : IRequestHandler<CheckInCommand, ReservationDto>
 {
     public async Task<ReservationDto> Handle(CheckInCommand request, CancellationToken cancellationToken)
     {
@@ -60,7 +61,7 @@ public sealed class CheckInCommandHandler(
             Messages.CheckIn_NothingToCheckIn,
             resource.Name,
             (int)CheckInRules.OpensBefore.TotalMinutes,
-            (int)CheckInRules.Grace.TotalMinutes))
+            (int)times.Grace.TotalMinutes))
         {
             Code = ConflictCodes.NothingToCheckIn,
         };
@@ -120,5 +121,5 @@ public sealed class CheckInCommandHandler(
             .Where(r => r.ResourceId == resourceId && r.Status == ReservationStatus.Confirmed)
             .Where(r => r.UserId == userId || r.Attendees.Any(a => a.UserId == userId))
             .Where(CheckInRules.Needed)
-            .Where(CheckInRules.OpenAt(now));
+            .Where(CheckInRules.OpenAt(now, times.Grace));
 }

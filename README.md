@@ -42,10 +42,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   ([ADR-0018](docs/DECISIONS.md)).
 - **Check-in with a QR code** - a room can ask for its bookings to be checked in: whoever
   booked it scans the QR code at the door from 10 minutes before the start until 15 minutes
-  after. A booking nobody checks in to is released, so the room goes back to people who are
-  there. The resource form shows the code and a sheet to print; switched off, nothing changes
-  ([ADR-0030](docs/DECISIONS.md)). To try it on one machine, switch it on for a room, book the
-  room for a few minutes from now, and open the link under its QR code.
+  after (a setting). A booking nobody checks in to is released, so the room goes back to
+  people who are there. The resource form shows the code and a sheet to print; switched off,
+  nothing changes ([ADR-0030](docs/DECISIONS.md)). To try it on one machine, switch it on for
+  a room, book the room for a few minutes from now, and open the link under its QR code.
 - **A door screen** - a tablet at the door shows the room's day and a QR code that changes every
   30 seconds, so only someone standing there can check in. At the door you can also book a free
   room on the spot, make a booking run longer or end it, and five minutes before a release
@@ -159,6 +159,11 @@ elsewhere). For a real mail server, set `Email:Smtp:Host`, `Port` and `From`, pl
 `Username` / `Password` as environment variables or secrets. Outside Development the API
 refuses to start without `Email:Smtp:Host`. In Development, leaving it out writes each email,
 link included, to the API log instead.
+
+**Check-in.** A booking of a resource that asks for a check-in is released when nobody has
+checked in `CheckIn:GraceMinutes` after its start: 15 by default, from 1 to 60 (ADR-0040).
+For a demo, `CheckIn__GraceMinutes=1` shows a release within a minute or so; the app reads the
+setting from the API, so its texts and times follow.
 
 ### Demo users (Development only)
 
