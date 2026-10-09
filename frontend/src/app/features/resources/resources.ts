@@ -17,7 +17,7 @@ import { ResourcePhoto } from '../../shared/components/resource-photo/resource-p
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { canManageResource, teamLabel } from '../../shared/utils/resource-access';
 import { searchKey } from '../../shared/utils/search';
-import { resourceStatusLabel } from '../../core/i18n/labels';
+import { resourceStatusLabel, resourceTypeLabel } from '../../core/i18n/labels';
 
 /** Resource list for everyone; admins also get create, edit and activate/deactivate. */
 @Component({
@@ -36,6 +36,7 @@ export class Resources {
   protected readonly teamLabel = teamLabel;
   protected readonly statuses = RESOURCE_STATUSES;
   protected readonly statusLabel = resourceStatusLabel;
+  protected readonly typeLabel = resourceTypeLabel;
 
   protected readonly filters = inject(NonNullableFormBuilder).group({
     search: [''],

@@ -81,7 +81,11 @@ import {
   RANGE_MESSAGES,
   dateRangeValidator,
 } from '../../shared/validators/date-range.validator';
-import { attendeeResponseLabel, reservationStatusLabel } from '../../core/i18n/labels';
+import {
+  attendeeResponseLabel,
+  reservationStatusLabel,
+  resourceTypeLabel,
+} from '../../core/i18n/labels';
 
 const L = RESERVATION_LIMITS;
 const DEFAULT_DURATION_MIN = 60;
@@ -190,6 +194,7 @@ export class ReservationForm implements OnInit {
   protected readonly reservation = signal<Reservation | null>(null);
   protected readonly readOnlyReason = signal<string | null>(null);
   protected readonly statusLabel = reservationStatusLabel;
+  protected readonly typeLabel = resourceTypeLabel;
   protected readonly responseLabel = attendeeResponseLabel;
   /** Who booked it, when an admin is changing someone else's reservation. */
   protected readonly bookedBy = computed(() => {
@@ -929,5 +934,7 @@ function groupByType(options: ResourceOption[]): { typeName: string; options: Re
   }
   return [...groups]
     .map(([typeName, grouped]) => ({ typeName, options: grouped }))
-    .sort((a, b) => a.typeName.localeCompare(b.typeName, 'en'));
+    .sort((a, b) =>
+      resourceTypeLabel(a.typeName).localeCompare(resourceTypeLabel(b.typeName), 'en'),
+    );
 }

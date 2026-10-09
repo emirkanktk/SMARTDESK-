@@ -41,7 +41,7 @@
       >
         <option value="" disabled i18n="@@reservationForm.selectResource">Select a resource</option>
         @for (group of resourceGroups(); track group.typeName) {
-          <optgroup [label]="group.typeName">
+          <optgroup [label]="typeLabel(group.typeName)">
             @for (option of group.resources; track option.id) {
               <option [value]="option.id">{{ option.label }}</option>
             }
@@ -156,7 +156,7 @@
           All resources
         </option>
         @for (group of resourceGroups(); track group.typeName) {
-          <optgroup [label]="group.typeName">
+          <optgroup [label]="typeLabel(group.typeName)">
             @for (option of group.resources; track option.id) {
               <option [value]="option.id" [selected]="option.id === resource()">
                 {{ option.label }}

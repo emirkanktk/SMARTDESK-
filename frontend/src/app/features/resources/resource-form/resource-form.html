@@ -55,7 +55,7 @@
         >
           <option value="" disabled i18n="@@field.selectType">Select a type</option>
           @for (type of types(); track type.id) {
-            <option [value]="type.id">{{ type.name }}</option>
+            <option [value]="type.id">{{ typeLabel(type.name) }}</option>
           }
         </select>
         @if (errorFor('resourceTypeId'); as error) {

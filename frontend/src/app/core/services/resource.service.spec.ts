@@ -21,6 +21,19 @@ describe('ResourceService', () => {
 
   afterEach(() => http.verify());
 
+  it('lists the kinds of resources in the order their names read', () => {
+    let names: string[] = [];
+    service.getResourceTypes().subscribe((types) => (names = types.map((t) => t.name)));
+
+    http.expectOne(`${environment.apiUrl}/resource-types`).flush([
+      { id: 'p', name: 'Projector' },
+      { id: 'c', name: 'Camera' },
+      { id: 'm', name: 'Meeting Room' },
+    ]);
+
+    expect(names).toEqual(['Camera', 'Meeting Room', 'Projector']);
+  });
+
   it('sends only the filters that are set', () => {
     service.getResources({ resourceTypeId: 'type-room', status: null }).subscribe();
 

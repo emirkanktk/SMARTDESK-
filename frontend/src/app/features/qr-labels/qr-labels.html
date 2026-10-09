@@ -33,7 +33,7 @@
           <option value="all" i18n="@@qrLabels.pickAll">All of them</option>
           <option value="none" i18n="@@qrLabels.pickNone">None</option>
           @for (type of typesHere(); track type.id) {
-            <option [value]="type.id">{{ type.name }}</option>
+            <option [value]="type.id">{{ typeLabel(type.name) }}</option>
           }
         </select>
       </label>

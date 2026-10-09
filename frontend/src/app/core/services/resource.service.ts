@@ -1,7 +1,8 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { byTypeLabel } from '../i18n/labels';
 import { SKIP_ERROR_NOTIFICATION } from '../interceptors/http-context.tokens';
 import { Reservation } from '../models/reservation.model';
 import {
@@ -21,8 +22,11 @@ export class ResourceService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/resources`;
 
+  /** The kinds of resources, in the order their names read in the app's language. */
   getResourceTypes(): Observable<ResourceType[]> {
-    return this.http.get<ResourceType[]>(`${environment.apiUrl}/resource-types`);
+    return this.http
+      .get<ResourceType[]>(`${environment.apiUrl}/resource-types`)
+      .pipe(map((types) => [...types].sort(byTypeLabel)));
   }
 
   getResources(filter: ResourceFilter = {}): Observable<Resource[]> {
