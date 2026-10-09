@@ -43,8 +43,14 @@ test('the account menu in the sidebar opens over the page, and the card stays on
   await page.getByRole('button', { name: /Account menu/ }).click();
   const menu = page.getByRole('menu');
   await expect(menu).toBeVisible();
+  // Measured once it settles: every animation done but the endless ones, such as the dashboard's
+  // "Now" dot, which breathes for as long as one of Ayşe's bookings is under way.
   await page.waitForFunction(() =>
-    document.getAnimations().every((a) => a.playState !== 'running'),
+    document
+      .getAnimations()
+      .every(
+        (a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity,
+      ),
   );
   const box = (await menu.boundingBox())!;
   const sidebar = (await page.locator('header.bar').boundingBox())!;
