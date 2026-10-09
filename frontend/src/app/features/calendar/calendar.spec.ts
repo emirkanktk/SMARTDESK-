@@ -294,6 +294,19 @@ describe('Calendar', () => {
       expect(summary()).toContain('3 reservations this week');
     });
 
+    it('ticks a booking as it is checked in at the door, saying when in its title', async () => {
+      await render();
+      expect(cell('Desk 12', 2).querySelector('.checked-in-mark')).toBeNull();
+
+      hub.updated$.next({ ...theirs, checkedInAt: utc('2026-10-07T08:58') });
+      await fixture.whenStable();
+
+      expect(entries('Desk 12', 2)).toEqual(['09:00-17:00 ✓ Checked in Mehmet Demir']);
+      expect(cell('Desk 12', 2).querySelector('.entry')!.getAttribute('title')).toBe(
+        'Wed 7 Oct, 09:00 to Wed 7 Oct, 17:00, Mehmet Demir - Sprint planning, checked in at 08:58',
+      );
+    });
+
     it('moves a changed reservation, and drops one moved out of the week', async () => {
       await render();
       hub.updated$.next({
@@ -432,6 +445,15 @@ describe('Calendar', () => {
       expect(getBlocks).toHaveBeenCalledWith(range);
       expect(element.querySelector('.week-label')!.textContent).toBe('October 2026');
       expect(summary()).toContain('3 reservations this month.');
+    });
+
+    it('ticks a booking that was checked in', async () => {
+      const checkedIn = { ...theirs, checkedInAt: utc('2026-10-07T08:58') };
+      getCalendar.mockReturnValue(of([mine, checkedIn, overnight]));
+      await render({ view: 'month' });
+
+      expect(dayEntries('Wed 7 Oct')).toEqual(['09:00-17:00 ✓ Checked in Desk 12 · Mehmet Demir']);
+      expect(dayEntries('Tue 6 Oct')).toEqual(['10:00-11:30 Meeting Room A · You']);
     });
 
     it('lays out Monday-first weeks, with the days of the neighbouring months empty', async () => {

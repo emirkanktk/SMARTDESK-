@@ -224,8 +224,9 @@ one there's no **Assistant** button anywhere, and nothing else changes.
 - As Ayşe, book Board Room for the next half hour. The booking form says the room needs a
   check-in, and **My reservations** shows "Check in at the door" with the times.
 - Scanning is opening the link: paste it into Ayşe's window. The page shows her booking and a
-  **Check in** button; press it. **My reservations** now says **Checked in**, and Mehmet's
-  calendar updates on its own.
+  **Check in** button; press it. **My reservations** now says **Checked in**, and at once, with
+  no reload, Mehmet's calendar ticks the booking (✓, its tooltip says when) and his dashboard
+  marks it **Checked in**.
 - Paste the same link into Mehmet's window: he has no booking there, so the page says so and
   offers to book.
 - A release, while the audience watches: start the API with `CheckIn__GraceMinutes=1`

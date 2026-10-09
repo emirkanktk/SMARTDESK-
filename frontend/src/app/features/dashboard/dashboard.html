@@ -76,6 +76,9 @@
                 @if (row.runningNow) {
                   <span class="pill now" i18n="@@dashboard.now">Now</span>
                 }
+                @if (row.checkedIn) {
+                  <span class="pill checked-in" i18n="@@dashboard.checkedIn">Checked in</span>
+                }
                 {{ row.who }}
               </span>
             </li>
@@ -103,8 +106,15 @@
                   <strong>{{ row.reservation.resourceName }}</strong>
                   <span class="text-muted">{{ row.who }}</span>
                 </span>
-                <span class="text-muted until" i18n="@@dashboard.until">
-                  until {{ row.reservation.endDateTime | date: row.endFormat }}
+                <span class="until">
+                  @if (row.checkedIn) {
+                    <span class="pill checked-in" i18n="@@dashboard.inUseCheckedIn"
+                      >Checked in</span
+                    >
+                  }
+                  <span class="text-muted" i18n="@@dashboard.until">
+                    until {{ row.reservation.endDateTime | date: row.endFormat }}
+                  </span>
                 </span>
               </li>
             }

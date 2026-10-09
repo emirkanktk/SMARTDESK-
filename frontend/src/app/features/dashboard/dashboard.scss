@@ -271,6 +271,12 @@
   }
 }
 
+// Checked in at the door (ADR-0030), in the colours of My reservations' "Checked in".
+.checked-in {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
 @keyframes breathe {
   50% {
     transform: scale(0.6);

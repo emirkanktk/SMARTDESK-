@@ -171,6 +171,21 @@ describe('Dashboard', () => {
     expect(rows('In use now')).toEqual(['Board Room Mehmet Demir until 11:00']);
   });
 
+  it('says which bookings were checked in at the door', async () => {
+    const checkedIn = { ...running, checkedInAt: utc('2026-10-05T09:28') };
+    getDashboard.mockReturnValue(
+      of(dashboard({ today: [overnight, checkedIn, mineToday], inUseNow: [checkedIn] })),
+    );
+    await render();
+
+    expect(rows('Today')).toEqual([
+      'Sun 4 Oct, 18:00-09:00 Company Car 2nd Floor Someone',
+      '09:30-11:00 Board Room 5th Floor Now Checked in Mehmet Demir',
+      '14:00-15:30 Meeting Room A 2nd Floor You',
+    ]);
+    expect(rows('In use now')).toEqual(['Board Room Mehmet Demir Checked in until 11:00']);
+  });
+
   it("lists the user's next reservations with a link to all of them", async () => {
     await render();
     const upcoming = section('Your next reservations');
