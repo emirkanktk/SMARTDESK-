@@ -5,7 +5,30 @@
       <p class="text-muted room-facts">
         {{ room.location }} ·
         <ng-container i18n="@@availability.people.count">{{ room.capacity }} people</ng-container>
+        @if (room.features.length > 0) {
+          · {{ room.features.join(', ') }}
+        }
       </p>
+      @let roomState = roomNow();
+      @if (roomState?.kind === 'free') {
+        <p class="room-state free" i18n="@@checkIn.stateFree">Free now</p>
+      } @else if (roomState?.kind === 'busy' && roomState; as busy) {
+        @if (busy.kind === 'busy') {
+          <p class="room-state busy" i18n="@@checkIn.stateBusy">
+            In use until {{ when(busy.until) }}
+          </p>
+        }
+      } @else if (roomState?.kind === 'unavailable' && roomState; as out) {
+        @if (out.kind === 'unavailable') {
+          @if (out.until) {
+            <p class="room-state unavailable" i18n="@@checkIn.stateUnavailableUntil">
+              Not available until {{ when(out.until) }}
+            </p>
+          } @else {
+            <p class="room-state unavailable" i18n="@@checkIn.stateUnavailable">Not available</p>
+          }
+        }
+      }
     </div>
   } @else {
     <h1 i18n="@@checkIn.title">Check in</h1>
@@ -206,10 +229,13 @@
               </div>
             }
           }
-        } @else if (state?.kind === 'unavailable') {
+        } @else if (state?.kind === 'unavailable' && state; as out) {
           <p class="room-now busy" i18n="@@checkIn.roomUnavailable">
             {{ room.name }} can't be booked right now.
           </p>
+          @if (out.kind === 'unavailable') {
+            <p class="text-muted room-why">{{ out.reason }}</p>
+          }
         }
         <a
           class="btn btn-secondary"

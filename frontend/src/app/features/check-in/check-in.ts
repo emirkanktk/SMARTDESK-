@@ -13,7 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, merge, of } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
-import { issueCategoryLabel, issueStatusLabel } from '../../core/i18n/labels';
+import { issueCategoryLabel, issueStatusLabel, resourceStatusLabel } from '../../core/i18n/labels';
 import { IssueReport, compareIssues } from '../../core/models/issue.model';
 import { Reservation, checkInWindow } from '../../core/models/reservation.model';
 import { ResourceBlock } from '../../core/models/resource-block.model';
@@ -50,9 +50,15 @@ export const CHECK_IN_TICK_MS = 15_000;
 /** What can be booked at the door with a click, in minutes (ADR-0034). */
 export const BOOK_NOW_OPTIONS = [30, 60] as const;
 
-/** The room right now, for someone at its door with nothing of theirs to check in to. */
+/**
+ * The room right now: shown at the top for anyone at its door, and in more words to someone with
+ * nothing of theirs to check in to. Out of use says why (its status, or the block's reason) and,
+ * for a block, until when.
+ */
 export type RoomNow =
-  { kind: 'unavailable' } | { kind: 'busy'; until: Date } | { kind: 'free'; until: Date | null };
+  | { kind: 'unavailable'; reason: string; until: Date | null }
+  | { kind: 'busy'; until: Date }
+  | { kind: 'free'; until: Date | null };
 
 /**
  * The page a resource's QR code opens (`/check-in/:resourceId?code=…`, ADR-0030): the
@@ -67,7 +73,8 @@ export type RoomNow =
  *
  * And anyone there can report a problem with it (ADR-0037), seeing first the ones already
  * reported and not fixed yet. That's why the page is the resource's own, whether or not its
- * bookings need a check-in.
+ * bookings need a check-in: under its name, everyone sees what it has and what it's doing now,
+ * as its door screen says it.
  */
 @Component({
   imports: [RouterLink, ExtendBooking, ResourcePhoto, ReportIssue],
@@ -419,8 +426,12 @@ export function roomNowFor(
   const time = (value: string) => new Date(value).getTime();
   const covers = (item: { startDateTime: string; endDateTime: string }) =>
     time(item.startDateTime) <= now && now < time(item.endDateTime);
-  if (resource.status !== 'Active' || day.blocks.some(covers)) {
-    return { kind: 'unavailable' };
+  if (resource.status !== 'Active') {
+    return { kind: 'unavailable', reason: resourceStatusLabel(resource.status), until: null };
+  }
+  const block = day.blocks.find(covers);
+  if (block) {
+    return { kind: 'unavailable', reason: block.reason, until: new Date(block.endDateTime) };
   }
   const current = day.bookings.find((r) => r.status === 'Confirmed' && covers(r));
   if (current) {
