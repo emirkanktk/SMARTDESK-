@@ -13,7 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, merge, of } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
-import { issueCategoryLabel, issueStatusLabel, resourceStatusLabel } from '../../core/i18n/labels';
+import { issueCategoryLabel, issueStatusLabel } from '../../core/i18n/labels';
 import { IssueReport, compareIssues } from '../../core/models/issue.model';
 import { Reservation, checkInWindow } from '../../core/models/reservation.model';
 import { ResourceBlock } from '../../core/models/resource-block.model';
@@ -28,6 +28,7 @@ import { ResourceService } from '../../core/services/resource.service';
 import { ExtendBooking } from '../../shared/components/extend-booking/extend-booking';
 import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
 import { addDays, startOfDay } from '../../shared/utils/date-time';
+import { roomNowFor } from '../../shared/utils/room-now';
 import { ReportIssue } from './report-issue/report-issue';
 
 /** What the page offers for the caller's bookings of the resource, at a given moment. */
@@ -49,16 +50,6 @@ export const CHECK_IN_TICK_MS = 15_000;
 
 /** What can be booked at the door with a click, in minutes (ADR-0034). */
 export const BOOK_NOW_OPTIONS = [30, 60] as const;
-
-/**
- * The room right now: shown at the top for anyone at its door, and in more words to someone with
- * nothing of theirs to check in to. Out of use says why (its status, or the block's reason) and,
- * for a block, until when.
- */
-export type RoomNow =
-  | { kind: 'unavailable'; reason: string; until: Date | null }
-  | { kind: 'busy'; until: Date }
-  | { kind: 'free'; until: Date | null };
 
 /**
  * The page a resource's QR code opens (`/check-in/:resourceId?code=…`, ADR-0030): the
@@ -412,34 +403,4 @@ export function visitFor(mine: Reservation[], resourceId: string, now: number): 
     )
     .sort((a, b) => time(b.releasedAt!) - time(a.releasedAt!))[0];
   return released ? { kind: 'released', reservation: released } : { kind: 'none' };
-}
-
-/**
- * The room at `now`, for someone with nothing of theirs to check in to: out of use (its status
- * or a blocked window), in use until a booking ends, or free until the next booking or block.
- */
-export function roomNowFor(
-  resource: Resource,
-  day: { bookings: Reservation[]; blocks: ResourceBlock[] },
-  now: number,
-): RoomNow {
-  const time = (value: string) => new Date(value).getTime();
-  const covers = (item: { startDateTime: string; endDateTime: string }) =>
-    time(item.startDateTime) <= now && now < time(item.endDateTime);
-  if (resource.status !== 'Active') {
-    return { kind: 'unavailable', reason: resourceStatusLabel(resource.status), until: null };
-  }
-  const block = day.blocks.find(covers);
-  if (block) {
-    return { kind: 'unavailable', reason: block.reason, until: new Date(block.endDateTime) };
-  }
-  const current = day.bookings.find((r) => r.status === 'Confirmed' && covers(r));
-  if (current) {
-    return { kind: 'busy', until: new Date(current.endDateTime) };
-  }
-  const next = [...day.bookings.filter((r) => r.status === 'Confirmed'), ...day.blocks]
-    .map((item) => time(item.startDateTime))
-    .filter((start) => start > now)
-    .sort((a, b) => a - b)[0];
-  return { kind: 'free', until: next === undefined ? null : new Date(next) };
 }

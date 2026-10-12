@@ -12,6 +12,7 @@ import {
   CreateResourceRequest,
   Resource,
   ResourceFilter,
+  ResourcePosition,
   ResourceStatus,
   ResourceType,
   UpdateResourceRequest,
@@ -86,6 +87,17 @@ export class ResourceService {
   /** Removes its photo, so its type's picture shows again. */
   removePhoto(id: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${encodeURIComponent(id)}/photo`);
+  }
+
+  /**
+   * Places it on its floor's plan, or takes it off with null (ADR-0041). Whoever may edit the
+   * resource may move it.
+   */
+  setPosition(id: string, position: ResourcePosition | null): Observable<Resource> {
+    return this.http.put<Resource>(
+      `${this.baseUrl}/${encodeURIComponent(id)}/position`,
+      position ?? { x: null, y: null },
+    );
   }
 
   /**

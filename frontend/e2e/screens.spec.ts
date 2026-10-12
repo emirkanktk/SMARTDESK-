@@ -34,6 +34,14 @@ const ADMIN: Screen[] = [
   },
   { path: '/calendar' },
   { path: '/calendar?view=month' },
+  { path: '/floor-plan' },
+  {
+    path: '/floor-plan',
+    act: async (page) => {
+      await page.locator('button.arrange').click();
+      await expect(page.locator('.arrange-panel')).toBeVisible();
+    },
+  },
   { path: '/reservations/new' },
   { path: '/reservations/mine' },
   { path: '/inbox' },
@@ -54,6 +62,7 @@ const MANAGER: Screen[] = [
   { path: '/issues' },
   { path: '/resources/qr-labels' },
   { path: '/resources' },
+  { path: '/floor-plan' },
   { path: '/reservations/new' },
   { path: '/inbox' },
   { path: '/guide' },

@@ -117,6 +117,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/calendar/calendar').then((m) => m.Calendar),
       },
       {
+        path: 'floor-plan',
+        title: $localize`:@@title.floorPlan:Floor plan · SmartDesk`,
+        loadComponent: () => import('./features/floor-plan/floor-plan').then((m) => m.FloorPlan),
+      },
+      {
         path: 'reservations/new',
         title: $localize`:@@title.newReservation:Book a resource · SmartDesk`,
         loadComponent: () =>

@@ -1,0 +1,261 @@
+<div class="page-header">
+  <h1 i18n="@@floorPlan.title">Floor plan</h1>
+</div>
+
+@if (loading()) {
+  <p class="text-muted" role="status" i18n="@@floorPlan.loading">Loading the floor plan…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span i18n="@@floorPlan.loadFailed">The floor plan could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="retry()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
+  </div>
+} @else if (current(); as floor) {
+  <div class="card toolbar">
+    <div class="field">
+      <label for="floor" i18n="@@floorPlan.floor">Floor</label>
+      <select id="floor" class="input" (change)="selectFloor($event)">
+        @for (f of floors(); track f.location) {
+          <option [value]="f.location" [selected]="f.location === floor.location">
+            {{ f.location }}
+          </option>
+        }
+      </select>
+    </div>
+    <div class="field">
+      <label for="at" i18n="@@floorPlan.at">At</label>
+      <input
+        id="at"
+        class="input"
+        type="datetime-local"
+        step="900"
+        [value]="momentInput()"
+        (change)="selectMoment($event)"
+      />
+    </div>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      [disabled]="live()"
+      (click)="followNow()"
+      i18n="@@floorPlan.now"
+    >
+      Now
+    </button>
+    @if (mayArrange()) {
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm arrange"
+        [attr.aria-pressed]="arranging()"
+        (click)="arranging.set(!arranging())"
+      >
+        @if (arranging()) {
+          <ng-container i18n="@@floorPlan.done">Done arranging</ng-container>
+        } @else {
+          <ng-container i18n="@@floorPlan.arrange">Arrange</ng-container>
+        }
+      </button>
+    }
+  </div>
+
+  <ul class="legend" aria-label="What the colours mean" i18n-aria-label="@@floorPlan.legend">
+    <li>
+      <span class="dot free" aria-hidden="true"></span
+      ><span i18n="@@floorPlan.legendFree">Free</span>
+    </li>
+    <li>
+      <span class="dot busy" aria-hidden="true"></span
+      ><span i18n="@@floorPlan.legendBusy">In use</span>
+    </li>
+    <li>
+      <span class="dot unavailable" aria-hidden="true"></span
+      ><span i18n="@@floorPlan.legendUnavailable">Not available</span>
+    </li>
+  </ul>
+
+  @if (arranging()) {
+    <section class="card arrange-panel" aria-labelledby="arrange-title">
+      <h2 id="arrange-title" i18n="@@floorPlan.arrangeTitle">Arranging {{ floor.location }}</h2>
+      <p class="text-muted" i18n="@@floorPlan.arrangeHint">
+        Drag a resource to where it is on the plan, or select it and move it with the arrow keys,
+        holding Shift for bigger steps.
+      </p>
+      @if (isAdmin()) {
+        <div class="plan-actions">
+          <label class="btn btn-secondary btn-sm file-button" [class.disabled]="uploading()">
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/*"
+              class="visually-hidden"
+              [disabled]="uploading()"
+              (change)="uploadPlan($event)"
+            />
+            @if (uploading()) {
+              <ng-container i18n="@@floorPlan.uploading">Uploading…</ng-container>
+            } @else if (floor.plan) {
+              <ng-container i18n="@@floorPlan.replacePlan">Choose another plan</ng-container>
+            } @else {
+              <ng-container i18n="@@floorPlan.uploadPlan">Upload a plan</ng-container>
+            }
+          </label>
+          @if (floor.plan) {
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              (click)="removePlan()"
+              i18n="@@floorPlan.removePlan"
+            >
+              Remove the plan
+            </button>
+          }
+        </div>
+        <p class="text-muted plan-hint" i18n="@@floorPlan.planHint">
+          A picture of the floor - PNG, JPEG or WebP, for example exported from draw.io. It's made
+          smaller before it's uploaded.
+        </p>
+      }
+      @if (arrangeError(); as message) {
+        <div class="alert-error" role="alert">{{ message }}</div>
+      }
+      @if (movable().length > 0) {
+        <ul class="movable">
+          @for (spot of movable(); track spot.resource.id) {
+            <li>
+              <span class="name">{{ spot.resource.name }}</span>
+              @if (spot.resource.position) {
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  (click)="takeOff(spot)"
+                  i18n="@@floorPlan.takeOff"
+                >
+                  Take off the plan
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  (click)="place(spot)"
+                  i18n="@@floorPlan.place"
+                >
+                  Put on the plan
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+  <div
+    #plan
+    class="plan"
+    [class.no-plan]="!planUrl()"
+    [class.arranging]="arranging()"
+    [style.aspect-ratio]="aspectRatio()"
+  >
+    @if (planUrl(); as url) {
+      <img class="plan-image" [src]="url" [alt]="planAlt()" />
+    }
+    @for (spot of placed(); track spot.resource.id) {
+      @let position = shownPosition(spot);
+      @if (arranging() && spot.mayMove) {
+        <button
+          type="button"
+          class="spot movable-spot"
+          [class.free]="spot.state.kind === 'free'"
+          [class.busy]="spot.state.kind === 'busy'"
+          [class.unavailable]="spot.state.kind === 'unavailable'"
+          [attr.data-resource]="spot.resource.id"
+          [style.left.%]="percent(position.x)"
+          [style.top.%]="percent(position.y)"
+          [attr.aria-label]="moveLabel(spot)"
+          (pointerdown)="startDrag($event, spot)"
+          (keydown)="nudge($event, spot)"
+          (keyup)="saveNudged($event, spot)"
+        >
+          <span class="dot" aria-hidden="true"></span>
+          <span class="name">{{ spot.resource.name }}</span>
+        </button>
+      } @else if (spot.book; as params) {
+        <a
+          class="spot"
+          [class.free]="spot.state.kind === 'free'"
+          [class.busy]="spot.state.kind === 'busy'"
+          [style.left.%]="percent(position.x)"
+          [style.top.%]="percent(position.y)"
+          routerLink="/reservations/new"
+          [queryParams]="params"
+          [attr.aria-label]="spot.label"
+          [title]="spot.label"
+        >
+          <span class="dot" aria-hidden="true"></span>
+          <span class="name">{{ spot.resource.name }}</span>
+        </a>
+      } @else {
+        <span
+          class="spot"
+          [class.free]="spot.state.kind === 'free'"
+          [class.busy]="spot.state.kind === 'busy'"
+          [class.unavailable]="spot.state.kind === 'unavailable'"
+          role="img"
+          [style.left.%]="percent(position.x)"
+          [style.top.%]="percent(position.y)"
+          [attr.aria-label]="spot.label"
+          [title]="spot.label"
+        >
+          <span class="dot" aria-hidden="true"></span>
+          <span class="name" aria-hidden="true">{{ spot.resource.name }}</span>
+        </span>
+      }
+    }
+  </div>
+
+  @if (!planUrl()) {
+    <p class="text-muted no-plan-note">
+      @if (isAdmin()) {
+        <ng-container i18n="@@floorPlan.noPlanAdmin"
+          >{{ floor.location }} has no plan yet: choose Arrange to upload one. Meanwhile the
+          resources stand on a grid.</ng-container
+        >
+      } @else {
+        <ng-container i18n="@@floorPlan.noPlan"
+          >{{ floor.location }} has no plan yet, so the resources stand on a grid.</ng-container
+        >
+      }
+    </p>
+  }
+
+  @if (!arranging() && unplaced().length > 0) {
+    <section class="card unplaced" aria-labelledby="unplaced-title">
+      <h2 id="unplaced-title" i18n="@@floorPlan.unplaced">Not on the plan yet</h2>
+      <ul>
+        @for (spot of unplaced(); track spot.resource.id) {
+          <li
+            [class.free]="spot.state.kind === 'free'"
+            [class.busy]="spot.state.kind === 'busy'"
+            [class.unavailable]="spot.state.kind === 'unavailable'"
+          >
+            <span class="dot" aria-hidden="true"></span>
+            @if (spot.book; as params) {
+              <a routerLink="/reservations/new" [queryParams]="params">{{ spot.label }}</a>
+            } @else {
+              <span>{{ spot.label }}</span>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+} @else {
+  <p class="card text-muted empty" i18n="@@floorPlan.none">
+    There are no resources to show on a plan yet.
+  </p>
+}

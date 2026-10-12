@@ -37,6 +37,11 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.
+- **Floor plan** - each floor's plan, a picture an Admin uploads, with the floor's resources on
+  it: green when free, red in use, grey out of use, now or at a chosen time, and changing live.
+  Choosing one opens the booking form from when it's free. Admins place resources by dragging
+  them or with the arrow keys; a manager places their team's own
+  ([ADR-0041](docs/DECISIONS.md)).
 - **Reminders** - the owner can ask to be reminded 5, 15, 30 or 60 minutes before a reservation
   starts. The reminder arrives in the app, and as a desktop notification when allowed
   ([ADR-0018](docs/DECISIONS.md)).

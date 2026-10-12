@@ -30,6 +30,14 @@ export interface Resource {
   photoUpdatedAt: string | null;
   /** Bookings of it must be checked in at the door with its QR code, or they're released (ADR-0030). */
   checkInRequired: boolean;
+  /** Where it is on its floor's plan (ADR-0041); null until someone places it. */
+  position: ResourcePosition | null;
+}
+
+/** A place on a floor's plan: fractions of its width and height, from its left and top edges. */
+export interface ResourcePosition {
+  x: number;
+  y: number;
 }
 
 export interface ResourceFilter {

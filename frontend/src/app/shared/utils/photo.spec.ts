@@ -57,6 +57,12 @@ describe('preparePhoto', () => {
     vi.unstubAllGlobals();
   });
 
+  it('keeps a picture larger when asked, as a floor plan is', async () => {
+    const plan = await preparePhoto(new Blob(['png'], { type: 'image/png' }), 2400);
+
+    expect(await plan!.text()).toBe('2400x1800');
+  });
+
   it('writes a large photo again as WebP, at most 1600 pixels on its longest side', async () => {
     const photo = await preparePhoto(new Blob(['jpeg'], { type: 'image/jpeg' }));
 

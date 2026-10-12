@@ -33,6 +33,17 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
     link: { path: '/availability', label: $localize`:@@guide.find.link:Find a free resource` },
   },
   {
+    id: 'floor',
+    icon: 'map',
+    title: $localize`:@@guide.floor.title:See a floor's plan`,
+    steps: [
+      $localize`:@@guide.floor.colours:Floor plan shows a floor with its resources where they are: green is free, red in use, grey out of use, changing as bookings are made.`,
+      $localize`:@@guide.floor.book:Choose one to book it from when it's free. Pick a time to see the floor as it is then.`,
+      $localize`:@@guide.floor.arrange:Admins upload each floor's plan, and they and team managers put the resources in place with Arrange.`,
+    ],
+    link: { path: '/floor-plan', label: $localize`:@@guide.floor.link:Open the floor plan` },
+  },
+  {
     id: 'book',
     icon: 'calendar-plus',
     title: $localize`:@@guide.book.title:Book it`,
