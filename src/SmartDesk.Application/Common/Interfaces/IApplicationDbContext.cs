@@ -16,6 +16,7 @@ public interface IApplicationDbContext
     DbSet<ResourceBlock> ResourceBlocks { get; }
     DbSet<ResourceTeam> ResourceTeams { get; }
     DbSet<ResourcePhoto> ResourcePhotos { get; }
+    DbSet<FloorPlan> FloorPlans { get; }
     DbSet<ReservationAttendee> ReservationAttendees { get; }
     DbSet<InboxMessage> InboxMessages { get; }
     DbSet<ReservationSeries> ReservationSeries { get; }

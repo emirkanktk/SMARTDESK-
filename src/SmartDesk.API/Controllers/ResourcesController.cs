@@ -18,6 +18,7 @@ using SmartDesk.Application.Features.Resources.Commands.ChangeResourceStatus;
 using SmartDesk.Application.Features.Resources.Commands.CreateResource;
 using SmartDesk.Application.Features.Resources.Commands.RemoveResourcePhoto;
 using SmartDesk.Application.Features.Resources.Commands.SetResourcePhoto;
+using SmartDesk.Application.Features.Resources.Commands.SetResourcePosition;
 using SmartDesk.Application.Features.Resources.Commands.SetResourceTeams;
 using SmartDesk.Application.Features.Resources.Commands.UpdateResource;
 using SmartDesk.Application.Features.Resources.Common;
@@ -97,6 +98,17 @@ public sealed class ResourcesController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public Task<ResourceDto> SetTeams(Guid id, SetResourceTeamsCommand command, CancellationToken cancellationToken) =>
+        sender.Send(command with { Id = id }, cancellationToken);
+
+    // Places it on its floor's plan, or takes it off with neither x nor y (ADR-0041). Whoever
+    // may edit the resource may move it.
+    [HttpPut("{id:guid}/position")]
+    [Authorize(Roles = Roles.AdminOrManager)]
+    [ProducesResponseType<ResourceDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<HttpValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public Task<ResourceDto> SetPosition(Guid id, SetResourcePositionCommand command, CancellationToken cancellationToken) =>
         sender.Send(command with { Id = id }, cancellationToken);
 
     // For anyone who may use the resource. The browser keeps it and asks again with the ETag,

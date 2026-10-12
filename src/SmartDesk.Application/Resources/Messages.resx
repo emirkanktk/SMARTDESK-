@@ -252,6 +252,9 @@
   <data name="Entity_Account" xml:space="preserve">
     <value>Account</value>
   </data>
+  <data name="Entity_FloorPlan" xml:space="preserve">
+    <value>Floor plan</value>
+  </data>
   <data name="Entity_InboxMessage" xml:space="preserve">
     <value>Message</value>
   </data>
@@ -299,6 +302,24 @@
   </data>
   <data name="Error_Unauthorized" xml:space="preserve">
     <value>Authentication is required.</value>
+  </data>
+  <data name="FloorPlans_AdminsOnly" xml:space="preserve">
+    <value>Only administrators can change a floor's plan.</value>
+  </data>
+  <data name="FloorPlans_Dimensions" xml:space="preserve">
+    <value>The plan can be at most {0} pixels wide and {0} pixels tall.</value>
+  </data>
+  <data name="FloorPlans_LocationMissing" xml:space="preserve">
+    <value>Say which floor the plan is for.</value>
+  </data>
+  <data name="FloorPlans_Missing" xml:space="preserve">
+    <value>Choose an image of the floor plan.</value>
+  </data>
+  <data name="FloorPlans_TooLarge" xml:space="preserve">
+    <value>The plan can be at most {0} MB.</value>
+  </data>
+  <data name="FloorPlans_Type" xml:space="preserve">
+    <value>The plan must be a JPEG, PNG or WebP image.</value>
   </data>
   <data name="Identity_PasswordRequiresDigit" xml:space="preserve">
     <value>Passwords must have at least one digit ('0'-'9').</value>
@@ -587,6 +608,9 @@
   </data>
   <data name="Resources_PhotoType" xml:space="preserve">
     <value>The photo must be a JPEG, PNG or WebP image.</value>
+  </data>
+  <data name="Resources_PositionInvalid" xml:space="preserve">
+    <value>Place it inside the plan, with x and y from 0 to 1, or leave out both to take it off.</value>
   </data>
   <data name="Resources_SearchTooFarAhead" xml:space="preserve">
     <value>The search can start at most {0} days ahead.</value>

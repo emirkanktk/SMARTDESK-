@@ -59,6 +59,7 @@ they next sign in.
 | CheckInCode | string | the secret in its QR code: 32 hex digits, random, required. Only those who may edit the resource see it; replacing it retires the printed code |
 | DoorScreenTokenHash | string? (64) | SHA-256 of the door screen's token, as hex; while set, only the screen's changing code checks in (ADR-0034), and it keys that code (ADR-0039) |
 | DoorScreenSetUpAt | DateTime? | when that screen was set up |
+| MapX, MapY | double? | where it is on its floor's plan (ADR-0041): fractions of the plan's width and height from its left and top edges, 0 to 1, both set or neither. Null until placed; cleared when its Location changes |
 
 ### ResourceFeature
 
@@ -167,6 +168,19 @@ A resource's photo (ADR-0027). At most one per resource, keyed by it.
 | UpdatedAt | DateTime | UTC, when it was last set. Resource responses carry it as `photoUpdatedAt`, and the app uses it to tell a new photo from one it already has |
 
 A resource without a row here shows its type's picture, which ships with the app.
+
+### FloorPlan
+
+The drawing of one floor (ADR-0041), uploaded by an Admin. A floor is a `Resource.Location`: the
+resources that share one are on it.
+
+| Field | Type | Notes |
+|---|---|---|
+| Location | string | key, max 200, as the resources spell it ("5th Floor"). No foreign key: a plan may come before its resources |
+| ContentType | string | `image/jpeg`, `image/png` or `image/webp`, recognised from the first bytes; max 32 |
+| Data | byte[] | the image, at most 2 MB and 4096 pixels a side (`bytea`) |
+| Width, Height | int | in pixels, read from its header when it was uploaded |
+| UpdatedAt | DateTime | UTC, when it was last set |
 
 ### ResourceBlock
 
