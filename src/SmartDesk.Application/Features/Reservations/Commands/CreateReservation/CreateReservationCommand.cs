@@ -14,4 +14,7 @@ public sealed record CreateReservationCommand(
     DateTime EndDateTime,
     string? Note,
     int? ReminderMinutes = null,
-    IReadOnlyList<Guid>? AttendeeIds = null) : IRequest<ReservationDto>;
+    IReadOnlyList<Guid>? AttendeeIds = null) : IRequest<ReservationDto>, IBookingRequest
+{
+    Guid? IBookingRequest.MovingReservationId => null;
+}

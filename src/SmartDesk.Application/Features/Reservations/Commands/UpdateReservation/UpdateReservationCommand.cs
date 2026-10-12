@@ -16,9 +16,11 @@ public sealed record UpdateReservationCommand(
     DateTime EndDateTime,
     string? Note,
     int? ReminderMinutes = null,
-    IReadOnlyList<Guid>? AttendeeIds = null) : IRequest<ReservationDto>
+    IReadOnlyList<Guid>? AttendeeIds = null) : IRequest<ReservationDto>, IBookingRequest
 {
     // Comes from the route (PUT /api/reservations/{id}), not the body.
     [JsonIgnore]
     public Guid Id { get; init; }
+
+    Guid? IBookingRequest.MovingReservationId => Id;
 }

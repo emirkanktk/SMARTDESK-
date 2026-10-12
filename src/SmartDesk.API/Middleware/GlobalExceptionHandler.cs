@@ -93,6 +93,11 @@ public class GlobalExceptionHandler(
             problem.Extensions["code"] = conflict.Code;
         }
 
+        if (conflict.Suggestions is not null)
+        {
+            problem.Extensions["suggestions"] = conflict.Suggestions;
+        }
+
         return problem;
     }
 }

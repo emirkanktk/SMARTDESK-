@@ -299,6 +299,36 @@ the availability search, so back-to-back bookings are allowed. It holds under co
 requests: of several simultaneous bookings for one slot, exactly one gets 201 and the rest 409
 (ADR-0011).
 
+With those three codes the 409 also says what would do instead (ADR-0042):
+
+```json
+{
+  "status": 409,
+  "code": "reservation-overlaps",
+  "detail": "Board Room is already reserved for part of that time.",
+  "suggestions": {
+    "times": [
+      { "start": "2026-10-05T09:00:00Z", "end": "2026-10-05T10:00:00Z" },
+      { "start": "2026-10-05T11:30:00Z", "end": "2026-10-05T12:30:00Z" }
+    ],
+    "resources": [
+      { "id": "…", "name": "Meeting Room A", "capacity": 8, "location": "2nd Floor" }
+    ]
+  }
+}
+```
+
+- `times`: up to 3 times as long as the one asked for on the same resource, the nearest to it
+  within a day either side: one in each free stretch, as near as it allows, on the quarter hour,
+  never in the past nor beyond 180 days. Earliest first. Empty for `resource-unavailable`.
+- `resources`: up to 4 others of the same type the caller may book, `Active` and free for the
+  whole time asked for, holding the owner and everyone invited. Those at least as big as the one
+  asked for come first, the smallest first; then the smaller ones, the biggest first.
+
+Worked out once the request has failed, from what's committed then, so like the availability
+search it holds nothing. An update that clashes gets the same, without the booking's own slot
+counting as taken; one under way, which can only run longer, gets both lists empty.
+
 **Cancel - errors:** 403 if the caller is neither the owner nor an Admin; 404 if the
 reservation doesn't exist; 409 if it has already ended.
 
@@ -312,7 +342,7 @@ reservation doesn't exist; 409 if it has already ended.
 
 When the resource or the times change, the new slot goes through the same checks as a new
 booking: the resource must exist (404) and be `Active` (409), and it must not overlap another
-`Confirmed` reservation (409). The reservation's own current slot doesn't count, so shifting
+`Confirmed` reservation (409, with `suggestions` as for create). The reservation's own current slot doesn't count, so shifting
 10:00-11:00 to 10:30-11:30 works. A change to the note alone skips those checks, and so does
 shortening on the same resource (a new start and end within the current ones), which claims
 nothing new. So after the resource went into maintenance, a note can still be edited and a

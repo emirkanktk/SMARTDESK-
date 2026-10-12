@@ -1280,3 +1280,40 @@ new tables.
   - A plan whose resources have all moved stays until an Admin removes it; only Admins see it.
   - The colours come from bookings, not from who is in the room; a check-in is as near as the
     app gets to that.
+
+## ADR-0042: A booking that can't be made says what would do instead
+
+**Decision:**
+- When a new booking, or a booking being moved, clashes with another booking or a block, or its
+  resource is out of use, the 409 is the same as before, with `suggestions`: the nearest free
+  times of the same length on that resource, and other resources of its type free at that time.
+- Times: within a day either side, one in each free stretch, as near the time asked for as the
+  stretch allows, on the quarter hour; never in the past or beyond the booking horizon. The
+  three nearest, shown earliest first.
+- Resources: the caller's to book, `Active`, free and unblocked for the whole time, and big
+  enough for the owner and everyone invited. Those at least as big as the one asked for first,
+  the smallest first; then the smaller ones, the biggest first. Four at most.
+- A MediatR pipeline behaviour wraps the create and update commands: when their handler throws
+  one of those conflicts, it works the suggestions out and throws the conflict again with
+  them. The handlers don't change.
+- The booking form offers them under the message: choosing a time or a resource fills it in,
+  and booking stays a click the user makes.
+
+**Why:**
+- "Taken" was a dead end: the user had to search again with the times they'd just given. The
+  room usually frees up within the hour, or a room like it is free; the API already knows both.
+- In the 409 itself, not a second request: the clash and what to do about it arrive together,
+  and a client that ignores them is no worse off.
+- After the handler, outside its locks: suggestions are a read, like the availability search,
+  and holding a resource's lock while looking at others would slow everyone booking it.
+- One free time per stretch, nearest first, rather than every free quarter hour: "an hour
+  earlier, or right after" is a choice; ten starts a quarter hour apart are a list.
+- **Trade-offs:**
+  - A suggestion is worked out after the clash and holds nothing, so it can be gone by the time
+    it's chosen; then the next try says so, with new suggestions.
+  - A day either side and the quarter hour: a resource booked solid for days offers no time, and
+    a free stretch that doesn't start on a quarter hour loses its first minutes.
+  - Night hours count like any other: there are no opening hours yet, so a room booked all day
+    may be offered for the evening.
+  - An Admin moving someone else's booking is offered rooms by the Admin's access, so one the
+    owner may not use can be among them; choosing it is refused as before (ADR-0022).

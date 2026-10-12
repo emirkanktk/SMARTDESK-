@@ -112,6 +112,65 @@ textarea.input {
   }
 }
 
+// What the API offered instead (ADR-0042): choosing one fills the form in.
+.suggestions {
+  display: grid;
+  gap: var(--space-3);
+  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
+.suggestion-group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.suggestion-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+// Inline, not flex: the space between the name and the rest is text, and stays in what a
+// screen reader reads.
+.suggestion {
+  display: inline-block;
+  min-height: 2.25rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--color-primary);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.suggestion-name {
+  font-weight: 600;
+}
+
+.suggestion-detail {
+  color: var(--color-text-muted);
+}
+
 .booked-by {
   margin: 0 0 var(--space-4);
 }

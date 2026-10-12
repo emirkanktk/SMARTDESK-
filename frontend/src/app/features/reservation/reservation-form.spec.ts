@@ -296,6 +296,95 @@ describe('ReservationForm', () => {
       expect(navigateByUrl).not.toHaveBeenCalled();
     });
 
+    describe('when the time is taken', () => {
+      /** Meeting Room A is taken from 14:00; free from 13:00 or the next morning, and Desk 12 then. */
+      const clash = () =>
+        new ApiError(
+          409,
+          'Conflict',
+          'Meeting Room A is already reserved for part of that time.',
+          {},
+          'reservation-overlaps',
+          {
+            times: [
+              { start: utc('2026-10-07T13:00'), end: utc('2026-10-07T14:00') },
+              { start: utc('2026-10-08T09:00'), end: utc('2026-10-08T10:00') },
+            ],
+            resources: [{ id: desk.id, name: 'Desk 12', capacity: 1, location: '3rd Floor' }],
+          },
+        );
+
+      async function clashed(): Promise<void> {
+        create.mockReturnValueOnce(throwError(clash));
+        await render({
+          resourceId: room.id,
+          start: utc('2026-10-07T14:00'),
+          end: utc('2026-10-07T15:00'),
+        });
+        await submit();
+      }
+
+      const offered = (group: string) => [
+        ...element.querySelectorAll<HTMLButtonElement>(`[aria-labelledby="${group}"] button`),
+      ];
+      const label = (button: HTMLElement) => button.textContent!.replace(/\s+/g, ' ').trim();
+
+      it('offers the free times and resources the API suggests', async () => {
+        await clashed();
+
+        expect(field<HTMLElement>('#free-times').textContent).toBe('Free at another time');
+        expect(offered('free-times').map(label)).toEqual(['13:00-14:00', 'Thu 8 Oct, 09:00-10:00']);
+        expect(field<HTMLElement>('#free-resources').textContent).toBe('Free at that time');
+        expect(offered('free-resources').map(label)).toEqual(['Desk 12 1 person · 3rd Floor']);
+      });
+
+      it('fills a time in when it is chosen, and books it with the next click', async () => {
+        await clashed();
+
+        offered('free-times')[1].click();
+        await fixture.whenStable();
+
+        expect(field('#start').value).toBe('2026-10-08T09:00');
+        expect(field('#end').value).toBe('2026-10-08T10:00');
+        expect(element.querySelector('.conflict')).toBeNull();
+        expect(element.querySelector('.suggestions')).toBeNull();
+        expect(document.activeElement).toBe(field('#start'));
+        expect(create).toHaveBeenCalledTimes(1);
+
+        await submit();
+        expect(create).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            resourceId: room.id,
+            startDateTime: utc('2026-10-08T09:00'),
+            endDateTime: utc('2026-10-08T10:00'),
+          }),
+        );
+      });
+
+      it('switches to a resource when it is chosen, keeping the time', async () => {
+        await clashed();
+
+        offered('free-resources')[0].click();
+        await fixture.whenStable();
+
+        expect(field<HTMLSelectElement>('#resource').value).toBe(desk.id);
+        expect(field('#start').value).toBe('2026-10-07T14:00');
+        expect(element.querySelector('.suggestions')).toBeNull();
+        expect(document.activeElement).toBe(field('#resource'));
+      });
+
+      it('offers nothing else for a booking under way, which can only run longer', async () => {
+        getReservation.mockReturnValue(of(inProgress()));
+        update.mockReturnValue(throwError(clash));
+        await render({ id: 'rsv-1' });
+        await set('#end', '2026-10-05T11:30');
+        await submit();
+
+        expect(element.querySelector('.conflict')).not.toBeNull();
+        expect(element.querySelector('.suggestions')).toBeNull();
+      });
+    });
+
     it('shows the API validation message next to the field', async () => {
       create.mockReturnValue(
         throwError(() => new ApiError(400, 'Invalid', null, { Note: ['The note is too long.'] })),

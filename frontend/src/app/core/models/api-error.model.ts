@@ -16,6 +16,11 @@ export class ApiError extends Error {
     readonly fieldErrors: Readonly<Record<string, readonly string[]>> = {},
     /** A machine-readable reason some ProblemDetails carry, e.g. "password-change-required". */
     readonly code: string | null = null,
+    /**
+     * What would do instead, when a 409 says: for a booking, other times and resources
+     * (ADR-0042). As sent; `bookingSuggestions()` reads it.
+     */
+    readonly suggestions: unknown = null,
   ) {
     super(detail ?? title);
     this.name = 'ApiError';
@@ -34,7 +39,13 @@ export class ApiError extends Error {
       );
     }
 
-    const problem = body as { title?: unknown; detail?: unknown; errors?: unknown; code?: unknown };
+    const problem = body as {
+      title?: unknown;
+      detail?: unknown;
+      errors?: unknown;
+      code?: unknown;
+      suggestions?: unknown;
+    };
     return new ApiError(
       error.status,
       typeof problem.title === 'string'
@@ -43,6 +54,7 @@ export class ApiError extends Error {
       typeof problem.detail === 'string' ? problem.detail : null,
       isFieldErrorMap(problem.errors) ? problem.errors : {},
       typeof problem.code === 'string' ? problem.code : null,
+      problem.suggestions ?? null,
     );
   }
 }
