@@ -55,6 +55,7 @@ describe('Guide', () => {
 
     expect(titles()).toEqual([
       'Find a free resource',
+      "See a floor's plan",
       'Book it',
       'Check in at the door',
       'Report a problem',
@@ -107,6 +108,7 @@ describe('Guide', () => {
     );
     expect(links).toEqual([
       ['Find a free resource', '/availability'],
+      ['Open the floor plan', '/floor-plan'],
       ['Book a resource', '/reservations/new'],
       ['Open your inbox', '/inbox'],
       ['My reservations', '/reservations/mine'],
@@ -119,9 +121,9 @@ describe('Guide', () => {
 
     const contents = Array.from(element.querySelectorAll<HTMLAnchorElement>('nav.toc a'));
     expect(contents.map((a) => a.textContent!.trim())).toEqual(titles());
-    expect(contents[2].getAttribute('href')).toBe('/#door');
+    expect(contents[3].getAttribute('href')).toBe('/#door');
 
-    contents[2].click();
+    contents[3].click();
     await fixture.whenStable();
 
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });

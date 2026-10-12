@@ -330,6 +330,28 @@ window does.
   phone first; and a door screen's codes are keyed by the screen, so the printed code can't
   compute them (ADR-0037, ADR-0038, ADR-0039).
 
+### 20. The floor plan
+
+Have a picture of a floor at hand: a PNG exported from draw.io, or a photo of the evacuation
+plan by the lift.
+
+- As the admin, **Floor plan** in the menu, under Calendar → **2nd Floor**. Without a plan, its
+  rooms stand on a grid and are listed under it as not on the plan yet.
+- **Arrange** → **Upload a plan**: it's made smaller on the way up, and the floor takes the
+  picture's shape. **Put on the plan** for Meeting Room A and B, drag each to its place, and
+  nudge one with the arrow keys (Shift for bigger steps) → **Done arranging**.
+- As Ayşe, **Floor plan** → **2nd Floor**: green is free, red in use, grey and dashed out of use;
+  pointing at one says until when. As Mehmet, book Meeting Room A from now: in Ayşe's window it
+  turns red at once.
+- Choose a room: the booking form opens for it from the next quarter hour, for an hour, or from
+  when it's free again. **At** shows the floor at another time, tomorrow at 10:00 say, and
+  **Now** comes back.
+- As Zeynep, **Arrange** offers only Meeting Room B, her team's, and no upload: the plan is the
+  admins'.
+- Point out: a floor is the location its resources already share, so there's nothing new to set
+  up; places are kept as fractions of the plan, so a sharper picture replaces it without moving
+  anything; and changing a resource's location takes it off the plan (ADR-0041).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

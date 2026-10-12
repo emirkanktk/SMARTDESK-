@@ -20,7 +20,8 @@ import { fakeObjectUrls } from '../../../testing/object-urls';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { fakeResource } from '../../../testing/resource-fixtures';
 import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
-import { CHECK_IN_TICK_MS, CheckIn, roomNowFor, visitFor } from './check-in';
+import { roomNowFor } from '../../shared/utils/room-now';
+import { CHECK_IN_TICK_MS, CheckIn, visitFor } from './check-in';
 
 // Local times, so what the page prints reads the same in every time zone the tests run in.
 const at = (time: string) => new Date(`2026-10-07T${time}`);

@@ -17,6 +17,7 @@ export function fakeResource(overrides: Partial<Resource> = {}): Resource {
     teams: [],
     photoUpdatedAt: null,
     checkInRequired: false,
+    position: null,
     ...overrides,
   };
 }

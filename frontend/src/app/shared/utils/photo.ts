@@ -17,11 +17,15 @@ export function fitWithin(
 
 /**
  * Gets a chosen picture ready to upload as a resource photo (ADR-0027): at most
- * `RESOURCE_PHOTO.maxSide` on its longest side, and written again as WebP - JPEG where the
- * browser can't write WebP. Writing it again also leaves out what the camera put in the file,
- * such as where the photo was taken. Null when the browser can't read the file as a picture.
+ * `RESOURCE_PHOTO.maxSide` on its longest side, or `maxSide` (a floor's plan is kept larger), and
+ * written again as WebP - JPEG where the browser can't write WebP. Writing it again also leaves
+ * out what the camera put in the file, such as where the photo was taken. Null when the browser
+ * can't read the file as a picture.
  */
-export async function preparePhoto(file: Blob): Promise<Blob | null> {
+export async function preparePhoto(
+  file: Blob,
+  maxSide: number = RESOURCE_PHOTO.maxSide,
+): Promise<Blob | null> {
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
@@ -30,7 +34,7 @@ export async function preparePhoto(file: Blob): Promise<Blob | null> {
   }
 
   try {
-    const size = fitWithin(bitmap.width, bitmap.height, RESOURCE_PHOTO.maxSide);
+    const size = fitWithin(bitmap.width, bitmap.height, maxSide);
     const canvas = document.createElement('canvas');
     canvas.width = size.width;
     canvas.height = size.height;

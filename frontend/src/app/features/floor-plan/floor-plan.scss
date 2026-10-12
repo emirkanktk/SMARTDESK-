@@ -1,0 +1,218 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  label {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+}
+
+.arrange {
+  margin-left: auto;
+}
+
+// What the colours mean; the dots are the same as on the plan.
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+}
+
+.dot {
+  flex: none;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.free .dot,
+.dot.free {
+  background: var(--color-success);
+}
+
+.busy .dot,
+.dot.busy {
+  background: var(--color-danger);
+}
+
+// The floor: its plan stretched to the box, which has the plan's own shape, and the resources
+// placed on it by their fractions of its width and height.
+.plan {
+  position: relative;
+  width: 100%;
+  margin-bottom: var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+
+  &.no-plan {
+    background-image:
+      linear-gradient(var(--color-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+    background-size: 5% 8%;
+  }
+}
+
+.plan-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.spot {
+  position: absolute;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 10rem;
+  padding: 0.15rem var(--space-2);
+  border: 2px solid var(--color-text-muted);
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.free {
+    border-color: var(--color-success);
+  }
+
+  &.busy {
+    border-color: var(--color-danger);
+  }
+
+  // Not by its colour alone: out of use is dashed.
+  &.unavailable {
+    border-style: dashed;
+  }
+
+  &:hover {
+    z-index: 2;
+    max-width: none;
+  }
+
+  &:focus-visible {
+    z-index: 2;
+    max-width: none;
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+// While arranging: picked up and dragged, so the page doesn't scroll instead.
+.movable-spot {
+  cursor: grab;
+  touch-action: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.plan.arranging {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 2px;
+}
+
+.no-plan-note {
+  margin: 0 0 var(--space-4);
+  font-size: 0.875rem;
+}
+
+.arrange-panel,
+.unplaced {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+
+  h2 {
+    margin: 0 0 var(--space-2);
+    font-size: 1rem;
+  }
+}
+
+.plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+.file-button.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.plan-hint {
+  margin: 0 0 var(--space-3);
+  font-size: 0.8125rem;
+}
+
+.movable,
+.unplaced ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+}
+
+.movable .name {
+  flex: 1;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .spot {
+    max-width: 6.5rem;
+    font-size: 0.6875rem;
+  }
+
+  .arrange {
+    margin-left: 0;
+  }
+}

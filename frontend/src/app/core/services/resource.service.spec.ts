@@ -34,6 +34,16 @@ describe('ResourceService', () => {
     expect(names).toEqual(['Camera', 'Meeting Room', 'Projector']);
   });
 
+  it('places a resource on its floor plan, or takes it off with no place', () => {
+    service.setPosition('res 1', { x: 0.25, y: 0.5 }).subscribe();
+    service.setPosition('res 1', null).subscribe();
+
+    const [placed, taken] = http.match(`${base}/res%201/position`);
+    expect(placed.request.method).toBe('PUT');
+    expect(placed.request.body).toEqual({ x: 0.25, y: 0.5 });
+    expect(taken.request.body).toEqual({ x: null, y: null });
+  });
+
   it('sends only the filters that are set', () => {
     service.getResources({ resourceTypeId: 'type-room', status: null }).subscribe();
 

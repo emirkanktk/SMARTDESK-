@@ -1263,8 +1263,9 @@ new tables.
 - People see the floors of the resources they may use, and only those resources on them. An
   Admin also sees plans no resource is on yet, to replace or remove them.
 - The app colours each resource for a chosen time from that day's bookings and blocks, as the
-  check-in page does: free, in use, out of use. Choosing one opens the booking form for it, from
-  that time. Bookings arrive live over the hub.
+  check-in page does: free, in use, out of use. Choosing one opens the booking form for it from
+  the first quarter hour it's free, past bookings back to back, for an hour or until it's taken
+  again. A time gone by offers nothing to book. Bookings arrive live over the hub.
 
 **Why:**
 - The demo shows where everything is and what's free, at a glance. A picture of the real office
