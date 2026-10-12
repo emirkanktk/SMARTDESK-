@@ -26,6 +26,12 @@ public class Resource
     public string? DoorScreenTokenHash { get; set; }
     public DateTime? DoorScreenSetUpAt { get; set; }
 
+    // Where it is on its floor's plan (ADR-0041): fractions of the plan's width and height, from
+    // its left and top edges, both set or neither. Null until someone places it; cleared when it
+    // moves to another location, whose plan it isn't on.
+    public double? MapX { get; set; }
+    public double? MapY { get; set; }
+
     public ResourceType ResourceType { get; set; } = null!;
     public ICollection<ResourceFeature> Features { get; set; } = new List<ResourceFeature>();
     public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();

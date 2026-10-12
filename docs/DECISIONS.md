@@ -1251,3 +1251,31 @@ new tables.
     It's a demo setting, and the Turkish texts have no plural there.
   - The app waits for the times as it starts, five seconds at most, and goes on with the
     defaults without them.
+
+## ADR-0041: Floor plans: an uploaded picture per floor, with the resources placed on it
+
+**Decision:**
+- A floor is a resource `Location`: the resources that share one are on it. An Admin uploads a
+  picture of it, kept in `FloorPlans` keyed by the location, under a photo's rules (ADR-0027):
+  JPEG, PNG or WebP, 2 MB, 4096 pixels a side. No SVG, which can carry script.
+- A resource's place is `MapX` and `MapY`: fractions of the picture's width and height, 0 to 1.
+  Whoever may edit the resource places it (ADR-0022), and a new location clears it.
+- People see the floors of the resources they may use, and only those resources on them. An
+  Admin also sees plans no resource is on yet, to replace or remove them.
+- The app colours each resource for a chosen time from that day's bookings and blocks, as the
+  check-in page does: free, in use, out of use. Choosing one opens the booking form for it, from
+  that time. Bookings arrive live over the hub.
+
+**Why:**
+- The demo shows where everything is and what's free, at a glance. A picture of the real office
+  says more than one drawn for it, and any drawing tool exports one.
+- Fractions survive a plan exported at another size. A plan with another layout needs its
+  resources moved, which an Admin does on the page.
+- Keyed by location, a floor is nothing new to manage: give a resource another location and it
+  moves floors, its place cleared.
+- **Trade-offs:**
+  - Locations are free text, so "5th Floor" and "5th floor" are two floors. Admins keep them
+    the same.
+  - A plan whose resources have all moved stays until an Admin removes it; only Admins see it.
+  - The colours come from bookings, not from who is in the room; a check-in is as near as the
+    app gets to that.

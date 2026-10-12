@@ -16,7 +16,8 @@ public sealed record ResourceDto(
     IReadOnlyList<string> Features,
     IReadOnlyList<ResourceTeamDto> Teams,
     DateTime? PhotoUpdatedAt,
-    bool CheckInRequired)
+    bool CheckInRequired,
+    ResourcePositionDto? Position = null)
 {
     // An expression, not a method, so EF translates it into the SELECT (type name and
     // features in the same query) instead of loading whole entities and mapping in memory.
@@ -35,8 +36,13 @@ public sealed record ResourceDto(
         // Only when it changed, never the photo itself: a join on the key, no image bytes.
         r.Photo != null ? r.Photo.UpdatedAt : null,
         // Whether bookings must be checked in (ADR-0030); the QR code's secret is never here.
-        r.CheckInRequired);
+        r.CheckInRequired,
+        // Where it is on its floor's plan (ADR-0041); null until it's placed.
+        r.MapX != null && r.MapY != null ? new ResourcePositionDto(r.MapX.Value, r.MapY.Value) : null);
 }
+
+// A place on a floor's plan (ADR-0041): fractions of its width and height, from 0 to 1.
+public sealed record ResourcePositionDto(double X, double Y);
 
 // A team a resource belongs to (ADR-0022): the Manager's account id and name. No teams means
 // the resource is shared by everyone.

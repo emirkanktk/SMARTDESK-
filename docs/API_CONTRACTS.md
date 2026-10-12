@@ -180,6 +180,7 @@ first come, first served, under the usual overlap rule.
 | POST | `/api/resources/{id}/check-in-code` | Admin or Manager | `ReplaceCheckInCodeCommand` | → 200 with a new `{ code, url }`. The printed code stops working at once. Who may: as for PUT. |
 | POST | `/api/resources/{id}/door-screen` | Admin or Manager | `SetUpDoorScreenCommand` | → 200 `{ "url": "https://…/door/{id}#<token>", "setUpAt": "…" }`: a link for the screen at the door, shown this once (only the token's hash is kept). From now on only the screen's changing code checks in. Again: a new link, and the old screen stops. Who may: as for PUT. See Door screen. |
 | DELETE | `/api/resources/{id}/door-screen` | Admin or Manager | `TurnOffDoorScreenCommand` | → 204. The screen's link stops working, and the printed code checks in again. Twice: nothing to do. |
+| PUT | `/api/resources/{id}/position` | Admin or Manager | `SetResourcePositionCommand` | body: `{ "x": 0.25, "y": 0.6 }` → 200 with the resource: its place on its floor's plan, as fractions of the plan's width and height from its left and top edges (ADR-0041). `{ "x": null, "y": null }` takes it off. Both 0-1, or both null (400 on `Position` otherwise). Who may: as for PUT. See Floor plans. |
 
 Every resource endpoint returns the same shape:
 
@@ -193,7 +194,8 @@ Every resource endpoint returns the same shape:
   "features": ["TV", "Video Conference"],
   "teams": [{ "id": "…", "managerName": "Zeynep Kaya" }],  // [] = shared by everyone
   "photoUpdatedAt": "2026-10-05T08:00:00.123456Z",         // null = no photo of its own
-  "checkInRequired": false                                 // bookings must be checked in at the door
+  "checkInRequired": false,                                // bookings must be checked in at the door
+  "position": { "x": 0.25, "y": 0.6 }                      // on its floor's plan; null = not placed
 }
 ```
 
@@ -220,6 +222,21 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
   `POST /api/reservations` re-checks and can still answer 409.
 - Send times as UTC (`2026-10-05T11:00:00Z`). An explicit offset (`+03:00`) is converted
   correctly, and a time without an offset is treated as UTC.
+
+## Floor plans (ADR-0041)
+
+A floor is a `location` the resources share ("5th Floor"). An Admin uploads a picture of it, and
+whoever may edit a resource places it on the picture (`PUT /api/resources/{id}/position`). The
+location travels in the query string, as the resources spell it.
+
+| Method | Path | Auth | Handler | Notes |
+|---|---|---|---|---|
+| GET | `/api/floor-plans` | any authenticated user | `GetFloorsQuery` | → the floors of the resources the caller may use, by location: `[{ "location": "5th Floor", "resources": 4, "placed": 3, "plan": { "width": 1600, "height": 900, "updatedAt": "…" } }]`, `plan` null without one. An Admin also gets plans no resource is on yet (`resources: 0`). |
+| GET | `/api/floor-plans/image?location=` | any authenticated user | `GetFloorPlanImageQuery` | the picture, as `image/jpeg`, `image/png` or `image/webp`, with the same caching as a resource's photo (`ETag`, 304). For anyone who may use a resource on that floor, and for Admins; 404 otherwise, as for no plan. |
+| PUT | `/api/floor-plans/image?location=` | Admin | `SetFloorPlanImageCommand` | `multipart/form-data` with the file in the field `plan` → 200 with the floor. Sets or replaces it; the location needn't have resources yet. A photo's rules: JPEG, PNG or WebP, at most 2 MB and 4096 pixels a side, recognised from its bytes (400 on `Plan`); `location` required, max 200 (400 on `Location`). |
+| DELETE | `/api/floor-plans/image?location=` | Admin | `RemoveFloorPlanImageCommand` | 204. The resources keep their places, for the next plan; removing none is fine. |
+
+A resource's place is cleared when its `location` changes: it was on another floor's plan.
 
 ## Reservations
 

@@ -24,6 +24,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<ResourceBlock> ResourceBlocks => Set<ResourceBlock>();
     public DbSet<ResourceTeam> ResourceTeams => Set<ResourceTeam>();
     public DbSet<ResourcePhoto> ResourcePhotos => Set<ResourcePhoto>();
+    public DbSet<FloorPlan> FloorPlans => Set<FloorPlan>();
     public DbSet<ReservationAttendee> ReservationAttendees => Set<ReservationAttendee>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<ReservationSeries> ReservationSeries => Set<ReservationSeries>();
@@ -99,6 +100,16 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 .WithOne(r => r.Photo)
                 .HasForeignKey<ResourcePhoto>(e => e.ResourceId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // A floor's drawing (ADR-0041): one row per location, as long as a resource's Location
+        // may be. Not tied to the resources by a key: a plan may come before them.
+        builder.Entity<FloorPlan>(entity =>
+        {
+            entity.HasKey(e => e.Location);
+            entity.Property(e => e.Location).HasMaxLength(200);
+            entity.Property(e => e.ContentType).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.Data).IsRequired();
         });
 
         // ADR-0022. The team id is a Manager's account id, with no foreign key across the

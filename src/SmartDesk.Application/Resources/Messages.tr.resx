@@ -252,6 +252,9 @@
   <data name="Entity_Account" xml:space="preserve">
     <value>Hesap</value>
   </data>
+  <data name="Entity_FloorPlan" xml:space="preserve">
+    <value>Kat planı</value>
+  </data>
   <data name="Entity_InboxMessage" xml:space="preserve">
     <value>Mesaj</value>
   </data>
@@ -299,6 +302,24 @@
   </data>
   <data name="Error_Unauthorized" xml:space="preserve">
     <value>Oturum açmanız gerekiyor.</value>
+  </data>
+  <data name="FloorPlans_AdminsOnly" xml:space="preserve">
+    <value>Kat planını yalnızca sistem yöneticileri değiştirebilir.</value>
+  </data>
+  <data name="FloorPlans_Dimensions" xml:space="preserve">
+    <value>Planın eni ve boyu en fazla {0} piksel olabilir.</value>
+  </data>
+  <data name="FloorPlans_LocationMissing" xml:space="preserve">
+    <value>Planın hangi kat için olduğunu belirtin.</value>
+  </data>
+  <data name="FloorPlans_Missing" xml:space="preserve">
+    <value>Kat planının resmini seçin.</value>
+  </data>
+  <data name="FloorPlans_TooLarge" xml:space="preserve">
+    <value>Plan en fazla {0} MB olabilir.</value>
+  </data>
+  <data name="FloorPlans_Type" xml:space="preserve">
+    <value>Plan JPEG, PNG ya da WebP biçiminde olmalı.</value>
   </data>
   <data name="Identity_PasswordRequiresDigit" xml:space="preserve">
     <value>Parolada en az bir rakam ('0'-'9') olmalı.</value>
@@ -587,6 +608,9 @@
   </data>
   <data name="Resources_PhotoType" xml:space="preserve">
     <value>Fotoğraf JPEG, PNG ya da WebP biçiminde olmalı.</value>
+  </data>
+  <data name="Resources_PositionInvalid" xml:space="preserve">
+    <value>Planın içine yerleştirin: x ve y 0 ile 1 arasında olmalı; plandan kaldırmak için ikisini de boş bırakın.</value>
   </data>
   <data name="Resources_SearchTooFarAhead" xml:space="preserve">
     <value>Arama en fazla {0} gün sonrası için yapılabilir.</value>

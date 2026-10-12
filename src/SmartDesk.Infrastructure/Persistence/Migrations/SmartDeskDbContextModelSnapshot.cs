@@ -152,6 +152,35 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.FloorPlan", b =>
+                {
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Location");
+
+                    b.ToTable("FloorPlans");
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.InboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -440,6 +469,12 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<double?>("MapX")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("MapY")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Name")
                         .IsRequired()

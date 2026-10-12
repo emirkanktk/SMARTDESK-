@@ -31,7 +31,17 @@ public sealed class UpdateResourceCommandHandler(
             resource.Name = request.Name.Trim();
             resource.ResourceTypeId = request.ResourceTypeId;
             resource.Capacity = request.Capacity;
-            resource.Location = request.Location.Trim();
+
+            // Another location is another floor: its place on the old plan means nothing there,
+            // so it waits to be placed again (ADR-0041).
+            var location = request.Location.Trim();
+            if (location != resource.Location)
+            {
+                resource.MapX = null;
+                resource.MapY = null;
+            }
+
+            resource.Location = location;
             resource.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
             resource.Status = request.Status;
             resource.CheckInRequired = request.CheckInRequired;
