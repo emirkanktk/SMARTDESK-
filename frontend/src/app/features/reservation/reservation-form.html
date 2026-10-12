@@ -86,6 +86,56 @@
           >
         }
       </div>
+      @if (suggestions(); as offered) {
+        <div class="suggestions">
+          @if (offered.times.length > 0) {
+            <div class="suggestion-group" role="group" aria-labelledby="free-times">
+              <span id="free-times" class="suggestion-label" i18n="@@reservationForm.freeTimes"
+                >Free at another time</span
+              >
+              <ul>
+                @for (time of offered.times; track time.start) {
+                  <li>
+                    <button type="button" class="suggestion" (click)="useTime(time)">
+                      {{ suggestedTimeLabel(time) }}
+                    </button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+          @if (offered.resources.length > 0) {
+            <div class="suggestion-group" role="group" aria-labelledby="free-resources">
+              <span
+                id="free-resources"
+                class="suggestion-label"
+                i18n="@@reservationForm.freeResources"
+                >Free at that time</span
+              >
+              <ul>
+                @for (option of offered.resources; track option.id) {
+                  <li>
+                    <button type="button" class="suggestion" (click)="useResource(option)">
+                      <!-- A space a screen reader reads too: Angular drops the one between tags. -->
+                      <span class="suggestion-name">{{ option.name }}</span
+                      >&ngsp;<span class="suggestion-detail">
+                        @if (option.capacity === 1) {
+                          <ng-container i18n="@@availability.onePerson">1 person</ng-container>
+                        } @else {
+                          <ng-container i18n="@@availability.people.count"
+                            >{{ option.capacity }} people</ng-container
+                          >
+                        }
+                        · {{ option.location }}
+                      </span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      }
     }
     @if (mode() === 'inProgress') {
       <p class="notice" role="status" i18n="@@reservationForm.inProgress">

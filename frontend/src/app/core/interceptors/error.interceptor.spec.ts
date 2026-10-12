@@ -257,6 +257,28 @@ describe('errorInterceptor', () => {
     expect(notifications.notifications()).toEqual([]);
   });
 
+  it('keeps what a conflict suggests instead, as the API sent it', () => {
+    const suggestions = {
+      times: [{ start: '2026-10-05T09:00:00Z', end: '2026-10-05T10:00:00Z' }],
+      resources: [],
+    };
+
+    const result = request();
+    backend.expectOne(url).flush(
+      {
+        title: 'Conflict',
+        detail: 'Board Room is already reserved for part of that time.',
+        code: 'reservation-overlaps',
+        suggestions,
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+
+    const error = result.error() as ApiError;
+    expect(error.code).toBe('reservation-overlaps');
+    expect(error.suggestions).toEqual(suggestions);
+  });
+
   it('still says "not allowed" for any other 403', () => {
     request();
     backend.expectOne(url).flush({ title: 'Forbidden' }, { status: 403, statusText: 'Forbidden' });

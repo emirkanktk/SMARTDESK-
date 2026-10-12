@@ -1,4 +1,4 @@
-import { DatePipe, formatDate } from '@angular/common';
+import { DOCUMENT, DatePipe, formatDate } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -24,6 +24,12 @@ import {
   switchMap,
 } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
+import {
+  BookingSuggestions,
+  SuggestedResource,
+  SuggestedTime,
+  bookingSuggestions,
+} from '../../core/models/booking-suggestions.model';
 import {
   AttendeeResponse,
   CHECK_IN,
@@ -159,6 +165,7 @@ export class ReservationForm implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly locale = inject(LOCALE_ID);
+  private readonly document = inject(DOCUMENT);
 
   /** Route parameter; absent when booking. */
   readonly id = input<string>();
@@ -245,6 +252,10 @@ export class ReservationForm implements OnInit {
   protected readonly formError = signal<string | null>(null);
   /** A 409 from the API, e.g. the slot was taken meanwhile. Its detail is shown as-is. */
   protected readonly conflict = signal<string | null>(null);
+  /** What the API offered instead with it: other times and resources (ADR-0042). */
+  protected readonly suggestions = signal<BookingSuggestions | null>(null);
+  /** The start asked for when the offer came, so times on that day read as times only. */
+  private askedStart: Date | null = null;
 
   // getRawValue: a locked (disabled) start or resource still counts for the hints.
   private readonly formValue = toSignal(
@@ -463,6 +474,33 @@ export class ReservationForm implements OnInit {
     };
   }
 
+  /** A free time the API offered: the form takes it, and booking it is the user's next click. */
+  protected useTime(time: SuggestedTime): void {
+    this.form.patchValue({
+      startDateTime: toDateTimeLocal(new Date(time.start)),
+      endDateTime: toDateTimeLocal(new Date(time.end)),
+    });
+    this.clearConflict();
+    this.document.getElementById('start')?.focus();
+  }
+
+  /** A resource free at that time, as the API offered it: the form takes it instead. */
+  protected useResource(resource: SuggestedResource): void {
+    this.form.controls.resourceId.setValue(resource.id);
+    this.clearConflict();
+    this.document.getElementById('resource')?.focus();
+  }
+
+  /** "09:00-10:00" on the day asked for; "Tue 6 Oct, 09:00-10:00" on another. */
+  protected suggestedTimeLabel(time: SuggestedTime): string {
+    const start = new Date(time.start);
+    const end = new Date(time.end);
+    const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+    const from = this.askedStart && sameDay(this.askedStart, start) ? 'HH:mm' : RANGE_FORMAT;
+    const to = sameDay(start, end) ? 'HH:mm' : RANGE_FORMAT;
+    return `${formatDate(start, from, this.locale)}-${formatDate(end, to, this.locale)}`;
+  }
+
   protected submit(): void {
     // Re-run the time rules: the page may have been open since the start was picked.
     this.form.updateValueAndValidity();
@@ -488,7 +526,7 @@ export class ReservationForm implements OnInit {
 
     this.saving.set(true);
     this.formError.set(null);
-    this.conflict.set(null);
+    this.clearConflict();
     const before = new Set(reservation?.attendees.map((a) => a.id) ?? []);
     const invites = body.attendeeIds.some((id) => !before.has(id));
     request.pipe(finalize(() => this.saving.set(false))).subscribe({
@@ -521,7 +559,7 @@ export class ReservationForm implements OnInit {
 
     this.saving.set(true);
     this.formError.set(null);
-    this.conflict.set(null);
+    this.clearConflict();
     this.reservationService
       .createSeries(body)
       .pipe(finalize(() => this.saving.set(false)))
@@ -742,7 +780,7 @@ export class ReservationForm implements OnInit {
 
     this.cancelling.set(true);
     this.formError.set(null);
-    this.conflict.set(null);
+    this.clearConflict();
     this.reservationService
       .cancel(reservation.id)
       .pipe(finalize(() => this.cancelling.set(false)))
@@ -851,6 +889,11 @@ export class ReservationForm implements OnInit {
     };
   }
 
+  private clearConflict(): void {
+    this.conflict.set(null);
+    this.suggestions.set(null);
+  }
+
   private handleSaveError(error: unknown): void {
     if (error instanceof ApiError && error.status === 400) {
       const unmatched = applyServerErrors(this.form, error);
@@ -859,6 +902,9 @@ export class ReservationForm implements OnInit {
     }
     if (error instanceof ApiError && error.status === 409) {
       this.conflict.set(error.detail ?? error.title);
+      // A booking under way can only run longer: another time or resource is no answer.
+      this.suggestions.set(this.mode() === 'inProgress' ? null : bookingSuggestions(error));
+      this.askedStart = fromDateTimeLocal(this.form.getRawValue().startDateTime);
       return;
     }
     // Other failures already raised a toast; keep a note on the form as well.

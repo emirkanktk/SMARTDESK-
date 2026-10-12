@@ -10,4 +10,8 @@ public sealed class ConflictException(string message, Exception? innerException 
     // clients that have to tell conflicts apart. The message depends on the language; this
     // doesn't (ADR-0023).
     public string? Code { get; init; }
+
+    // What would do instead, sent as the problem's `suggestions`: for a booking, other times
+    // and resources (ADR-0042). Null when there's nothing to offer.
+    public object? Suggestions { get; init; }
 }

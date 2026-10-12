@@ -78,8 +78,13 @@ browser, with two windows side by side so the audience sees changes arrive live.
   (it starts a booking of that room), set 14:00-15:00 and **Book**: the red message reads
   "Meeting Room A is already reserved for part of that time.", exactly as the API words it,
   with **See what else is free then** to search that slot.
+- Under it, **Free at another time** has the hour just before and the hour just after Ayşe's
+  booking, and **Free at that time** the other meeting rooms free then, the ones as big first.
+  Choose the hour after: the form takes it, and **Book** books it.
 - Point out: the form checks the obvious rules itself for fast feedback, but the API decides -
-  one overlap rule on the server for search, booking, updates and the calendar.
+  one overlap rule on the server for search, booking, updates and the calendar. The
+  suggestions come with the same 409, worked out once the booking has failed, so they hold
+  nothing and the next try checks again (ADR-0042).
 
 ### 4. The form's other rules
 

@@ -1,4 +1,13 @@
-import { acceptNextDialog, apiAs, bookingLink, day, expect, slot, test } from './support';
+import {
+  acceptNextDialog,
+  apiAs,
+  bookingLink,
+  day,
+  expect,
+  localInput,
+  slot,
+  test,
+} from './support';
 
 // Booking, the brief's conflict case, and live updates (ADR-0011, ADR-0014).
 test('a booked slot is refused to the next person, who is offered what else is free', async ({
@@ -34,6 +43,32 @@ test('a booked slot is refused to the next person, who is offered what else is f
   await mehmet.getByRole('button', { name: 'Book', exact: true }).click();
   await mehmet.waitForURL('**/reservations/mine');
   await expect(mehmet.locator('li.item', { hasText: resource.name })).toBeVisible();
+});
+
+// ADR-0042: a taken time comes back with the nearest free ones, and one is a click away.
+test('a taken time is answered with the nearest free times, booked with the next click', async ({
+  open,
+  resource,
+}) => {
+  const when = slot(1, 10);
+
+  const ayse = await open('ayse');
+  await ayse.goto(bookingLink(resource, when));
+  await ayse.getByRole('button', { name: 'Book', exact: true }).click();
+  await ayse.waitForURL('**/reservations/mine');
+
+  const mehmet = await open('mehmet');
+  await mehmet.goto(bookingLink(resource, when));
+  await mehmet.getByRole('button', { name: 'Book', exact: true }).click();
+  const times = mehmet.getByRole('group', { name: 'Free at another time' });
+  await expect(times.getByRole('button')).toHaveText(['09:00-10:00', '11:00-12:00']);
+
+  await times.getByRole('button', { name: '11:00-12:00' }).click();
+  await expect(mehmet.locator('#start')).toHaveValue(localInput(slot(1, 11).start));
+  await expect(mehmet.locator('.conflict')).toHaveCount(0);
+  await mehmet.getByRole('button', { name: 'Book', exact: true }).click();
+  await mehmet.waitForURL('**/reservations/mine');
+  await expect(mehmet.getByText(`${resource.name} is booked for`)).toContainText('11:00-12:00');
 });
 
 test("another person's booking and its cancellation reach an open calendar without a reload", async ({

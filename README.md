@@ -33,7 +33,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   overlapping bookings, bookings in the past, and bookings of resources that aren't active,
   and it holds under concurrent requests. The owner or an Admin can change or cancel. A
   resource with bookings still to come can't be put into maintenance or switched off until
-  they're cancelled or moved ([ADR-0024](docs/DECISIONS.md)).
+  they're cancelled or moved ([ADR-0024](docs/DECISIONS.md)). A time that's taken comes back
+  with the nearest free times on the same resource and the others of its kind free then, each
+  a click away ([ADR-0042](docs/DECISIONS.md)).
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.

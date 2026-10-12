@@ -77,6 +77,45 @@ public sealed class ReservationOverlapTests(PostgresApiFixture fixture)
     }
 
     [Fact]
+    public async Task A_clash_offers_the_nearest_free_times_and_other_rooms_free_then()
+    {
+        var client = fixture.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await LoginAsync(client));
+
+        var resources = await client.GetFromJsonAsync<List<NamedResource>>("/api/resources");
+        var room = resources!.Single(r => r.Name == "Meeting Room A");
+        var start = DateTime.UtcNow.Date.AddDays(93).AddHours(10);
+        var first = await client.PostAsJsonAsync("/api/reservations", new
+        {
+            resourceId = room.Id,
+            startDateTime = start,
+            endDateTime = start.AddHours(1),
+        });
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var clash = await client.PostAsJsonAsync("/api/reservations", new
+        {
+            resourceId = room.Id,
+            startDateTime = start.AddMinutes(30),
+            endDateTime = start.AddMinutes(90),
+        });
+
+        // ADR-0042: the hour before and the hour after, and the rooms free at that time.
+        clash.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        using var problem = JsonDocument.Parse(await clash.Content.ReadAsStringAsync());
+        problem.RootElement.GetProperty("code").GetString().Should().Be("reservation-overlaps");
+        var suggestions = problem.RootElement.GetProperty("suggestions");
+        suggestions.GetProperty("times").EnumerateArray()
+            .Select(t => (t.GetProperty("start").GetDateTime(), t.GetProperty("end").GetDateTime()))
+            .Should().Equal((start.AddHours(-1), start), (start.AddHours(1), start.AddHours(2)));
+        var boardRoom = suggestions.GetProperty("resources").EnumerateArray()
+            .Single(r => r.GetProperty("name").GetString() == "Board Room");
+        boardRoom.GetProperty("capacity").GetInt32().Should().Be(16);
+        boardRoom.GetProperty("location").GetString().Should().Be("5th Floor");
+        boardRoom.GetProperty("id").GetGuid().Should().Be(resources!.Single(r => r.Name == "Board Room").Id);
+    }
+
+    [Fact]
     public async Task An_overlap_only_the_database_catches_is_still_a_coded_conflict()
     {
         // Straight to the database, past the handler's check and its lock, as two requests
