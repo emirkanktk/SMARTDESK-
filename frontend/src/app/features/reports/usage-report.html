@@ -122,6 +122,22 @@
         <span class="value">{{ r.totals.cancelled }}</span>
         <span class="label" i18n="@@report.tile.cancelled">cancelled</span>
       </li>
+      <li class="card tile">
+        <span class="value">{{ percent(r.totals.cancellationRate) }}</span>
+        <span class="label" i18n="@@report.tile.cancellationRate">of bookings cancelled</span>
+      </li>
+      <li class="card tile">
+        @if (r.totals.noShows + r.totals.checkedIn > 0) {
+          <span class="value">{{ percent(r.totals.noShowRate) }}</span>
+          <span class="label" i18n="@@report.tile.noShows"
+            >of check-ins missed: {{ r.totals.noShows }} of
+            {{ r.totals.noShows + r.totals.checkedIn }}</span
+          >
+        } @else {
+          <span class="value" aria-hidden="true">–</span>
+          <span class="label" i18n="@@report.tile.noCheckIns">no check-ins asked for</span>
+        }
+      </li>
     </ul>
 
     <p class="text-muted note" i18n="@@report.note">
@@ -137,7 +153,7 @@
     } @else {
       <section aria-labelledby="by-resource">
         <h2 id="by-resource" class="section-title" i18n="@@report.byResource">By resource</h2>
-        <div class="card table-wrap">
+        <div class="card table-wrap" appScrollRegion>
           <table class="table resources">
             <thead>
               <tr>
@@ -147,6 +163,7 @@
                 <th scope="col" class="num" i18n="@@report.officeHours">Office hours</th>
                 <th scope="col" class="num" i18n="@@admin.reservations">Reservations</th>
                 <th scope="col" class="num" i18n="@@status.reservation.cancelled">Cancelled</th>
+                <th scope="col" class="num" i18n="@@report.noShows">No-shows</th>
               </tr>
             </thead>
             <tbody>
@@ -171,6 +188,7 @@
                   <td class="num">{{ hours(row.workingHoursBooked) }}</td>
                   <td class="num">{{ row.reservations }}</td>
                   <td class="num">{{ row.cancelled }}</td>
+                  <td class="num">{{ row.noShows }}</td>
                 </tr>
               }
             </tbody>
@@ -180,7 +198,7 @@
 
       <section aria-labelledby="by-type">
         <h2 id="by-type" class="section-title" i18n="@@report.byType">By type</h2>
-        <div class="card table-wrap">
+        <div class="card table-wrap" appScrollRegion>
           <table class="table types">
             <thead>
               <tr>
@@ -211,6 +229,53 @@
             </tbody>
           </table>
         </div>
+      </section>
+    }
+
+    @if (r.resources.length > 0 && heat(); as heat) {
+      <section aria-labelledby="busiest">
+        <h2 id="busiest" class="section-title" i18n="@@report.busiest">When it's busiest</h2>
+        <p class="text-muted note" i18n="@@report.busiestNote">
+          The share of the resources booked in each hour of each weekday, in {{ r.timeZone }}.
+        </p>
+        <div class="card heat-wrap" appScrollRegion>
+          <table class="heat">
+            <thead>
+              <tr>
+                <th scope="col"><span class="visually-hidden" i18n="@@report.hour">Hour</span></th>
+                @for (day of heat.days; track day.long) {
+                  <th scope="col">
+                    <abbr [title]="day.long">{{ day.short }}</abbr>
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of heat.rows; track row.hour) {
+                <tr>
+                  <th scope="row">{{ row.hour }}</th>
+                  @for (cell of row.cells; track $index) {
+                    <td [class]="'level-' + cell.level">
+                      @if (cell.level > 0) {
+                        {{ cell.text }}
+                      } @else {
+                        <span class="visually-hidden">{{ cell.text }}</span>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <ul class="heat-scale" aria-label="Scale" i18n-aria-label="@@report.scale">
+          @for (step of heat.scale; track step.level) {
+            <li>
+              <span [class]="'swatch level-' + step.level" aria-hidden="true"></span>
+              {{ step.text }}
+            </li>
+          }
+        </ul>
       </section>
     }
 

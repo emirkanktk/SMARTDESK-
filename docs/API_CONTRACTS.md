@@ -717,15 +717,21 @@ is the full count, while `myUpcoming` is capped at 5.
   "workingHours": "Mon-Fri 09:00-18:00",
   "workingHoursPerResource": 198,        // office hours in the range, per resource
   "totals": { "resources": 7, "reservations": 42, "cancelled": 5, "bookedHours": 120.5,
-              "workingHoursBooked": 98, "workingHoursAvailable": 1386, "utilization": 0.0707 },
+              "workingHoursBooked": 98, "workingHoursAvailable": 1386, "utilization": 0.0707,
+              "noShows": 2, "checkedIn": 14, "noShowRate": 0.125, "cancellationRate": 0.0638 },
   "resources": [                           // busiest first (utilization, then booked hours)
     { "resourceId": "…", "resourceName": "Meeting Room A", "resourceTypeId": "…",
       "resourceTypeName": "Meeting Room", "status": "Active", "reservations": 12, "cancelled": 1,
-      "bookedHours": 30.5, "workingHoursBooked": 28, "utilization": 0.1414 }
+      "bookedHours": 30.5, "workingHoursBooked": 28, "utilization": 0.1414,
+      "noShows": 1, "checkedIn": 6, "noShowRate": 0.1429 }
   ],
   "byType": [ { "resourceTypeId": "…", "resourceTypeName": "Meeting Room", "resources": 3, "reservations": 20,
-                "cancelled": 2, "bookedHours": 55, "workingHoursBooked": 50, "workingHoursAvailable": 594, "utilization": 0.0842 } ],
-  "topUsers": [ { "userId": "…", "displayName": "Ayşe Yılmaz", "reservations": 9, "bookedHours": 21.5 } ]  // at most 5
+                "cancelled": 2, "bookedHours": 55, "workingHoursBooked": 50, "workingHoursAvailable": 594, "utilization": 0.0842,
+                "noShows": 1, "checkedIn": 9, "noShowRate": 0.1 } ],
+  "topUsers": [ { "userId": "…", "displayName": "Ayşe Yılmaz", "reservations": 9, "bookedHours": 21.5 } ],  // at most 5
+  "heatMap": [                             // Monday to Sunday (ADR-0044)
+    { "day": "Monday", "hours": [0, 0, 0, 0, 0, 0, 0, 0, 0.05, 0.4, 0.62, /* … 24 in all */] }
+  ]
 }
 ```
 
@@ -740,6 +746,16 @@ What the numbers mean (ADR-0017):
   of resources. A range with no weekday gives 0.
 - **Which resources appear**: every `Active` resource, plus any other that had reservations in the
   range. Blocked windows are not subtracted from the available hours.
+- **`noShows` / `checkedIn`** (ADR-0044): bookings released because nobody checked in (they are
+  among `cancelled`), and `Confirmed` ones somebody checked in to. **`noShowRate`** is
+  `noShows / (noShows + checkedIn)`: of the visits a check-in was asked for, the share nobody
+  came to. 0 with none.
+- **`cancellationRate`**: bookings cancelled by someone - `cancelled` less `noShows` - over every
+  booking in the range, `reservations + cancelled`.
+- **`heatMap`**: for each weekday and local hour (`hours[0]` is 00:00-01:00), the booked share of
+  the listed resources' time in that hour, over the days of that weekday in the range, 0 to 1.
+  `Confirmed` bookings only, nights and weekends included. On the day the clocks change, the
+  missing hour reads 0 and the doubled one counts once, at most full.
 
 ## Assistant
 

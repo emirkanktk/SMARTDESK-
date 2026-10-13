@@ -11,6 +11,15 @@ import { UsageReport } from './usage-report';
 describe('UsageReport', () => {
   const NOW = new Date('2026-10-05T10:07'); // a Monday, local time
 
+  /** A weekday of the heat map: 24 shares, zero unless given. */
+  const weekday = (
+    day: UsageReportData['heatMap'][number]['day'],
+    shares: Record<number, number> = {},
+  ) => ({
+    day,
+    hours: Array.from({ length: 24 }, (_, hour) => shares[hour] ?? 0),
+  });
+
   function report(overrides: Partial<UsageReportData> = {}): UsageReportData {
     return {
       from: '2026-09-06',
@@ -28,6 +37,10 @@ describe('UsageReport', () => {
         workingHoursBooked: 98,
         workingHoursAvailable: 594,
         utilization: 0.165,
+        noShows: 1,
+        checkedIn: 3,
+        noShowRate: 0.25,
+        cancellationRate: 0.125,
       },
       resources: [
         {
@@ -41,6 +54,9 @@ describe('UsageReport', () => {
           bookedHours: 70,
           workingHoursBooked: 66,
           utilization: 0.3333,
+          noShows: 1,
+          checkedIn: 3,
+          noShowRate: 0.25,
         },
         {
           resourceId: 'res-3',
@@ -53,6 +69,9 @@ describe('UsageReport', () => {
           bookedHours: 50.25,
           workingHoursBooked: 32,
           utilization: 0.1616,
+          noShows: 0,
+          checkedIn: 0,
+          noShowRate: 0,
         },
         {
           resourceId: 'res-2',
@@ -65,6 +84,9 @@ describe('UsageReport', () => {
           bookedHours: 0,
           workingHoursBooked: 0,
           utilization: 0,
+          noShows: 0,
+          checkedIn: 0,
+          noShowRate: 0,
         },
       ],
       byType: [
@@ -78,11 +100,23 @@ describe('UsageReport', () => {
           workingHoursBooked: 66,
           workingHoursAvailable: 198,
           utilization: 0.3333,
+          noShows: 1,
+          checkedIn: 3,
+          noShowRate: 0.25,
         },
       ],
       topUsers: [
         { userId: 'u-1', displayName: 'Ayşe Yılmaz', reservations: 9, bookedHours: 60.5 },
         { userId: 'u-2', displayName: null, reservations: 1, bookedHours: 2 },
+      ],
+      heatMap: [
+        weekday('Monday', { 10: 0.6 }),
+        weekday('Tuesday', { 8: 0.1 }),
+        weekday('Wednesday', { 14: 1 }),
+        weekday('Thursday', { 9: 0.3 }),
+        weekday('Friday', { 11: 0.003 }),
+        weekday('Saturday'),
+        weekday('Sunday'),
       ],
       ...overrides,
     };
@@ -180,6 +214,8 @@ describe('UsageReport', () => {
       '120.3 h booked in total',
       '14 reservations',
       '2 cancelled',
+      '12.5% of bookings cancelled',
+      '25% of check-ins missed: 1 of 4',
     ]);
     expect(text(element.querySelector('.note')!)).toContain('198 h per resource');
   });
@@ -195,12 +231,68 @@ describe('UsageReport', () => {
     await render();
 
     expect(rows('resources')).toEqual([
-      'Meeting Room A Meeting Room 33.3% 70 h 66 h 10 1',
-      'Camera C-1 Camera Maintenance 16.2% 50.3 h 32 h 4 1',
-      'Desk 12 Desk 0% 0 h 0 h 0 0',
+      'Meeting Room A Meeting Room 33.3% 70 h 66 h 10 1 1',
+      'Camera C-1 Camera Maintenance 16.2% 50.3 h 32 h 4 1 0',
+      'Desk 12 Desk 0% 0 h 0 h 0 0 0',
     ]);
     const bars = Array.from(element.querySelectorAll<HTMLElement>('table.resources .fill'));
     expect(bars.map((b) => b.style.width)).toEqual(['33.33%', '16.16%', '0%']);
+  });
+
+  it('says so when no booking asked for a check-in', async () => {
+    getUsage.mockReturnValue(
+      of(report({ totals: { ...report().totals, noShows: 0, checkedIn: 0, noShowRate: 0 } })),
+    );
+    await render();
+
+    expect(text(element.querySelectorAll('.tile')[5])).toBe('– no check-ins asked for');
+  });
+
+  it('shows when it is busiest: the office day, and any other hour something was booked', async () => {
+    await render();
+    const table = element.querySelector('table.heat')!;
+    const cell = (hour: string, day: number) =>
+      Array.from(table.querySelectorAll('tbody tr'))
+        .find((row) => text(row.querySelector('th')!) === hour)!
+        .querySelectorAll('td')[day];
+
+    expect(Array.from(table.querySelectorAll('thead th')).map(text)).toEqual([
+      'Hour',
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+      'Sun',
+    ]);
+    expect(table.querySelector('thead abbr')!.getAttribute('title')).toBe('Monday');
+    // 08:00 for Tuesday's booking, then 09:00-17:00.
+    expect(rows('heat').map((row) => row.split(' ')[0])).toEqual([
+      '08:00',
+      '09:00',
+      '10:00',
+      '11:00',
+      '12:00',
+      '13:00',
+      '14:00',
+      '15:00',
+      '16:00',
+      '17:00',
+    ]);
+    expect([text(cell('10:00', 0)), cell('10:00', 0).className]).toEqual(['60%', 'level-3']);
+    expect([text(cell('08:00', 1)), cell('08:00', 1).className]).toEqual(['10%', 'level-1']);
+    expect([text(cell('09:00', 3)), cell('09:00', 3).className]).toEqual(['30%', 'level-2']);
+    expect([text(cell('14:00', 2)), cell('14:00', 2).className]).toEqual(['100%', 'level-4']);
+    expect(text(cell('11:00', 4))).toBe('<1%');
+    // An empty hour shows nothing, and reads as 0%.
+    expect([cell('12:00', 5).className, text(cell('12:00', 5))]).toEqual(['level-0', '0%']);
+    expect(Array.from(element.querySelectorAll('.heat-scale li')).map(text)).toEqual([
+      '1%–25%',
+      '26%–50%',
+      '51%–75%',
+      '76%–100%',
+    ]);
   });
 
   it('lists types and the people who booked most, naming unknown ones', async () => {
@@ -285,7 +377,7 @@ describe('UsageReport', () => {
     button('Try again').click();
     await fixture.whenStable();
     expect(getUsage).toHaveBeenCalledTimes(2);
-    expect(element.querySelectorAll('.tile')).toHaveLength(4);
+    expect(element.querySelectorAll('.tile')).toHaveLength(6);
 
     button('Refresh').click();
     await fixture.whenStable();

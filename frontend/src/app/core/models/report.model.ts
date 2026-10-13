@@ -23,6 +23,13 @@ export interface UsageTotals {
   workingHoursAvailable: number;
   /** Booked office hours / available office hours, 0 to 1. */
   utilization: number;
+  /** Bookings released because nobody checked in (ADR-0044). */
+  noShows: number;
+  checkedIn: number;
+  /** noShows over noShows + checkedIn: of the visits a check-in was asked for, how many missed. */
+  noShowRate: number;
+  /** Bookings cancelled by someone, a release not counted, over all of them. */
+  cancellationRate: number;
 }
 
 export interface ResourceUsage {
@@ -36,6 +43,9 @@ export interface ResourceUsage {
   bookedHours: number;
   workingHoursBooked: number;
   utilization: number;
+  noShows: number;
+  checkedIn: number;
+  noShowRate: number;
 }
 
 export interface ResourceTypeUsage {
@@ -48,6 +58,9 @@ export interface ResourceTypeUsage {
   workingHoursBooked: number;
   workingHoursAvailable: number;
   utilization: number;
+  noShows: number;
+  checkedIn: number;
+  noShowRate: number;
 }
 
 export interface UserUsage {
@@ -72,4 +85,12 @@ export interface UsageReport {
   byType: ResourceTypeUsage[];
   /** At most 5, most booked hours first. */
   topUsers: UserUsage[];
+  /** When it's busiest (ADR-0044): Monday to Sunday. */
+  heatMap: WeekdayHours[];
+}
+
+/** One weekday: 24 shares of the resources booked, 0 to 1, from 00:00 to 23:00 local. */
+export interface WeekdayHours {
+  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+  hours: number[];
 }

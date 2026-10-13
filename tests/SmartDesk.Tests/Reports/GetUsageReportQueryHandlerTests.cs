@@ -168,12 +168,57 @@ public class GetUsageReportQueryHandlerTests : IDisposable
         report.Resources.Select(r => r.ResourceName).Should().Equal("Meeting Room A", "Desk 3-01", "Meeting Room B");
         report.Totals.Should().Be(new UsageTotals(
             Resources: 3, Reservations: 2, Cancelled: 0, BookedHours: 13.5, WorkingHoursBooked: 13.5,
-            WorkingHoursAvailable: 135, Utilization: 0.1));
+            WorkingHoursAvailable: 135, Utilization: 0.1, NoShows: 0, CheckedIn: 0, NoShowRate: 0, CancellationRate: 0));
         var rooms = report.ByType.Single(t => t.ResourceTypeName == "Meeting Room");
         rooms.Resources.Should().Be(2);
         rooms.WorkingHoursAvailable.Should().Be(90);
         rooms.Utilization.Should().Be(0.1); // 9 / 90
         report.ByType.Single(t => t.ResourceTypeName == "Desk").Utilization.Should().Be(0.1); // 4.5 / 45
+    }
+
+    [Fact]
+    public async Task NoShows_AreTheReleasedVisits_OverThoseACheckInWasAskedFor_AndCancellationsLeaveThemOut()
+    {
+        var room = await _database.AddResourceAsync("Meeting Room A");
+        var checkedIn = await _database.AddReservationAsync(room.Id, At(0, 9), At(0, 10));
+        var released = await _database.AddReservationAsync(room.Id, At(0, 11), At(0, 12), ReservationStatus.Cancelled);
+        await _database.AddReservationAsync(room.Id, At(1, 9), At(1, 10), ReservationStatus.Cancelled);
+        await _database.AddReservationAsync(room.Id, At(2, 9), At(2, 10));
+        await using (var context = _database.CreateContext())
+        {
+            context.Reservations.Single(r => r.Id == checkedIn.Id).CheckedInAt = At(0, 9);
+            context.Reservations.Single(r => r.Id == released.Id).ReleasedAt = At(0, 11.25);
+            await context.SaveChangesAsync();
+        }
+
+        var report = await ReportAsync(Monday, Friday);
+
+        var totals = report.Totals;
+        (totals.Reservations, totals.Cancelled, totals.NoShows, totals.CheckedIn).Should().Be((2, 2, 1, 1));
+        totals.NoShowRate.Should().Be(0.5);
+        // One cancelled by someone, of four booked.
+        totals.CancellationRate.Should().Be(0.25);
+        var row = report.Resources.Single();
+        (row.NoShows, row.CheckedIn, row.NoShowRate).Should().Be((1, 1, 0.5));
+        report.ByType.Single().NoShowRate.Should().Be(0.5);
+    }
+
+    [Fact]
+    public async Task TheHeatMap_IsTheBookedShareOfTheResourcesByWeekdayAndLocalHour()
+    {
+        var room = await _database.AddResourceAsync("Meeting Room A");
+        await _database.AddResourceAsync("Meeting Room B");
+        // 07:00-08:00 UTC is 10:00-11:00 in Istanbul; cancelled bookings don't count.
+        await _database.AddReservationAsync(room.Id, At(0, 7), At(0, 8));
+        await _database.AddReservationAsync(room.Id, At(0, 8), At(0, 9), ReservationStatus.Cancelled);
+
+        var report = await ReportAsync(Monday, Sunday, "Europe/Istanbul");
+
+        var monday = report.HeatMap[0];
+        monday.Day.Should().Be(DayOfWeek.Monday);
+        monday.Hours[10].Should().Be(0.5); // one of two rooms
+        monday.Hours[11].Should().Be(0);
+        report.HeatMap.Should().HaveCount(7);
     }
 
     [Fact]
