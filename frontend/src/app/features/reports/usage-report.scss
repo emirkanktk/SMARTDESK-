@@ -46,7 +46,7 @@
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   margin: 0 0 var(--space-3);
   padding: 0;
@@ -133,6 +133,115 @@
     min-width: 3.5rem;
     text-align: right;
     font-variant-numeric: tabular-nums;
+  }
+}
+
+// When it's busiest (ADR-0044): one hue, from the surface to the primary colour, by quarters.
+// The text in the first three steps is the page's own; on the last it's the one made for the
+// primary colour, which keeps 4.5:1 in both themes.
+.heat-wrap {
+  // The containing block for the visually hidden zeros: without it they escape the sideways
+  // scroll and widen the whole page.
+  position: relative;
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  overflow-x: auto;
+}
+
+.heat {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+
+  th {
+    padding: var(--space-1) var(--space-2);
+    color: var(--color-text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  thead th {
+    text-align: center;
+  }
+
+  tbody th {
+    text-align: right;
+  }
+
+  abbr {
+    text-decoration: none;
+  }
+
+  td {
+    min-width: 2.75rem;
+    height: 1.75rem;
+    padding: 0 var(--space-1);
+    border-radius: 4px;
+    text-align: center;
+  }
+}
+
+.level-0 {
+  background: var(--color-surface-2);
+}
+
+.level-1 {
+  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-surface));
+}
+
+.level-2 {
+  background: color-mix(in srgb, var(--color-primary) 40%, var(--color-surface));
+}
+
+.level-3 {
+  background: color-mix(in srgb, var(--color-primary) 60%, var(--color-surface));
+}
+
+.level-4 {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.heat-scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  // Outlined, so the lightest step shows against the page too.
+  .swatch {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px var(--color-border);
+  }
+}
+
+// A week fits a phone: narrower cells, less room around them.
+@media (max-width: 520px) {
+  .heat-wrap {
+    padding: var(--space-2);
+  }
+
+  .heat {
+    th {
+      padding: var(--space-1);
+    }
+
+    td {
+      min-width: 2.25rem;
+    }
   }
 }
 

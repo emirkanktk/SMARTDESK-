@@ -87,7 +87,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   sees every answer, and the reason only they read ([ADR-0032](docs/DECISIONS.md)).
 - **Usage report** - for Admins: how much each resource, type and person booked over up to
   92 days, and how full the office day was (Monday to Friday, 09:00-18:00, in the admin's
-  time zone - [ADR-0017](docs/DECISIONS.md)).
+  time zone - [ADR-0017](docs/DECISIONS.md)). It shows when the office is busiest, as a heat
+  map of weekdays and hours, and how often bookings go unused: the share cancelled, and the
+  share of check-ins nobody came to ([ADR-0044](docs/DECISIONS.md)).
 - **Live updates** - after a reservation is created, changed, or cancelled, every connected
   screen receives `ReservationCreated`, `ReservationUpdated`, or `ReservationCancelled`
   ([ADR-0014](docs/DECISIONS.md)).

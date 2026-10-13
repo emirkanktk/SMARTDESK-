@@ -1355,3 +1355,38 @@ new tables.
     line of each, up to 10.
   - Bulk updates that bypass EF's change tracking wouldn't be seen; none touches bookings or
     blocks.
+
+## ADR-0044: The usage report shows when it's busiest and how often bookings go unused
+
+**Decision:**
+- The usage report (ADR-0017) adds a heat map: for each weekday and local hour, the booked
+  share of the listed resources' time in that hour, over the days of that weekday in the range.
+- It counts **no-shows** - bookings released because nobody checked in (ADR-0030) - and the
+  check-ins made, per resource, per type and in total. The no-show rate is no-shows over both:
+  of the visits a check-in was asked for, the share nobody came to. The cancellation rate is
+  bookings cancelled by someone, a release not counted, over every booking in the range.
+- Both are computed like the rest of the report: in memory, from the bookings overlapping the
+  range, in the caller's time zone (`WeekHeatMap`).
+- The page draws the heat map as a table: a column per weekday, a row per hour of the office
+  day plus any other hour something was booked in, each cell coloured in one of four steps of
+  the primary colour and showing its share. No chart library. The report's tables take the
+  keyboard's focus while they're wider than the page and scroll sideways (`appScrollRegion`).
+
+**Why:**
+- "When is it full" is what decides a new room or a desk policy, and a week of hours answers it
+  at a glance; the totals and per-resource figures don't.
+- A released booking is a room held and not used - the cost of a no-show - while one cancelled
+  in time freed the room for others. They are counted apart so neither hides the other.
+- The plan suggested grouping in the database. The heat map's hours are local, with days of 23
+  or 25 hours, as the office hours already were; the report keeps one way of computing, bounded
+  by its 92 days (ADR-0017).
+- A table is the chart here: it reads the same in both themes and both languages, screen
+  readers get each cell with its weekday and hour, and axe checks it like any page. One hue in
+  four steps, with the share in each cell, so colour is never the only cue; the cell text keeps
+  4.5:1 on every step in both themes (on the darkest, the text made for the primary colour). A
+  chart library would add weight for one picture and still need a table beside it.
+- **Trade-offs:**
+  - The lightest step is close to the page's own colour, so a nearly empty hour stands out by
+    its number more than by its shade.
+  - On the day the clocks change, the missing hour reads 0 and the doubled one counts once.
+  - Blocks and maintenance aren't taken off the available time, as before (ADR-0017).

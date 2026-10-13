@@ -1,4 +1,4 @@
-import { formatNumber, formatPercent } from '@angular/common';
+import { formatDate, formatNumber, formatPercent } from '@angular/common';
 import { Component, LOCALE_ID, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -13,11 +13,21 @@ import { browserTimeZone } from '../../core/services/dashboard.service';
 import { ReportService } from '../../core/services/report.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
+import { ScrollRegion } from '../../shared/directives/scroll-region';
 import { addDays, parseDateParam, startOfDay, toDateParam } from '../../shared/utils/date-time';
 import { resourceTypeLabel } from '../../core/i18n/labels';
 
 const DEFAULT_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** The office day the API measures against (ReportRules): the heat map always shows it. */
+const OFFICE_START = 9;
+const OFFICE_END = 18;
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/** Where a share falls on the heat map's scale (ADR-0044): 0 for none, then by quarters. */
+export function heatLevel(share: number): 0 | 1 | 2 | 3 | 4 {
+  return share <= 0 ? 0 : (Math.min(4, Math.ceil(share * 4)) as 1 | 2 | 3 | 4);
+}
 
 type Preset = 'last7' | 'last30' | 'thisMonth' | 'lastMonth';
 
@@ -34,7 +44,7 @@ function daysBetween(a: Date, b: Date): number {
  * button reloads it.
  */
 @Component({
-  imports: [RouterLink, StatusBadge],
+  imports: [RouterLink, ScrollRegion, StatusBadge],
   selector: 'app-usage-report',
   styleUrl: './usage-report.scss',
   templateUrl: './usage-report.html',
@@ -84,6 +94,52 @@ export class UsageReport {
       return $localize`:@@admin.tooLong:Show at most ${REPORT_MAX_DAYS}:days: days at a time.`;
     }
     return null;
+  });
+
+  /**
+   * The heat map as a table: a row for each hour of the office day, and for any hour before or
+   * after it when something was booked then; a column for each weekday, Monday first.
+   */
+  protected readonly heat = computed(() => {
+    const report = this.report();
+    if (!report) {
+      return null;
+    }
+    const days = [...report.heatMap].sort(
+      (a, b) => WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day),
+    );
+    const booked = [...Array(24).keys()].filter((hour) => days.some((day) => day.hours[hour] > 0));
+    const first = Math.min(OFFICE_START, ...booked);
+    const last = Math.max(OFFICE_END - 1, ...booked);
+    const monday = new Date(2026, 9, 5);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return {
+      days: days.map((day) => {
+        const date = addDays(monday, WEEKDAYS.indexOf(day.day));
+        return {
+          short: formatDate(date, 'EEE', this.locale),
+          long: formatDate(date, 'EEEE', this.locale),
+        };
+      }),
+      rows: Array.from({ length: last - first + 1 }, (_, i) => first + i).map((hour) => ({
+        hour: `${pad(hour)}:00`,
+        cells: days.map((day) => {
+          const share = day.hours[hour];
+          return {
+            level: heatLevel(share),
+            // A little, but not none.
+            text:
+              share > 0 && share < 0.005
+                ? `<${formatPercent(0.01, this.locale)}`
+                : formatPercent(share, this.locale, '1.0-0'),
+          };
+        }),
+      })),
+      scale: [1, 2, 3, 4].map((level) => ({
+        level,
+        text: `${formatPercent((level - 1) / 4 + 0.01, this.locale)}–${formatPercent(level / 4, this.locale)}`,
+      })),
+    };
   });
 
   constructor() {

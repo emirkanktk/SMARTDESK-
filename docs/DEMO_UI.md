@@ -129,10 +129,13 @@ browser, with two windows side by side so the audience sees changes arrive live.
   that it really is an image (ADR-0027).
 - **Admin**: resource counts by status, and every reservation in a date range.
 - **Usage report**, in the Admin page's header: the last 30 days by default, with quick ranges.
-  Four tiles (the share of office hours booked, hours booked, reservations, cancellations), then
-  each resource and type, and who booked the most. Point out: the office day is Monday to
-  Friday, 09:00-18:00 in the admin's time zone, so a room booked all day every weekday reads
-  100%, not the 27% it would against the whole week (ADR-0017).
+  Tiles for the share of office hours booked, hours booked, reservations, cancellations, the
+  share of bookings cancelled and the share of check-ins missed; then each resource and type,
+  **When it's busiest** - a heat map of weekdays and hours, darker where more of the resources
+  were booked - and who booked the most. Point out: the office day is Monday to Friday,
+  09:00-18:00 in the admin's time zone, so a room booked all day every weekday reads 100%, not
+  the 27% it would against the whole week (ADR-0017); a missed check-in is one released after
+  step 13's grace, so it counts what the rooms lost, not who forgot (ADR-0044).
 - **Blocked windows**, in the Admin page's header: Desk 3-01, keep the suggested times - they
   overlap Ayşe's desk booking from step 6 - reason "Desk repair" → **Block**. It's refused: "1
   confirmed reservation(s) on Desk 3-01 overlap this window. Cancel or move them first." Point
