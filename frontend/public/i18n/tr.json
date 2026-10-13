@@ -475,6 +475,8 @@
     "report.tile.noCheckIns": "check-in istenen rezervasyon yok",
     "report.noShows": "Gelmeyenler",
     "report.busiest": "En yoğun zamanlar",
+    "report.download": "Excel olarak indir",
+    "report.downloading": "İndiriliyor…",
     "report.busiestNote": "Haftanın her günü, her saat kaynakların ne kadarının rezerve edildiği ({$INTERPOLATION} saatiyle).",
     "report.hour": "Saat",
     "report.scale": "Ölçek",

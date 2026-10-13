@@ -11,13 +11,25 @@ export class ReportService {
 
   /** Admin only: how resources were used over whole local days, `from` to `to` included. */
   getUsage(query: UsageReportQuery): Observable<UsageReport> {
-    let params = new HttpParams()
-      .set('from', query.from)
-      .set('to', query.to)
-      .set('timeZone', query.timeZone);
-    if (query.resourceTypeId) {
-      params = params.set('resourceTypeId', query.resourceTypeId);
-    }
-    return this.http.get<UsageReport>(`${this.baseUrl}/usage`, { params });
+    return this.http.get<UsageReport>(`${this.baseUrl}/usage`, { params: usageParams(query) });
   }
+
+  /** The same report as an Excel workbook (ADR-0045), in the app's language. */
+  getUsageWorkbook(query: UsageReportQuery): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/usage/workbook`, {
+      params: usageParams(query),
+      responseType: 'blob',
+    });
+  }
+}
+
+function usageParams(query: UsageReportQuery): HttpParams {
+  let params = new HttpParams()
+    .set('from', query.from)
+    .set('to', query.to)
+    .set('timeZone', query.timeZone);
+  if (query.resourceTypeId) {
+    params = params.set('resourceTypeId', query.resourceTypeId);
+  }
+  return params;
 }

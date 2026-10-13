@@ -709,6 +709,7 @@ is the full count, while `myUpcoming` is capped at 5.
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
 | GET | `/api/reports/usage?from=2026-09-01&to=2026-09-30&timeZone=Europe/Istanbul&resourceTypeId=` | Admin | `GetUsageReportQuery` | how resources were used over whole local days, `from` and `to` both included (at most 92 days). `timeZone` works as on the dashboard (omitted → UTC, unknown → 400). `to` before `from` → 400. |
+| GET | `/api/reports/usage/workbook?…` | Admin | `GetUsageReportQuery`, then `IUsageReportWorkbook` | the same report as an Excel workbook (ADR-0045): `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, named `smartdesk-usage-2026-09-01-2026-09-30.xlsx`. Same parameters and errors. Sheets: summary, resources, types, people, by hour, in the language of `Accept-Language`; numbers stay numbers, formatted by Excel. |
 
 ```json
 {

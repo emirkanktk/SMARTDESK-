@@ -1,8 +1,8 @@
-import { formatDate, formatNumber, formatPercent } from '@angular/common';
+import { DOCUMENT, formatDate, formatNumber, formatPercent } from '@angular/common';
 import { Component, LOCALE_ID, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subject, catchError, filter, map, merge, of, switchMap, tap } from 'rxjs';
+import { Subject, catchError, filter, finalize, map, merge, of, switchMap, tap } from 'rxjs';
 import {
   REPORT_MAX_DAYS,
   UsageReport as UsageReportData,
@@ -15,6 +15,7 @@ import { ResourceService } from '../../core/services/resource.service';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { ScrollRegion } from '../../shared/directives/scroll-region';
 import { addDays, parseDateParam, startOfDay, toDateParam } from '../../shared/utils/date-time';
+import { saveFile } from '../../shared/utils/save-file';
 import { resourceTypeLabel } from '../../core/i18n/labels';
 
 const DEFAULT_DAYS = 30;
@@ -57,6 +58,7 @@ export class UsageReport {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly locale = inject(LOCALE_ID);
+  private readonly document = inject(DOCUMENT);
   private readonly timeZone = browserTimeZone();
 
   /** Query parameters: first and last day ("2026-10-05"), both included, and a type id. */
@@ -69,6 +71,7 @@ export class UsageReport {
   protected readonly report = signal<UsageReportData | null>(null);
   protected readonly loading = signal(false);
   protected readonly loadFailed = signal(false);
+  protected readonly downloading = signal(false);
   private readonly reloads = new Subject<void>();
 
   /** Defaults to the last 30 days, today included. */
@@ -142,26 +145,27 @@ export class UsageReport {
     };
   });
 
+  /** What the report is asked for with; null while the range is wrong. */
+  private readonly query = computed(
+    (): UsageReportQuery | null =>
+      this.rangeError()
+        ? null
+        : {
+            from: toDateParam(this.range().first),
+            to: toDateParam(this.range().last),
+            timeZone: this.timeZone,
+            resourceTypeId: this.type() || null,
+          },
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
+
   constructor() {
     this.resourceService
       .getResourceTypes()
       .pipe(takeUntilDestroyed())
       .subscribe({ next: (types) => this.types.set(types), error: () => this.types.set([]) });
 
-    const query = computed(
-      (): UsageReportQuery | null =>
-        this.rangeError()
-          ? null
-          : {
-              from: toDateParam(this.range().first),
-              to: toDateParam(this.range().last),
-              timeZone: this.timeZone,
-              resourceTypeId: this.type() || null,
-            },
-      { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
-    );
-
-    merge(toObservable(query), this.reloads.pipe(map(() => query())))
+    merge(toObservable(this.query), this.reloads.pipe(map(() => this.query())))
       .pipe(
         filter((q): q is UsageReportQuery => q !== null),
         tap(() => {
@@ -212,6 +216,23 @@ export class UsageReport {
 
   protected reload(): void {
     this.reloads.next();
+  }
+
+  /** The report on screen as an Excel workbook (ADR-0045). A failure raises the usual toast. */
+  protected download(): void {
+    const query = this.query();
+    if (!query) {
+      return;
+    }
+    this.downloading.set(true);
+    this.reportService
+      .getUsageWorkbook(query)
+      .pipe(finalize(() => this.downloading.set(false)))
+      .subscribe({
+        next: (workbook) =>
+          saveFile(workbook, `smartdesk-usage-${query.from}-${query.to}.xlsx`, this.document),
+        error: () => undefined,
+      });
   }
 
   protected percent(fraction: number): string {

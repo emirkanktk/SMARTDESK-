@@ -1390,3 +1390,31 @@ new tables.
     its number more than by its shade.
   - On the day the clocks change, the missing hour reads 0 and the doubled one counts once.
   - Blocks and maintenance aren't taken off the available time, as before (ADR-0017).
+
+## ADR-0045: The usage report downloads as an Excel workbook, written with ClosedXML
+
+**Decision:**
+- `GET /api/reports/usage/workbook` (Admin) takes the report's parameters and returns the same
+  report as an `.xlsx`: a summary sheet, then resources, types and people as Excel tables, and
+  the heat map by hour with a white-to-primary colour scale.
+- Written with ClosedXML (MIT; its dependencies are MIT and Apache-2.0) behind
+  `IUsageReportWorkbook`, implemented in Infrastructure. The controller asks for the report, then
+  has it written: the report's numbers are computed once, in one place.
+- In the request's language, like the API's messages (ADR-0023): sheet names, headings,
+  statuses, the seeded kinds of resources and the weekdays. Numbers stay numbers, with Excel
+  formats (percent, hours, dates), never pre-formatted text.
+- The page's "Download as Excel" fetches it with the token and saves it (`saveFile`).
+
+**Why:**
+- Management reads reports in Excel: to filter, add columns, chart and mail them. A file of the
+  same numbers beats retyping them from the screen.
+- The server writes it because the report is the server's: one computation for the page and
+  the file, so they can't disagree. ClosedXML, as the plan suggested: a real `.xlsx` with
+  tables and conditional formats, not CSV, which Excel opens with the wrong encoding and
+  separators in Turkish locales.
+- Real numbers, not text: a "25%" typed as text can't be summed or sorted; 0.25 shown as 25% can.
+- **Trade-offs:**
+  - Column widths are set, not measured: measuring would need fonts on the server, which a
+    container may not have.
+  - A kind of resource added after the seed keeps the name it was given, as on screen.
+  - The file is built in memory; the 92-day range bounds it to a few hundred rows.

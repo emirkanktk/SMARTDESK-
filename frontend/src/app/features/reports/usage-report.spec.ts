@@ -6,6 +6,7 @@ import { browserTimeZone } from '../../core/services/dashboard.service';
 import { ReportService } from '../../core/services/report.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { DESK_TYPE, MEETING_ROOM_TYPE } from '../../../testing/resource-fixtures';
+import { fakeObjectUrls } from '../../../testing/object-urls';
 import { UsageReport } from './usage-report';
 
 describe('UsageReport', () => {
@@ -123,6 +124,7 @@ describe('UsageReport', () => {
   }
 
   let getUsage: ReturnType<typeof vi.fn>;
+  let getUsageWorkbook: ReturnType<typeof vi.fn>;
   let navigate: ReturnType<typeof vi.spyOn>;
   let fixture: ComponentFixture<UsageReport>;
   let element: HTMLElement;
@@ -131,12 +133,13 @@ describe('UsageReport', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     getUsage = vi.fn(() => of(report()));
+    getUsageWorkbook = vi.fn(() => of(new Blob(['xlsx'])));
 
     await TestBed.configureTestingModule({
       imports: [UsageReport],
       providers: [
         provideRouter([]),
-        { provide: ReportService, useValue: { getUsage } },
+        { provide: ReportService, useValue: { getUsage, getUsageWorkbook } },
         {
           provide: ResourceService,
           useValue: { getResourceTypes: () => of([DESK_TYPE, MEETING_ROOM_TYPE]) },
@@ -367,6 +370,34 @@ describe('UsageReport', () => {
     type.value = MEETING_ROOM_TYPE.id;
     type.dispatchEvent(new Event('change'));
     expect(lastNavigation()).toEqual({ type: MEETING_ROOM_TYPE.id });
+  });
+
+  it('downloads the report on screen as an Excel workbook (ADR-0045)', async () => {
+    const urls = fakeObjectUrls();
+    const saved: { href: string; download: string }[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      saved.push({ href: this.getAttribute('href')!, download: this.download });
+    });
+    try {
+      await render({ from: '2026-09-01', to: '2026-09-30' });
+
+      button('Download as Excel').click();
+      await fixture.whenStable();
+      // The link lets go of the file once the download has it.
+      await new Promise((resolve) => setTimeout(resolve));
+
+      expect(getUsageWorkbook).toHaveBeenCalledWith(getUsage.mock.lastCall![0]);
+      expect(saved).toEqual([
+        { href: 'blob:test-1', download: 'smartdesk-usage-2026-09-01-2026-09-30.xlsx' },
+      ]);
+      expect(urls.revoked).toEqual(['blob:test-1']);
+      expect(button('Download as Excel').disabled).toBe(false);
+    } finally {
+      click.mockRestore();
+      urls.restore();
+    }
   });
 
   it('offers a retry when the report fails to load, and Refresh reloads it', async () => {
