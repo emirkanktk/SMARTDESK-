@@ -59,7 +59,7 @@ public sealed class ExtendReservationTests : IDisposable
     private async Task<IReadOnlyList<int>> OptionsAsync(Guid id, FakeCurrentUser? user = null)
     {
         await using var context = _database.CreateContext();
-        return (await new GetExtensionOptionsQueryHandler(context, user ?? Ayse, _clock)
+        return (await new GetExtensionOptionsQueryHandler(context, user ?? Ayse, _clock, TestPolicy.For(context, _clock))
             .Handle(new GetExtensionOptionsQuery(id), CancellationToken.None)).Minutes;
     }
 
@@ -69,7 +69,7 @@ public sealed class ExtendReservationTests : IDisposable
         var caller = user ?? Ayse;
         return await new ExtendReservationCommandHandler(
                 context, caller, new FakeIdentityService(), _notifier.Object, _clock,
-                TestInvitations.For(context, caller, notifier: _inbox.Object, clock: _clock))
+                TestInvitations.For(context, caller, notifier: _inbox.Object, clock: _clock), TestPolicy.For(context, _clock))
             .Handle(new ExtendReservationCommand(minutes) { Id = id }, CancellationToken.None);
     }
 
@@ -140,7 +140,7 @@ public sealed class ExtendReservationTests : IDisposable
         await using (var context = _database.CreateContext())
         {
             await new UpdateReservationCommandHandler(
-                    context, Ayse, new FakeIdentityService(), _notifier.Object, _clock, TestInvitations.For(context, Ayse))
+                    context, Ayse, new FakeIdentityService(), _notifier.Object, _clock, TestInvitations.For(context, Ayse), TestPolicy.For(context, _clock))
                 .Handle(new UpdateReservationCommand(room.Id, Ten, Ten.AddMinutes(90), null) { Id = meeting.Id }, CancellationToken.None);
         }
 

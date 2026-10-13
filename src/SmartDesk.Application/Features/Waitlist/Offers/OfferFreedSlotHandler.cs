@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Resources.Common;
@@ -22,6 +23,7 @@ public sealed class OfferFreedSlotHandler(
     IReservationNotifier notifier,
     MeetingInvitations inbox,
     TimeProvider timeProvider,
+    BookingPolicy policy,
     ILogger<OfferFreedSlotHandler> logger) : INotificationHandler<SlotFreed>
 {
     public async Task Handle(SlotFreed freed, CancellationToken cancellationToken)
@@ -108,6 +110,13 @@ public sealed class OfferFreedSlotHandler(
 
             // Out of use for now, or still taken: it waits on.
             if (resource.Status != ResourceStatus.Active)
+            {
+                return;
+            }
+
+            // Likewise when the kind's rules have changed since and don't allow it, or they have
+            // as many of the kind as they may (ADR-0046): one of theirs may go yet.
+            if (!await policy.AllowsAsync(new BookingClaim(entry.UserId, resourceId, start, entry.EndDateTime), cancellationToken))
             {
                 return;
             }

@@ -43,6 +43,22 @@ they next sign in.
 |---|---|---|
 | Id | Guid | |
 | Name | string | unique. Seeded by migration: Meeting Room, Desk, Company Car, Projector, Camera |
+| MaxDurationMinutes | int? | the longest a booking of the kind may last (ADR-0046); null: unset |
+| MaxDaysAhead | int? | how many days after today a booking may start, 0 for today only; null: unset |
+| MaxActivePerUser | int? | how many bookings of the kind one person may have that haven't ended; null: no limit |
+| OfficeHoursOnly | bool | booked within the office's hours only; false by default |
+
+### OfficeHours
+
+When the office is open (ADR-0046): one row, seeded by migration, which an Admin changes.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | int | always 1 |
+| TimeZone | string | IANA, max 100; seeded `Europe/Istanbul` |
+| OpensAt | time | on the quarter hour; seeded 09:00 |
+| ClosesAt | time | after `OpensAt`, the same day; seeded 18:00 |
+| Workdays | int | flags, Monday = 1 to Sunday = 64, at least one; seeded Monday to Friday (31) |
 
 ### Resource
 
@@ -259,6 +275,17 @@ erDiagram
     ResourceType {
         uuid Id PK
         string Name UK
+        int MaxDurationMinutes "null: unset"
+        int MaxDaysAhead "null: unset"
+        int MaxActivePerUser "null: no limit"
+        bool OfficeHoursOnly
+    }
+    OfficeHours {
+        int Id PK "always 1"
+        string TimeZone
+        time OpensAt
+        time ClosesAt
+        int Workdays "Monday = 1 ... Sunday = 64"
     }
     Resource {
         uuid Id PK
@@ -404,6 +431,8 @@ erDiagram
 - `CK_Reservations_EndAfterStart` - `CHECK ("EndDateTime" > "StartDateTime")` (rule 2).
 - `CK_ResourceBlocks_EndAfterStart` - the same check for blocks.
 - `CK_WaitlistEntries_EndAfterStart` - and for waiting list entries.
+- `CK_OfficeHours_Single` (`"Id" = 1`), `CK_OfficeHours_OpensBeforeCloses` and
+  `CK_OfficeHours_Workdays` (1 to 127) - one row of office hours that make sense (ADR-0046).
 - `EX_Reservations_NoOverlap` - `EXCLUDE USING gist ("ResourceId" WITH =,
   tstzrange("StartDateTime", "EndDateTime", '[)') WITH &&) WHERE ("Status" = 0)`: no two
   `Confirmed` reservations of one resource may overlap (rule 1). The range is half-open,

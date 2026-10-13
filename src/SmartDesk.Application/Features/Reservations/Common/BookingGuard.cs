@@ -13,7 +13,9 @@ namespace SmartDesk.Application.Features.Reservations.Common;
 // The checks a [start, end) claim on a resource must pass, shared by creating a reservation,
 // moving one and booking a series (ADR-0035), so they can't drift apart. Call it inside the
 // transaction, after LockResourceForBookingAsync, so what it reads can't change before the
-// write (ADR-0011).
+// write (ADR-0011). What the booking is for - how long, how far ahead, within office hours, how
+// many one person has - is BookingPolicy's to say (ADR-0046), between these checks: once the
+// resource is known to be the caller's to book, before whether it's free.
 public static class BookingGuard
 {
     // Returns what the booking takes on from the resource: its name for messages, and whether
@@ -29,13 +31,25 @@ public static class BookingGuard
         CancellationToken cancellationToken)
     {
         var resource = await EnsureResourceBookableAsync(db, user, resourceId, cancellationToken);
-        var conflicts = await FindConflictsAsync(db, resourceId, resource.Name, [new Occurrence(start, end)], ignoreReservationId, cancellationToken);
+        await EnsureFreeAsync(db, resourceId, resource.Name, start, end, ignoreReservationId, cancellationToken);
+        return resource;
+    }
+
+    // Nothing else holds any of [start, end): no blocked window, no other booking.
+    public static async Task EnsureFreeAsync(
+        IApplicationDbContext db,
+        Guid resourceId,
+        string resourceName,
+        DateTime start,
+        DateTime end,
+        Guid? ignoreReservationId,
+        CancellationToken cancellationToken)
+    {
+        var conflicts = await FindConflictsAsync(db, resourceId, resourceName, [new Occurrence(start, end)], ignoreReservationId, cancellationToken);
         if (conflicts[0] is { } conflict)
         {
             throw new ConflictException(conflict.Reason) { Code = conflict.Code };
         }
-
-        return resource;
     }
 
     // The resource can be booked at all: the caller may use it, and it's Active.

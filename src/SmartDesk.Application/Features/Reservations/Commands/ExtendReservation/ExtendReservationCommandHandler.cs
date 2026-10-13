@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
@@ -18,7 +19,8 @@ public sealed class ExtendReservationCommandHandler(
     IIdentityService identityService,
     IReservationNotifier notifier,
     TimeProvider timeProvider,
-    MeetingInvitations invitations) : IRequestHandler<ExtendReservationCommand, ReservationDto>
+    MeetingInvitations invitations,
+    BookingPolicy policy) : IRequestHandler<ExtendReservationCommand, ReservationDto>
 {
     public async Task<ReservationDto> Handle(ExtendReservationCommand request, CancellationToken cancellationToken)
     {
@@ -50,11 +52,10 @@ public sealed class ExtendReservationCommandHandler(
                 throw new ConflictException(Messages.Reservations_EndedCantChange);
             }
 
+            // As long as its kind allows, and no later than closing time when it keeps to office
+            // hours (ADR-0046).
             var end = reservation.EndDateTime.AddMinutes(request.Minutes);
-            if (end - reservation.StartDateTime > ReservationRules.MaxDuration)
-            {
-                throw new ConflictException(string.Format(Messages.Reservations_MaxDuration, ReservationRules.MaxDuration.TotalDays));
-            }
+            await policy.EnsureCanRunOnAsync(reservation.ResourceId, reservation.StartDateTime, end, cancellationToken);
 
             await db.LockResourceForBookingAsync(reservation.ResourceId, cancellationToken);
 

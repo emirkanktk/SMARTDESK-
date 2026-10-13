@@ -1418,3 +1418,56 @@ new tables.
     container may not have.
   - A kind of resource added after the seed keeps the name it was given, as on screen.
   - The file is built in memory; the 92-day range bounds it to a few hundred rows.
+
+## ADR-0046: Booking rules an Admin sets for each kind of resource, applied by one policy
+
+**Decision:**
+- Each kind of resource has four rules an Admin sets, each unset until then: the longest a
+  booking may last (`MaxDurationMinutes`), how many days after today it may start
+  (`MaxDaysAhead`, 0 for today only), how many bookings of the kind one person may have that
+  haven't ended (`MaxActivePerUser`), and whether it's booked within office hours only
+  (`OfficeHoursOnly`). So cars can go out for days while desks keep to the office day.
+- The office's hours are one row, `OfficeHours`: an IANA time zone, opening and closing times on
+  the quarter hour, and the workdays. Seeded as Mon-Fri 09:00-18:00 in Europe/Istanbul, the
+  hours the usage report always measured against, which it now reads from there too.
+- A kind's rules only tighten the rules for every booking (`ReservationRules`: 31 days long, 180
+  days ahead); the API refuses values past them. Those stay in the requests' validators, as before.
+- One service applies them all: `BookingPolicy`, over the pure `BookingLimits` and `OfficeWeek`.
+  Every way of booking asks it: booking, moving, a series, running longer, the waiting list. So
+  does everything that offers times: the search leaves out kinds whose rules don't allow the
+  window, suggestions keep to them, and the extension options stop at closing time.
+- A time the rules don't allow is a 400 on the field it's about, saying which rule and the value.
+  A booking over the per-person limit is a 409 with the code `booking-limit`. In a series, the
+  first date is checked as any booking and the last date for how far ahead it is; dates outside
+  office hours (a daily series' weekend) are skipped like dates that aren't free, with the code
+  `outside-office-hours`.
+- The rules hold for Admins too, and for whoever owns the booking: an Admin moving someone's
+  booking counts the owner's bookings. Moving a booking within its kind isn't one more.
+- Bookings already made stay as they are when the rules change. Shortening one claims nothing new
+  and is always allowed; moving it later is a new claim and keeps to the rules then.
+- The per-person limit counts under a lock on the person, a transaction-scoped PostgreSQL advisory
+  lock, taken after the resource's (ADR-0011). Without it, two bookings of two desks at once each
+  hold their own desk's lock and both pass.
+- `GET /api/booking-rules` for anyone signed in, so the booking form can show the rules and keep
+  to them before it asks. `PUT /api/booking-rules/office-hours` and
+  `PUT /api/booking-rules/types/{id}` for Admins.
+
+**Why:**
+- The plan's day 5: rules an Admin can change without a release, varying by kind, collected in
+  one policy service rather than spread over the handlers. Before, the limits were constants that
+  each handler checked where it needed them; now the handlers ask the policy, and the constants
+  are its outer bounds and the validators' first check.
+- Per kind, not per resource: the rules follow what a thing is (a car, a desk), and a handful of
+  kinds is something an Admin can keep track of.
+- Days ahead in the office's calendar ("up to 7 days ahead" is up to the end of that day), not in
+  24-hour steps: that's how people say it, and it lets "today only" be a rule.
+- A 400 for times and a 409 for the limit: the first is about the request, which the form can fix
+  before sending; the second is about the person's other bookings, which change.
+- **Trade-offs:**
+  - The office has one time zone and one set of hours. An office in two time zones would need
+    hours per location.
+  - Office hours are checked per booking: a booking can't run overnight on an office-hours-only
+    kind, even from one workday to the next.
+  - The waiting list skips someone the rules no longer allow (the limit reached, the rules
+    changed) and offers to the next in line; their entry waits on.
+  - The usage report reads the office's hours in the time zone it's asked for, as it reads its days.

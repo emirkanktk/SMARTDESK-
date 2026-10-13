@@ -30,7 +30,7 @@ public class BlockedBookingTests : IDisposable
         await using var context = _database.CreateContext();
         await new CreateReservationCommandHandler(
                 context, new FakeCurrentUser(UserId), new FakeIdentityService(), Mock.Of<IReservationNotifier>(),
-                TestInvitations.For(context, new FakeCurrentUser(UserId)))
+                TestInvitations.For(context, new FakeCurrentUser(UserId)), TestPolicy.For(context, new FakeTimeProvider(Now)))
             .Handle(new CreateReservationCommand(resourceId, At(startHour), At(endHour), null), CancellationToken.None);
     }
 
@@ -65,7 +65,7 @@ public class BlockedBookingTests : IDisposable
         await using var context = _database.CreateContext();
         var handler = new UpdateReservationCommandHandler(
             context, new FakeCurrentUser(UserId, Roles.Employee), new FakeIdentityService(),
-            Mock.Of<IReservationNotifier>(), new FakeTimeProvider(Now), TestInvitations.For(context, new FakeCurrentUser(UserId, Roles.Employee)));
+            Mock.Of<IReservationNotifier>(), new FakeTimeProvider(Now), TestInvitations.For(context, new FakeCurrentUser(UserId, Roles.Employee)), TestPolicy.For(context, new FakeTimeProvider(Now)));
         var act = () => handler.Handle(
             new UpdateReservationCommand(room.Id, At(11), At(12), null) { Id = reservation.Id }, CancellationToken.None);
 
@@ -80,7 +80,7 @@ public class BlockedBookingTests : IDisposable
         await _database.AddBlockAsync(roomA.Id, At(11), At(12));
 
         await using var context = _database.CreateContext();
-        var available = await new GetAvailableResourcesQueryHandler(context, TestAccess.Admin, TestAccess.Reader())
+        var available = await new GetAvailableResourcesQueryHandler(context, TestAccess.Admin, TestAccess.Reader(), TestPolicy.For(context, new FakeTimeProvider(Now)))
             .Handle(new GetAvailableResourcesQuery(At(10), At(13)), CancellationToken.None);
 
         available.Select(r => r.Name).Should().Equal("Meeting Room B");

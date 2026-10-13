@@ -19,7 +19,7 @@ public class GetAvailableResourcesQueryHandlerTests : IDisposable
     private async Task<IReadOnlyList<string>> AvailableNamesAsync(GetAvailableResourcesQuery query)
     {
         await using var context = _database.CreateContext();
-        var result = await new GetAvailableResourcesQueryHandler(context, TestAccess.Admin, TestAccess.Reader()).Handle(query, CancellationToken.None);
+        var result = await new GetAvailableResourcesQueryHandler(context, TestAccess.Admin, TestAccess.Reader(), TestPolicy.For(context)).Handle(query, CancellationToken.None);
         return result.Select(r => r.Name).ToList();
     }
 

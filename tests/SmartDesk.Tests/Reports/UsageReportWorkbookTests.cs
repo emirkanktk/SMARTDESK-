@@ -21,6 +21,8 @@ public class UsageReportWorkbookTests
             new DateTime(2026, 8, 31, 21, 0, 0, DateTimeKind.Utc),
             new DateTime(2026, 9, 30, 21, 0, 0, DateTimeKind.Utc),
             "Mon-Fri 09:00-18:00",
+            new TimeOnly(9, 0),
+            new TimeOnly(18, 0),
             198,
             new UsageTotals(2, 14, 3, 120.5, 98, 396, 0.2475, 1, 3, 0.25, 0.1176),
             resources ??

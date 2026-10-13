@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Application.Resources;
@@ -13,8 +14,8 @@ using SmartDesk.Domain.Rules;
 namespace SmartDesk.Application.Features.Reservations.Queries.GetExtensionOptions;
 
 // How much longer a booking can run (ADR-0033): the ExtensionRules.Options that end before the
-// resource's next booking or blocked window, for the ending-soon notice's buttons. A snapshot:
-// extending checks again.
+// resource's next booking or blocked window, and within its kind's rules (ADR-0046), for the
+// ending-soon notice's buttons. A snapshot: extending checks again.
 public sealed record GetExtensionOptionsQuery(Guid Id) : IRequest<ExtensionOptionsDto>;
 
 // The minutes the booking can still be extended by, shortest first; empty when it can't be.
@@ -23,7 +24,8 @@ public sealed record ExtensionOptionsDto(IReadOnlyList<int> Minutes);
 public sealed class GetExtensionOptionsQueryHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
-    TimeProvider timeProvider) : IRequestHandler<GetExtensionOptionsQuery, ExtensionOptionsDto>
+    TimeProvider timeProvider,
+    BookingPolicy policy) : IRequestHandler<GetExtensionOptionsQuery, ExtensionOptionsDto>
 {
     public async Task<ExtensionOptionsDto> Handle(GetExtensionOptionsQuery request, CancellationToken cancellationToken)
     {
@@ -69,11 +71,9 @@ public sealed class GetExtensionOptionsQueryHandler(
             .Where(b => b.ResourceId == reservation.ResourceId)
             .Where(ResourceBlockOverlap.Overlapping(end, furthest))
             .MinAsync(b => (DateTime?)b.StartDateTime, cancellationToken);
-        var limit = new[] { furthest, nextBooking ?? furthest, nextBlock ?? furthest }.Min();
+        var latestEnd = await policy.LatestEndAsync(reservation.ResourceId, reservation.StartDateTime, cancellationToken);
+        var limit = new[] { furthest, nextBooking ?? furthest, nextBlock ?? furthest, latestEnd }.Min();
 
-        return new ExtensionOptionsDto(ExtensionRules.Options
-            .Where(minutes => end.AddMinutes(minutes) <= limit
-                && end.AddMinutes(minutes) - reservation.StartDateTime <= ReservationRules.MaxDuration)
-            .ToList());
+        return new ExtensionOptionsDto(ExtensionRules.Options.Where(minutes => end.AddMinutes(minutes) <= limit).ToList());
     }
 }

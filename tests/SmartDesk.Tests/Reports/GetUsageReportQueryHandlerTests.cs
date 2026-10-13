@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Features.Reports.Queries.GetUsageReport;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure.Persistence.Seed;
@@ -56,6 +57,30 @@ public class GetUsageReportQueryHandlerTests : IDisposable
         report.WorkingHoursPerResource.Should().Be(45);
         report.Resources[0].BookedHours.Should().Be(2);
         report.Resources[0].WorkingHoursBooked.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TheOfficeDay_IsTheOfficesHours_AsAnAdminSetsThem()
+    {
+        await using (var context = _database.CreateContext())
+        {
+            var hours = await context.OfficeHours.SingleAsync();
+            hours.OpensAt = new TimeOnly(8, 0);
+            hours.ClosesAt = new TimeOnly(12, 0);
+            hours.Workdays |= WeekDays.Saturday;
+            await context.SaveChangesAsync();
+        }
+
+        var room = await _database.AddResourceAsync("Meeting Room A");
+        await _database.AddReservationAsync(room.Id, At(0, 8), At(0, 10));  // all of it in the day now
+        await _database.AddReservationAsync(room.Id, At(5, 10), At(5, 14)); // Saturday: 2 h of it
+
+        var report = await ReportAsync(Monday, Sunday);
+
+        report.WorkingHours.Should().Be("Mon-Sat 08:00-12:00");
+        (report.OpensAt, report.ClosesAt).Should().Be((new TimeOnly(8, 0), new TimeOnly(12, 0)));
+        report.WorkingHoursPerResource.Should().Be(24);
+        report.Resources[0].WorkingHoursBooked.Should().Be(4);
     }
 
     [Fact]

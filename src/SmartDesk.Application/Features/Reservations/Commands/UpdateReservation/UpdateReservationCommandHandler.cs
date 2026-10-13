@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
@@ -20,7 +21,8 @@ public sealed class UpdateReservationCommandHandler(
     IIdentityService identityService,
     IReservationNotifier notifier,
     TimeProvider timeProvider,
-    MeetingInvitations invitations) : IRequestHandler<UpdateReservationCommand, ReservationDto>
+    MeetingInvitations invitations,
+    BookingPolicy policy) : IRequestHandler<UpdateReservationCommand, ReservationDto>
 {
     public async Task<ReservationDto> Handle(UpdateReservationCommand request, CancellationToken cancellationToken)
     {
@@ -89,14 +91,6 @@ public sealed class UpdateReservationCommandHandler(
                 throw new ValidationException(
                     [new ValidationFailure(nameof(UpdateReservationCommand.StartDateTime), Messages.Reservations_StartInPast)]);
             }
-            else if (timeChanged && start > now + ReservationRules.MaxAdvance)
-            {
-                // The booking horizon, as on create (issue #41).
-                throw new ValidationException(
-                    [new ValidationFailure(
-                        nameof(UpdateReservationCommand.StartDateTime),
-                        string.Format(Messages.Reservations_TooFarAhead, ReservationRules.MaxAdvanceDays))]);
-            }
 
             if (!staysWithinItsSlot)
             {
@@ -104,10 +98,14 @@ public sealed class UpdateReservationCommandHandler(
                 // resource, so it goes through the same checks as a new booking.
                 await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
+                // Its owner's, even when an Admin moves it: their kind's rules, and how many they
+                // may have (ADR-0046) - which includes how far ahead it may start (issue #41).
                 // Excluding itself: shifting 10:00-11:00 to 10:30-11:30 must not clash with its
                 // own old slot.
-                var resource = await BookingGuard.EnsureBookableAsync(
-                    db, currentUser, request.ResourceId, start, end, reservation.Id, cancellationToken);
+                var resource = await BookingGuard.EnsureResourceBookableAsync(db, currentUser, request.ResourceId, cancellationToken);
+                await policy.EnsureAllowedAsync(
+                    new BookingClaim(reservation.UserId, request.ResourceId, start, end, reservation.Id), cancellationToken);
+                await BookingGuard.EnsureFreeAsync(db, request.ResourceId, resource.Name, start, end, reservation.Id, cancellationToken);
 
                 reservation.ResourceId = request.ResourceId;
                 reservation.StartDateTime = start;

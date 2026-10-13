@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Domain.Entities;
@@ -15,7 +16,8 @@ public sealed class CreateReservationCommandHandler(
     ICurrentUserService currentUser,
     IIdentityService identityService,
     IReservationNotifier notifier,
-    MeetingInvitations invitations) : IRequestHandler<CreateReservationCommand, ReservationDto>
+    MeetingInvitations invitations,
+    BookingPolicy policy) : IRequestHandler<CreateReservationCommand, ReservationDto>
 {
     public async Task<ReservationDto> Handle(CreateReservationCommand request, CancellationToken cancellationToken)
     {
@@ -33,9 +35,12 @@ public sealed class CreateReservationCommandHandler(
         {
             await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
-            // Exists, Active, not blocked, no overlap (business rules 1, 3, 7).
-            var resource = await BookingGuard.EnsureBookableAsync(
-                db, currentUser, request.ResourceId, start, end, null, cancellationToken);
+            // Exists for the caller and Active (business rule 3); within its kind's rules, and
+            // not one more than its owner may have (ADR-0046); not blocked, no overlap (business
+            // rules 1 and 7).
+            var resource = await BookingGuard.EnsureResourceBookableAsync(db, currentUser, request.ResourceId, cancellationToken);
+            await policy.EnsureAllowedAsync(new BookingClaim(userId, request.ResourceId, start, end), cancellationToken);
+            await BookingGuard.EnsureFreeAsync(db, request.ResourceId, resource.Name, start, end, null, cancellationToken);
 
             // Who may come, and whether they fit (ADR-0032).
             var attendees = await invitations.CheckAsync(userId, request.ResourceId, request.AttendeeIds, [], cancellationToken);

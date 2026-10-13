@@ -1,6 +1,7 @@
 namespace SmartDesk.Domain.Enums;
 
-// The days of the week a weekly series is on (ADR-0035), stored as one number.
+// Days of the week, stored as one number: those a weekly series is on (ADR-0035), and the
+// office's workdays (ADR-0046).
 [Flags]
 public enum WeekDays
 {
