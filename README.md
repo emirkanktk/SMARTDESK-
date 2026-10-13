@@ -36,6 +36,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   they're cancelled or moved ([ADR-0024](docs/DECISIONS.md)). A time that's taken comes back
   with the nearest free times on the same resource and the others of its kind free then, each
   a click away ([ADR-0042](docs/DECISIONS.md)).
+- **Waiting list** - or wait for that time instead: when it frees up - cancelled, released for
+  want of a check-in, ended early or moved - it's booked for whoever joined the line first,
+  and their inbox says so. My reservations shows what you wait for and your place in line
+  ([ADR-0043](docs/DECISIONS.md)).
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.

@@ -71,6 +71,49 @@ test('a taken time is answered with the nearest free times, booked with the next
   await expect(mehmet.getByText(`${resource.name} is booked for`)).toContainText('11:00-12:00');
 });
 
+// ADR-0043: a taken time can be waited for, and it's booked for whoever waited the moment it
+// frees up.
+test('someone waiting for a taken time gets it as soon as it frees up', async ({
+  open,
+  resource,
+}) => {
+  const when = slot(1, 10);
+  // Booked before any page opens: a new sign-in ends a user's open live connections.
+  const ayseApi = await apiAs('ayse');
+  const booked = await ayseApi.post('reservations', {
+    data: {
+      resourceId: resource.id,
+      startDateTime: when.start.toISOString(),
+      endDateTime: when.end.toISOString(),
+    },
+  });
+  expect(booked.status()).toBe(201);
+  const ayses = (await booked.json()) as { id: string };
+
+  const mehmet = await open('mehmet');
+  await mehmet.goto(bookingLink(resource, when));
+  await mehmet.getByRole('button', { name: 'Book', exact: true }).click();
+  await mehmet
+    .getByRole('group', { name: 'Or wait for it' })
+    .getByRole('button', { name: 'Join the waiting list' })
+    .click();
+  await mehmet.waitForURL('**/reservations/mine');
+  const waiting = mehmet.getByRole('region', { name: 'Waiting for' });
+  await expect(waiting).toContainText(resource.name);
+  await expect(waiting).toContainText('Number 1 in line');
+
+  // Ayşe cancels: the time is Mehmet's at once, and he's told.
+  expect((await ayseApi.post(`reservations/${ayses.id}/cancel`)).ok()).toBe(true);
+  await ayseApi.dispose();
+  await expect(
+    mehmet.getByText("A time you were waiting for freed up, and it's booked for you", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(waiting).toHaveCount(0);
+  await expect(mehmet.locator('li.item', { hasText: resource.name })).toBeVisible();
+});
+
 test("another person's booking and its cancellation reach an open calendar without a reload", async ({
   open,
   resource,

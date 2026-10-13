@@ -124,6 +124,10 @@ export interface SeriesResult {
 /** The 409 `code` when some of a series' dates aren't free. */
 export const SERIES_CONFLICTS = 'series-conflicts';
 
+/** The 409 `code`s when another booking, or a block, covers part of the time asked for. */
+export const RESERVATION_OVERLAPS = 'reservation-overlaps';
+export const RESOURCE_BLOCKED = 'resource-blocked';
+
 /** What the API allows a series (ADR-0035). */
 export const SERIES_LIMITS = {
   /** Every 1 to this many days or weeks. */

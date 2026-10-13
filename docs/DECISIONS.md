@@ -1317,3 +1317,41 @@ new tables.
     may be offered for the evening.
   - An Admin moving someone else's booking is offered rooms by the Admin's access, so one the
     owner may not use can be among them; choosing it is refused as before (ADR-0022).
+
+## ADR-0043: A waiting list for a taken time, booked for whoever waited first
+
+**Decision:**
+- Someone whose booking clashes with another booking or a block can wait for that time on that
+  resource instead (`WaitlistEntries`). Not for a time that's free, one they booked themselves,
+  one they already wait for, nor more than 10 at once.
+- When the time frees up, it's **booked** for whoever joined first, if they may still use the
+  resource and it's in use, and their inbox gets a `WaitlistBooked` message; their entry goes.
+  Then the next in line, in the order people joined: entries for times that don't overlap can
+  all be booked from one freed time, and one still partly taken waits on. Someone who may no
+  longer use the resource, or a time begun with under 15 minutes left, drops out.
+- What frees a time is read from the saves themselves: an EF Core interceptor notes a
+  `Confirmed` booking cancelled (released for want of a check-in too), ended early, shortened,
+  moved in time or to another resource, and a block deleted. A MediatR pipeline behaviour
+  publishes what a request freed as `SlotFreed` notifications once it has succeeded, and their
+  handler books, each entry under the resource's lock like any booking (ADR-0011).
+- The booking form offers it under a clash, next to the suggestions (ADR-0042); My reservations
+  lists what the user waits for, their place in line, and a way to leave it.
+
+**Why:**
+- "Taken" with nothing to do but check again later loses the room to whoever happens to look
+  at the right moment. A line puts the person who asked first first.
+- Booked, not just told: a message to the first in line would hold nothing - whoever reads
+  theirs first would win, and with nobody holding it, the order would mean little. A booking
+  they didn't need is a cancel away, and that offers it to the next.
+- Read from the saves: cancelling, a release, ending early, moving and lifting a block are six
+  handlers, and the next way to free a time would be a seventh; a change of the data can't be
+  missed. Offered after the request, outside its transactions and locks, and only once it has
+  succeeded, so nothing is offered that rolled back, and a failure here never fails what freed
+  the time.
+- **Trade-offs:**
+  - Someone can get a booking at a moment they no longer look at their inbox; it has the usual
+    reminder, and a room asking for a check-in releases it again if they don't come.
+  - An entry is for one resource and one time: someone happy with any room like it joins the
+    line of each, up to 10.
+  - Bulk updates that bypass EF's change tracking wouldn't be seen; none touches bookings or
+    blocks.

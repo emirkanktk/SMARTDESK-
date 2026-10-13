@@ -86,8 +86,9 @@
           >
         }
       </div>
-      @if (suggestions(); as offered) {
+      @if (suggestions() || mayWait()) {
         <div class="suggestions">
+          @let offered = suggestions() ?? { times: [], resources: [] };
           @if (offered.times.length > 0) {
             <div class="suggestion-group" role="group" aria-labelledby="free-times">
               <span id="free-times" class="suggestion-label" i18n="@@reservationForm.freeTimes"
@@ -132,6 +133,27 @@
                   </li>
                 }
               </ul>
+            </div>
+          }
+          @if (mayWait()) {
+            <div class="suggestion-group" role="group" aria-labelledby="wait-for-it">
+              <span id="wait-for-it" class="suggestion-label" i18n="@@reservationForm.waitTitle"
+                >Or wait for it</span
+              >
+              <p class="text-muted wait-hint" i18n="@@reservationForm.waitHint">
+                If this time frees up, it's booked for you, and your inbox says so.
+              </p>
+              <div>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  [disabled]="joining()"
+                  (click)="joinWaitlist()"
+                  i18n="@@reservationForm.wait"
+                >
+                  Join the waiting list
+                </button>
+              </div>
             </div>
           }
         </div>

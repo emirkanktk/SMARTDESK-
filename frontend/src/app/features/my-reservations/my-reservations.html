@@ -5,6 +5,8 @@
   >
 </div>
 
+<app-waiting-list />
+
 @if (loading()) {
   <p class="text-muted" role="status" i18n="@@mine.loading">Loading your reservations…</p>
 } @else if (loadFailed()) {

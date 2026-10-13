@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Inbox.Common;
+using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
@@ -63,7 +64,7 @@ public sealed class MeetingInvitations(
             // Another team's resource isn't there for its members (ADR-0022), so they couldn't
             // even open the meeting. Only an Admin can get here: a Manager's own team may use
             // whatever its manager may book.
-            var outsider = added.Select(id => invitable[id]).FirstOrDefault(person => !MayUse(person, resource.Teams));
+            var outsider = added.Select(id => invitable[id]).FirstOrDefault(person => !ResourceAccess.UsableBy(person, resource.Teams));
             if (outsider is not null)
             {
                 throw Invalid(string.Format(Messages.Meetings_CantUseResource, outsider.DisplayName, resource.Name));
@@ -102,7 +103,7 @@ public sealed class MeetingInvitations(
             .Prepend((Id: ownerId, Field: "ResourceId"));
         foreach (var (id, field) in people)
         {
-            if (await accounts.FindAsync(id, cancellationToken) is { } person && !MayUse(person, resource.Teams))
+            if (await accounts.FindAsync(id, cancellationToken) is { } person && !ResourceAccess.UsableBy(person, resource.Teams))
             {
                 throw new ValidationException(
                     [new ValidationFailure(field, string.Format(Messages.Meetings_CantUseResource, person.DisplayName, resource.Name))]);
@@ -191,10 +192,6 @@ public sealed class MeetingInvitations(
             cancellationToken);
     }
 
-    private static bool MayUse(UserAccount person, IReadOnlyCollection<Guid> teams) =>
-        teams.Count == 0
-        || person.Role == Roles.Admin
-        || teams.Contains(person.Role == Roles.Manager ? person.Id : person.ManagerId ?? Guid.Empty);
 
     private static ValidationException Invalid(string message) =>
         new([new ValidationFailure("AttendeeIds", message)]);

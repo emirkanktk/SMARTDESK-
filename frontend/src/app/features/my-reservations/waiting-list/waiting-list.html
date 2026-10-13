@@ -1,0 +1,32 @@
+@if (entries().length > 0) {
+  <section class="card waiting" aria-labelledby="waiting-title">
+    <h2 id="waiting-title" i18n="@@waitlist.title">Waiting for</h2>
+    <p class="text-muted hint" i18n="@@waitlist.hint">
+      If one of these frees up, it's booked for you, and your inbox says so.
+    </p>
+    <ul>
+      @for (entry of entries(); track entry.id) {
+        <li>
+          <div class="what">
+            <!-- A space a screen reader reads too: Angular drops the one between tags. -->
+            <span class="name">{{ entry.resourceName }}</span
+            >&ngsp;<span class="text-muted">{{ when(entry) }} · {{ entry.resourceLocation }}</span>
+          </div>
+          <span class="position" i18n="@@waitlist.position"
+            >Number {{ entry.position }} in line</span
+          >
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            [disabled]="leavingId() === entry.id"
+            [attr.aria-label]="leaveLabel(entry)"
+            (click)="leave(entry)"
+            i18n="@@waitlist.leave"
+          >
+            Leave
+          </button>
+        </li>
+      }
+    </ul>
+  </section>
+}

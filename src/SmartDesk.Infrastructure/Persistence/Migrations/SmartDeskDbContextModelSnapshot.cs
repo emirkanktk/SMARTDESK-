@@ -631,6 +631,39 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.WaitlistEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EndDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartDateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ResourceId", "StartDateTime", "EndDateTime");
+
+                    b.ToTable("WaitlistEntries", t =>
+                        {
+                            t.HasCheckConstraint("CK_WaitlistEntries_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\"");
+                        });
+                });
+
             modelBuilder.Entity("SmartDesk.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -935,6 +968,17 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
                         .WithMany("Teams")
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Resource");
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.WaitlistEntry", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
+                        .WithMany()
                         .HasForeignKey("ResourceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

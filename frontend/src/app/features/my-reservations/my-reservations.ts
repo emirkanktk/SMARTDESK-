@@ -26,6 +26,7 @@ import { formatDuration } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
 import { describeSeries } from '../../shared/utils/recurrence';
 import { resourceTypeLabel } from '../../core/i18n/labels';
+import { WaitingList } from './waiting-list/waiting-list';
 
 type Tab = 'upcoming' | 'invited' | 'past' | 'cancelled';
 
@@ -66,7 +67,7 @@ interface Item {
  * cancelled elsewhere - an invitation too - shows up without a reload.
  */
 @Component({
-  imports: [RouterLink, DatePipe, ExtendBooking, MeetingAnswer],
+  imports: [RouterLink, DatePipe, ExtendBooking, MeetingAnswer, WaitingList],
   selector: 'app-my-reservations',
   styleUrl: './my-reservations.scss',
   templateUrl: './my-reservations.html',

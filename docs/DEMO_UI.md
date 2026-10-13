@@ -357,6 +357,18 @@ plan by the lift.
   up; places are kept as fractions of the plan, so a sharper picture replaces it without moving
   anything; and changing a resource's location takes it off the plan (ADR-0041).
 
+### 21. The waiting list
+
+- As Ayşe, book Board Room for `DAY` 15:00-16:00. As Mehmet, try the same time: under the
+  message, **Or wait for it** → **Join the waiting list**. My reservations opens with **Waiting
+  for**: Board Room, `DAY` 15:00-16:00, number 1 in line.
+- As Ayşe, cancel it. In Mehmet's window a message comes at once - "A time you were waiting for
+  freed up, and it's booked for you" - the booking is in his list, and the waiting card is gone.
+  Ayşe's calendar shows Board Room booked again, by Mehmet.
+- Point out: it's booked, not just announced, so whoever asked first gets it; the same happens
+  when a booking is released because nobody checked in, ended early or moved, or a block is
+  lifted. Mehmet cancelling would offer it to the next in line (ADR-0043).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

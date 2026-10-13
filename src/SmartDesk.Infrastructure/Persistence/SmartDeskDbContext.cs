@@ -30,6 +30,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<ReservationSeries> ReservationSeries => Set<ReservationSeries>();
     public DbSet<IssueReport> IssueReports => Set<IssueReport>();
     public DbSet<IssueReportPhoto> IssueReportPhotos => Set<IssueReportPhoto>();
+    public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -176,6 +177,23 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.HasIndex(e => e.SeriesId);
         });
 
+        builder.Entity<WaitlistEntry>(entity =>
+        {
+            entity.HasOne(e => e.Resource)
+                .WithMany()
+                .HasForeignKey(e => e.ResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Who's waiting for a resource around a time that freed up (ADR-0043).
+            entity.HasIndex(e => new { e.ResourceId, e.StartDateTime, e.EndDateTime });
+
+            // Someone's own list.
+            entity.HasIndex(e => e.UserId);
+
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_WaitlistEntries_EndAfterStart", "\"EndDateTime\" > \"StartDateTime\""));
+        });
+
         builder.Entity<ReservationSeries>(entity =>
         {
             entity.Property(e => e.TimeZone).IsRequired().HasMaxLength(100);
@@ -267,6 +285,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
 
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
         Database.BeginTransactionAsync(cancellationToken);
+
+    public void DiscardChanges() => ChangeTracker.Clear();
 
     public async Task LockResourceForBookingAsync(Guid resourceId, CancellationToken cancellationToken = default)
     {

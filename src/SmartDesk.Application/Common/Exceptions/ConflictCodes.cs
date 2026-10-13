@@ -38,4 +38,10 @@ public static class ConflictCodes
 
     // A report that's resolved can't be moved back: the problem coming back is a new report.
     public const string IssueResolved = "issue-resolved";
+
+    // Waiting for a time that's free (ADR-0043): book it instead.
+    public const string WaitlistSlotFree = "waitlist-slot-free";
+
+    // Already waiting for that resource at part of that time.
+    public const string WaitlistAlreadyWaiting = "waitlist-already-waiting";
 }

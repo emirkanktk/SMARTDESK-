@@ -276,6 +276,9 @@
   <data name="Entity_ResourcePhoto" xml:space="preserve">
     <value>Fotoğraf</value>
   </data>
+  <data name="Entity_WaitlistEntry" xml:space="preserve">
+    <value>Bekleme kaydı</value>
+  </data>
   <data name="Error_Forbidden" xml:space="preserve">
     <value>Bu işlemi yapma yetkiniz yok.</value>
   </data>
@@ -674,5 +677,17 @@
   </data>
   <data name="Validation_UnknownTimeZone" xml:space="preserve">
     <value>Bilinmeyen saat dilimi. 'Europe/Istanbul' gibi bir IANA kimliği kullanın.</value>
+  </data>
+  <data name="Waitlist_AlreadyWaiting" xml:space="preserve">
+    <value>{0} için o saatte zaten bekleme listesindesiniz.</value>
+  </data>
+  <data name="Waitlist_BookedAlready" xml:space="preserve">
+    <value>{0} kaynağını o saatin bir kısmı için zaten siz rezerve ettiniz.</value>
+  </data>
+  <data name="Waitlist_Free" xml:space="preserve">
+    <value>{0} o saatte boş: beklemek yerine rezerve edin.</value>
+  </data>
+  <data name="Waitlist_TooMany" xml:space="preserve">
+    <value>Aynı anda en fazla {0} zaman için bekleyebilirsiniz. Önce birinden çıkın.</value>
   </data>
 </root>

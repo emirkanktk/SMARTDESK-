@@ -45,4 +45,8 @@ public enum InboxMessageKind
     // To a booking's owner and everyone invited: it was cancelled because its resource was
     // blocked for that time, e.g. while a problem is fixed (ADR-0038). The reason is the block's.
     CancelledByBlock = 12,
+
+    // To someone on a waiting list (ADR-0043): the time they waited for freed up, and it's
+    // booked for them. The times are the booking's.
+    WaitlistBooked = 13,
 }

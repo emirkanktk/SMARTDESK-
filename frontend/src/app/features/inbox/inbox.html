@@ -65,13 +65,13 @@
           @if (item.link || item.unread) {
             <div class="actions">
               @if (item.link; as link) {
-                <a
-                  class="btn btn-secondary btn-sm"
-                  [routerLink]="link"
-                  (click)="markRead(item)"
-                  i18n="@@inbox.openMeeting"
-                  >See the meeting</a
-                >
+                <a class="btn btn-secondary btn-sm" [routerLink]="link" (click)="markRead(item)">
+                  @if (item.message.kind === 'WaitlistBooked') {
+                    <ng-container i18n="@@inbox.openBooking">See the booking</ng-container>
+                  } @else {
+                    <ng-container i18n="@@inbox.openMeeting">See the meeting</ng-container>
+                  }
+                </a>
               }
               @if (item.unread) {
                 <button

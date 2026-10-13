@@ -17,6 +17,7 @@ export const INBOX_MESSAGE_KINDS = [
   'SeriesDeclined',
   'IssueResolved',
   'CancelledByBlock',
+  'WaitlistBooked',
 ] as const;
 export type InboxMessageKind = (typeof INBOX_MESSAGE_KINDS)[number];
 

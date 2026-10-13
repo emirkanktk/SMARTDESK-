@@ -42,6 +42,9 @@ export function inboxHeadline(message: InboxMessage): string {
     // Its resource was closed for that time, e.g. while a problem is fixed (ADR-0038).
     case 'CancelledByBlock':
       return $localize`:@@inbox.cancelledByBlock:${sender}:sender: closed a resource, so a booking you're on was cancelled`;
+    // What the reader was waiting for freed up, and it's theirs now (ADR-0043).
+    case 'WaitlistBooked':
+      return $localize`:@@inbox.waitlistBooked:A time you were waiting for freed up, and it's booked for you`;
   }
 }
 
