@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
@@ -17,7 +18,8 @@ public sealed class CreateReservationSeriesCommandHandler(
     IIdentityService identityService,
     IReservationNotifier notifier,
     MeetingInvitations invitations,
-    TimeProvider timeProvider) : IRequestHandler<CreateReservationSeriesCommand, ReservationSeriesResultDto>
+    TimeProvider timeProvider,
+    BookingPolicy policy) : IRequestHandler<CreateReservationSeriesCommand, ReservationSeriesResultDto>
 {
     public async Task<ReservationSeriesResultDto> Handle(CreateReservationSeriesCommand request, CancellationToken cancellationToken)
     {
@@ -51,7 +53,12 @@ public sealed class CreateReservationSeriesCommandHandler(
             await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
             var resource = await BookingGuard.EnsureResourceBookableAsync(db, currentUser, request.ResourceId, cancellationToken);
-            var conflicts = await BookingGuard.FindConflictsAsync(db, request.ResourceId, resource.Name, dates, null, cancellationToken);
+
+            // Its kind's rules (ADR-0046): the first date as any booking, the last no further
+            // ahead than allowed. A date outside office hours is skipped like one that isn't free.
+            var outside = await policy.CheckSeriesAsync(request.ResourceId, dates, cancellationToken);
+            var taken = await BookingGuard.FindConflictsAsync(db, request.ResourceId, resource.Name, dates, null, cancellationToken);
+            var conflicts = dates.Select((_, i) => outside[i] ?? taken[i]).ToList();
             var notFree = conflicts.Count(c => c is not null);
             if (notFree == dates.Count)
             {
@@ -65,6 +72,9 @@ public sealed class CreateReservationSeriesCommandHandler(
                     Code = ConflictCodes.SeriesConflicts,
                 };
             }
+
+            // No more of the kind than its owner may have (ADR-0046), counting the dates booked.
+            await policy.EnsureSeriesWithinLimitAsync(userId, request.ResourceId, dates.Count - notFree, cancellationToken);
 
             // Who may come, and whether they fit (ADR-0032): the same for every date.
             var attendees = await invitations.CheckAsync(userId, request.ResourceId, request.AttendeeIds, [], cancellationToken);

@@ -85,7 +85,7 @@ public sealed class ReservationSeriesTests : IDisposable
     {
         await using var context = _database.CreateContext();
         var user = As(organizer);
-        return await new CreateReservationSeriesCommandHandler(context, user, Names(), _reservations.Object, Invitations(context, user), _clock)
+        return await new CreateReservationSeriesCommandHandler(context, user, Names(), _reservations.Object, Invitations(context, user), _clock, TestPolicy.For(context, _clock))
             .Handle(Command(roomId, rule, skip, attendees), CancellationToken.None);
     }
 
@@ -293,7 +293,7 @@ public sealed class ReservationSeriesTests : IDisposable
         await _database.AddReservationAsync(room.Id, First.AddDays(7), First.AddDays(7).AddHours(1));
         await using var context = _database.CreateContext();
 
-        var preview = await new GetSeriesPreviewQueryHandler(context, As(Zeynep)).Handle(
+        var preview = await new GetSeriesPreviewQueryHandler(context, As(Zeynep), TestPolicy.For(context, _clock)).Handle(
             new GetSeriesPreviewQuery(room.Id, First, First.AddHours(1), RecurrenceFrequency.Weekly, Until, "Europe/Istanbul"),
             CancellationToken.None);
 
@@ -460,7 +460,7 @@ public sealed class ReservationSeriesTests : IDisposable
         {
             var user = As(Zeynep);
             var third = series.Booked[2];
-            await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user))
+            await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user), TestPolicy.For(context, _clock))
                 .Handle(new UpdateReservationCommand(room.Id, third.StartDateTime, third.EndDateTime, third.Note, 15, [Mehmet.Id]) { Id = third.Id }, CancellationToken.None);
         }
 

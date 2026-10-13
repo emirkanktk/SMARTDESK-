@@ -7,7 +7,8 @@ namespace SmartDesk.Application.Features.Reports.Queries.GetUsageReport;
 // hours, 0-1) to 4, after summing, so totals don't drift from the rows. NoShows: bookings released
 // because nobody checked in; NoShowRate is them over those plus the ones checked in, the visits
 // a check-in was asked for. CancellationRate: bookings cancelled by someone, over all of them
-// (ADR-0044).
+// (ADR-0044). WorkingHours: the office's hours (ADR-0046) as the request's language writes them,
+// "Mon-Fri 09:00-18:00"; OpensAt and ClosesAt: the same hours for a client to lay out.
 public sealed record UsageReportDto(
     DateOnly From,
     DateOnly To,
@@ -15,6 +16,8 @@ public sealed record UsageReportDto(
     DateTime FromUtc,
     DateTime ToUtc,
     string WorkingHours,
+    TimeOnly OpensAt,
+    TimeOnly ClosesAt,
     double WorkingHoursPerResource,
     UsageTotals Totals,
     IReadOnlyList<ResourceUsage> Resources,

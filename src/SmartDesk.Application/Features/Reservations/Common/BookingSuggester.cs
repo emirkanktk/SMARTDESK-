@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Domain.Rules;
@@ -9,7 +10,7 @@ namespace SmartDesk.Application.Features.Reservations.Common;
 
 // What a 409 for a booking that can't be made offers instead (ADR-0042), as its `suggestions`:
 // the nearest free times on the same resource, and other resources of its kind, big enough and
-// free at the time asked for.
+// free at the time asked for. Only what the kind's rules allow (ADR-0046).
 public sealed record BookingSuggestions(IReadOnlyList<SuggestedTime> Times, IReadOnlyList<SuggestedResource> Resources)
 {
     public static readonly BookingSuggestions None = new([], []);
@@ -19,7 +20,11 @@ public sealed record SuggestedTime(DateTime Start, DateTime End);
 
 public sealed record SuggestedResource(Guid Id, string Name, int Capacity, string Location);
 
-public sealed class BookingSuggester(IApplicationDbContext db, ICurrentUserService currentUser, TimeProvider timeProvider)
+public sealed class BookingSuggester(
+    IApplicationDbContext db,
+    ICurrentUserService currentUser,
+    TimeProvider timeProvider,
+    BookingPolicy policy)
 {
     // A few to choose from at a glance, not a list to read through.
     public const int MaxTimes = 3;
@@ -54,13 +59,18 @@ public sealed class BookingSuggester(IApplicationDbContext db, ICurrentUserServi
             return BookingSuggestions.None;
         }
 
-        var times = sameResource ? await FreeTimesAsync(request, start, end, now, cancellationToken) : [];
-        var resources = await OtherResourcesAsync(request, asked.ResourceTypeId, asked.Capacity, start, end, cancellationToken);
+        var limits = await policy.ForResourceAsync(request.ResourceId, cancellationToken);
+        var times = sameResource && limits is not null ? await FreeTimesAsync(request, limits, start, end, now, cancellationToken) : [];
+
+        // A time its kind's rules don't allow is no better on another resource of the kind.
+        var resources = limits is not null && !limits.TimeProblems(start, end, now).Any()
+            ? await OtherResourcesAsync(request, asked.ResourceTypeId, asked.Capacity, start, end, cancellationToken)
+            : [];
         return new BookingSuggestions(times, resources);
     }
 
     private async Task<IReadOnlyList<SuggestedTime>> FreeTimesAsync(
-        IBookingRequest request, DateTime start, DateTime end, DateTime now, CancellationToken cancellationToken)
+        IBookingRequest request, BookingLimits limits, DateTime start, DateTime end, DateTime now, CancellationToken cancellationToken)
     {
         var from = start - Around;
         var to = end + Around;
@@ -77,11 +87,13 @@ public sealed class BookingSuggester(IApplicationDbContext db, ICurrentUserServi
             .Select(b => new { b.StartDateTime, b.EndDateTime })
             .ToListAsync(cancellationToken);
 
+        // For a kind kept to office hours, the hours the office is closed are as good as taken.
         var busy = bookings
             .Select(b => (b.StartDateTime.AsUtc(), b.EndDateTime.AsUtc()))
-            .Concat(blocks.Select(b => (b.StartDateTime.AsUtc(), b.EndDateTime.AsUtc())));
+            .Concat(blocks.Select(b => (b.StartDateTime.AsUtc(), b.EndDateTime.AsUtc())))
+            .Concat(limits.OfficeHoursOnly ? limits.Office.ClosedBetween(from, to) : []);
         return FreeTimes
-            .Nearest(busy, start, end - start, from, to, earliest: now, latest: now + ReservationRules.MaxAdvance, MaxTimes)
+            .Nearest(busy, start, end - start, from, to, earliest: now, latest: limits.LatestStart(now), MaxTimes)
             .Select(time => new SuggestedTime(time.Start, time.End))
             .ToList();
     }

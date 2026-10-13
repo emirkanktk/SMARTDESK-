@@ -89,7 +89,7 @@ public sealed class TeamResourceTests : IDisposable
     private async Task<Guid> BookAsync(FakeCurrentUser user, Resource resource, int from, int to)
     {
         await using var context = _database.CreateContext();
-        var dto = await new CreateReservationCommandHandler(context, user, Names, _notifier.Object, TestInvitations.For(context, user))
+        var dto = await new CreateReservationCommandHandler(context, user, Names, _notifier.Object, TestInvitations.For(context, user), TestPolicy.For(context))
             .Handle(new CreateReservationCommand(resource.Id, At(from), At(to), null), CancellationToken.None);
         return dto.Id;
     }
@@ -140,7 +140,7 @@ public sealed class TeamResourceTests : IDisposable
             .Handle(new GetResourceByIdQuery(_zeyneps.Id), CancellationToken.None);
         await byId.Should().ThrowAsync<NotFoundException>();
 
-        var available = await new GetAvailableResourcesQueryHandler(context, Selin, TestAccess.Reader())
+        var available = await new GetAvailableResourcesQueryHandler(context, Selin, TestAccess.Reader(), TestPolicy.For(context))
             .Handle(new GetAvailableResourcesQuery(At(10), At(11), null, null), CancellationToken.None);
         available.Select(r => r.Name).Should().BeEquivalentTo("Board Room", "Studio", "Projector P-1");
     }

@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Reservations.Commands.CreateReservationSeries;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
@@ -64,7 +65,7 @@ public sealed class GetSeriesPreviewQueryValidator : AbstractValidator<GetSeries
     }
 }
 
-public sealed class GetSeriesPreviewQueryHandler(IApplicationDbContext db, ICurrentUserService currentUser)
+public sealed class GetSeriesPreviewQueryHandler(IApplicationDbContext db, ICurrentUserService currentUser, BookingPolicy policy)
     : IRequestHandler<GetSeriesPreviewQuery, SeriesPreviewDto>
 {
     public async Task<SeriesPreviewDto> Handle(GetSeriesPreviewQuery request, CancellationToken cancellationToken)
@@ -77,7 +78,12 @@ public sealed class GetSeriesPreviewQueryHandler(IApplicationDbContext db, ICurr
 
         // As for booking: 404 for another team's resource, 409 for one out of use.
         var resource = await BookingGuard.EnsureResourceBookableAsync(db, currentUser, request.ResourceId, cancellationToken);
-        var conflicts = await BookingGuard.FindConflictsAsync(db, request.ResourceId, resource.Name, dates, null, cancellationToken);
+
+        // And as for booking, its kind's rules (ADR-0046): 400 for the first or last date, and the
+        // dates outside office hours shown as not free, with why.
+        var outside = await policy.CheckSeriesAsync(request.ResourceId, dates, cancellationToken);
+        var taken = await BookingGuard.FindConflictsAsync(db, request.ResourceId, resource.Name, dates, null, cancellationToken);
+        var conflicts = dates.Select((_, i) => outside[i] ?? taken[i]).ToList();
 
         return new SeriesPreviewDto(dates
             .Select((date, i) => new SeriesDateDto(date.Start, date.End, conflicts[i] is null, conflicts[i]?.Code, conflicts[i]?.Reason))

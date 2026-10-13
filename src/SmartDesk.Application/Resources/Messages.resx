@@ -147,6 +147,21 @@
   <data name="CheckIn_WrongCode" xml:space="preserve">
     <value>This QR code is no longer valid. Scan the current code for {0}.</value>
   </data>
+  <data name="Duration_Day" xml:space="preserve">
+    <value>1 day</value>
+  </data>
+  <data name="Duration_Days" xml:space="preserve">
+    <value>{0} days</value>
+  </data>
+  <data name="Duration_Hour" xml:space="preserve">
+    <value>1 hour</value>
+  </data>
+  <data name="Duration_Hours" xml:space="preserve">
+    <value>{0} hours</value>
+  </data>
+  <data name="Duration_Minutes" xml:space="preserve">
+    <value>{0} minutes</value>
+  </data>
   <data name="Email_AccountCreated_Body" xml:space="preserve">
     <value>{0} created a SmartDesk account for you, to book meeting rooms, desks and equipment. {0} will give you a temporary password; when you first sign in, you'll choose your own.</value>
   </data>
@@ -384,6 +399,15 @@
   <data name="Meetings_TooManyAttendees" xml:space="preserve">
     <value>At most {0} people can be invited.</value>
   </data>
+  <data name="OfficeHours_ClosesAfterOpens" xml:space="preserve">
+    <value>The office has to close after it opens, on the same day.</value>
+  </data>
+  <data name="OfficeHours_NoWorkdays" xml:space="preserve">
+    <value>Pick at least one workday.</value>
+  </data>
+  <data name="OfficeHours_QuarterHours" xml:space="preserve">
+    <value>Use a time on the quarter hour, such as 08:00, 08:15 or 08:30.</value>
+  </data>
   <data name="Problem_Conflict" xml:space="preserve">
     <value>Conflict</value>
   </data>
@@ -567,9 +591,6 @@
   <data name="Report_OfficeHoursBooked" xml:space="preserve">
     <value>Office hours booked</value>
   </data>
-  <data name="Report_OfficeHoursValue" xml:space="preserve">
-    <value>Mon-Fri 09:00-18:00</value>
-  </data>
   <data name="Report_People" xml:space="preserve">
     <value>People</value>
   </data>
@@ -711,6 +732,30 @@
   <data name="Resources_UnknownType" xml:space="preserve">
     <value>Resource type does not exist.</value>
   </data>
+  <data name="Rules_ActiveLimit" xml:space="preserve">
+    <value>{0}: at most {1} upcoming bookings per person. Cancel one first.</value>
+  </data>
+  <data name="Rules_DateOutsideOfficeHours" xml:space="preserve">
+    <value>Outside office hours: {0}.</value>
+  </data>
+  <data name="Rules_OutsideOfficeHours" xml:space="preserve">
+    <value>{0} bookings must be within office hours: {1}.</value>
+  </data>
+  <data name="Rules_SeriesActiveLimit" xml:space="preserve">
+    <value>{0}: at most {1} upcoming bookings per person, and this series would make {2}.</value>
+  </data>
+  <data name="Rules_SeriesTooFarAhead" xml:space="preserve">
+    <value>{0} bookings can start at most {1} ahead: end the series sooner.</value>
+  </data>
+  <data name="Rules_TodayOnly" xml:space="preserve">
+    <value>{0} bookings can only be made for today.</value>
+  </data>
+  <data name="Rules_TooFarAhead" xml:space="preserve">
+    <value>{0} bookings can start at most {1} ahead.</value>
+  </data>
+  <data name="Rules_TooLong" xml:space="preserve">
+    <value>{0} bookings can last at most {1}.</value>
+  </data>
   <data name="Series_Conflicts" xml:space="preserve">
     <value>{0} of the {1} dates aren't free in {2}. Look at the dates again, then book the others or choose another time.</value>
   </data>
@@ -749,6 +794,15 @@
   </data>
   <data name="Status_Maintenance" xml:space="preserve">
     <value>Maintenance</value>
+  </data>
+  <data name="TypeRules_MaxActive" xml:space="preserve">
+    <value>The limit per person has to be from 1 to {0}.</value>
+  </data>
+  <data name="TypeRules_MaxDaysAhead" xml:space="preserve">
+    <value>Days ahead has to be from 0 (today only) to {0}.</value>
+  </data>
+  <data name="TypeRules_MaxDuration" xml:space="preserve">
+    <value>The longest booking has to be from 15 minutes to {0} days, in quarter hours.</value>
   </data>
   <data name="Type_Camera" xml:space="preserve">
     <value>Camera</value>

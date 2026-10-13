@@ -23,6 +23,7 @@ public interface IApplicationDbContext
     DbSet<IssueReport> IssueReports { get; }
     DbSet<IssueReportPhoto> IssueReportPhotos { get; }
     DbSet<WaitlistEntry> WaitlistEntries { get; }
+    DbSet<OfficeHours> OfficeHours { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
@@ -41,4 +42,9 @@ public interface IApplicationDbContext
     // update and a cancel of the same reservation can't interleave. A transaction takes at
     // most this lock and then one resource lock, always in that order, so locks can't cycle.
     Task LockReservationAsync(Guid reservationId, CancellationToken cancellationToken = default);
+
+    // Must run inside a transaction. Locks one person's bookings until that transaction ends,
+    // so two of theirs can't both pass a limit on how many they may have (ADR-0046). Taken
+    // after the locks above, never before them.
+    Task LockBookerAsync(Guid userId, CancellationToken cancellationToken = default);
 }

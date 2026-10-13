@@ -50,7 +50,7 @@ public sealed class UsageReportWorkbook : IUsageReportWorkbook
             (Messages.Report_From, report.From.ToDateTime(TimeOnly.MinValue), Date),
             (Messages.Report_To, report.To.ToDateTime(TimeOnly.MinValue), Date),
             (Messages.Report_TimeZone, report.TimeZone, null),
-            (Messages.Report_OfficeHours, Messages.Report_OfficeHoursValue, null),
+            (Messages.Report_OfficeHours, report.WorkingHours, null),
             (string.Empty, Blank.Value, null),
             (Messages.Report_ResourceCount, totals.Resources, null),
             (Messages.Report_Reservations, totals.Reservations, null),

@@ -154,6 +154,58 @@ another Manager, an Admin - answers **404**, the same as an id that doesn't exis
 Types are reference data seeded by migration: Meeting Room, Desk, Company Car, Projector,
 Camera (fixed ids, same in every environment). There's no endpoint to add types yet.
 
+## Booking rules (ADR-0046)
+
+What each kind of resource may be booked for, as an Admin sets it, and when the office is open.
+Every way of booking keeps to them: booking, moving, a series, running longer and the waiting
+list; and so does everything that offers times: the availability search, the suggestions after
+a clash, and the extension options.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/booking-rules` | any authenticated user | `GetBookingRulesQuery` | the office's hours, each kind's rules (by name), and how far a kind's rules may go |
+| PUT | `/api/booking-rules/office-hours` | Admin | `UpdateOfficeHoursCommand` | body `{ timeZone, opensAt, closesAt, workdays }` → 200 with the office's hours |
+| PUT | `/api/booking-rules/types/{id}` | Admin | `UpdateResourceTypeRulesCommand` | body `{ maxDurationMinutes, maxDaysAhead, maxActivePerUser, officeHoursOnly }` → 200 with the kind's rules; null leaves a rule unset. 404 for a kind that isn't there |
+
+```json
+{
+  "officeHours": {
+    "timeZone": "Europe/Istanbul",           // IANA
+    "opensAt": "09:00:00", "closesAt": "18:00:00",
+    "workdays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    "description": "Mon-Fri 09:00-18:00"     // in the language of Accept-Language
+  },
+  "types": [                                 // by name
+    { "resourceTypeId": "…", "name": "Company Car", "maxDurationMinutes": null, "maxDaysAhead": null,
+      "maxActivePerUser": 1, "officeHoursOnly": false },
+    { "resourceTypeId": "…", "name": "Desk", "maxDurationMinutes": 540, "maxDaysAhead": 7,
+      "maxActivePerUser": 2, "officeHoursOnly": true }
+  ],
+  "bounds": { "maxDurationMinutes": 44640, "maxDaysAhead": 180, "maxActivePerUser": 100 }
+}
+```
+
+- **`maxDurationMinutes`**: the longest a booking may last, 15 minutes to 31 days, in quarter hours.
+- **`maxDaysAhead`**: how many days after today, on the office's calendar, a booking may start:
+  0 is today only, 7 up to the end of the same weekday next week. At most 180.
+- **`maxActivePerUser`**: how many `Confirmed` bookings of the kind one person may have that
+  haven't ended, 1 to 100. They're the owner's, even when an Admin books or moves them; moving a
+  booking within its kind isn't one more. It holds for bookings made at once (ADR-0011).
+- **`officeHoursOnly`**: a booking starts and ends within the office's hours, on one workday.
+- **Office hours**: `opensAt` and `closesAt` on the quarter hour (`"08:30"` or `"08:30:00"`),
+  closing after opening, on at least one workday. The usage report measures against them too.
+- A rule left unset leaves only the rules for every booking (31 days long, 180 days ahead), which
+  a kind's rules can only tighten. Bookings already made stay as they are when the rules change;
+  shortening one is always allowed.
+
+**Booking rules - errors**
+
+| Status | When |
+|---|---|
+| 400 | a time the kind's rules don't allow, on the field it's about: `EndDateTime` too long (`"Desk bookings can last at most 9 hours."`), `StartDateTime` too far ahead (`"Desk bookings can start at most 7 days ahead."`, `"Desk bookings can only be made for today."`) or outside office hours (`"Desk bookings must be within office hours: Mon-Fri 09:00-18:00."`); for a series, `Recurrence.Until` reaching too far (`"… end the series sooner."`). Setting them: a value out of bounds, a time not on the quarter hour, closing before opening, no workday, an unknown time zone |
+| 403 | setting them, for anyone but an Admin |
+| 409 | the owner already has as many bookings of the kind as allowed (`code: "booking-limit"`, `"Desk: at most 2 upcoming bookings per person. Cancel one first."`; for a series, `"… and this series would make 4."`) |
+
 ## Resources
 
 **Teams (ADR-0022).** A resource belongs to one or more managers' teams, or to none, which
@@ -215,6 +267,8 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
   reservations never block.
 - `endDateTime` must be after `startDateTime`; the window can be at most 31 days.
 - `startDateTime` can be at most 180 days ahead, as for a booking (400 otherwise).
+- A resource whose kind's rules don't allow the window isn't returned: a desk booked within
+  office hours only isn't available at 20:00 (see Booking rules).
   `minCapacity`, if given, must be positive. Past windows aren't rejected here (it's a
   read-only search); creating a reservation in the past is rejected by
   `CreateReservationCommand`.
@@ -253,7 +307,7 @@ A resource's place is cleared when its `location` changes: it was on another flo
 | GET | `/api/reservations/mine` | any authenticated user | `GetMyReservationsQuery` | the caller's reservations - upcoming, past and cancelled - oldest start first |
 | GET | `/api/reservations/invited` | any authenticated user | `GetMyInvitationsQuery` | other people's `Confirmed` meetings the caller is invited to and that aren't over, soonest first (ADR-0032) |
 | GET | `/api/reservations/invitees` | any authenticated user | `GetInviteesQuery` | who the caller may invite: `[{ id, name, email }]`, by name - a Manager's active team members, every active account for an Admin, nobody for an Employee |
-| GET | `/api/reservations/{id}/extension` | owner or Admin | `GetExtensionOptionsQuery` | `{ minutes: [15, 30, 60] }`: how much longer it can run, only what ends before the resource's next booking or blocked window; empty when it can't (ADR-0033) |
+| GET | `/api/reservations/{id}/extension` | owner or Admin | `GetExtensionOptionsQuery` | `{ minutes: [15, 30, 60] }`: how much longer it can run, only what ends before the resource's next booking or blocked window, within its kind's rules; empty when it can't (ADR-0033) |
 | POST | `/api/reservations/{id}/extend` | owner or Admin | `ExtendReservationCommand` | body: `{ minutes }` (15, 30 or 60) → 200 with the reservation, its end that much later. See Running over. |
 | POST | `/api/reservations/{id}/response` | someone invited | `RespondToInvitationCommand` | body: `{ response: "Accepted" \| "Declined", reason?, following? }` → 200 with the meeting. Declining needs a `reason` (max 500), which goes to the organizer only. `following: true` on a date of a series answers it and every later date the caller is invited to (ADR-0035). See Meetings. |
 | GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. Only reservations on resources the caller may use (ADR-0022). |
@@ -290,9 +344,9 @@ A reservation appears in a calendar range exactly when it would block a booking 
 
 | Status | When |
 |---|---|
-| 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past, or more than 180 days ahead (ADR-0024); longer than 31 days; `note` over 500 chars; `reminderMinutes` not one of 5, 15, 30, 60 |
+| 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past, or more than 180 days ahead (ADR-0024); longer than 31 days; `note` over 500 chars; `reminderMinutes` not one of 5, 15, 30, 60; a time its kind's rules don't allow (see Booking rules) |
 | 404 | the resource doesn't exist |
-| 409 | the resource isn't `Active` (`code: "resource-unavailable"`, `"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`code: "resource-blocked"`, `"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`code: "reservation-overlaps"`, `"Meeting Room A is already reserved for part of that time."`) |
+| 409 | the resource isn't `Active` (`code: "resource-unavailable"`, `"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`code: "resource-blocked"`, `"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`code: "reservation-overlaps"`, `"Meeting Room A is already reserved for part of that time."`); the caller already has as many bookings of the kind as its rules allow (`code: "booking-limit"`) |
 
 The 409 detail is written to be shown to the user as-is. Overlap uses the same half-open rule as
 the availability search, so back-to-back bookings are allowed. It holds under concurrent
@@ -356,8 +410,10 @@ Ten minutes before a booking under way ends, its owner gets `ReservationEndingSo
 Real-time) and the app asks whether they need longer.
 
 - **How much longer.** `GET /api/reservations/{id}/extension` lists the options, 15, 30 and 60
-  minutes, that end before the resource's next `Confirmed` booking or blocked window. Empty for a
-  resource that isn't `Active`, or that the caller may no longer use. It's a snapshot.
+  minutes, that end before the resource's next `Confirmed` booking or blocked window, and within
+  its kind's rules: no longer than its longest booking, and not past closing time for a kind
+  booked within office hours (ADR-0046). Empty for a resource that isn't `Active`, or that the
+  caller may no longer use. It's a snapshot.
 - **Extending.** `POST /api/reservations/{id}/extend` moves only the end, under the same locks
   and checks as moving a booking: the extra time must be free, not blocked, and the resource
   `Active`. The check-in, the reminder and the answers to the invitation stay. Everyone invited
@@ -370,7 +426,7 @@ Real-time) and the app asks whether they need longer.
 | 400 | `minutes` isn't 15, 30 or 60 (`"Extend by one of these: 15, 30, 60 minutes."`) |
 | 403 | neither the owner nor an Admin |
 | 404 | the reservation doesn't exist |
-| 409 | it's cancelled or over; the extra time is taken (`code: "reservation-overlaps"`, `"Board Room is reserved right after, so this can't run 30 minutes longer."`), blocked (`code: "resource-blocked"`), or the resource isn't `Active` (`code: "resource-unavailable"`) |
+| 409 | it's cancelled or over; the extra time is taken (`code: "reservation-overlaps"`, `"Board Room is reserved right after, so this can't run 30 minutes longer."`), blocked (`code: "resource-blocked"`), or the resource isn't `Active` (`code: "resource-unavailable"`); its kind's rules don't allow it that long (`"Desk bookings must be within office hours: Mon-Fri 09:00-18:00."`) |
 
 ## Series (ADR-0035)
 
@@ -392,7 +448,10 @@ rule as `series`. Each date can be moved, extended, checked in or cancelled like
   its length. Weeks count from Monday: every 2 weeks is the first date's week, the one two weeks
   later, and so on. A time the clocks skip moves to the first minute after it.
 - **Limits.** The first date follows the rules of any booking. The last may start at most 180
-  days ahead. At least two dates, none running into the next.
+  days ahead, and no further than its kind allows. At least two dates, none running into the next.
+- **Its kind's rules** (ADR-0046). A date outside office hours, for a kind booked within them
+  only, is skipped like one that isn't free (`code: "outside-office-hours"`, `"Outside office
+  hours: Mon-Fri 09:00-18:00."`). The dates booked count against the per-person limit.
 - **Booking.** All the dates in one transaction, under the resource's lock. A date that's
   blocked or taken stops the lot (409 `series-conflicts`), unless `skipConflicts: true`, which
   books the others and lists the rest under `skipped`. With none free it's 409 either way.
@@ -417,9 +476,9 @@ rule as `series`. Each date can be moved, extended, checked in or cancelled like
 
 | Status | When |
 |---|---|
-| 400 | the first date breaks a booking's rules (`StartDateTime`, `EndDateTime`, ...); `Recurrence.Interval` isn't 1 to 4, or the dates would run into each other (`"Each date would run into the next: make it shorter, or repeat it less often."`); `Recurrence.DaysOfWeek` leaves out the day it starts on (`"The series has to include the day it starts on (Monday)."`); `Recurrence.Until` is before the first date, gives a single date (`"That's only one date: pick a later end, or more days, for it to repeat."`) or goes past 180 days; `Recurrence.TimeZone` is unknown |
+| 400 | the first date breaks a booking's rules (`StartDateTime`, `EndDateTime`, ...); `Recurrence.Interval` isn't 1 to 4, or the dates would run into each other (`"Each date would run into the next: make it shorter, or repeat it less often."`); `Recurrence.DaysOfWeek` leaves out the day it starts on (`"The series has to include the day it starts on (Monday)."`); `Recurrence.Until` is before the first date, gives a single date (`"That's only one date: pick a later end, or more days, for it to repeat."`) or goes past 180 days, or further than the kind allows; `Recurrence.TimeZone` is unknown |
 | 404 | the resource doesn't exist, or belongs to other teams |
-| 409 | the resource isn't `Active` (`code: "resource-unavailable"`); dates aren't free (`code: "series-conflicts"`, `"1 of the 4 dates aren't free in Board Room. Look at the dates again, then book the others or choose another time."`), or none is |
+| 409 | the resource isn't `Active` (`code: "resource-unavailable"`); dates aren't free (`code: "series-conflicts"`, `"1 of the 4 dates aren't free in Board Room. Look at the dates again, then book the others or choose another time."`), or none is; the caller would have more bookings of the kind than allowed (`code: "booking-limit"`) |
 
 ## Meetings (ADR-0032)
 
@@ -519,8 +578,9 @@ inbox gets a `WaitlistBooked` message. Their entry goes then.
 }
 ```
 
-- The times follow the create rules (400 otherwise), and the resource must be the caller's to
-  book (404) and `Active` (409 `resource-unavailable`).
+- The times follow the create rules, the kind's own included (400 otherwise), and the resource
+  must be the caller's to book (404) and `Active` (409 `resource-unavailable`). Someone with
+  as many bookings of the kind as its rules allow can't join (409 `booking-limit`).
 - 409 when the time is free (`code: "waitlist-slot-free"`: book it instead), when the caller
   is already waiting for that resource at part of it (`code: "waitlist-already-waiting"`), when
   they booked part of it themselves, or when they already wait for 10 times.
@@ -528,7 +588,8 @@ inbox gets a `WaitlistBooked` message. Their entry goes then.
   of it are left; otherwise the entry goes. The booking asks for a check-in when the resource
   does, and has a 15-minute reminder when it starts later than that.
 - Entries are offered in the order people joined, so ones for times that don't overlap can all
-  be booked from one freed time; one still partly taken waits on. The booking is a normal one:
+  be booked from one freed time; one still partly taken waits on, and so does someone the
+  kind's rules no longer allow: the limit reached, or the rules changed (ADR-0046). The booking is a normal one:
   calendars hear of it live, and cancelling it offers the time to the next in line.
 
 ## Check-in (ADR-0030)
@@ -715,7 +776,8 @@ is the full count, while `myUpcoming` is capped at 5.
 {
   "from": "2026-09-01", "to": "2026-09-30", "timeZone": "Europe/Istanbul",
   "fromUtc": "2026-08-31T21:00:00Z", "toUtc": "2026-09-30T21:00:00Z",
-  "workingHours": "Mon-Fri 09:00-18:00",
+  "workingHours": "Mon-Fri 09:00-18:00",  // the office's hours (ADR-0046), in the request's language
+  "opensAt": "09:00:00", "closesAt": "18:00:00",
   "workingHoursPerResource": 198,        // office hours in the range, per resource
   "totals": { "resources": 7, "reservations": 42, "cancelled": 5, "bookedHours": 120.5,
               "workingHoursBooked": 98, "workingHoursAvailable": 1386, "utilization": 0.0707,
@@ -741,7 +803,8 @@ What the numbers mean (ADR-0017):
   range. One that spans the edge counts once.
 - **`bookedHours`**: the part of each `Confirmed` reservation inside the range, whenever it falls,
   nights and weekends included.
-- **`workingHoursBooked`**: the same, counting only Monday to Friday, 09:00-18:00 local time.
+- **`workingHoursBooked`**: the same, counting only the office's hours (see Booking rules: Monday
+  to Friday, 09:00-18:00, until an Admin changes them), in the report's time zone.
 - **`utilization`**: `workingHoursBooked` divided by the office hours available, from 0 to 1. Per
   resource, that's `workingHoursPerResource`. For a type or the totals, it's that times the number
   of resources. A range with no weekday gives 0.
@@ -877,7 +940,8 @@ to be told why it's gone.
     on the language: `resource-unavailable`, `resource-blocked`, `reservation-overlaps`,
     `resource-has-reservations`,
     `block-overlaps-block`, `block-overlaps-reservations`, `check-in-not-used`,
-    `nothing-to-check-in`, `issue-already-reported`, `issue-resolved`. The 403 for a pending password
+    `nothing-to-check-in`, `issue-already-reported`, `issue-resolved`, `booking-limit`. A series
+    date skipped outside office hours has `code: "outside-office-hours"`. The 403 for a pending password
     change has `code: "password-change-required"` (ADR-0021).
   - Emails are written in the recipient's language: the one they last signed in with, saved
     on their account. Until then, the language of the request that sends the email (for a new

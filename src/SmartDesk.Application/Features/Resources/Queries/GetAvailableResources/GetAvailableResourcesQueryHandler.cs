@@ -2,13 +2,18 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Domain.Rules;
 
 namespace SmartDesk.Application.Features.Resources.Queries.GetAvailableResources;
 
-public sealed class GetAvailableResourcesQueryHandler(IApplicationDbContext db, ICurrentUserService currentUser, ResourceReader reader)
+public sealed class GetAvailableResourcesQueryHandler(
+    IApplicationDbContext db,
+    ICurrentUserService currentUser,
+    ResourceReader reader,
+    BookingPolicy policy)
     : IRequestHandler<GetAvailableResourcesQuery, IReadOnlyList<ResourceDto>>
 {
     public async Task<IReadOnlyList<ResourceDto>> Handle(GetAvailableResourcesQuery request, CancellationToken cancellationToken)
@@ -19,6 +24,11 @@ public sealed class GetAvailableResourcesQueryHandler(IApplicationDbContext db, 
         // Business rule 3: only Active resources can be booked, so only they are "available".
         // And only what the caller may book (ADR-0022).
         var query = db.Resources.AsNoTracking().UsableBy(currentUser).Where(r => r.Status == ResourceStatus.Active);
+
+        // And only kinds whose rules let the window be booked (ADR-0046): a desk kept to office
+        // hours isn't available at 20:00.
+        var kinds = await policy.KindsBookableAsync(start, end, cancellationToken);
+        query = query.Where(r => kinds.Contains(r.ResourceTypeId));
 
         if (request.ResourceTypeId is { } typeId)
         {

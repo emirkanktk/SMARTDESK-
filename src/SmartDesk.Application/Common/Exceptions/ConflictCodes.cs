@@ -44,4 +44,12 @@ public static class ConflictCodes
 
     // Already waiting for that resource at part of that time.
     public const string WaitlistAlreadyWaiting = "waitlist-already-waiting";
+
+    // Its owner already has as many bookings of the kind that haven't ended as its rules allow
+    // (ADR-0046): one has to go, or end, first.
+    public const string BookingLimit = "booking-limit";
+
+    // A date of a series outside office hours, for a kind booked within them only (ADR-0046):
+    // skipped like a date that isn't free. Only ever a date's code, never a response's.
+    public const string OutsideOfficeHours = "outside-office-hours";
 }

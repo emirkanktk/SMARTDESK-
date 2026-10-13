@@ -304,6 +304,47 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("IssueReportPhotos");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.OfficeHours", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<TimeOnly>("ClosesAt")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly>("OpensAt")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Workdays")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OfficeHours", t =>
+                        {
+                            t.HasCheckConstraint("CK_OfficeHours_OpensBeforeCloses", "\"OpensAt\" < \"ClosesAt\"");
+
+                            t.HasCheckConstraint("CK_OfficeHours_Single", "\"Id\" = 1");
+
+                            t.HasCheckConstraint("CK_OfficeHours_Workdays", "\"Workdays\" BETWEEN 1 AND 127");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ClosesAt = new TimeOnly(18, 0, 0),
+                            OpensAt = new TimeOnly(9, 0, 0),
+                            TimeZone = "Europe/Istanbul",
+                            Workdays = 31
+                        });
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.Reservation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -591,10 +632,22 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("MaxActivePerUser")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxDaysAhead")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxDurationMinutes")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("OfficeHoursOnly")
+                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
@@ -607,27 +660,32 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a01"),
-                            Name = "Meeting Room"
+                            Name = "Meeting Room",
+                            OfficeHoursOnly = false
                         },
                         new
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a02"),
-                            Name = "Desk"
+                            Name = "Desk",
+                            OfficeHoursOnly = false
                         },
                         new
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a03"),
-                            Name = "Company Car"
+                            Name = "Company Car",
+                            OfficeHoursOnly = false
                         },
                         new
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a04"),
-                            Name = "Projector"
+                            Name = "Projector",
+                            OfficeHoursOnly = false
                         },
                         new
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a05"),
-                            Name = "Camera"
+                            Name = "Camera",
+                            OfficeHoursOnly = false
                         });
                 });
 

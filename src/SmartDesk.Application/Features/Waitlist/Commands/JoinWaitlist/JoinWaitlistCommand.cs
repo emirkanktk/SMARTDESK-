@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Waitlist.Common;
 using SmartDesk.Application.Resources;
@@ -44,7 +45,8 @@ public sealed class JoinWaitlistCommandValidator : AbstractValidator<JoinWaitlis
 public sealed class JoinWaitlistCommandHandler(
     IApplicationDbContext db,
     ICurrentUserService currentUser,
-    TimeProvider timeProvider) : IRequestHandler<JoinWaitlistCommand, WaitlistEntryDto>
+    TimeProvider timeProvider,
+    BookingPolicy policy) : IRequestHandler<JoinWaitlistCommand, WaitlistEntryDto>
 {
     public async Task<WaitlistEntryDto> Handle(JoinWaitlistCommand request, CancellationToken cancellationToken)
     {
@@ -55,6 +57,10 @@ public sealed class JoinWaitlistCommandHandler(
 
         // The caller's to book and in use, as for booking it: 404 or 409 otherwise.
         var resource = await BookingGuard.EnsureResourceBookableAsync(db, currentUser, request.ResourceId, cancellationToken);
+
+        // Only what they could book is worth waiting for: its kind's rules, and no more of the
+        // kind than they may have (ADR-0046).
+        await policy.EnsureAllowedAsync(new BookingClaim(userId, request.ResourceId, start, end), cancellationToken);
 
         // Nothing to wait for when it's free.
         var conflicts = await BookingGuard.FindConflictsAsync(

@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Reports.Common;
 using SmartDesk.Domain.Enums;
 
@@ -23,7 +24,12 @@ public sealed class GetUsageReportQueryHandler(IApplicationDbContext db, IIdenti
         // 23 or 25 hours long, so both ends are converted rather than derived from each other.
         var fromUtc = zone.LocalToUtc(request.From.ToDateTime(TimeOnly.MinValue));
         var toUtc = zone.LocalToUtc(request.To.AddDays(1).ToDateTime(TimeOnly.MinValue));
-        var workingWindows = WorkingWindows(zone, request.From, request.To);
+
+        // Utilization is booked time within the office's hours (ADR-0046), read in the zone the
+        // report is for, as its days are. A desk booked overnight or a car over the weekend still
+        // counts in BookedHours, but not against the office day.
+        var office = OfficeWeek.Of(await db.OfficeHours.AsNoTracking().SingleAsync(cancellationToken), zone);
+        var workingWindows = office.OpenBetween(fromUtc, toUtc);
         var hoursPerResource = workingWindows.Sum(w => (w.End - w.Start).TotalHours);
 
         var reservationsQuery = db.Reservations.AsNoTracking()
@@ -81,7 +87,9 @@ public sealed class GetUsageReportQueryHandler(IApplicationDbContext db, IIdenti
             zone.Id,
             fromUtc,
             toUtc,
-            ReportRules.WorkingHoursLabel,
+            office.Describe(),
+            office.Opens,
+            office.Closes,
             Round(hoursPerResource),
             new UsageTotals(
                 rows.Count,
@@ -139,24 +147,7 @@ public sealed class GetUsageReportQueryHandler(IApplicationDbContext db, IIdenti
             .ToList();
     }
 
-    // The office day on each workday in the range, as UTC intervals, earliest first.
-    private static List<(DateTime Start, DateTime End)> WorkingWindows(TimeZoneInfo zone, DateOnly from, DateOnly to)
-    {
-        var windows = new List<(DateTime Start, DateTime End)>();
-        for (var day = from; day <= to; day = day.AddDays(1))
-        {
-            if (ReportRules.IsWorkday(day.DayOfWeek))
-            {
-                windows.Add((
-                    zone.LocalToUtc(day.ToDateTime(ReportRules.WorkdayStart)),
-                    zone.LocalToUtc(day.ToDateTime(ReportRules.WorkdayEnd))));
-            }
-        }
-
-        return windows;
-    }
-
-    private static double WorkingOverlap(DateTime start, DateTime end, List<(DateTime Start, DateTime End)> windows)
+    private static double WorkingOverlap(DateTime start, DateTime end, IReadOnlyList<(DateTime Start, DateTime End)> windows)
     {
         var hours = 0.0;
         foreach (var window in windows)

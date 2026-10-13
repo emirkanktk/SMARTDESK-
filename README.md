@@ -86,8 +86,8 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   the meeting moves or is cancelled, and answers there: coming, or not and why. The organizer
   sees every answer, and the reason only they read ([ADR-0032](docs/DECISIONS.md)).
 - **Usage report** - for Admins: how much each resource, type and person booked over up to
-  92 days, and how full the office day was (Monday to Friday, 09:00-18:00, in the admin's
-  time zone - [ADR-0017](docs/DECISIONS.md)). It shows when the office is busiest, as a heat
+  92 days, and how full the office day was (the office's hours, Monday to Friday 09:00-18:00
+  until an Admin changes them, in the admin's time zone - [ADR-0017](docs/DECISIONS.md)). It shows when the office is busiest, as a heat
   map of weekdays and hours, and how often bookings go unused: the share cancelled, and the
   share of check-ins nobody came to ([ADR-0044](docs/DECISIONS.md)). It downloads as an Excel
   workbook, in the app's language ([ADR-0045](docs/DECISIONS.md)).
@@ -325,6 +325,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
 | Series | `GET /api/reservations/series/preview`, `POST /api/reservations/series`, `POST /api/reservations/{id}/cancel-following` (ADR-0035) |
 | Running over | `GET /api/reservations/{id}/extension`, `POST /api/reservations/{id}/extend` (ADR-0033) |
+| Booking rules | `GET /api/booking-rules`, `PUT /api/booking-rules/office-hours` (Admin), `PUT /api/booking-rules/types/{id}` (Admin) (ADR-0046) |
 | Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |
 | Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |
 | Inbox | `GET /api/inbox`, `GET /api/inbox/unread-count`, `POST /api/inbox/{id}/read`, `POST /api/inbox/read-all` |

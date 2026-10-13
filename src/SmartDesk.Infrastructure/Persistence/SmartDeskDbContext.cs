@@ -31,6 +31,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<IssueReport> IssueReports => Set<IssueReport>();
     public DbSet<IssueReportPhoto> IssueReportPhotos => Set<IssueReportPhoto>();
     public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
+    public DbSet<OfficeHours> OfficeHours => Set<OfficeHours>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -57,6 +58,21 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.HasIndex(e => e.Name).IsUnique();
             entity.HasData(ResourceTypeSeedData.All);
+        });
+
+        // The office's hours (ADR-0046): one row, there from the migration on, which an Admin
+        // changes but nobody adds to or removes.
+        builder.Entity<OfficeHours>(entity =>
+        {
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.TimeZone).IsRequired().HasMaxLength(100);
+            entity.HasData(OfficeHoursSeedData.Default);
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_OfficeHours_Single", $"\"Id\" = {Domain.Entities.OfficeHours.SingletonId}");
+                t.HasCheckConstraint("CK_OfficeHours_OpensBeforeCloses", "\"OpensAt\" < \"ClosesAt\"");
+                t.HasCheckConstraint("CK_OfficeHours_Workdays", "\"Workdays\" BETWEEN 1 AND 127");
+            });
         });
 
         builder.Entity<Resource>(entity =>
@@ -314,6 +330,23 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 $"SELECT 1 FROM \"Reservations\" WHERE \"Id\" = {reservationId} FOR UPDATE", cancellationToken);
         }
     }
+
+    public async Task LockBookerAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        // A person isn't a row here (accounts are Identity's), so a transaction-scoped advisory
+        // lock stands for them: two keys, this lock's own space and the person's id folded to
+        // 32 bits. Two people who fold alike just wait on each other.
+        if (Database.IsNpgsql())
+        {
+            var bytes = userId.ToByteArray();
+            var key = BitConverter.ToInt32(bytes, 0) ^ BitConverter.ToInt32(bytes, 4)
+                ^ BitConverter.ToInt32(bytes, 8) ^ BitConverter.ToInt32(bytes, 12);
+            await Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({BookerLockSpace}, {key})", cancellationToken);
+        }
+    }
+
+    // "SD" and 1: the first of SmartDesk's advisory lock spaces.
+    private const int BookerLockSpace = 0x53440001;
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {

@@ -147,6 +147,21 @@
   <data name="CheckIn_WrongCode" xml:space="preserve">
     <value>Bu QR kod artık geçerli değil. {0} için güncel kodu okutun.</value>
   </data>
+  <data name="Duration_Day" xml:space="preserve">
+    <value>1 gün</value>
+  </data>
+  <data name="Duration_Days" xml:space="preserve">
+    <value>{0} gün</value>
+  </data>
+  <data name="Duration_Hour" xml:space="preserve">
+    <value>1 saat</value>
+  </data>
+  <data name="Duration_Hours" xml:space="preserve">
+    <value>{0} saat</value>
+  </data>
+  <data name="Duration_Minutes" xml:space="preserve">
+    <value>{0} dakika</value>
+  </data>
   <data name="Email_AccountCreated_Body" xml:space="preserve">
     <value>{0} sizin için toplantı odası, masa ve ekipman ayırabileceğiniz bir SmartDesk hesabı oluşturdu. Size geçici bir parola verilecek; ilk girişinizde kendi parolanızı belirleyeceksiniz.</value>
   </data>
@@ -384,6 +399,15 @@
   <data name="Meetings_TooManyAttendees" xml:space="preserve">
     <value>En fazla {0} kişi davet edilebilir.</value>
   </data>
+  <data name="OfficeHours_ClosesAfterOpens" xml:space="preserve">
+    <value>Ofis, açıldığı gün içinde ve açıldıktan sonra kapanmalı.</value>
+  </data>
+  <data name="OfficeHours_NoWorkdays" xml:space="preserve">
+    <value>En az bir iş günü seçin.</value>
+  </data>
+  <data name="OfficeHours_QuarterHours" xml:space="preserve">
+    <value>08:00, 08:15 ya da 08:30 gibi çeyrek saatlik bir saat kullanın.</value>
+  </data>
   <data name="Problem_Conflict" xml:space="preserve">
     <value>Çakışma</value>
   </data>
@@ -567,9 +591,6 @@
   <data name="Report_OfficeHoursBooked" xml:space="preserve">
     <value>Mesaide rezerve edilen saat</value>
   </data>
-  <data name="Report_OfficeHoursValue" xml:space="preserve">
-    <value>Pzt-Cum 09:00-18:00</value>
-  </data>
   <data name="Report_People" xml:space="preserve">
     <value>Kişiler</value>
   </data>
@@ -711,6 +732,30 @@
   <data name="Resources_UnknownType" xml:space="preserve">
     <value>Böyle bir kaynak türü yok.</value>
   </data>
+  <data name="Rules_ActiveLimit" xml:space="preserve">
+    <value>{0}: kişi başına en fazla {1} yaklaşan rezervasyon olabilir. Önce birini iptal edin.</value>
+  </data>
+  <data name="Rules_DateOutsideOfficeHours" xml:space="preserve">
+    <value>Mesai saatleri dışında: {0}.</value>
+  </data>
+  <data name="Rules_OutsideOfficeHours" xml:space="preserve">
+    <value>{0} rezervasyonları mesai saatleri içinde olmalı: {1}.</value>
+  </data>
+  <data name="Rules_SeriesActiveLimit" xml:space="preserve">
+    <value>{0}: kişi başına en fazla {1} yaklaşan rezervasyon olabilir; bu seriyle {2} olur.</value>
+  </data>
+  <data name="Rules_SeriesTooFarAhead" xml:space="preserve">
+    <value>{0} rezervasyonları en fazla {1} sonrası için yapılabilir: seriyi daha erken bitirin.</value>
+  </data>
+  <data name="Rules_TodayOnly" xml:space="preserve">
+    <value>{0} rezervasyonları yalnızca bugün için yapılabilir.</value>
+  </data>
+  <data name="Rules_TooFarAhead" xml:space="preserve">
+    <value>{0} rezervasyonları en fazla {1} sonrası için yapılabilir.</value>
+  </data>
+  <data name="Rules_TooLong" xml:space="preserve">
+    <value>{0} rezervasyonları en fazla {1} sürebilir.</value>
+  </data>
   <data name="Series_Conflicts" xml:space="preserve">
     <value>{2} için {1} tarihin {0} tanesi boş değil. Tarihlere yeniden bakın; ötekileri rezerve edin ya da başka bir saat seçin.</value>
   </data>
@@ -749,6 +794,15 @@
   </data>
   <data name="Status_Maintenance" xml:space="preserve">
     <value>Bakımda</value>
+  </data>
+  <data name="TypeRules_MaxActive" xml:space="preserve">
+    <value>Kişi başı sınır 1 ile {0} arasında olmalı.</value>
+  </data>
+  <data name="TypeRules_MaxDaysAhead" xml:space="preserve">
+    <value>İleri gün sayısı 0 (yalnızca bugün) ile {0} arasında olmalı.</value>
+  </data>
+  <data name="TypeRules_MaxDuration" xml:space="preserve">
+    <value>En uzun rezervasyon 15 dakika ile {0} gün arasında, çeyrek saatlik olmalı.</value>
   </data>
   <data name="Type_Camera" xml:space="preserve">
     <value>Kamera</value>

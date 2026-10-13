@@ -376,7 +376,7 @@ public sealed class DoorScreenTests : IDisposable
 
         await using var context = _database.CreateContext();
         var moved = await new UpdateReservationCommandHandler(
-                context, Ayse, _names, _notifier.Object, _clock, TestInvitations.For(context, Ayse))
+                context, Ayse, _names, _notifier.Object, _clock, TestInvitations.For(context, Ayse), TestPolicy.For(context, _clock))
             .Handle(new UpdateReservationCommand(room.Id, Ten.AddHours(3), Ten.AddHours(4), null, null, [Mehmet.UserId!.Value]) { Id = id }, CancellationToken.None);
         moved.CheckedInBy.Should().BeNull();
         moved.CheckedInByName.Should().BeNull();

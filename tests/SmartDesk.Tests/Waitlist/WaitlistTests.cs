@@ -22,6 +22,7 @@ using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
 using SmartDesk.Infrastructure.Persistence;
+using SmartDesk.Infrastructure.Persistence.Seed;
 using SmartDesk.Tests.TestSupport;
 
 namespace SmartDesk.Tests.Waitlist;
@@ -89,7 +90,7 @@ public class WaitlistTests : IDisposable
     private async Task<WaitlistEntryDto> JoinAsync(UserAccount who, Resource room, DateTime start, DateTime end)
     {
         await using var context = _database.CreateContext();
-        var entry = await new JoinWaitlistCommandHandler(context, As(who), _clock)
+        var entry = await new JoinWaitlistCommandHandler(context, As(who), _clock, TestPolicy.For(context, _clock))
             .Handle(new JoinWaitlistCommand(room.Id, start, end), CancellationToken.None);
         // People join one after another: the line has an order.
         _clock.Advance(TimeSpan.FromSeconds(1));
@@ -111,7 +112,7 @@ public class WaitlistTests : IDisposable
         var offer = new OfferFreedSlotHandler(
             context, _accounts.Object, Names(), _reservations.Object,
             TestInvitations.For(context, As(_ayse), _accounts.Object, _inbox.Object, _clock, Names()),
-            _clock, NullLogger<OfferFreedSlotHandler>.Instance);
+            _clock, TestPolicy.For(context, _clock), NullLogger<OfferFreedSlotHandler>.Instance);
         foreach (var slot in freed.TakeAll())
         {
             await offer.Handle(slot, CancellationToken.None);
@@ -183,6 +184,29 @@ public class WaitlistTests : IDisposable
 
         var oneMore = () => JoinAsync(_mehmet, room, At(19), At(20));
         await oneMore.Should().ThrowAsync<ConflictException>().WithMessage("You can wait for at most 10 times at once.*");
+    }
+
+    [Fact]
+    public async Task SomeoneWithAsManyOfTheKindAsAllowed_WaitsOn_AndTheNextInLineGetsIt()
+    {
+        var room = await RoomAsync();
+        var studio = await _database.AddResourceAsync("Studio");
+        var ayses = await _database.AddReservationAsync(room.Id, At(10), At(11), userId: _ayse.Id);
+        await JoinAsync(_mehmet, room, At(10), At(11));
+        await JoinAsync(_deniz, room, At(10), At(11));
+
+        // Since then, Mehmet has booked another meeting room, and they're one each (ADR-0046).
+        await _database.AddReservationAsync(studio.Id, At(14), At(15), userId: _mehmet.Id);
+        await using (var context = _database.CreateContext())
+        {
+            (await context.ResourceTypes.SingleAsync(t => t.Id == ResourceTypeSeedData.MeetingRoomId)).MaxActivePerUser = 1;
+            await context.SaveChangesAsync();
+        }
+
+        await CancelAsync(_ayse, ayses.Id);
+
+        (await BookingsAsync(room.Id)).Should().ContainSingle().Which.UserId.Should().Be(_deniz.Id);
+        (await WaitingAsync(_mehmet)).Should().ContainSingle();
     }
 
     [Fact]
@@ -352,7 +376,7 @@ public class WaitlistTests : IDisposable
         await JoinAsync(_mehmet, room, At(10), At(11));
 
         await FreeingAsync(context => new UpdateReservationCommandHandler(
-                context, As(_ayse), Names(), _reservations.Object, _clock, TestInvitations.For(context, As(_ayse), _accounts.Object, clock: _clock))
+                context, As(_ayse), Names(), _reservations.Object, _clock, TestInvitations.For(context, As(_ayse), _accounts.Object, clock: _clock), TestPolicy.For(context, _clock))
             .Handle(new UpdateReservationCommand(room.Id, At(14), At(15), null) { Id = ayses.Id }, CancellationToken.None));
 
         (await BookingsAsync(room.Id)).Select(r => r.UserId).Should().Equal(_mehmet.Id, _ayse.Id);
