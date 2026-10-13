@@ -28,6 +28,7 @@ const KIND_ICONS: Record<InboxMessageKind, IconName> = {
   SeriesDeclined: 'close',
   IssueResolved: 'check',
   CancelledByBlock: 'close',
+  WaitlistBooked: 'calendar-check',
 };
 
 /** News of a meeting the reader is still invited to, which they can answer. */
@@ -142,7 +143,10 @@ export class Inbox implements OnInit {
           : answer || message.kind === 'MeetingUninvited'
             ? null
             : message.note,
-        link: target !== null && (invitation || answer) ? ['/reservations', target, 'edit'] : null,
+        link:
+          target !== null && (invitation || answer || message.kind === 'WaitlistBooked')
+            ? ['/reservations', target, 'edit']
+            : null,
         meeting: found,
         following: message.kind === 'SeriesInvitation',
       };

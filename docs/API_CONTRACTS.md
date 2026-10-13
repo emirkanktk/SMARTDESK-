@@ -477,8 +477,11 @@ The signed-in user's own messages; nobody sees anyone else's.
                                  //   the note what they wrote)
                                  // | CancelledByBlock (ADR-0038: to the owner and those invited,
                                  //   the reason is the block's)
+                                 // | WaitlistBooked (ADR-0043: to someone waiting, the time freed
+                                 //   up and is booked for them; the times are the booking's)
   "reservationId": "…",          // null once the booking is gone
-  "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release, which nobody sent
+  "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release or a WaitlistBooked,
+                                 // which nobody sent
   "resourceName": "Board Room",  // the meeting as it was when the message was sent
   "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:00:00Z",
   "note": "Sprint planning",
@@ -493,6 +496,40 @@ The signed-in user's own messages; nobody sees anyone else's.
 ```
 
 The app writes the sentence from `kind`, in the reader's language.
+
+## Waiting list (ADR-0043)
+
+Someone can wait for a resource at a time that's taken. When that time frees up - the booking
+in it cancelled, released for want of a check-in, ended early, shortened or moved, or a block
+lifted - it's booked for whoever joined first, if they may still use the resource, and their
+inbox gets a `WaitlistBooked` message. Their entry goes then.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/waitlist` | any authenticated user | `GetMyWaitlistQuery` | the caller's entries whose time hasn't ended, soonest first |
+| POST | `/api/waitlist` | any authenticated user | `JoinWaitlistCommand` | body `{ resourceId, startDateTime, endDateTime }` → 201 with the entry |
+| DELETE | `/api/waitlist/{id}` | the one waiting | `LeaveWaitlistCommand` | → 204; anyone else's entry is 404 |
+
+```json
+{
+  "id": "…", "resourceId": "…", "resourceName": "Board Room", "resourceLocation": "5th Floor",
+  "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:00:00Z",
+  "createdAt": "2026-10-01T09:00:00Z",
+  "position": 1                  // 1 when nobody waiting for any of the same time joined earlier
+}
+```
+
+- The times follow the create rules (400 otherwise), and the resource must be the caller's to
+  book (404) and `Active` (409 `resource-unavailable`).
+- 409 when the time is free (`code: "waitlist-slot-free"`: book it instead), when the caller
+  is already waiting for that resource at part of it (`code: "waitlist-already-waiting"`), when
+  they booked part of it themselves, or when they already wait for 10 times.
+- A time freed after it has begun is booked from the current minute, if at least 15 minutes
+  of it are left; otherwise the entry goes. The booking asks for a check-in when the resource
+  does, and has a 15-minute reminder when it starts later than that.
+- Entries are offered in the order people joined, so ones for times that don't overlap can all
+  be booked from one freed time; one still partly taken waits on. The booking is a normal one:
+  calendars hear of it live, and cancelling it offers the time to the next in line.
 
 ## Check-in (ADR-0030)
 

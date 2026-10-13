@@ -8,6 +8,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
+import { WaitlistService } from '../../core/services/waitlist.service';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { ATTENDEES_SHOWN, MyReservations } from './my-reservations';
 
@@ -102,6 +103,8 @@ describe('MyReservations', () => {
         { provide: ReservationHubService, useValue: hub },
         { provide: AuthService, useValue: { currentUser: signal({ id: OWNER_ID }) } },
         { provide: NotificationService, useValue: { success, error } },
+        // What the user waits for has a spec of its own.
+        { provide: WaitlistService, useValue: { getMine: () => of([]) } },
       ],
     }).compileComponents();
   });

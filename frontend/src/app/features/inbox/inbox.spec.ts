@@ -429,6 +429,30 @@ describe('Inbox', () => {
     expect(message.querySelector('app-meeting-answer')).toBeNull();
   });
 
+  it('tells someone waiting that the time freed up and is theirs, with a way to it (ADR-0043)', async () => {
+    list.mockReturnValue(
+      of([
+        inboxMessage({
+          id: 'm-wait',
+          kind: 'WaitlistBooked',
+          senderId: null,
+          senderName: null,
+          reservationId: 'rsv-wait',
+          note: null,
+        }),
+      ]),
+    );
+    await render();
+    const [message] = messages();
+
+    expect(headlines()).toEqual(["A time you were waiting for freed up, and it's booked for you"]);
+    expect(text(message.querySelector('.meeting')!)).toBe('Board Room · Mon 5 Oct, 10:00-11:00');
+    const link = message.querySelector<HTMLAnchorElement>('.actions a')!;
+    expect(text(link)).toBe('See the booking');
+    expect(link.getAttribute('href')).toBe('/reservations/rsv-wait/edit');
+    expect(message.querySelector('app-meeting-answer')).toBeNull();
+  });
+
   it('tells a reporter their problem is resolved, with what it was and their own words (ADR-0037)', async () => {
     list.mockReturnValue(
       of([

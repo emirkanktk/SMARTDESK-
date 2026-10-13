@@ -39,6 +39,8 @@ import {
   MAX_ATTENDEES,
   REMINDER_OPTIONS,
   RESERVATION_LIMITS,
+  RESERVATION_OVERLAPS,
+  RESOURCE_BLOCKED,
   Recurrence,
   Reservation,
   ReservationSeries,
@@ -56,6 +58,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
+import { WaitlistService } from '../../core/services/waitlist.service';
 import { MeetingAnswer } from '../../shared/components/meeting-answer/meeting-answer';
 import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
 import { SeriesDates } from './series-dates/series-dates';
@@ -166,6 +169,7 @@ export class ReservationForm implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly locale = inject(LOCALE_ID);
   private readonly document = inject(DOCUMENT);
+  private readonly waitlist = inject(WaitlistService);
 
   /** Route parameter; absent when booking. */
   readonly id = input<string>();
@@ -256,6 +260,9 @@ export class ReservationForm implements OnInit {
   protected readonly suggestions = signal<BookingSuggestions | null>(null);
   /** The start asked for when the offer came, so times on that day read as times only. */
   private askedStart: Date | null = null;
+  /** The time asked for is taken or blocked: it can be waited for (ADR-0043). */
+  protected readonly mayWait = signal(false);
+  protected readonly joining = signal(false);
 
   // getRawValue: a locked (disabled) start or resource still counts for the hints.
   private readonly formValue = toSignal(
@@ -489,6 +496,43 @@ export class ReservationForm implements OnInit {
     this.form.controls.resourceId.setValue(resource.id);
     this.clearConflict();
     this.document.getElementById('resource')?.focus();
+  }
+
+  /**
+   * Waits for the time asked for (ADR-0043): if it frees up, it's booked for the user, and
+   * their inbox says so. On to My reservations, where it's listed.
+   */
+  protected joinWaitlist(): void {
+    const value = this.form.getRawValue();
+    const start = fromDateTimeLocal(value.startDateTime);
+    const end = fromDateTimeLocal(value.endDateTime);
+    if (!start || !end) {
+      return;
+    }
+
+    this.joining.set(true);
+    this.waitlist
+      .join({
+        resourceId: value.resourceId,
+        startDateTime: start.toISOString(),
+        endDateTime: end.toISOString(),
+      })
+      .pipe(finalize(() => this.joining.set(false)))
+      .subscribe({
+        next: (entry) => {
+          this.notifications.success(
+            $localize`:@@reservationForm.waiting:You're on the waiting list for ${entry.resourceName}:resource:, ${this.formatRange(entry)}:when:. If it frees up, it's booked for you.`,
+          );
+          void this.router.navigateByUrl('/reservations/mine');
+        },
+        error: (error: unknown) => {
+          // Free meanwhile, or already waited for: the API says which.
+          if (error instanceof ApiError && error.status === 409) {
+            this.clearConflict();
+            this.conflict.set(error.detail ?? error.title);
+          }
+        },
+      });
   }
 
   /** "09:00-10:00" on the day asked for; "Tue 6 Oct, 09:00-10:00" on another. */
@@ -892,6 +936,7 @@ export class ReservationForm implements OnInit {
   private clearConflict(): void {
     this.conflict.set(null);
     this.suggestions.set(null);
+    this.mayWait.set(false);
   }
 
   private handleSaveError(error: unknown): void {
@@ -904,6 +949,11 @@ export class ReservationForm implements OnInit {
       this.conflict.set(error.detail ?? error.title);
       // A booking under way can only run longer: another time or resource is no answer.
       this.suggestions.set(this.mode() === 'inProgress' ? null : bookingSuggestions(error));
+      // A new booking whose time is taken or blocked can wait for it instead (ADR-0043).
+      this.mayWait.set(
+        this.mode() === 'create' &&
+          (error.code === RESERVATION_OVERLAPS || error.code === RESOURCE_BLOCKED),
+      );
       this.askedStart = fromDateTimeLocal(this.form.getRawValue().startDateTime);
       return;
     }
@@ -913,7 +963,7 @@ export class ReservationForm implements OnInit {
     );
   }
 
-  private formatRange(reservation: Reservation): string {
+  private formatRange(reservation: Pick<Reservation, 'startDateTime' | 'endDateTime'>): string {
     const start = formatDate(reservation.startDateTime, RANGE_FORMAT, this.locale);
     const end = formatDate(reservation.endDateTime, 'HH:mm', this.locale);
     const sameDay =

@@ -9,6 +9,7 @@ using SmartDesk.Application.Features.Reservations.Commands.CreateReservation;
 using SmartDesk.Application.Features.Reservations.Commands.UpdateReservation;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Resources.Common;
+using SmartDesk.Application.Features.Waitlist.Offers;
 using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application;
@@ -20,8 +21,12 @@ public static class DependencyInjection
         services.AddMediatR(cfg =>
         {
             cfg.RegisterServicesFromAssembly(typeof(AssemblyReference).Assembly);
+            // Outermost: a request's freed times are offered to the waiting list only once it
+            // has succeeded (ADR-0043).
+            cfg.AddOpenBehavior(typeof(OfferFreedSlotsBehavior<,>));
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
+        services.AddScoped<FreedSlots>();
 
         services.AddValidatorsFromAssembly(typeof(AssemblyReference).Assembly);
         services.AddScoped<AccountCreation>();

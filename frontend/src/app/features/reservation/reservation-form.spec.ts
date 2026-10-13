@@ -10,6 +10,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
+import { WaitlistService } from '../../core/services/waitlist.service';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { DESK_TYPE, fakeResource } from '../../../testing/resource-fixtures';
 import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
@@ -49,6 +50,7 @@ describe('ReservationForm', () => {
   let cancel: ReturnType<typeof vi.fn>;
   let previewSeries: ReturnType<typeof vi.fn>;
   let createSeries: ReturnType<typeof vi.fn>;
+  let joinWaitlist: ReturnType<typeof vi.fn>;
   let confirmSpy: ReturnType<typeof vi.spyOn>;
   let success: ReturnType<typeof vi.fn>;
   let reminderAlerts: {
@@ -73,6 +75,17 @@ describe('ReservationForm', () => {
     cancel = vi.fn(() => of(fakeReservation({ status: 'Cancelled' })));
     previewSeries = vi.fn(() => of({ dates: [] }));
     createSeries = vi.fn();
+    joinWaitlist = vi.fn(
+      (body: { resourceId: string; startDateTime: string; endDateTime: string }) =>
+        of({
+          id: 'wait-1',
+          resourceName: room.name,
+          resourceLocation: room.location,
+          position: 1,
+          createdAt: body.startDateTime,
+          ...body,
+        }),
+    );
     confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     success = vi.fn();
     reminderAlerts = {
@@ -102,6 +115,7 @@ describe('ReservationForm', () => {
         { provide: AuthService, useValue: { currentUser, isAdmin, isManager } },
         { provide: NotificationService, useValue: { success } },
         { provide: ReminderAlertsService, useValue: reminderAlerts },
+        { provide: WaitlistService, useValue: { join: joinWaitlist } },
         RESOURCE_PHOTO_STUB,
       ],
     }).compileComponents();
@@ -382,6 +396,92 @@ describe('ReservationForm', () => {
 
         expect(element.querySelector('.conflict')).not.toBeNull();
         expect(element.querySelector('.suggestions')).toBeNull();
+      });
+
+      describe('the waiting list (ADR-0043)', () => {
+        const waitButton = () =>
+          element.querySelector<HTMLButtonElement>('[aria-labelledby="wait-for-it"] button');
+
+        it('offers to wait for the time instead, and joins the line', async () => {
+          await clashed();
+
+          expect(field<HTMLElement>('#wait-for-it').textContent).toBe('Or wait for it');
+          waitButton()!.click();
+          await fixture.whenStable();
+
+          expect(joinWaitlist).toHaveBeenCalledWith({
+            resourceId: room.id,
+            startDateTime: utc('2026-10-07T14:00'),
+            endDateTime: utc('2026-10-07T15:00'),
+          });
+          expect(success).toHaveBeenCalledWith(
+            "You're on the waiting list for Meeting Room A, Wed 7 Oct, 14:00-15:00. If it frees up, it's booked for you.",
+          );
+          expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
+        });
+
+        it('says why not, as the API words it', async () => {
+          joinWaitlist.mockReturnValue(
+            throwError(
+              () =>
+                new ApiError(
+                  409,
+                  'Conflict',
+                  'Meeting Room A is free at that time: book it instead.',
+                  {},
+                  'waitlist-slot-free',
+                ),
+            ),
+          );
+          await clashed();
+
+          waitButton()!.click();
+          await fixture.whenStable();
+
+          expect(field<HTMLElement>('.conflict').textContent).toContain(
+            'Meeting Room A is free at that time: book it instead.',
+          );
+          expect(waitButton()).toBeNull();
+          expect(navigateByUrl).not.toHaveBeenCalled();
+        });
+
+        it('is not offered for a resource out of use, nor when moving a booking', async () => {
+          create.mockReturnValueOnce(
+            throwError(
+              () =>
+                new ApiError(
+                  409,
+                  'Conflict',
+                  "Meeting Room A can't be reserved right now (status: Maintenance).",
+                  {},
+                  'resource-unavailable',
+                ),
+            ),
+          );
+          await render({
+            resourceId: room.id,
+            start: utc('2026-10-07T14:00'),
+            end: utc('2026-10-07T15:00'),
+          });
+          await submit();
+          expect(element.querySelector('.conflict')).not.toBeNull();
+          expect(waitButton()).toBeNull();
+
+          getReservation.mockReturnValue(
+            of(
+              fakeReservation({
+                startDateTime: utc('2026-10-07T10:00'),
+                endDateTime: utc('2026-10-07T11:00'),
+              }),
+            ),
+          );
+          update.mockReturnValue(throwError(clash));
+          await render({ id: 'rsv-1' });
+          await set('#start', '2026-10-07T14:00');
+          await submit();
+          expect(element.querySelector('.suggestions')).not.toBeNull();
+          expect(waitButton()).toBeNull();
+        });
       });
     });
 

@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Models;
 using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 
@@ -30,6 +31,13 @@ public static class ResourceAccess
 
     public static IQueryable<ResourceBlock> OnUsableResources(this IQueryable<ResourceBlock> blocks, ICurrentUserService user) =>
         user.IsInRole(Roles.Admin) ? blocks : blocks.Where(OnBlockedResourceUsableBy(user.TeamId));
+
+    // The same rule for someone other than the caller, e.g. someone invited, or someone on a
+    // waiting list (ADR-0043): `teamIds` are the resource's teams.
+    public static bool UsableBy(UserAccount person, IReadOnlyCollection<Guid> teamIds) =>
+        teamIds.Count == 0
+        || person.Role == Roles.Admin
+        || teamIds.Contains(person.Role == Roles.Manager ? person.Id : person.ManagerId ?? Guid.Empty);
 
     // Who may edit a resource, change its status or block it: an Admin, or the Manager of the
     // only team it belongs to. Shared resources, and ones several teams share, are the Admins'.

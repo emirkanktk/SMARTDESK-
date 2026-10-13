@@ -22,8 +22,13 @@ public interface IApplicationDbContext
     DbSet<ReservationSeries> ReservationSeries { get; }
     DbSet<IssueReport> IssueReports { get; }
     DbSet<IssueReportPhoto> IssueReportPhotos { get; }
+    DbSet<WaitlistEntry> WaitlistEntries { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    // Forgets every change not saved yet, e.g. after a save the database refused, so the next
+    // save starts clean (ADR-0043).
+    void DiscardChanges();
 
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
 

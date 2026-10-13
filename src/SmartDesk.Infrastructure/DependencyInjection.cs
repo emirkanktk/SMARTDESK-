@@ -26,10 +26,14 @@ public static class DependencyInjection
         // A query that loads collections sends one statement per collection. In one statement,
         // two collections come back multiplied: a resource with 20 features and 20 teams would
         // be 400 rows.
-        services.AddDbContext<SmartDeskDbContext>(options =>
-            options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection"),
-                npgsql => npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
+        // Every save notes the times it frees for the waiting list (ADR-0043).
+        services.AddScoped<FreedSlotsInterceptor>();
+        services.AddDbContext<SmartDeskDbContext>((provider, options) =>
+            options
+                .UseNpgsql(
+                    configuration.GetConnectionString("DefaultConnection"),
+                    npgsql => npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
+                .AddInterceptors(provider.GetRequiredService<FreedSlotsInterceptor>()));
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<SmartDeskDbContext>());
 
         // Backs GET /health: "Healthy" only if PostgreSQL answers and the schema is up to date,

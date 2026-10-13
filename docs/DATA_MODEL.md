@@ -193,6 +193,20 @@ resources that share one are on it.
 | Reason | string | required, max 200 - shown to anyone whose booking the block refuses |
 | CreatedByUserId | Guid | the admin who created it (scalar, like `Reservation.UserId`) |
 
+### WaitlistEntry
+
+Someone waiting for a resource at a time that's taken (ADR-0043). When the time frees up it's
+booked for whoever joined first, and the entry is deleted.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | version 7 |
+| ResourceId | Guid | FK → `Resource.Id`, cascade delete |
+| UserId | Guid | who's waiting; an account id, like `Reservation.UserId` |
+| StartDateTime | DateTime | UTC |
+| EndDateTime | DateTime | must be > StartDateTime |
+| CreatedAt | DateTime | UTC, when they joined: the line's order |
+
 ### IssueReport
 
 A problem someone reported at a resource (ADR-0037).
@@ -322,6 +336,14 @@ erDiagram
         string ContentType
         bytes Data "at most 2 MB"
     }
+    WaitlistEntry {
+        uuid Id PK
+        uuid ResourceId FK
+        uuid UserId "who waits"
+        datetime StartDateTime
+        datetime EndDateTime
+        datetime CreatedAt "the order of the line"
+    }
 
     ApplicationUser |o--o{ ApplicationUser : manages
     ApplicationUser ||--o{ UserSession : "signs in with"
@@ -333,6 +355,7 @@ erDiagram
     Resource ||--o{ Reservation : "booked by"
     Resource ||--o{ IssueReport : "has problems reported in"
     IssueReport ||--o| IssueReportPhoto : "pictured by"
+    Resource ||--o{ WaitlistEntry : "waited for in"
     ReservationSeries |o--|{ Reservation : "dates of"
     Reservation ||--o{ ReservationAttendee : invites
     Reservation |o--o{ InboxMessage : "told about in"
@@ -343,12 +366,13 @@ erDiagram
     ApplicationUser ||..o{ InboxMessage : receives
     ApplicationUser ||..o{ ResourceTeam : "manages the team of"
     ApplicationUser ||..o{ IssueReport : reports
+    ApplicationUser ||..o{ WaitlistEntry : "waits in"
 ```
 
 - A resource with no `ResourceTeam` rows is shared by everyone (ADR-0022).
 - A reservation, a block or a series is never deleted, only cancelled or ended, so nothing
   cascades from them; a resource's own rows (features, photo, teams, blocks, reservations,
-  problem reports) go with it.
+  problem reports, waiting list entries) go with it.
 
 ## Indexes
 
@@ -372,11 +396,14 @@ erDiagram
 - `IssueReports(ResourceId, Status, Category)` - "is this problem already reported here?" on every
   report, and the problems still open on a resource (ADR-0037); `IssueReports(CreatedAt)` - the
   list of reports, newest first.
+- `WaitlistEntries(ResourceId, StartDateTime, EndDateTime)` - who waits for a time that just
+  freed up; `WaitlistEntries(UserId)` - someone's own list (ADR-0043).
 
 ## Constraints
 
 - `CK_Reservations_EndAfterStart` - `CHECK ("EndDateTime" > "StartDateTime")` (rule 2).
 - `CK_ResourceBlocks_EndAfterStart` - the same check for blocks.
+- `CK_WaitlistEntries_EndAfterStart` - and for waiting list entries.
 - `EX_Reservations_NoOverlap` - `EXCLUDE USING gist ("ResourceId" WITH =,
   tstzrange("StartDateTime", "EndDateTime", '[)') WITH &&) WHERE ("Status" = 0)`: no two
   `Confirmed` reservations of one resource may overlap (rule 1). The range is half-open,

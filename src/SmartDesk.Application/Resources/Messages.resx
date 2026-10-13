@@ -276,6 +276,9 @@
   <data name="Entity_ResourcePhoto" xml:space="preserve">
     <value>Photo</value>
   </data>
+  <data name="Entity_WaitlistEntry" xml:space="preserve">
+    <value>Waiting list entry</value>
+  </data>
   <data name="Error_Forbidden" xml:space="preserve">
     <value>You are not allowed to perform this action.</value>
   </data>
@@ -674,5 +677,17 @@
   </data>
   <data name="Validation_UnknownTimeZone" xml:space="preserve">
     <value>Unknown time zone. Use an IANA id such as 'Europe/Istanbul'.</value>
+  </data>
+  <data name="Waitlist_AlreadyWaiting" xml:space="preserve">
+    <value>You're already waiting for {0} at that time.</value>
+  </data>
+  <data name="Waitlist_BookedAlready" xml:space="preserve">
+    <value>You've booked {0} for part of that time yourself.</value>
+  </data>
+  <data name="Waitlist_Free" xml:space="preserve">
+    <value>{0} is free at that time: book it instead.</value>
+  </data>
+  <data name="Waitlist_TooMany" xml:space="preserve">
+    <value>You can wait for at most {0} times at once. Leave one first.</value>
   </data>
 </root>
