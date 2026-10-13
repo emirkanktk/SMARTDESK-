@@ -10,12 +10,14 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Auth.Common;
+using SmartDesk.Application.Features.Reports.Common;
 using SmartDesk.Domain.Rules;
 using SmartDesk.Infrastructure.Assistant;
 using SmartDesk.Infrastructure.Email;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence;
 using SmartDesk.Infrastructure.Persistence.Seed;
+using SmartDesk.Infrastructure.Reports;
 
 namespace SmartDesk.Infrastructure;
 
@@ -85,6 +87,9 @@ public static class DependencyInjection
                 $"CheckIn:GraceMinutes must be from {CheckInRules.MinGrace.TotalMinutes} to {CheckInRules.MaxGrace.TotalMinutes}.")
             .ValidateOnStart();
         services.AddSingleton<ICheckInTimes, CheckInTimes>();
+
+        // The usage report as an Excel workbook (ADR-0045).
+        services.AddSingleton<IUsageReportWorkbook, UsageReportWorkbook>();
 
         // Email (ADR-0019): handlers queue, a background worker sends - over SMTP when
         // Email:Smtp:Host is set, to the log otherwise. The log gets the whole email, reset

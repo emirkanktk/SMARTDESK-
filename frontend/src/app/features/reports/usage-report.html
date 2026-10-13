@@ -13,6 +13,18 @@
         <ng-container i18n="@@report.refresh">Refresh</ng-container>
       }
     </button>
+    <button
+      type="button"
+      class="btn btn-secondary download"
+      [disabled]="downloading() || !!rangeError()"
+      (click)="download()"
+    >
+      @if (downloading()) {
+        <ng-container i18n="@@report.downloading">Downloading…</ng-container>
+      } @else {
+        <ng-container i18n="@@report.download">Download as Excel</ng-container>
+      }
+    </button>
     <a class="btn btn-secondary" routerLink="/admin" i18n="@@report.backToAdmin">Back to admin</a>
   </div>
 </div>

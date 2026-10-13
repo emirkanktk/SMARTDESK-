@@ -37,4 +37,9 @@ public static class Languages
     // A resource status as a message shows it: "Maintenance", "Bakımda".
     public static string Describe(ResourceStatus status) =>
         Messages.ResourceManager.GetString($"Status_{status}") ?? status.ToString();
+
+    // A kind of resource as the app shows it: "Meeting Room", "Toplantı odası". The seeded kinds
+    // are translated, as on screen; one added later reads as it was named.
+    public static string DescribeType(string name) =>
+        Messages.ResourceManager.GetString($"Type_{name.Replace(" ", string.Empty)}") ?? name;
 }

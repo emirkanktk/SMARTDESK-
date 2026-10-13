@@ -136,6 +136,10 @@ browser, with two windows side by side so the audience sees changes arrive live.
   09:00-18:00 in the admin's time zone, so a room booked all day every weekday reads 100%, not
   the 27% it would against the whole week (ADR-0017); a missed check-in is one released after
   step 13's grace, so it counts what the rooms lost, not who forgot (ADR-0044).
+- **Download as Excel**: the same report as a workbook - a summary, then resources, types,
+  people and the hours, each a sheet, the hours coloured as on the page. Switch the app to
+  Turkish and download again: the sheets and headings are Turkish too, and the numbers are
+  numbers Excel can sort and sum (ADR-0045).
 - **Blocked windows**, in the Admin page's header: Desk 3-01, keep the suggested times - they
   overlap Ayşe's desk booking from step 6 - reason "Desk repair" → **Block**. It's refused: "1
   confirmed reservation(s) on Desk 3-01 overlap this window. Cancel or move them first." Point

@@ -528,6 +528,93 @@
   <data name="Property_Until" xml:space="preserve">
     <value>Bitiş günü</value>
   </data>
+  <data name="Report_BookedHours" xml:space="preserve">
+    <value>Rezerve edilen saat</value>
+  </data>
+  <data name="Report_ByHour" xml:space="preserve">
+    <value>Saatlere göre</value>
+  </data>
+  <data name="Report_ByHourNote" xml:space="preserve">
+    <value>Haftanın her günü, her saat kaynakların ne kadarının rezerve edildiği.</value>
+  </data>
+  <data name="Report_CancellationRate" xml:space="preserve">
+    <value>İptal oranı</value>
+  </data>
+  <data name="Report_Cancelled" xml:space="preserve">
+    <value>İptal edilen</value>
+  </data>
+  <data name="Report_CheckedIn" xml:space="preserve">
+    <value>Check-in yapılan</value>
+  </data>
+  <data name="Report_From" xml:space="preserve">
+    <value>Başlangıç</value>
+  </data>
+  <data name="Report_Hour" xml:space="preserve">
+    <value>Saat</value>
+  </data>
+  <data name="Report_NoShowRate" xml:space="preserve">
+    <value>Gelmeme oranı</value>
+  </data>
+  <data name="Report_NoShows" xml:space="preserve">
+    <value>Gelmeyenler</value>
+  </data>
+  <data name="Report_OfficeHours" xml:space="preserve">
+    <value>Mesai saatleri</value>
+  </data>
+  <data name="Report_OfficeHoursAvailable" xml:space="preserve">
+    <value>Mesaide kullanılabilir saat</value>
+  </data>
+  <data name="Report_OfficeHoursBooked" xml:space="preserve">
+    <value>Mesaide rezerve edilen saat</value>
+  </data>
+  <data name="Report_OfficeHoursValue" xml:space="preserve">
+    <value>Pzt-Cum 09:00-18:00</value>
+  </data>
+  <data name="Report_People" xml:space="preserve">
+    <value>Kişiler</value>
+  </data>
+  <data name="Report_Person" xml:space="preserve">
+    <value>Ad</value>
+  </data>
+  <data name="Report_Reservations" xml:space="preserve">
+    <value>Rezervasyon</value>
+  </data>
+  <data name="Report_Resource" xml:space="preserve">
+    <value>Kaynak</value>
+  </data>
+  <data name="Report_ResourceCount" xml:space="preserve">
+    <value>Kaynak sayısı</value>
+  </data>
+  <data name="Report_Resources" xml:space="preserve">
+    <value>Kaynaklar</value>
+  </data>
+  <data name="Report_Status" xml:space="preserve">
+    <value>Durum</value>
+  </data>
+  <data name="Report_Summary" xml:space="preserve">
+    <value>Özet</value>
+  </data>
+  <data name="Report_TimeZone" xml:space="preserve">
+    <value>Saat dilimi</value>
+  </data>
+  <data name="Report_Title" xml:space="preserve">
+    <value>SmartDesk kullanım raporu</value>
+  </data>
+  <data name="Report_To" xml:space="preserve">
+    <value>Bitiş</value>
+  </data>
+  <data name="Report_Type" xml:space="preserve">
+    <value>Tür</value>
+  </data>
+  <data name="Report_Types" xml:space="preserve">
+    <value>Türler</value>
+  </data>
+  <data name="Report_UnknownUser" xml:space="preserve">
+    <value>Bilinmeyen kullanıcı</value>
+  </data>
+  <data name="Report_Utilization" xml:space="preserve">
+    <value>Doluluk</value>
+  </data>
   <data name="Reports_MaxRange" xml:space="preserve">
     <value>Rapor en fazla {0} günü kapsayabilir.</value>
   </data>
@@ -662,6 +749,21 @@
   </data>
   <data name="Status_Maintenance" xml:space="preserve">
     <value>Bakımda</value>
+  </data>
+  <data name="Type_Camera" xml:space="preserve">
+    <value>Kamera</value>
+  </data>
+  <data name="Type_CompanyCar" xml:space="preserve">
+    <value>Şirket aracı</value>
+  </data>
+  <data name="Type_Desk" xml:space="preserve">
+    <value>Masa</value>
+  </data>
+  <data name="Type_MeetingRoom" xml:space="preserve">
+    <value>Toplantı odası</value>
+  </data>
+  <data name="Type_Projector" xml:space="preserve">
+    <value>Projektör</value>
   </data>
   <data name="Validation_EndAfterStart" xml:space="preserve">
     <value>Bitiş zamanı başlangıç zamanından sonra olmalı.</value>

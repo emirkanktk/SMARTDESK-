@@ -528,6 +528,93 @@
   <data name="Property_Until" xml:space="preserve">
     <value>Until</value>
   </data>
+  <data name="Report_BookedHours" xml:space="preserve">
+    <value>Booked hours</value>
+  </data>
+  <data name="Report_ByHour" xml:space="preserve">
+    <value>By hour</value>
+  </data>
+  <data name="Report_ByHourNote" xml:space="preserve">
+    <value>The share of the resources booked in each hour, on each weekday.</value>
+  </data>
+  <data name="Report_CancellationRate" xml:space="preserve">
+    <value>Cancellation rate</value>
+  </data>
+  <data name="Report_Cancelled" xml:space="preserve">
+    <value>Cancelled</value>
+  </data>
+  <data name="Report_CheckedIn" xml:space="preserve">
+    <value>Checked in</value>
+  </data>
+  <data name="Report_From" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="Report_Hour" xml:space="preserve">
+    <value>Hour</value>
+  </data>
+  <data name="Report_NoShowRate" xml:space="preserve">
+    <value>No-show rate</value>
+  </data>
+  <data name="Report_NoShows" xml:space="preserve">
+    <value>No-shows</value>
+  </data>
+  <data name="Report_OfficeHours" xml:space="preserve">
+    <value>Office hours</value>
+  </data>
+  <data name="Report_OfficeHoursAvailable" xml:space="preserve">
+    <value>Office hours available</value>
+  </data>
+  <data name="Report_OfficeHoursBooked" xml:space="preserve">
+    <value>Office hours booked</value>
+  </data>
+  <data name="Report_OfficeHoursValue" xml:space="preserve">
+    <value>Mon-Fri 09:00-18:00</value>
+  </data>
+  <data name="Report_People" xml:space="preserve">
+    <value>People</value>
+  </data>
+  <data name="Report_Person" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Report_Reservations" xml:space="preserve">
+    <value>Reservations</value>
+  </data>
+  <data name="Report_Resource" xml:space="preserve">
+    <value>Resource</value>
+  </data>
+  <data name="Report_ResourceCount" xml:space="preserve">
+    <value>Resources</value>
+  </data>
+  <data name="Report_Resources" xml:space="preserve">
+    <value>Resources</value>
+  </data>
+  <data name="Report_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Report_Summary" xml:space="preserve">
+    <value>Summary</value>
+  </data>
+  <data name="Report_TimeZone" xml:space="preserve">
+    <value>Time zone</value>
+  </data>
+  <data name="Report_Title" xml:space="preserve">
+    <value>SmartDesk usage report</value>
+  </data>
+  <data name="Report_To" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Report_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Report_Types" xml:space="preserve">
+    <value>Types</value>
+  </data>
+  <data name="Report_UnknownUser" xml:space="preserve">
+    <value>Unknown user</value>
+  </data>
+  <data name="Report_Utilization" xml:space="preserve">
+    <value>Utilization</value>
+  </data>
   <data name="Reports_MaxRange" xml:space="preserve">
     <value>The report can cover at most {0} days.</value>
   </data>
@@ -662,6 +749,21 @@
   </data>
   <data name="Status_Maintenance" xml:space="preserve">
     <value>Maintenance</value>
+  </data>
+  <data name="Type_Camera" xml:space="preserve">
+    <value>Camera</value>
+  </data>
+  <data name="Type_CompanyCar" xml:space="preserve">
+    <value>Company Car</value>
+  </data>
+  <data name="Type_Desk" xml:space="preserve">
+    <value>Desk</value>
+  </data>
+  <data name="Type_MeetingRoom" xml:space="preserve">
+    <value>Meeting Room</value>
+  </data>
+  <data name="Type_Projector" xml:space="preserve">
+    <value>Projector</value>
   </data>
   <data name="Validation_EndAfterStart" xml:space="preserve">
     <value>'End Date Time' must be after 'Start Date Time'.</value>

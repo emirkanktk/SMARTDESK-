@@ -47,4 +47,22 @@ describe('ReportService', () => {
     expect(req.request.params.get('resourceTypeId')).toBe('type-desk');
     req.flush({});
   });
+
+  it('fetches the same report as a workbook, as a file', () => {
+    service
+      .getUsageWorkbook({
+        from: '2026-09-01',
+        to: '2026-09-30',
+        timeZone: 'Europe/Istanbul',
+        resourceTypeId: 'type-desk',
+      })
+      .subscribe();
+
+    const req = http.expectOne((r) => r.url === `${url}/workbook`);
+    expect(req.request.responseType).toBe('blob');
+    expect(req.request.params.get('from')).toBe('2026-09-01');
+    expect(req.request.params.get('timeZone')).toBe('Europe/Istanbul');
+    expect(req.request.params.get('resourceTypeId')).toBe('type-desk');
+    req.flush(new Blob(['xlsx']));
+  });
 });

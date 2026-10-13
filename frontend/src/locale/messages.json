@@ -624,6 +624,8 @@
     "register.haveAccount": " Already have an account? {$START_LINK}Sign in{$CLOSE_LINK}",
     "register.managerEmailRequired": "Enter your manager's work email.",
     "report.refresh": "Refresh",
+    "report.downloading": "Downloading…",
+    "report.download": "Download as Excel",
     "report.backToAdmin": "Back to admin",
     "report.presets": "Quick ranges",
     "report.last7": " Last 7 days ",
