@@ -53,7 +53,9 @@ import {
   WeekDay,
 } from '../../core/models/reservation.model';
 import { Resource } from '../../core/models/resource.model';
+import { BookingRules } from '../../core/models/booking-rules.model';
 import { AuthService } from '../../core/services/auth.service';
+import { BookingRulesService } from '../../core/services/booking-rules.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
@@ -76,6 +78,7 @@ import {
   toDateTimeLocal,
 } from '../../shared/utils/date-time';
 import { keepDurationWhenStartMoves } from '../../shared/utils/keep-duration';
+import { RuleProblems, describeRules, ruleProblems } from '../../shared/utils/booking-rules';
 import {
   WORKING_DAYS,
   browserTimeZone,
@@ -170,6 +173,7 @@ export class ReservationForm implements OnInit {
   private readonly locale = inject(LOCALE_ID);
   private readonly document = inject(DOCUMENT);
   private readonly waitlist = inject(WaitlistService);
+  private readonly bookingRulesService = inject(BookingRulesService);
 
   /** Route parameter; absent when booking. */
   readonly id = input<string>();
@@ -272,6 +276,56 @@ export class ReservationForm implements OnInit {
   protected readonly selectedResource = computed(() =>
     this.resourceOptions().find((r) => r.id === this.formValue().resourceId),
   );
+
+  /** The rules bookings keep to (ADR-0046), once loaded; the API keeps to them either way. */
+  private readonly bookingRules = signal<BookingRules | null>(null);
+  /** The chosen resource's kind's own rules. */
+  private readonly kindRules = computed(() => {
+    const resource = this.selectedResource();
+    if (!resource) return null;
+    return (
+      this.bookingRules()?.types.find((kind) =>
+        resource.resourceTypeId
+          ? kind.resourceTypeId === resource.resourceTypeId
+          : kind.name === resource.typeName,
+      ) ?? null
+    );
+  });
+  /** "Desk bookings: within office hours (Mon-Fri 09:00-18:00), at most 9 h long." */
+  protected readonly rulesHint = computed(() => {
+    const kind = this.kindRules();
+    const office = this.bookingRules()?.officeHours;
+    const rules = kind && office ? describeRules(kind, office) : [];
+    if (!kind || rules.length === 0) return null;
+    const name = resourceTypeLabel(kind.name);
+    const list = rules.join(', ');
+    return $localize`:@@rules.hint:${name}:kind: bookings: ${list}:rules:.`;
+  });
+  /**
+   * What the kind's rules say against the times chosen, before the API is asked. Nothing for a
+   * change that claims nothing new - the same resource, within the booking's own time - which
+   * the API allows whatever the rules are now.
+   */
+  protected readonly ruleProblems = computed((): RuleProblems => {
+    const none: RuleProblems = { start: null, end: null };
+    const kind = this.kindRules();
+    const office = this.bookingRules()?.officeHours;
+    const value = this.formValue();
+    if (!kind || !office || this.mode() === 'readOnly') return none;
+    if (!fromDateTimeLocal(value.startDateTime) || !fromDateTimeLocal(value.endDateTime)) {
+      return none;
+    }
+    const reservation = this.reservation();
+    const start = new Date(toIso(value.startDateTime, reservation?.startDateTime));
+    const end = new Date(toIso(value.endDateTime, reservation?.endDateTime));
+    if (end <= start) return none;
+    const withinItsOwn =
+      !!reservation &&
+      value.resourceId === reservation.resourceId &&
+      start >= new Date(reservation.startDateTime) &&
+      end <= new Date(reservation.endDateTime);
+    return withinItsOwn ? none : ruleProblems(kind, office, start, end, new Date());
+  });
   /** Live duration hint under the end field. */
   protected readonly duration = computed(() => {
     const start = fromDateTimeLocal(this.formValue().startDateTime);
@@ -442,6 +496,12 @@ export class ReservationForm implements OnInit {
       });
     }
 
+    // Shown, and kept to before asking; without them the API still says what's wrong.
+    this.bookingRulesService
+      .get(true)
+      .pipe(catchError(() => of(null)))
+      .subscribe((rules) => this.bookingRules.set(rules));
+
     this.resourceService.getResources({ status: 'Active' }).subscribe({
       next: (resources) => this.activeResources.set(resources.map(toOption)),
       error: () =>
@@ -548,7 +608,14 @@ export class ReservationForm implements OnInit {
   protected submit(): void {
     // Re-run the time rules: the page may have been open since the start was picked.
     this.form.updateValueAndValidity();
-    if (this.form.invalid || this.attendeesProblem() || this.repeatError()) {
+    const rules = this.ruleProblems();
+    if (
+      this.form.invalid ||
+      this.attendeesProblem() ||
+      this.repeatError() ||
+      rules.start ||
+      rules.end
+    ) {
       this.form.markAllAsTouched();
       return;
     }
@@ -701,7 +768,7 @@ export class ReservationForm implements OnInit {
     if (this.form.hasError('startTooFarAhead')) {
       return $localize`:@@reservationForm.tooFarAhead:Bookings can start at most ${L.maxAdvanceDays}:days: days ahead.`;
     }
-    return null;
+    return this.ruleProblems().start;
   }
 
   protected endError(): string | null {
@@ -716,7 +783,7 @@ export class ReservationForm implements OnInit {
     if (this.form.hasError('rangeTooLong')) {
       return $localize`:@@reservationForm.tooLong:A reservation can last at most ${L.maxDays}:days: days.`;
     }
-    return null;
+    return this.ruleProblems().end;
   }
 
   /** "Ayşe Yılmaz (coming), Mehmet Demir (no answer yet)": who's invited, for the read-only view. */

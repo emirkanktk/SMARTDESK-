@@ -1,0 +1,221 @@
+<div class="page-header">
+  <h1 i18n="@@rules.title">Booking rules</h1>
+</div>
+<p class="text-muted intro" i18n="@@rules.intro">
+  How each kind of resource may be booked, and when the office is open. Every way of booking keeps
+  to them. Bookings already made stay as they are, and can always be shortened.
+</p>
+
+@if (loading()) {
+  <p class="text-muted" role="status" i18n="@@rules.loading">Loading the rules…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error" role="alert">
+    <ng-container i18n="@@rules.loadFailed">The rules could not be loaded.</ng-container>
+    &ngsp;
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="load()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
+  </div>
+} @else {
+  <form class="card office" [formGroup]="officeForm" (ngSubmit)="saveOffice()" novalidate>
+    <h2 class="section-title" i18n="@@rules.officeTitle">Office hours</h2>
+    <p class="text-muted hint" i18n="@@rules.officeHint">
+      Kinds booked within office hours only keep to them, and the usage report measures against
+      them.
+    </p>
+    @if (officeError(); as message) {
+      <div class="alert-error" role="alert">{{ message }}</div>
+    }
+
+    <div class="row">
+      <div class="field">
+        <label for="opens" i18n="@@rules.opensAt">Opens at</label>
+        <input
+          id="opens"
+          class="input"
+          type="time"
+          step="900"
+          formControlName="opensAt"
+          [class.invalid]="opensError()"
+          [attr.aria-invalid]="!!opensError()"
+          aria-describedby="opens-error"
+        />
+        @if (opensError(); as error) {
+          <span id="opens-error" class="field-error">{{ error }}</span>
+        }
+      </div>
+      <div class="field">
+        <label for="closes" i18n="@@rules.closesAt">Closes at</label>
+        <input
+          id="closes"
+          class="input"
+          type="time"
+          step="900"
+          formControlName="closesAt"
+          [class.invalid]="closesError()"
+          [attr.aria-invalid]="!!closesError()"
+          aria-describedby="closes-error"
+        />
+        @if (closesError(); as error) {
+          <span id="closes-error" class="field-error">{{ error }}</span>
+        }
+      </div>
+      <div class="field">
+        <label for="zone" i18n="@@rules.timeZone">Time zone</label>
+        <select
+          id="zone"
+          class="input"
+          formControlName="timeZone"
+          [class.invalid]="zoneError()"
+          [attr.aria-invalid]="!!zoneError()"
+          aria-describedby="zone-error"
+        >
+          @for (zone of timeZones(); track zone) {
+            <option [value]="zone">{{ zone }}</option>
+          }
+        </select>
+        @if (zoneError(); as error) {
+          <span id="zone-error" class="field-error">{{ error }}</span>
+        }
+      </div>
+    </div>
+
+    <fieldset class="field workdays">
+      <legend i18n="@@rules.workdays">Workdays</legend>
+      <div class="days">
+        @for (day of weekDays; track day) {
+          <label class="day" [attr.title]="dayLabel(day)">
+            <input
+              type="checkbox"
+              [checked]="officeForm.controls.workdays.value.includes(day)"
+              [attr.aria-label]="dayLabel(day)"
+              (change)="toggleDay(day, $any($event.target).checked)"
+            />
+            <span aria-hidden="true">{{ shortDay(day) }}</span>
+          </label>
+        }
+      </div>
+      @if (workdaysError(); as error) {
+        <span class="field-error">{{ error }}</span>
+      }
+    </fieldset>
+
+    <div class="form-actions">
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="savingOffice()"
+        i18n="@@rules.saveOffice"
+      >
+        Save office hours
+      </button>
+    </div>
+  </form>
+
+  <section class="kinds-section" aria-labelledby="kinds-title">
+    <h2 id="kinds-title" class="section-title" i18n="@@rules.kindsTitle">Kinds of resource</h2>
+    @if (bounds(); as b) {
+      <p class="text-muted hint" i18n="@@rules.kindsHint">
+        Leave a box empty for no rule of its own. Any booking can last at most
+        {{ generalDays(b) }} days and start at most {{ b.maxDaysAhead }} days ahead.
+      </p>
+    }
+
+    <ul class="kinds">
+      @for (row of kinds(); track row.rules.resourceTypeId) {
+        @let id = row.rules.resourceTypeId;
+        <li class="card kind">
+          <form [formGroup]="row.form" (ngSubmit)="saveKind(row)" novalidate>
+            <h3 [id]="'kind-' + id">{{ typeLabel(row.rules.name) }}</h3>
+            @if (row.error(); as message) {
+              <div class="alert-error" role="alert">{{ message }}</div>
+            }
+
+            <div class="field">
+              <label [for]="'hours-' + id" i18n="@@rules.maxHours">Longest booking, in hours</label>
+              <input
+                [id]="'hours-' + id"
+                class="input"
+                type="number"
+                min="0.25"
+                step="0.25"
+                formControlName="maxHours"
+                placeholder="No rule of its own"
+                i18n-placeholder="@@rules.noRule"
+                [class.invalid]="hoursError(row)"
+                [attr.aria-invalid]="!!hoursError(row)"
+              />
+              @if (hoursError(row); as error) {
+                <span class="field-error">{{ error }}</span>
+              }
+            </div>
+            <div class="field">
+              <label [for]="'ahead-' + id" i18n="@@rules.daysAhead">Days ahead it may start</label>
+              <input
+                [id]="'ahead-' + id"
+                class="input"
+                type="number"
+                min="0"
+                step="1"
+                formControlName="daysAhead"
+                placeholder="No rule of its own"
+                i18n-placeholder="@@rules.noRule"
+                [class.invalid]="daysAheadError(row)"
+                [attr.aria-invalid]="!!daysAheadError(row)"
+              />
+              @if (daysAheadError(row); as error) {
+                <span class="field-error">{{ error }}</span>
+              } @else {
+                <span class="text-muted hint" i18n="@@rules.daysAheadHint">0 is today only.</span>
+              }
+            </div>
+            <div class="field">
+              <label [for]="'per-person-' + id" i18n="@@rules.perPerson"
+                >Bookings one person may have at once</label
+              >
+              <input
+                [id]="'per-person-' + id"
+                class="input"
+                type="number"
+                min="1"
+                step="1"
+                formControlName="perPerson"
+                placeholder="No rule of its own"
+                i18n-placeholder="@@rules.noRule"
+                [class.invalid]="perPersonError(row)"
+                [attr.aria-invalid]="!!perPersonError(row)"
+              />
+              @if (perPersonError(row); as error) {
+                <span class="field-error">{{ error }}</span>
+              }
+            </div>
+            <label class="check-option">
+              <input type="checkbox" formControlName="officeHoursOnly" />
+              <span i18n="@@rules.officeHoursOnly">Within office hours only</span>
+            </label>
+
+            <div class="form-actions">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="row.saving()"
+                [attr.aria-describedby]="'kind-' + id"
+              >
+                @if (row.saving()) {
+                  <ng-container i18n="@@common.saving">Saving…</ng-container>
+                } @else {
+                  <ng-container i18n="@@common.saveChanges">Save changes</ng-container>
+                }
+              </button>
+            </div>
+          </form>
+        </li>
+      }
+    </ul>
+  </section>
+}

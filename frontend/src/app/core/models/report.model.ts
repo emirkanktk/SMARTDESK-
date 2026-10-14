@@ -76,8 +76,14 @@ export interface UsageReport {
   timeZone: string;
   fromUtc: string;
   toUtc: string;
-  /** e.g. "Mon-Fri 09:00-18:00" - what utilization is measured against. */
+  /**
+   * The office's hours (ADR-0046), in the app's language: "Mon-Fri 09:00-18:00" - what
+   * utilization is measured against.
+   */
   workingHours: string;
+  /** The same hours for laying them out: "09:00:00". */
+  opensAt: string;
+  closesAt: string;
   workingHoursPerResource: number;
   totals: UsageTotals;
   /** Busiest first. */

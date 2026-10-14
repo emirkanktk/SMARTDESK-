@@ -49,6 +49,7 @@ const ADMIN: Screen[] = [
   { path: '/admin/users' },
   { path: '/admin/reports' },
   { path: '/admin/blocks' },
+  { path: '/admin/rules' },
   { path: '/issues' },
   { path: '/resources/qr-labels' },
   { path: '/guide' },
@@ -129,6 +130,8 @@ for (const theme of ['light', 'dark'] as const) {
     });
 
     test("an admin's screens", async ({ open }) => {
+      // Some twenty screens, each checked with axe and at phone width: more than the usual minute.
+      test.slow();
       const page = await open('admin', 'tr');
       await useTheme(page, theme);
       await check(page, ADMIN);

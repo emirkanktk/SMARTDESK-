@@ -1451,6 +1451,9 @@ new tables.
 - `GET /api/booking-rules` for anyone signed in, so the booking form can show the rules and keep
   to them before it asks. `PUT /api/booking-rules/office-hours` and
   `PUT /api/booking-rules/types/{id}` for Admins.
+- The page is **Admin → Booking rules** (`/admin/rules`). The booking form shows the chosen
+  kind's rules under the resource and checks the time against them before it asks, in the
+  office's time zone; the limit per person it leaves to the API, which knows the bookings.
 
 **Why:**
 - The plan's day 5: rules an Admin can change without a release, varying by kind, collected in

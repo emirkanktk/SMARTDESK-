@@ -225,6 +225,9 @@
             {{ checkIn().graceMinutes }} minutes after, or the booking is released.
           </p>
         }
+        @if (rulesHint(); as hint) {
+          <p class="rules-note">{{ hint }}</p>
+        }
       }
     </div>
 

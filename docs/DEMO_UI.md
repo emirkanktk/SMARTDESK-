@@ -376,6 +376,24 @@ plan by the lift.
   when a booking is released because nobody checked in, ended early or moved, or a block is
   lifted. Mehmet cancelling would offer it to the next in line (ADR-0043).
 
+### 22. Booking rules
+
+- As the admin, **Admin** → **Booking rules**. Office hours are Mon-Fri 09:00-18:00 in
+  Europe/Istanbul; each kind of resource has empty boxes: no rules of its own yet.
+- On **Desk**: longest booking `9` hours, `7` days ahead, `2` bookings per person, tick
+  **Within office hours only**, **Save changes** → "Rules for Desk saved."
+- As Ayşe, **New reservation**, pick Desk 3-01: under it, "Desk bookings: within office hours
+  (Mon-Fri 09:00-18:00), at most 9 h long, up to 7 days ahead, at most 2 at a time per person."
+  Choose 19:00-20:00 and **Book**: "Desk bookings must be within office hours: Mon-Fri
+  09:00-18:00." under the time, and nothing is sent. A date eight days on says the same about
+  days ahead.
+- Book desks for tomorrow until Ayşe has two that haven't ended; the next one says "Desk: at most
+  2 upcoming bookings per person. Cancel one first." That one comes from the API, which counts
+  them under a lock, so two at once can't both get through.
+- Back as the admin, clear the Desk boxes and save, for the next demo. Point out: one policy
+  applies the rules to every way of booking - the form, a series, extending, the waiting list,
+  the assistant - and the search and suggestions only offer what they allow (ADR-0046).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in
@@ -390,7 +408,7 @@ plan by the lift.
   reconnect. Reminders come over the same connection, addressed to the owner only.
 - **Times:** picked in local time, sent as UTC, shown back in local time. An unchanged time is
   sent back exactly as the API gave it, since the pickers drop seconds.
-- **Tests:** over 500 unit tests, also run in six time zones (`npm run test:time-zones`) - that
+- **Tests:** over 900 unit tests, also run in six time zones (`npm run test:time-zones`) - that
   is how a UTC+05:45 half-hour bug was found. The browser tests (Playwright) sign in, book,
   clash, watch live updates and scan every screen with axe. CI runs both, and the backend's
   tests, on every pull request.

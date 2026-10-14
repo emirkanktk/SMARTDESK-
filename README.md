@@ -36,6 +36,11 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   they're cancelled or moved ([ADR-0024](docs/DECISIONS.md)). A time that's taken comes back
   with the nearest free times on the same resource and the others of its kind free then, each
   a click away ([ADR-0042](docs/DECISIONS.md)).
+- **Booking rules** - an Admin sets, for each kind of resource, how long a booking may last,
+  how many days ahead it may start, how many one person may have at once, and whether it keeps
+  to office hours, and sets when the office is open. Every way of booking keeps to them, the
+  booking form says them before it asks, and the search and suggestions only offer what they
+  allow ([ADR-0046](docs/DECISIONS.md)).
 - **Waiting list** - or wait for that time instead: when it frees up - cancelled, released for
   want of a check-in, ended early or moved - it's booked for whoever joined the line first,
   and their inbox says so. My reservations shows what you wait for and your place in line
