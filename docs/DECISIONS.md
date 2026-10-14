@@ -1474,3 +1474,40 @@ new tables.
   - The waiting list skips someone the rules no longer allow (the limit reached, the rules
     changed) and offers to the next in line; their entry waits on.
   - The usage report reads the office's hours in the time zone it's asked for, as it reads its days.
+
+## ADR-0047: Demo data with Bogus, written past the API, on `--demo-data`
+
+**Decision:**
+- `--demo-data` on the API's command line runs `DemoDataSeeder` once and stops: on top of the
+  Development seed, two more managers and fifteen people in three teams, 21 more resources on
+  three floors with their plans (drawn as SVG, kept as PNG, embedded in Infrastructure), six
+  weeks of bookings behind and two ahead, two weekly series, five problem reports, a blocked
+  window and two people waiting.
+- The bookings follow how an office books: busiest mid-week, mornings and early afternoons;
+  people at desks near their team; meetings of half an hour to two hours with their team
+  invited; fewer bookings further ahead. Of what's over, about one in five check-ins never
+  happened and was released, and about one in fourteen bookings was cancelled.
+- Random with Bogus (MIT), Turkish names from its `tr` locale, from a fixed seed: the same
+  office on every run, relative to the day. `DemoBookings` works it out in memory, so its
+  rules are tested without a database: no two Confirmed bookings of a resource overlap, a
+  team's resource is its team's, check-ins and releases match the times, what's to come is
+  neither.
+- Written straight to the database, in one transaction, past the API's checks: the API won't
+  take a booking in the past, and six weeks of them is the point. So Development only, and
+  only into a database with no bookings yet.
+- Meeting Room A and the Board Room are kept free from now on, for the walkthrough in
+  docs/DEMO_UI.md, which books them at times of its own.
+
+**Why:**
+- The plan's day 10, "seed realistic demo data with Bogus". A fresh database shows an empty
+  report, empty floors and empty calendars: nothing to point at in a demo of reports, the floor
+  plan or no-shows.
+- A command-line switch rather than part of the Development seed: the browser and integration
+  tests start from the plain seed, and random bookings would collide with theirs.
+- In the codebase rather than the SQL and Node scripts of the demo kit (`Documents\SmartDesk-demo`):
+  it keeps up with the model, its rules are tested, and anyone with a clone can run it.
+- **Trade-offs:**
+  - Past the API, the rules are the generator's to keep; its tests check the ones the database
+    doesn't (the exclusion constraint catches overlaps on PostgreSQL).
+  - Bogus ships in the Infrastructure assembly, used in Development only.
+  - The plans are pictures of an imagined office; a real one uploads its own (ADR-0041).

@@ -33,7 +33,13 @@ browser, with two windows side by side so the audience sees changes arrive live.
    switch, the light/dark switch and the menu under your name are at the bottom of it.
 4. The app opens in Turkish. The steps below name the English labels, so press **EN** on the
    front page in both windows, or follow along in Turkish. Step 10 shows the switch.
-5. Pick a working day in the current week as `DAY` (or next week, then press **›** in the
+5. Optional, for an office that looks lived in: before step 1's `dotnet run`, run the API
+   once with `-- --demo-data` (README, "A lived-in office for a demo"). The usage report then
+   has six weeks to show, every floor has its plan and resources on it, and the calendars are
+   busy. The steps below still work: Meeting Room A and the Board Room are kept free from now
+   on. Counts differ - 28 active resources rather than 7 - and the floors already have plans,
+   which step 20's upload replaces.
+6. Pick a working day in the current week as `DAY` (or next week, then press **›** in the
    Calendar). Times below are local; 13:00 in Istanbul is DEMO.md's 10:00Z.
 
 ## Walkthrough

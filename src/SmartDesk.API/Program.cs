@@ -145,6 +145,23 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 
 await app.Services.SeedDatabaseAsync(includeDemoData: app.Environment.IsDevelopment());
 
+// `--demo-data`: a lived-in office for a demo (ADR-0047) - people, floor plans, six weeks of
+// bookings - written once into a database with no bookings yet, then the API stops; exit code 1
+// when it wrote nothing, and the log says why. It writes past the API's checks, so never
+// anywhere but Development.
+if (args.Contains("--demo-data"))
+{
+    if (!app.Environment.IsDevelopment())
+    {
+        Console.Error.WriteLine("--demo-data is for Development only.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    Environment.ExitCode = await app.Services.SeedDemoDataAsync() ? 0 : 1;
+    return;
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
