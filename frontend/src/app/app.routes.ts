@@ -194,6 +194,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/issues/issues').then((m) => m.Issues),
       },
       {
+        // The rules bookings keep to (ADR-0046).
+        path: 'admin/rules',
+        title: $localize`:@@title.rules:Booking rules · SmartDesk`,
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/booking-rules/booking-rules').then((m) => m.BookingRulesAdmin),
+      },
+      {
         path: 'admin/blocks',
         title: $localize`:@@title.blocks:Blocked windows · SmartDesk`,
         canActivate: [adminGuard],

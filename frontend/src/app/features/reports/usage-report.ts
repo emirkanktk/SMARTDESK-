@@ -15,14 +15,12 @@ import { ResourceService } from '../../core/services/resource.service';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { ScrollRegion } from '../../shared/directives/scroll-region';
 import { addDays, parseDateParam, startOfDay, toDateParam } from '../../shared/utils/date-time';
+import { minutesOf } from '../../shared/utils/booking-rules';
 import { saveFile } from '../../shared/utils/save-file';
 import { resourceTypeLabel } from '../../core/i18n/labels';
 
 const DEFAULT_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** The office day the API measures against (ReportRules): the heat map always shows it. */
-const OFFICE_START = 9;
-const OFFICE_END = 18;
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 /** Where a share falls on the heat map's scale (ADR-0044): 0 for none, then by quarters. */
@@ -112,8 +110,10 @@ export class UsageReport {
       (a, b) => WEEKDAYS.indexOf(a.day) - WEEKDAYS.indexOf(b.day),
     );
     const booked = [...Array(24).keys()].filter((hour) => days.some((day) => day.hours[hour] > 0));
-    const first = Math.min(OFFICE_START, ...booked);
-    const last = Math.max(OFFICE_END - 1, ...booked);
+    // The office day the API measures against (ADR-0046) is always shown: from the hour it
+    // opens in, to the hour it closes in.
+    const first = Math.min(Math.floor(minutesOf(report.opensAt) / 60), ...booked);
+    const last = Math.max(Math.ceil(minutesOf(report.closesAt) / 60) - 1, ...booked);
     const monday = new Date(2026, 9, 5);
     const pad = (n: number) => String(n).padStart(2, '0');
     return {

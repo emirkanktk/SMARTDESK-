@@ -29,6 +29,8 @@ describe('UsageReport', () => {
       fromUtc: '2026-09-05T21:00:00Z',
       toUtc: '2026-10-05T21:00:00Z',
       workingHours: 'Mon-Fri 09:00-18:00',
+      opensAt: '09:00:00',
+      closesAt: '18:00:00',
       workingHoursPerResource: 198,
       totals: {
         resources: 3,
@@ -295,6 +297,26 @@ describe('UsageReport', () => {
       '26%–50%',
       '51%–75%',
       '76%–100%',
+    ]);
+  });
+
+  it("shows the office's day as an Admin set it (ADR-0046), from the hour it opens in to the one it closes in", async () => {
+    getUsage.mockReturnValue(
+      of(
+        report({ workingHours: 'Mon-Fri 10:30-14:15', opensAt: '10:30:00', closesAt: '14:15:00' }),
+      ),
+    );
+    await render();
+
+    // 08:00 for Tuesday's booking, then 10:00-14:00.
+    expect(rows('heat').map((row) => row.split(' ')[0])).toEqual([
+      '08:00',
+      '09:00',
+      '10:00',
+      '11:00',
+      '12:00',
+      '13:00',
+      '14:00',
     ]);
   });
 

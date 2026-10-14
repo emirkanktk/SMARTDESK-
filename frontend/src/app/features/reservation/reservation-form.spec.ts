@@ -6,11 +6,13 @@ import { CurrentUser } from '../../core/models/auth.model';
 import { ApiError } from '../../core/models/api-error.model';
 import { Invitee, SeriesDate, SeriesResult } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
+import { BookingRulesService } from '../../core/services/booking-rules.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { WaitlistService } from '../../core/services/waitlist.service';
+import { fakeBookingRules, fakeKindRules } from '../../../testing/booking-rules-fixtures';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { DESK_TYPE, fakeResource } from '../../../testing/resource-fixtures';
 import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
@@ -51,6 +53,7 @@ describe('ReservationForm', () => {
   let previewSeries: ReturnType<typeof vi.fn>;
   let createSeries: ReturnType<typeof vi.fn>;
   let joinWaitlist: ReturnType<typeof vi.fn>;
+  let getRules: ReturnType<typeof vi.fn>;
   let confirmSpy: ReturnType<typeof vi.spyOn>;
   let success: ReturnType<typeof vi.fn>;
   let reminderAlerts: {
@@ -86,6 +89,8 @@ describe('ReservationForm', () => {
           ...body,
         }),
     );
+    // No kind has rules of its own unless a test gives it some (ADR-0046).
+    getRules = vi.fn(() => of(fakeBookingRules()));
     confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     success = vi.fn();
     reminderAlerts = {
@@ -116,6 +121,7 @@ describe('ReservationForm', () => {
         { provide: NotificationService, useValue: { success } },
         { provide: ReminderAlertsService, useValue: reminderAlerts },
         { provide: WaitlistService, useValue: { join: joinWaitlist } },
+        { provide: BookingRulesService, useValue: { get: getRules } },
         RESOURCE_PHOTO_STUB,
       ],
     }).compileComponents();
@@ -1528,6 +1534,104 @@ describe('ReservationForm', () => {
       const terms = Array.from(element.querySelectorAll('.details dt'));
       const repeats = terms.find((dt) => dt.textContent!.trim() === 'Repeats')!;
       expect(repeats.nextElementSibling!.textContent!.trim()).toBe('every Monday until 2 Nov 2026');
+    });
+  });
+
+  describe('booking rules (ADR-0046)', () => {
+    const deskRules = fakeKindRules({
+      maxDurationMinutes: 240,
+      maxDaysAhead: 7,
+      maxActivePerUser: 2,
+      officeHoursOnly: true,
+    });
+    const errorUnder = (selector: string) =>
+      element
+        .querySelector(selector)!
+        .closest('.field')!
+        .querySelector('.field-error')
+        ?.textContent?.trim();
+
+    beforeEach(() => getRules.mockReturnValue(of(fakeBookingRules([deskRules]))));
+
+    it("says the chosen kind's rules, for a kind that has some", async () => {
+      await render({ resourceId: desk.id });
+
+      expect(element.querySelector('.rules-note')!.textContent!.trim()).toBe(
+        'Desk bookings: within office hours (Mon-Fri 09:00-18:00), at most 4 h long, up to 7 days ahead, at most 2 at a time per person.',
+      );
+      expect(getRules).toHaveBeenCalledWith(true);
+
+      await set('#resource', room.id);
+
+      expect(element.querySelector('.rules-note')).toBeNull();
+    });
+
+    it('keeps to them before asking, saying each on the field it is about', async () => {
+      await render({
+        resourceId: desk.id,
+        start: utc('2026-10-07T17:00'),
+        end: utc('2026-10-07T19:00'),
+      });
+      await submit();
+
+      expect(create).not.toHaveBeenCalled();
+      expect(errorUnder('#start')).toBe(
+        'Desk bookings must be within office hours: Mon-Fri 09:00-18:00.',
+      );
+
+      await set('#start', '2026-10-07T09:00');
+      await set('#end', '2026-10-07T14:00');
+      expect(errorUnder('#end')).toBe('Desk bookings can last at most 4 h.');
+
+      await set('#start', '2026-10-13T09:00');
+      await set('#end', '2026-10-13T10:00');
+      expect(errorUnder('#start')).toBe('Desk bookings can start at most 7 days ahead.');
+
+      await set('#start', '2026-10-12T09:00');
+      await set('#end', '2026-10-12T13:00');
+      await submit();
+      expect(create).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets a booking made before the rules change within its own time, but not move', async () => {
+      getReservation.mockReturnValue(
+        of(
+          fakeReservation({
+            resourceId: desk.id,
+            resourceName: desk.name,
+            resourceTypeId: DESK_TYPE.id,
+            resourceTypeName: DESK_TYPE.name,
+            startDateTime: utc('2026-10-07T17:00'),
+            endDateTime: utc('2026-10-07T19:00'),
+          }),
+        ),
+      );
+      await render({ id: 'rsv-1' });
+
+      await set('#note', 'Late shift');
+      await submit();
+      expect(update).toHaveBeenCalledTimes(1);
+
+      await set('#start', '2026-10-08T17:00');
+      await submit();
+      expect(update).toHaveBeenCalledTimes(1);
+      expect(errorUnder('#start')).toBe(
+        'Desk bookings must be within office hours: Mon-Fri 09:00-18:00.',
+      );
+    });
+
+    it('books without them when they could not be loaded: the API says what is wrong', async () => {
+      getRules.mockReturnValue(throwError(() => new ApiError(500, 'Server error')));
+      await render({
+        resourceId: desk.id,
+        start: utc('2026-10-07T17:00'),
+        end: utc('2026-10-07T19:00'),
+      });
+
+      expect(element.querySelector('.rules-note')).toBeNull();
+      await submit();
+
+      expect(create).toHaveBeenCalledTimes(1);
     });
   });
 });
