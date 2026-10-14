@@ -78,6 +78,14 @@ frontend's own check is only a fast-feedback convenience). FluentValidation vali
 each Command/Query run in `ValidationBehavior`, a MediatR pipeline behavior, ahead of the
 handler; a failure never reaches the handler and comes back as a 400.
 
+Two more behaviors work around the booking handlers without being part of them. With a clash,
+`BookingSuggestionsBehavior` (on create and update only) answers the 409 with what would do
+instead (ADR-0042). Outermost, `OfferFreedSlotsBehavior` offers the times a request freed - noted
+by `FreedSlotsInterceptor`, an EF Core SaveChanges interceptor - to the waiting list once the
+request has succeeded (ADR-0043). Rules that depend on what a booking is for - how long, how far
+ahead, office hours, how many per person - are applied in one place, `BookingPolicy`, which every
+way of booking asks (ADR-0046).
+
 Application code that needs something from outside (Identity, token signing, the current
 HTTP caller) asks for it through an interface in `Application/Common/Interfaces`
 (`IIdentityService`, `IJwtTokenGenerator`, `ICurrentUserService`); Infrastructure or API
@@ -93,38 +101,59 @@ them to `ProblemDetails` responses: FluentValidation's `ValidationException` →
 ```
 src/
   SmartDesk.Domain/
-    Entities/          Resource, ResourceType, ResourceFeature, Reservation
-    Enums/              ResourceStatus, ReservationStatus
-    Constants/          Roles (Admin, Employee)
-    Rules/              ReservationOverlap - the one definition of "time range taken";
-                          CheckInRules - the check-in window and when a booking is released
+    Entities/          Resource (its features, photo, teams, blocks, place on a plan),
+                          ResourceType (with its booking rules), Reservation (attendees,
+                          series), InboxMessage, IssueReport, FloorPlan, WaitlistEntry,
+                          OfficeHours
+    Enums/              ResourceStatus, ReservationStatus, AccountStatus, AttendeeResponse,
+                          InboxMessageKind, IssueCategory, IssueStatus, RecurrenceFrequency,
+                          WeekDays
+    Constants/          Roles (Admin, Manager, Employee)
+    Rules/              ReservationOverlap and ResourceBlockOverlap - the one definition of
+                          "time range taken"; CheckInRules - the check-in window and when a
+                          booking is released; IssueRules
   SmartDesk.Application/
-    Common/             Behaviors/ (ValidationBehavior), Exceptions/, Extensions/,
-                          Interfaces/ (incl. IApplicationDbContext), Models/
+    Common/             Behaviors/ (ValidationBehavior), Exceptions/ (incl. ConflictCodes),
+                          Extensions/, Interfaces/ (incl. IApplicationDbContext),
+                          Localization/, Models/
     Features/<Area>/    Commands/<Name>/ and Queries/<Name>/ - request, handler,
-                          validator and response DTO side by side
+                          validator and response DTO side by side; Common/ for what an area's
+                          requests share (Reservations/Common: BookingGuard, BookingSuggester,
+                          RecurrenceRules; BookingRules/Common: BookingPolicy, BookingLimits,
+                          OfficeWeek)
+    Resources/          Messages.resx, Messages.tr.resx: every message in English and Turkish
     DependencyInjection.cs  AddApplication(): MediatR + pipeline + validators
   SmartDesk.Infrastructure/
     Identity/           ApplicationUser, IdentityService, JwtTokenGenerator,
-                          JwtOptions, IdentityDataSeeder
-    Persistence/         SmartDeskDbContext, Migrations/, Seed/ (resource types,
-                          Development demo resources)
-    DependencyInjection.cs  AddInfrastructure(): DbContext, Identity, JWT options
+                          JwtOptions, sessions, IdentityDataSeeder
+    Persistence/         SmartDeskDbContext, Migrations/, FreedSlotsInterceptor, Seed/
+                          (resource types, office hours, Development demo resources,
+                          DemoData/ for `--demo-data`)
+    Email/               the email queue, sent over SMTP or to the log
+    Reports/             UsageReportWorkbook: the usage report as Excel (ClosedXML)
+    Assistant/           the booking assistant on Claude or Gemini
+    DependencyInjection.cs  AddInfrastructure(): DbContext, Identity, options, services
   SmartDesk.API/
     Program.cs           composition root: JWT bearer, authorization, CORS,
-                          OpenAPI/Swagger UI, exception handling, SignalR, startup seed
+                          OpenAPI/Swagger UI, exception handling, SignalR, startup seed,
+                          `--demo-data`
     Controllers/          thin - build a command/query, send it through MediatR
-    Services/             CurrentUserService (reads the caller from the JWT),
-                          SignalRReservationNotifier (NullReservationNotifier remains
-                          only as an unused fallback), and the timed jobs:
-                          ReservationReminderWorker and NoShowReleaseWorker, each sending
-                          one command every 30 seconds (PeriodicCommandWorker)
+    Hubs/                 ReservationHub, and each user's open connections
+                          (HubConnectionRegistry), cut when their account changes
+    Services/             CurrentUserService (reads the caller from the JWT); the SignalR
+                          notifiers for reservations, the inbox and problem reports (the Null*
+                          ones remain only as unused fallbacks); and the timed jobs, each
+                          sending one command every 30 seconds (PeriodicCommandWorker):
+                          reminders, the warning before a release, releasing no-shows, and
+                          asking whether a booking about to end needs longer
     OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
 tests/
   SmartDesk.Tests/        unit tests for Application handlers and Domain rules;
                           handlers that query run against SmartDeskDbContext on
                           in-memory SQLite (TestSupport/SqliteTestDatabase)
+  SmartDesk.IntegrationTests/  the API over HTTP, on PostgreSQL in a container
+                          (Testcontainers): the races, the exclusion constraint, the locks
 ```
 
 ## 4. Data model
@@ -200,7 +229,8 @@ conversation, and a card's button calls `ReservationService` like any screen. Wi
 Angular 22, standalone components throughout (no NgModules), feature-based folders under
 `frontend/src/app/features/`, one folder per screen: the MVP list (login, dashboard,
 resources, availability, reservation, my-reservations, admin) plus home (the public front
-page), calendar, reports and resource-blocks. Shared, cross-feature code
+page), calendar, reports and resource-blocks, and since then floor-plan, booking-rules, inbox,
+issues, check-in, door-screen, qr-labels, team, users, profile and guide. Shared, cross-feature code
 (HTTP interceptor, auth guard, typed API clients) lives under `frontend/src/app/core/`.
 Forms use Reactive Forms; local/UI state uses Signals rather than a global store, since the
 app's state needs (a list of resources, a set of reservations, the current user) are small
@@ -276,7 +306,7 @@ picker drops seconds and any difference would count as a change.
   `canActivateChild`). An unauthenticated visit is redirected to `/login?returnUrl=...` and
   sent back after sign-in, and only in-app paths are followed. `adminGuard`
   (`roleGuard(Roles.Admin)`) protects `/admin` and its sub-screens (`/admin/reports`, `/admin/users`,
-  `/admin/blocks`). `managerGuard` protects `/team`. `resourceEditorGuard` lets admins and
+  `/admin/blocks`, `/admin/rules`). `managerGuard` protects `/team`. `resourceEditorGuard` lets admins and
   managers open the resource forms; the form itself mirrors the API's rule
   (`canManageResource` in `shared/utils/resource-access.ts`) and shows a manager a note instead
   of a form for a resource that isn't their team's alone (ADR-0022). `/register` is
@@ -362,7 +392,71 @@ picker drops seconds and any difference would count as a change.
   stored choice, or the system's setting. The typeface (Plus Jakarta Sans) is bundled with the
   app from `@fontsource-variable`, so no page asks a font service for anything.
 
-## 8. Team ownership boundaries
+## 8. What the ten-day plan added, and why
+
+After the MVP, a ten-day internship plan added a feature a day, on the same layers and by the
+same rules. The decisions themselves are in [DECISIONS.md](DECISIONS.md); this is where each
+day sits and why it took the shape it has. Where the plan suggested a tool and the code went
+another way, the reason is here too.
+
+1. **A safety net: CI and a concurrency test.** GitHub Actions on every push - backend build,
+   tests and a check that the model has its migration; frontend build, tests, translations and
+   formatting; the browser tests; the whole app in containers. Integration tests run the API
+   over HTTP on a real PostgreSQL in a container (Testcontainers, `PostgresApiFixture`), among
+   them a race that books one slot many times at once. Behind the handlers' own check, a
+   PostgreSQL exclusion constraint (`btree_gist`, `AddReservationOverlapConstraint`) makes an
+   overlap impossible, and its violation comes back as the same 409. *Why:* every later change
+   is checked before it lands, and "two requests for one slot" is proven on the database that
+   runs it rather than assumed (ADR-0011).
+2. **An inbox and reminders.** Messages are written in the same transaction as the change
+   (`MeetingInvitations`) and pushed over SignalR to their recipient only once it's committed;
+   reminders go out from a timed job; email is queued and sent in the background. *Why:* the
+   later days - check-in, blocks, the waiting list - all need to tell someone something. The
+   jobs are hosted services that send one MediatR command every 30 seconds
+   (`PeriodicCommandWorker`) rather than a job library such as Hangfire: the rule stays in a
+   handler, tested like any other, and nothing needs a store of its own (ADR-0018, ADR-0019,
+   ADR-0032).
+3. **QR check-in and no-shows.** Each resource's QR code opens the check-in page; a booking
+   nobody checks in to within the grace (`CheckIn:GraceMinutes`) is released, its people warned
+   first and its owner told. *Why:* rooms booked and not used go back to people who are there
+   (ADR-0030, ADR-0040).
+4. **Bookings that repeat.** A series is a rule, and each date a reservation of its own
+   (`ReservationSeries`, `RecurrenceRules`), shown before it's booked. *Why:* one date can be
+   moved, checked in or cancelled alone, with every rule a booking has (ADR-0035).
+5. **Rules and maintenance.** Blocked windows, which can take their window's bookings with them
+   when asked; and the rules an Admin sets for each kind of resource and the office's hours,
+   applied by `BookingPolicy` (`/admin/rules`). *Why:* one policy that every way of booking
+   asks, rather than the same checks spread over the handlers (ADR-0015, ADR-0038, ADR-0046).
+6. **Suggestions and a waiting list.** A clash comes back with the nearest free times and other
+   resources free then; a freed time is booked for whoever waited for it first. *Why:* both work
+   around the handlers - a pipeline behavior after a failed booking, an interceptor and a
+   notification after a successful one - so they never hold a lock or roll back the booking
+   that set them off (ADR-0042, ADR-0043).
+7. **The floor plan.** A picture per floor - the location its resources already share - with
+   the resources on it by their fractions of its width and height, coloured by their state at
+   any time and changing live. *Why:* the plan suggested an SVG drawn per office and Angular
+   CDK drag and drop; an uploaded picture fits any office without drawing, and placing works by
+   pointer and by keyboard with no extra dependency (ADR-0041).
+8. **Reports.** Utilization, a weekday-by-hour heat map, no-show and cancellation rates and the
+   busiest people, and the same as an Excel workbook (ClosedXML). *Why:* computed in memory over
+   at most 92 days rather than with `GroupBy` in SQL as the plan suggested, which keeps the time
+   zone and office-hour clipping in plain, tested C#; the heat map is an accessible table rather
+   than a chart library (ADR-0017, ADR-0044, ADR-0045).
+9. **A door screen.** `/door/:resourceId` shows free or taken, until when, what's next, and a QR
+   code that changes every 30 seconds; checking in with it proves you're at the door. *Why:* a
+   printed code can be photographed. The screen has a token of its own, kept only as a hash,
+   and asks the API just after its code changes rather than joining SignalR, since it has no
+   user (ADR-0034, ADR-0039).
+10. **Getting ready for the demo.** `--demo-data` fills a fresh Development database with an
+    office's worth of people and six weeks of bookings, with Bogus (ADR-0047); this section;
+    and [DEMO_UI.md](DEMO_UI.md), the walkthrough.
+
+Besides the plan, the same months brought accounts and teams (ADR-0020 - ADR-0022), Turkish and
+English throughout (ADR-0023, ADR-0025), sessions renewed from an HttpOnly cookie (ADR-0026),
+resource photos (ADR-0027), the booking assistant (ADR-0029, ADR-0036), meetings (ADR-0032),
+running over (ADR-0033) and problems reported at the door (ADR-0037).
+
+## 9. Team ownership boundaries
 
 See [TEAM_SYNC.md](TEAM_SYNC.md) for who owns which module and how branches/PRs are
 expected to flow between the two of us.
