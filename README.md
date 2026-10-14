@@ -224,6 +224,23 @@ most 60 logins a minute in Development (10 elsewhere; `RateLimiting:LoginPermits
 `GET /health` answers `Healthy` once the API can reach PostgreSQL and every migration has
 been applied - a quick check that the backend is up and usable.
 
+**A lived-in office for a demo (ADR-0047).** On a fresh Development database - migrated, with
+no bookings yet - run the API once with `--demo-data`:
+
+```bash
+dotnet run --project src/SmartDesk.API -- --demo-data
+```
+
+It adds two more managers and fifteen people in three teams (Turkish names from Bogus, emails
+like `onur.beserler@smartdesk.local`, the same password), rooms and desks on three floors with
+their plans, six weeks of bookings behind and two ahead - checked in, released, cancelled,
+meetings with people invited, two weekly series - a few problem reports, a blocked window and
+a waiting list. Then it stops; start the API as usual. The usage report, the floor plan and the
+calendars have something to show from the first minute. It's the same office on every run,
+relative to the day, and it leaves Meeting Room A and the Board Room free from now on, for
+the walkthrough in [docs/DEMO_UI.md](docs/DEMO_UI.md). On a database with bookings it does
+nothing, and outside Development it refuses.
+
 Migrations are applied on purpose (step 3 above). Setting `Database:MigrateOnStartup` to
 `true` (environment variable `Database__MigrateOnStartup=true`) makes the API apply pending
 migrations itself before seeding - meant for a throwaway database such as a container's,

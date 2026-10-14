@@ -17,6 +17,7 @@ using SmartDesk.Infrastructure.Email;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence;
 using SmartDesk.Infrastructure.Persistence.Seed;
+using SmartDesk.Infrastructure.Persistence.Seed.DemoData;
 using SmartDesk.Infrastructure.Reports;
 
 namespace SmartDesk.Infrastructure;
@@ -132,6 +133,7 @@ public static class DependencyInjection
         services.AddScoped<IdentityDataSeeder>();
         services.AddScoped<BootstrapAdminSeeder>();
         services.AddScoped<DemoResourceSeeder>();
+        services.AddScoped<DemoDataSeeder>();
 
         // The assistant (ADR-0029): Claude through the official SDK, or Gemini over its REST API
         // (ADR-0036), as Assistant:Provider says. Without Assistant:ApiKey it's off, and nothing
@@ -193,5 +195,22 @@ public static class DependencyInjection
         {
             await scope.ServiceProvider.GetRequiredService<DemoResourceSeeder>().SeedAsync();
         }
+    }
+
+    // A lived-in office for a demo, on `--demo-data` (DemoDataSeeder). After SeedDatabaseAsync,
+    // whose demo users and resources it builds on.
+    // False when it wrote nothing, and the log says why.
+    public static async Task<bool> SeedDemoDataAsync(this IServiceProvider services)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SmartDeskDbContext>();
+        if ((await dbContext.Database.GetPendingMigrationsAsync()).Any())
+        {
+            scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DependencyInjection)).LogError(
+                "Demo data skipped: the database isn't up to date. Apply the migrations first (dotnet ef database update).");
+            return false;
+        }
+
+        return await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync();
     }
 }
