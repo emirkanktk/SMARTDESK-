@@ -310,6 +310,7 @@ A resource's place is cleared when its `location` changes: it was on another flo
 | GET | `/api/reservations/{id}/extension` | owner or Admin | `GetExtensionOptionsQuery` | `{ minutes: [15, 30, 60] }`: how much longer it can run, only what ends before the resource's next booking or blocked window, within its kind's rules; empty when it can't (ADR-0033) |
 | POST | `/api/reservations/{id}/extend` | owner or Admin | `ExtendReservationCommand` | body: `{ minutes }` (15, 30 or 60) → 200 with the reservation, its end that much later. See Running over. |
 | POST | `/api/reservations/{id}/response` | someone invited | `RespondToInvitationCommand` | body: `{ response: "Accepted" \| "Declined", reason?, following? }` → 200 with the meeting. Declining needs a `reason` (max 500), which goes to the organizer only. `following: true` on a date of a series answers it and every later date the caller is invited to (ADR-0035). See Meetings. |
+| GET | `/api/reservations/{id}/calendar` | owner or someone invited | `GetReservationCalendarQuery`, then `ICalendarWriter` | the booking as an iCalendar file to add to a calendar app (ADR-0048): `text/calendar`, named `smartdesk-2026-10-06.ics`, in the language of `Accept-Language`. Anyone else gets 404. See Calendar. |
 | GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. Only reservations on resources the caller may use (ADR-0022). |
 
 Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
@@ -591,6 +592,37 @@ inbox gets a `WaitlistBooked` message. Their entry goes then.
   be booked from one freed time; one still partly taken waits on, and so does someone the
   kind's rules no longer allow: the limit reached, or the rules changed (ADR-0046). The booking is a normal one:
   calendars hear of it live, and cancelling it offers the time to the next in line.
+
+## Calendar (ADR-0048)
+
+Bookings in a calendar app: one at a time as an `.ics` file
+(`GET /api/reservations/{id}/calendar`), or all of them through a personal link that Outlook,
+Google Calendar or a phone's calendar subscribes to and fetches again by itself.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/calendar/subscription` | any authenticated user | `GetCalendarSubscriptionQuery` | the caller's link as `{ url: null, createdAt, lastFetchedAt }` - never the link itself, as only its hash is kept; 204 when they have none |
+| POST | `/api/calendar/subscription` | any authenticated user | `CreateCalendarSubscriptionCommand` | → 200 with `{ url, createdAt, lastFetchedAt: null }`, the only answer with the link. Replaces the caller's old link, which stops working at once |
+| DELETE | `/api/calendar/subscription` | any authenticated user | `DeleteCalendarSubscriptionCommand` | → 204; the link stops working. Nothing to do when there's none |
+| GET | `/api/calendar/feed.ics?token=…` | anonymous, the link's token | `GetCalendarFeedQuery`, then `ICalendarWriter` | the feed: `text/calendar; charset=utf-8`, `Cache-Control: private, no-store`. 404 for a token that isn't a link's, or a link whose account is disabled. 429 after 120 a minute from one address (`RateLimiting:CalendarFeedPermitsPerMinute`) |
+
+- The link is `App:FrontendUrl` + `/api/calendar/feed.ics?token=` + 64 hex digits: the app's
+  own address, which passes `/api` on, as for every other call. The token is in the query
+  string, which the container's web server leaves out of its log (ADR-0031). A calendar on the
+  internet - Google Calendar, Outlook on the web - fetches it from its own servers, so it needs
+  the app on the internet too.
+- The feed has the owner's bookings and the meetings they're invited to and haven't declined,
+  from 90 days ago on, each `Confirmed`; an unanswered invitation is `TENTATIVE`. What's
+  cancelled is left out, so it goes from the calendar at its next fetch. It's in the owner's
+  saved language (ADR-0023), whatever the calendar app asks in, and asks to be fetched again
+  every hour (`REFRESH-INTERVAL`, and `X-PUBLISHED-TTL` for Outlook). Each fetch is noted as
+  `lastFetchedAt`.
+- Each booking is an event with the same `UID` wherever it's written,
+  `{reservationId}@smartdesk`, so a calendar app updates its copy when the booking moves.
+  Times are UTC. Title: the resource; location: where it is; description: who invited the
+  reader and what they answered, who else is invited, the note, the check-in rule, and a link
+  to the booking in the app (also its `URL`). A cancelled booking downloaded as a file comes
+  as `CANCELLED`, and so does a meeting the reader declined.
 
 ## Check-in (ADR-0030)
 

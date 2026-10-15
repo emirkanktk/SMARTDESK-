@@ -250,6 +250,19 @@ so lists of reports never load it.
 | ContentType | string | `image/jpeg`, `image/png` or `image/webp`, recognised from the first bytes when it was uploaded; max 32 |
 | Data | byte[] | the image, at most 2 MB (`bytea`) |
 
+### CalendarFeed
+
+Someone's personal calendar link, which a calendar app subscribes to (ADR-0048). One per
+account; a new link replaces the old. The link's token is given out once and kept only as its
+hash, like a door screen's.
+
+| Field | Type | Notes |
+|---|---|---|
+| UserId | Guid | key: the account it's for, with no FK across the Identity boundary |
+| TokenHash | string (64) | SHA-256 of the link's token, as hex; unique |
+| CreatedAt | DateTime | UTC, when this link was made |
+| LastFetchedAt | DateTime? | UTC, when a calendar app last fetched it; null until one has |
+
 ## Relationships
 
 Solid lines are foreign keys in the database. Dotted lines are account ids kept as plain values,
@@ -371,6 +384,11 @@ erDiagram
         datetime EndDateTime
         datetime CreatedAt "the order of the line"
     }
+    CalendarFeed {
+        uuid UserId PK "the account it's for"
+        string TokenHash UK "SHA-256 of the link's token"
+        datetime LastFetchedAt
+    }
 
     ApplicationUser |o--o{ ApplicationUser : manages
     ApplicationUser ||--o{ UserSession : "signs in with"
@@ -394,6 +412,7 @@ erDiagram
     ApplicationUser ||..o{ ResourceTeam : "manages the team of"
     ApplicationUser ||..o{ IssueReport : reports
     ApplicationUser ||..o{ WaitlistEntry : "waits in"
+    ApplicationUser ||..o| CalendarFeed : "subscribes with"
 ```
 
 - A resource with no `ResourceTeam` rows is shared by everyone (ADR-0022).
@@ -425,6 +444,8 @@ erDiagram
   list of reports, newest first.
 - `WaitlistEntries(ResourceId, StartDateTime, EndDateTime)` - who waits for a time that just
   freed up; `WaitlistEntries(UserId)` - someone's own list (ADR-0043).
+- `CalendarFeeds(TokenHash)` - unique: a calendar app's fetch finds its link by the hash of the
+  token it presents (ADR-0048).
 
 ## Constraints
 

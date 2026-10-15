@@ -135,6 +135,30 @@
   <data name="Booking_TakenResource" xml:space="preserve">
     <value>Kaynak bu sürenin bir kısmında zaten rezerve edilmiş.</value>
   </data>
+  <data name="Calendar_CheckIn" xml:space="preserve">
+    <value>En geç başlangıçtan {0} sonra kapıda check-in yapın; kimse yapmazsa rezervasyon iptal edilir.</value>
+  </data>
+  <data name="Calendar_Coming" xml:space="preserve">
+    <value>Geleceğinizi söylediniz.</value>
+  </data>
+  <data name="Calendar_Invited" xml:space="preserve">
+    <value>Davetliler: {0}</value>
+  </data>
+  <data name="Calendar_InvitedBy" xml:space="preserve">
+    <value>{0} sizi davet etti.</value>
+  </data>
+  <data name="Calendar_Name" xml:space="preserve">
+    <value>SmartDesk rezervasyonları</value>
+  </data>
+  <data name="Calendar_NotAnswered" xml:space="preserve">
+    <value>Henüz yanıt vermediniz.</value>
+  </data>
+  <data name="Calendar_NotComing" xml:space="preserve">
+    <value>Gelemeyeceğinizi söylediniz.</value>
+  </data>
+  <data name="Calendar_Open" xml:space="preserve">
+    <value>SmartDesk'te: {0}</value>
+  </data>
   <data name="CheckIn_CodeExpired" xml:space="preserve">
     <value>Bu kodun süresi doldu. {0} kapısındaki ekrandaki kodu yeniden okutun.</value>
   </data>
@@ -305,6 +329,9 @@
   </data>
   <data name="Error_TooManyAssistantRequests" xml:space="preserve">
     <value>Son bir dakikada asistana çok fazla soru soruldu. Biraz bekleyip yeniden deneyin.</value>
+  </data>
+  <data name="Error_TooManyCalendarFeedRequests" xml:space="preserve">
+    <value>Bu takvim çok sık istendi. Bir dakika sonra yeniden deneyin.</value>
   </data>
   <data name="Error_TooManyCheckIns" xml:space="preserve">
     <value>Çok fazla check-in denemesi yapıldı. Bir dakika bekleyip tekrar deneyin.</value>

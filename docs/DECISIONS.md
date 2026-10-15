@@ -1511,3 +1511,53 @@ new tables.
     doesn't (the exclusion constraint catches overlaps on PostgreSQL).
   - Bogus ships in the Infrastructure assembly, used in Development only.
   - The plans are pictures of an imagined office; a real one uploads its own (ADR-0041).
+
+## ADR-0048: Bookings in a calendar app: an .ics file per booking, and a personal link to subscribe to
+
+**Decision:**
+- `GET /api/reservations/{id}/calendar` gives a booking as an iCalendar file, for its owner or
+  someone invited to it: opening it adds the event to a calendar app. My reservations has "Add to
+  calendar" on what's upcoming and on invitations.
+- One personal calendar link per person. `POST /api/calendar/subscription` makes it and shows it
+  once; a new one replaces it, and `DELETE` removes it. Outlook, Google Calendar or a phone's
+  calendar subscribes to it and fetches `GET /api/calendar/feed.ics?token=…` again by itself:
+  the owner's bookings and the meetings they're invited to and haven't declined, from 90 days ago
+  on. Cancelled ones are left out, so they go from the calendar at its next fetch. The profile
+  has a card to make, replace and remove it, with "Open in my calendar app" (`webcal://`) and
+  "Add to Google Calendar".
+- Written with Ical.Net (MIT; its NodaTime dependency is Apache-2.0) behind `ICalendarWriter`,
+  implemented in Infrastructure, like the Excel workbook (ADR-0045): the handlers decide what goes
+  in, in the reader's words, and the writer only writes it. Times are UTC, and each booking keeps
+  one `UID`, `{id}@smartdesk`, so a moved booking updates its event rather than adding another.
+- The link's token is 32 random bytes as hex, kept only as its SHA-256
+  (`CalendarFeeds.TokenHash`), like a door screen's (ADR-0034). A calendar app can't sign in, so
+  the feed is anonymous: the token goes in the query string, the feed is limited by address
+  (`RateLimiting:CalendarFeedPermitsPerMinute`, 120), and a wrong token, a removed link and a
+  disabled account all get the same 404. The feed is written in its owner's saved language, as
+  their emails are (ADR-0023), and notes when it was last fetched, which the profile shows.
+
+**Why:**
+- The plan's backup pool: ".ics download and a personal calendar link to subscribe to in
+  Outlook/Google Calendar (Ical.Net)". People live in their own calendar, and a booking that's
+  only in SmartDesk is easily forgotten.
+- A subscription rather than invitations by email: no mail server needed, and the calendar
+  follows every change - moved, cancelled, released for want of a check-in - at its next fetch,
+  without SmartDesk sending anything. The file is for one booking, for those who'd rather not
+  subscribe.
+- Ical.Net, as the plan suggested: line folding, escaping and the formats of RFC 5545 are easy
+  to get almost right by hand, and calendar apps are strict about the rest.
+- Hashed and replaceable: a calendar link is read by servers outside SmartDesk and stays in
+  calendar settings for years. When one gets out, a new link is the fix, and a copy of the
+  database gives none away.
+- In the query string rather than the path: the container's nginx leaves queries out of its log
+  (ADR-0031), so the token isn't written to disk.
+- **Trade-offs:**
+  - The link is shown once. Losing it means making a new one and subscribing again.
+  - A calendar app fetches at its own pace - Google's every few hours, whatever the feed
+    suggests - so changes show up then, not live.
+  - Google Calendar and Outlook on the web fetch from their own servers, so for them the app has
+    to be on the internet; on `localhost` only a calendar app on the same computer can
+    subscribe, and the profile says so.
+  - The calendar is read-only: answering an invitation or moving a booking is done in SmartDesk.
+  - Anyone who has the link sees what its owner booked, where and when, and who is invited, as
+    the app's own calendar shows them, without signing in.

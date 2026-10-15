@@ -131,6 +131,7 @@ src/
                           DemoData/ for `--demo-data`)
     Email/               the email queue, sent over SMTP or to the log
     Reports/             UsageReportWorkbook: the usage report as Excel (ClosedXML)
+    Calendar/            IcalCalendarWriter: bookings as iCalendar files and feeds (Ical.Net)
     Assistant/           the booking assistant on Claude or Gemini
     DependencyInjection.cs  AddInfrastructure(): DbContext, Identity, options, services
   SmartDesk.API/
@@ -454,7 +455,9 @@ another way, the reason is here too.
 Besides the plan, the same months brought accounts and teams (ADR-0020 - ADR-0022), Turkish and
 English throughout (ADR-0023, ADR-0025), sessions renewed from an HttpOnly cookie (ADR-0026),
 resource photos (ADR-0027), the booking assistant (ADR-0029, ADR-0036), meetings (ADR-0032),
-running over (ADR-0033) and problems reported at the door (ADR-0037).
+running over (ADR-0033) and problems reported at the door (ADR-0037). From the plan's backup
+pool came bookings in a calendar app: a file per booking and a personal link to subscribe to
+(ADR-0048).
 
 ## 9. Team ownership boundaries
 

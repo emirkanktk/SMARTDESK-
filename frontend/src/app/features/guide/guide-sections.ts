@@ -107,6 +107,7 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
     steps: [
       $localize`:@@guide.mine.tabs:My reservations has what's coming, what's past, what was cancelled, and the meetings you're invited to.`,
       $localize`:@@guide.mine.change:Change or cancel a booking that hasn't started. For one that repeats, cancel a single date, or that date and every later one.`,
+      $localize`:@@guide.mine.calendar:Put a booking in your own calendar with Add to calendar. Or make a calendar link on your profile: your calendar app then keeps up with all of them.`,
     ],
     link: { path: '/reservations/mine', label: $localize`:@@guide.mine.link:My reservations` },
   },

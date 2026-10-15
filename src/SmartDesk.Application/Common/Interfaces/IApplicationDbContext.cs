@@ -24,6 +24,7 @@ public interface IApplicationDbContext
     DbSet<IssueReportPhoto> IssueReportPhotos { get; }
     DbSet<WaitlistEntry> WaitlistEntries { get; }
     DbSet<OfficeHours> OfficeHours { get; }
+    DbSet<CalendarFeed> CalendarFeeds { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

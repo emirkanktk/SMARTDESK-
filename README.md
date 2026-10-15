@@ -48,6 +48,11 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.
+- **In your own calendar** - "Add to calendar" on a booking or an invitation gives an `.ics`
+  file that Outlook, Google Calendar or a phone's calendar adds. Or make a personal calendar link
+  on your profile and subscribe to it once: the calendar then shows your bookings and the
+  meetings you're invited to, and keeps up with them by itself. A new link cuts off the old one
+  ([ADR-0048](docs/DECISIONS.md)).
 - **Floor plan** - each floor's plan, a picture an Admin uploads, with the floor's resources on
   it: green when free, red in use, grey out of use, now or at a chosen time, and changing live.
   Choosing one opens the booking form from when it's free. Admins place resources by dragging
@@ -347,6 +352,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
 | Series | `GET /api/reservations/series/preview`, `POST /api/reservations/series`, `POST /api/reservations/{id}/cancel-following` (ADR-0035) |
 | Running over | `GET /api/reservations/{id}/extension`, `POST /api/reservations/{id}/extend` (ADR-0033) |
+| Calendar | `GET /api/reservations/{id}/calendar` (an `.ics` file), `GET`/`POST`/`DELETE /api/calendar/subscription`, `GET /api/calendar/feed.ics?token=` (the link's token, no user) (ADR-0048) |
 | Booking rules | `GET /api/booking-rules`, `PUT /api/booking-rules/office-hours` (Admin), `PUT /api/booking-rules/types/{id}` (Admin) (ADR-0046) |
 | Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |
 | Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |
