@@ -37,11 +37,17 @@
   display: contents;
 }
 
-.brand {
+// The logo's cell: what's left of the bar's width, which the logo measures (container "logo",
+// logo.ts). On a phone that's too little for the name as well, and only the mark shows.
+.brand-cell {
   grid-area: brand;
-  justify-self: start;
-  display: inline-flex;
+  display: flex;
+  container: logo / inline-size;
   font-size: 1.125rem;
+}
+
+.brand {
+  display: inline-flex;
   text-decoration: none;
 }
 
@@ -168,6 +174,14 @@ app-profile-menu {
   }
 }
 
+// The narrowest phones, or a phone set to large text: the bar's parts closer together, so the
+// logo's mark still has room beside the bell.
+@media (max-width: 359.98px) {
+  .bar {
+    column-gap: var(--space-2);
+  }
+}
+
 // Wide screens: a sidebar with the links down the side and the user's card at the bottom,
 // where the user's menu opens upwards (profile-menu.scss).
 @media (min-width: 1100px) {
@@ -194,10 +208,12 @@ app-profile-menu {
     }
   }
 
-  .brand {
-    align-self: flex-start;
-    padding: var(--space-1) var(--space-2);
+  .brand-cell {
     font-size: 1.25rem;
+  }
+
+  .brand {
+    padding: var(--space-1) var(--space-2);
   }
 
   .inbox-shortcut {
