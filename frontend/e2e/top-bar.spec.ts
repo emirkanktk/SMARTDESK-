@@ -29,6 +29,25 @@ test('the bar on top hides on the way down, and is back on the way up and at the
   await expect.poll(top).toBe(0);
 });
 
+// On a phone the app's bar is short of room: the logo keeps to its mark, clear of the bell,
+// and its link is still called SmartDesk. With room to spare, the name is back.
+test('on a phone the logo keeps clear of the bell, and its link keeps its name', async ({
+  open,
+}) => {
+  const page = await open('ayse');
+  const logo = page.locator('header.bar .brand app-logo');
+  const bell = page.locator('header.bar .inbox-shortcut');
+  for (const width of [320, 360, 390, 412]) {
+    await page.setViewportSize({ width, height: 800 });
+    const [mark, shortcut] = [(await logo.boundingBox())!, (await bell.boundingBox())!];
+    expect(mark.x + mark.width, `the logo at ${width}px`).toBeLessThanOrEqual(shortcut.x);
+    await expect(page.getByRole('link', { name: 'SmartDesk', exact: true })).toBeVisible();
+  }
+
+  await page.setViewportSize({ width: 640, height: 800 });
+  await expect(logo.getByText('SmartDesk')).toBeInViewport({ ratio: 1 });
+});
+
 // From 1100px the links are a sidebar, with the user's card at the bottom. The account menu
 // opens upwards from it, over the page when the email is long, and nothing may cut it off. On
 // a screen too short for everything, the links scroll and the card stays in view.
