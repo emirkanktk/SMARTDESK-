@@ -17,7 +17,10 @@ public static class ReservationDtoExtensions
 
         var names = await identityService.GetDisplayNamesAsync(
             reservations
-                .SelectMany(r => r.Attendees.Select(a => a.Id).Append(r.UserId).Concat(r.CheckedInBy is { } by ? [by] : []))
+                .SelectMany(r => r.Attendees.Select(a => a.Id)
+                    .Append(r.UserId)
+                    .Concat(r.CheckedInBy is { } by ? [by] : [])
+                    .Concat(r.DecidedBy is { } admin ? [admin] : []))
                 .Distinct()
                 .ToList(),
             cancellationToken);
@@ -27,6 +30,7 @@ public static class ReservationDtoExtensions
             {
                 UserDisplayName = names.GetValueOrDefault(r.UserId),
                 CheckedInByName = r.CheckedInBy is { } by ? names.GetValueOrDefault(by) : null,
+                DecidedByName = r.DecidedBy is { } admin ? names.GetValueOrDefault(admin) : null,
                 Attendees = r.Attendees
                     .Select(a => a with { Name = names.GetValueOrDefault(a.Id) })
                     .OrderBy(a => a.Name ?? string.Empty, StringComparer.CurrentCultureIgnoreCase)

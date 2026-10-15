@@ -140,7 +140,7 @@ public sealed class ExtendReservationTests : IDisposable
         await using (var context = _database.CreateContext())
         {
             await new UpdateReservationCommandHandler(
-                    context, Ayse, new FakeIdentityService(), _notifier.Object, _clock, TestInvitations.For(context, Ayse), TestPolicy.For(context, _clock))
+                    context, Ayse, new FakeIdentityService(), _notifier.Object, _clock, TestInvitations.For(context, Ayse), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
                 .Handle(new UpdateReservationCommand(room.Id, Ten, Ten.AddMinutes(90), null) { Id = meeting.Id }, CancellationToken.None);
         }
 

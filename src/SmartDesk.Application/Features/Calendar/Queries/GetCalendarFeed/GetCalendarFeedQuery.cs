@@ -13,7 +13,8 @@ namespace SmartDesk.Application.Features.Calendar.Queries.GetCalendarFeed;
 
 // Someone's personal calendar feed (ADR-0048), asked for by their calendar app with the link's
 // token rather than a sign-in: their bookings and the meetings they're invited to and haven't
-// turned down, from CalendarFeedRules.DaysBack ago on. What's cancelled is left out, so it goes
+// turned down, from CalendarFeedRules.DaysBack ago on - those still waiting for approval as
+// tentative (ADR-0049). What's cancelled is left out, so it goes
 // from the calendar at its next fetch. Null - a 404 - for a token that isn't a link's, and for
 // a link whose account is disabled. Notes when it was fetched, for its owner to see.
 public sealed record GetCalendarFeedQuery(string? Token) : IRequest<CalendarDocument?>;
@@ -50,7 +51,7 @@ public sealed class GetCalendarFeedQueryHandler(
         var userId = feed.UserId;
         var reservations = await db.Reservations
             .AsNoTracking()
-            .Where(r => r.Status == ReservationStatus.Confirmed && r.EndDateTime > from)
+            .Where(r => r.Status != ReservationStatus.Cancelled && r.EndDateTime > from)
             .Where(r => r.UserId == userId
                 || r.Attendees.Any(a => a.UserId == userId && a.Response != AttendeeResponse.Declined))
             .OrderBy(r => r.StartDateTime)

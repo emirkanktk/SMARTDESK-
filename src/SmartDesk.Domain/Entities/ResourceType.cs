@@ -20,5 +20,9 @@ public class ResourceType
     // Booked within the office's hours (OfficeHours) only.
     public bool OfficeHoursOnly { get; set; }
 
+    // A booking waits for an Admin's approval (ADR-0049), a company car's for one, unless an
+    // Admin makes it.
+    public bool RequiresApproval { get; set; }
+
     public ICollection<Resource> Resources { get; set; } = new List<Resource>();
 }

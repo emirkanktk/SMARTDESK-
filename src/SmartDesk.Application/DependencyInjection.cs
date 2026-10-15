@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using SmartDesk.Application.Common.Behaviors;
 using SmartDesk.Application.Features.Accounts.Common;
+using SmartDesk.Application.Features.Approvals.Common;
 using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Issues.Common;
 using SmartDesk.Application.Features.Meetings.Common;
@@ -38,6 +39,9 @@ public static class DependencyInjection
 
         // Every rule for what a booking is for, in one place (ADR-0046).
         services.AddScoped<BookingPolicy>();
+
+        // Bookings that wait for an Admin's approval (ADR-0049).
+        services.AddScoped<BookingApprovals>();
 
         // A booking or a move that clashes says what would do instead (ADR-0042). Registered
         // after MediatR's own, so it runs inside validation: a request that isn't valid never

@@ -46,6 +46,19 @@ public sealed record ReservationDto(
     // on its own.
     public ReservationSeriesDto? Series { get; init; }
 
+    // Approval (ADR-0049), for a booking whose kind waits for an Admin's: when it last went to
+    // one, when it was approved or declined - or lapsed, with nobody named - by whom, and why it
+    // was declined. All null for a booking that never needed it.
+    public DateTime? RequestedAt { get; init; }
+
+    public DateTime? DecidedAt { get; init; }
+
+    public Guid? DecidedBy { get; init; }
+
+    public string? DecidedByName { get; init; }
+
+    public string? DeclineReason { get; init; }
+
     public static readonly Expression<Func<Reservation, ReservationDto>> Projection = r => new ReservationDto(
         r.Id,
         r.ResourceId,
@@ -66,6 +79,10 @@ public sealed record ReservationDto(
     {
         Attendees = r.Attendees.Select(a => new ReservationAttendeeDto(a.UserId, null, a.Response)).ToList(),
         CheckedInBy = r.CheckedInByUserId,
+        RequestedAt = r.RequestedAt,
+        DecidedAt = r.DecidedAt,
+        DecidedBy = r.DecidedByUserId,
+        DeclineReason = r.DeclineReason,
         Series = r.Series == null
             ? null
             : new ReservationSeriesDto(r.Series.Id, r.Series.Frequency, r.Series.Interval, r.Series.DaysOfWeek, r.Series.Until, r.Series.TimeZone),

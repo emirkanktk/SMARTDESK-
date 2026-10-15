@@ -49,4 +49,17 @@ public enum InboxMessageKind
     // To someone on a waiting list (ADR-0043): the time they waited for freed up, and it's
     // booked for them. The times are the booking's.
     WaitlistBooked = 13,
+
+    // To every Admin (ADR-0049): someone, the sender, asks for a booking that waits for an
+    // Admin's approval, or changed one. The note is the booking's.
+    ApprovalRequested = 14,
+
+    // To whoever asked: an Admin, the sender, approved it; it's booked.
+    BookingApproved = 15,
+
+    // To whoever asked: an Admin, the sender, declined it, and the reason is why.
+    BookingDeclined = 16,
+
+    // To whoever asked: nobody approved it before its start, so it lapsed.
+    ApprovalLapsed = 17,
 }

@@ -58,6 +58,7 @@ builder.Services.AddHostedService<ReservationReminderWorker>();
 builder.Services.AddHostedService<NoShowReleaseWorker>();
 builder.Services.AddHostedService<ReleaseWarningWorker>();
 builder.Services.AddHostedService<EndingSoonNoticeWorker>();
+builder.Services.AddHostedService<ApprovalLapseWorker>();
 // Replaces Infrastructure's no-op fallback: a change to an account cuts its hub connections.
 builder.Services.AddSingleton<HubConnectionRegistry>();
 builder.Services.AddSingleton<IRealtimeSessions>(sp => sp.GetRequiredService<HubConnectionRegistry>());

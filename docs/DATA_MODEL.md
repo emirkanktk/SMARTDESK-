@@ -47,6 +47,7 @@ they next sign in.
 | MaxDaysAhead | int? | how many days after today a booking may start, 0 for today only; null: unset |
 | MaxActivePerUser | int? | how many bookings of the kind one person may have that haven't ended; null: no limit |
 | OfficeHoursOnly | bool | booked within the office's hours only; false by default |
+| RequiresApproval | bool | a booking waits for an Admin's approval, unless an Admin makes it (ADR-0049); false by default |
 
 ### OfficeHours
 
@@ -94,7 +95,7 @@ When the office is open (ADR-0046): one row, seeded by migration, which an Admin
 | UserId | Guid | references ApplicationUser.Id (no FK constraint across the Identity boundary by design - see below) |
 | StartDateTime | DateTime | |
 | EndDateTime | DateTime | must be > StartDateTime |
-| Status | ReservationStatus | Confirmed / Cancelled |
+| Status | ReservationStatus | Confirmed (0) / Cancelled (1) / Pending (2): waiting for an Admin's approval, which holds its time like a booking (ADR-0049) |
 | Note | string? | |
 | ReminderMinutes | int? | remind the owner this many minutes before the start: 5, 15, 30 or 60; null = no reminder (ADR-0018) |
 | ReminderSentAt | DateTime? | when that reminder went out; cleared when the start or `ReminderMinutes` changes. A partial index on `StartDateTime` covers the rows still waiting for one |
@@ -105,6 +106,10 @@ When the office is open (ADR-0046): one row, seeded by migration, which an Admin
 | CheckedInByUserId | Guid? | who checked it in: the owner or someone invited; cleared with `CheckedInAt` (ADR-0034) |
 | ReleaseWarningSentAt | DateTime? | when the owner and those invited were warned, five minutes before the release (ADR-0034) |
 | SeriesId | Guid? | FK → `ReservationSeries.Id` (restrict), indexed: the repeating booking it's one date of (ADR-0035) |
+| RequestedAt | DateTime? | when it last went to an Admin for approval, on being asked for or moved (ADR-0049); null for a booking that never needed it |
+| DecidedAt | DateTime? | when an Admin approved or declined it, or it lapsed at its start still waiting; cleared when it's asked for again |
+| DecidedByUserId | Guid? | the Admin who decided; null while it waits and when it lapsed |
+| DeclineReason | string? (500) | why it was declined, for its owner |
 
 `Reservation.UserId` is stored as a plain `Guid`, not an EF navigation to `ApplicationUser`,
 because `SmartDeskDbContext` treats Identity's own tables as belonging to the Identity
@@ -292,6 +297,7 @@ erDiagram
         int MaxDaysAhead "null: unset"
         int MaxActivePerUser "null: no limit"
         bool OfficeHoursOnly
+        bool RequiresApproval
     }
     OfficeHours {
         int Id PK "always 1"
@@ -337,7 +343,7 @@ erDiagram
         uuid SeriesId FK "null for a booking on its own"
         datetime StartDateTime
         datetime EndDateTime
-        int Status "Confirmed, Cancelled"
+        int Status "Confirmed, Cancelled, Pending"
         bool CheckInRequired
         datetime CheckedInAt
     }
@@ -433,6 +439,8 @@ erDiagram
   reservations, does the new range intersect an existing one).
 - `IX_Reservations_PendingReminders` on `Reservations(StartDateTime)`, only rows with a reminder
   still to send - what the reminder job scans every 30 seconds.
+- `IX_Reservations_AwaitingApproval` on `Reservations(StartDateTime)`, only `Pending` rows - the Admins'
+  list and the job that lets undecided requests lapse at their start (ADR-0049).
 - `IX_Reservations_AwaitingCheckIn` on `Reservations(StartDateTime)`, only `Confirmed` rows that
   need a check-in nobody has made yet - what the release job scans every 30 seconds (ADR-0030).
 - `ReservationAttendees(UserId)` - the meetings someone is invited to (ADR-0032).
@@ -455,11 +463,12 @@ erDiagram
 - `CK_OfficeHours_Single` (`"Id" = 1`), `CK_OfficeHours_OpensBeforeCloses` and
   `CK_OfficeHours_Workdays` (1 to 127) - one row of office hours that make sense (ADR-0046).
 - `EX_Reservations_NoOverlap` - `EXCLUDE USING gist ("ResourceId" WITH =,
-  tstzrange("StartDateTime", "EndDateTime", '[)') WITH &&) WHERE ("Status" = 0)`: no two
-  `Confirmed` reservations of one resource may overlap (rule 1). The range is half-open,
+  tstzrange("StartDateTime", "EndDateTime", '[)') WITH &&) WHERE ("Status" IN (0, 2))`: no two
+  reservations of one resource that hold their time - `Confirmed`, or `Pending` approval
+  (ADR-0049) - may overlap (rule 1). The range is half-open,
   like `ReservationOverlap`. Requires the `btree_gist` extension; both are created in raw
   SQL by the `AddReservationOverlapConstraint` migration, since EF Core can't model an
-  exclusion constraint.
+  exclusion constraint, and `AddBookingApproval` widened it to `Pending`.
 
 ## Business rules (enforced in Application-layer handlers, backend-side - never frontend-only)
 

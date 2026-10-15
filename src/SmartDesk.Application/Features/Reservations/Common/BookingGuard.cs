@@ -108,7 +108,7 @@ public static class BookingGuard
         var taken = await db.Reservations
             .AsNoTracking()
             .Where(r => r.ResourceId == resourceId && r.Id != ignoreReservationId)
-            .Where(ReservationOverlap.ConfirmedOverlapping(from, to))
+            .Where(ReservationOverlap.TakenOverlapping(from, to))
             .Select(r => new { r.StartDateTime, r.EndDateTime })
             .ToListAsync(cancellationToken);
 

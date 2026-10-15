@@ -47,6 +47,12 @@ public sealed class ExtendReservationCommandHandler(
                 throw new ConflictException(Messages.Reservations_CancelledCantChange);
             }
 
+            // Not a booking yet (ADR-0049): its request is what changes.
+            if (reservation.Status == ReservationStatus.Pending)
+            {
+                throw new ConflictException(Messages.Approval_StillWaiting) { Code = ConflictCodes.AwaitingApproval };
+            }
+
             if (reservation.EndDateTime <= timeProvider.GetUtcNow().UtcDateTime)
             {
                 throw new ConflictException(Messages.Reservations_EndedCantChange);

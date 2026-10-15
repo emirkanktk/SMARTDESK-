@@ -9,11 +9,11 @@ namespace SmartDesk.Domain.Rules;
 //
 // Ranges are half-open, [start, end): a booking that ends at 11:00 and one that starts at
 // 11:00 do not overlap, so back-to-back meetings are allowed. Cancelled reservations never
-// block anything.
+// block anything; one waiting for approval does, as if it were booked (ADR-0049).
 public static class ReservationOverlap
 {
-    public static Expression<Func<Reservation, bool>> ConfirmedOverlapping(DateTime start, DateTime end) =>
-        r => r.Status == ReservationStatus.Confirmed && r.StartDateTime < end && start < r.EndDateTime;
+    public static Expression<Func<Reservation, bool>> TakenOverlapping(DateTime start, DateTime end) =>
+        r => r.Status != ReservationStatus.Cancelled && r.StartDateTime < end && start < r.EndDateTime;
 
     public static bool Overlaps(DateTime startA, DateTime endA, DateTime startB, DateTime endB) =>
         startA < endB && startB < endA;

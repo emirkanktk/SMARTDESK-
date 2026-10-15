@@ -104,7 +104,7 @@ public sealed class MeetingTests : IDisposable
         var from = start ?? Ten;
         await using var context = _database.CreateContext();
         var user = As(organizer);
-        return await new CreateReservationCommandHandler(context, user, Names(), _reservations.Object, Invitations(context, user), TestPolicy.For(context, _clock))
+        return await new CreateReservationCommandHandler(context, user, Names(), _reservations.Object, Invitations(context, user), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
             .Handle(new CreateReservationCommand(roomId, from, from.AddHours(1), note, null, attendees), CancellationToken.None);
     }
 
@@ -119,7 +119,7 @@ public sealed class MeetingTests : IDisposable
         var from = start ?? booking.StartDateTime;
         await using var context = _database.CreateContext();
         var user = As(caller);
-        return await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user), TestPolicy.For(context, _clock))
+        return await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
             .Handle(new UpdateReservationCommand(roomId ?? booking.ResourceId, from, from.AddHours(1), note, null, attendees) { Id = booking.Id }, CancellationToken.None);
     }
 
@@ -682,7 +682,7 @@ public sealed class MeetingTests : IDisposable
         await using (var context = _database.CreateContext())
         {
             var user = As(Zeynep);
-            longer = await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user), TestPolicy.For(context, _clock))
+            longer = await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
                 .Handle(
                     new UpdateReservationCommand(room.Id, Ten, Ten.AddHours(2), "Weekly sync", null, [Ayse.Id, Mehmet.Id]) { Id = booking.Id },
                     CancellationToken.None);
@@ -711,7 +711,7 @@ public sealed class MeetingTests : IDisposable
         await using (var context = _database.CreateContext())
         {
             var user = As(Zeynep);
-            moved = await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user), TestPolicy.For(context, _clock))
+            moved = await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
                 .Handle(
                     new UpdateReservationCommand(other.Id, Ten, Ten.AddHours(1), "Weekly sync", null, [Ayse.Id]) { Id = booking.Id },
                     CancellationToken.None);

@@ -72,7 +72,7 @@ public sealed class CancelFollowingCommandHandler(
             // Read again under the locks: a date may have been cancelled, or have ended, meanwhile.
             cancelled = await db.Reservations
                 .Include(r => r.Attendees)
-                .Where(r => ids.Contains(r.Id) && r.Status == ReservationStatus.Confirmed && r.EndDateTime > now)
+                .Where(r => ids.Contains(r.Id) && r.Status != ReservationStatus.Cancelled && r.EndDateTime > now)
                 .OrderBy(r => r.StartDateTime)
                 .ToListAsync(cancellationToken);
             if (cancelled.Count > 0)

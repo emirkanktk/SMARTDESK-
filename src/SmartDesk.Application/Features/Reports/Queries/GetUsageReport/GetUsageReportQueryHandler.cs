@@ -41,7 +41,11 @@ public sealed class GetUsageReportQueryHandler(IApplicationDbContext db, IIdenti
             resourcesQuery = resourcesQuery.Where(r => r.ResourceTypeId == typeId);
         }
 
+        // Only what was booked: a request that waits for an Admin's approval, or never had it -
+        // declined, lapsed or withdrawn (ADR-0049) - wasn't a booking, used or cancelled.
         var bookings = await reservationsQuery
+            .Where(r => r.Status != ReservationStatus.Pending
+                && (r.RequestedAt == null || (r.DecidedByUserId != null && r.DeclineReason == null)))
             .Select(r => new Booking(
                 r.ResourceId, r.UserId, r.StartDateTime, r.EndDateTime, r.Status, r.CheckedInAt != null, r.ReleasedAt != null))
             .ToListAsync(cancellationToken);

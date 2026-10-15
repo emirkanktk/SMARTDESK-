@@ -64,6 +64,7 @@ public static class CalendarEntries
         (status, answer) switch
         {
             (ReservationStatus.Cancelled, _) => CalendarEntryStatus.Cancelled,
+            (ReservationStatus.Pending, _) => CalendarEntryStatus.Tentative,
             (_, AttendeeResponse.Pending) => CalendarEntryStatus.Tentative,
             (_, AttendeeResponse.Declined) => CalendarEntryStatus.Cancelled,
             _ => CalendarEntryStatus.Confirmed,

@@ -27,11 +27,11 @@ public class ReservationOverlapTests
     [Theory]
     [InlineData(ReservationStatus.Confirmed, true)]
     [InlineData(ReservationStatus.Cancelled, false)]
-    public void ConfirmedOverlapping_OnlyConfirmedReservationsBlock(ReservationStatus status, bool expected)
+    public void TakenOverlapping_OnlyConfirmedReservationsBlock(ReservationStatus status, bool expected)
     {
         var reservation = new Reservation { StartDateTime = At(10), EndDateTime = At(11.5), Status = status };
 
-        var predicate = ReservationOverlap.ConfirmedOverlapping(At(11), At(12)).Compile();
+        var predicate = ReservationOverlap.TakenOverlapping(At(11), At(12)).Compile();
 
         predicate(reservation).Should().Be(expected);
     }

@@ -66,6 +66,27 @@
   <data name="Accounts_UnknownRole" xml:space="preserve">
     <value>Rol şunlardan biri olmalı: {0}.</value>
   </data>
+  <data name="Approval_CantRepeat" xml:space="preserve">
+    <value>{0} rezervasyonları bir sistem yöneticisinin onayını bekler, bu yüzden tekrarlanamaz: her tarih için ayrı ayrı isteyin.</value>
+  </data>
+  <data name="Approval_Lapsed" xml:space="preserve">
+    <value>Başlangıç saati geldiği için talep düştü: artık onaylanamaz.</value>
+  </data>
+  <data name="Approval_NoWaitingList" xml:space="preserve">
+    <value>{0} rezervasyonları bir sistem yöneticisinin onayını bekler, bu yüzden bekleme listesi yoktur: başka bir saat isteyin.</value>
+  </data>
+  <data name="Approval_NotRightAway" xml:space="preserve">
+    <value>{0} rezervasyonları bir sistem yöneticisinin onayını bekler, bu yüzden hemen başlayamaz: daha ileri bir saat isteyin.</value>
+  </data>
+  <data name="Approval_NotWaiting" xml:space="preserve">
+    <value>Bu rezervasyon onay beklemiyor.</value>
+  </data>
+  <data name="Approval_ReasonRequired" xml:space="preserve">
+    <value>Neden reddedildiğini yazın: talep sahibi okuyacak.</value>
+  </data>
+  <data name="Approval_StillWaiting" xml:space="preserve">
+    <value>Hâlâ bir sistem yöneticisinin onayını bekliyor: bunun yerine talebi değiştirin.</value>
+  </data>
   <data name="Assistant_LastFromUser" xml:space="preserve">
     <value>Konuşma sizin mesajınızla bitmeli.</value>
   </data>

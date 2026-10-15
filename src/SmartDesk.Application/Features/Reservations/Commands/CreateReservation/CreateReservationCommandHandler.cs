@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.Approvals.Common;
 using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
+using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
 
@@ -17,7 +19,8 @@ public sealed class CreateReservationCommandHandler(
     IIdentityService identityService,
     IReservationNotifier notifier,
     MeetingInvitations invitations,
-    BookingPolicy policy) : IRequestHandler<CreateReservationCommand, ReservationDto>
+    BookingPolicy policy,
+    BookingApprovals approvals) : IRequestHandler<CreateReservationCommand, ReservationDto>
 {
     public async Task<ReservationDto> Handle(CreateReservationCommand request, CancellationToken cancellationToken)
     {
@@ -40,6 +43,10 @@ public sealed class CreateReservationCommandHandler(
             // rules 1 and 7).
             var resource = await BookingGuard.EnsureResourceBookableAsync(db, currentUser, request.ResourceId, cancellationToken);
             await policy.EnsureAllowedAsync(new BookingClaim(userId, request.ResourceId, start, end), cancellationToken);
+
+            // A kind that waits for an Admin's approval (ADR-0049): asked for, not booked yet.
+            var needsApproval = await policy.NeedsApprovalAsync(
+                request.ResourceId, start, currentUser.IsInRole(Roles.Admin), cancellationToken);
             await BookingGuard.EnsureFreeAsync(db, request.ResourceId, resource.Name, start, end, null, cancellationToken);
 
             // Who may come, and whether they fit (ADR-0032).
@@ -61,6 +68,10 @@ public sealed class CreateReservationCommandHandler(
             };
             db.Reservations.Add(reservation);
             messages = invitations.Write(InboxMessageKind.MeetingInvitation, attendees.Added, reservation, resource.Name, userId);
+            if (needsApproval)
+            {
+                messages = [.. messages, .. await approvals.RequestAsync(reservation, resource.Name, cancellationToken)];
+            }
 
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);

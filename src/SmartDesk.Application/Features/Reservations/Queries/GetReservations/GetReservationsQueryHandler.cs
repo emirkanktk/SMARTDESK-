@@ -25,7 +25,7 @@ public sealed class GetReservationsQueryHandler(
         var query = db.Reservations
             .AsNoTracking()
             .OnUsableResources(currentUser)
-            .Where(ReservationOverlap.ConfirmedOverlapping(from, to));
+            .Where(ReservationOverlap.TakenOverlapping(from, to));
 
         if (request.ResourceId is { } resourceId)
         {

@@ -166,6 +166,12 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
         builder.Entity<Reservation>(entity =>
         {
             entity.Property(e => e.Note).HasMaxLength(500);
+            entity.Property(e => e.DeclineReason).HasMaxLength(500);
+
+            // What waits for an Admin's approval (ADR-0049): their list, and the job that lets
+            // the undecided go at their start.
+            entity.HasIndex(e => e.StartDateTime, "IX_Reservations_AwaitingApproval")
+                .HasFilter("\"Status\" = 2");
 
             entity.HasOne(e => e.Resource)
                 .WithMany(r => r.Reservations)
@@ -194,7 +200,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
 
             // Business rule 1's hard guarantee is a PostgreSQL exclusion constraint
             // (ReservationConstraints.NoOverlap). EF can't model it, so it's created in raw SQL
-            // by the AddReservationOverlapConstraint migration - see ADR-0011.
+            // by the AddReservationOverlapConstraint migration - see ADR-0011 - and widened to
+            // requests waiting for approval by AddBookingApproval (ADR-0049).
 
             // The dates of a series (ADR-0035), e.g. to cancel the rest of it. Bookings are
             // cancelled rather than deleted, and so are series, so nothing cascades.

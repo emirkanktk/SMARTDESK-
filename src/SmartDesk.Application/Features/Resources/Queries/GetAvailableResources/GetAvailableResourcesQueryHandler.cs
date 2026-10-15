@@ -42,7 +42,7 @@ public sealed class GetAvailableResourcesQueryHandler(
 
         // Translated to a single NOT IN subquery; uses the (ResourceId, Status, Start, End) index.
         var busyResourceIds = db.Reservations
-            .Where(ReservationOverlap.ConfirmedOverlapping(start, end))
+            .Where(ReservationOverlap.TakenOverlapping(start, end))
             .Select(r => r.ResourceId);
 
         // Business rule 7: a resource blocked for any part of the window isn't available.

@@ -1561,3 +1561,48 @@ new tables.
   - The calendar is read-only: answering an invitation or moving a booking is done in SmartDesk.
   - Anyone who has the link sees what its owner booked, where and when, and who is invited, as
     the app's own calendar shows them, without signing in.
+
+## ADR-0049: Bookings that wait for an Admin's approval, for the kinds that ask for it
+
+**Decision:**
+- A kind of resource can ask for an Admin's approval (`ResourceType.RequiresApproval`), set on
+  the booking rules page beside its other rules (ADR-0046). A booking of it that anyone but an
+  Admin makes is `Pending`: asked for, not booked yet. An Admin approves it, and it's
+  `Confirmed`; or declines it, saying why; or nobody decides before its start, and it lapses -
+  `Cancelled` either way. Every active Admin's inbox says when one is asked for, and whoever
+  asked hears each outcome.
+- `Pending` is a status of its own, not a flag on a `Confirmed` booking. It holds its time as a
+  booking does: the one overlap rule (`ReservationOverlap.TakenOverlapping`) and the database's
+  exclusion constraint cover it, so two people can't ask for the same car at the same time, and
+  an approval never meets a clash. Everything that's for a booking only - the reminder, the
+  check-in and the release, the ending-soon notice, "in use now", the usage report - keeps to
+  `Confirmed` as it did, and so leaves a request out without each being told.
+- The decision is kept on the booking: `RequestedAt`, `DecidedAt`, `DecidedByUserId`,
+  `DeclineReason`. An owner who moves it to another time to come, or to another resource of such
+  a kind, asks again; shortening it, a new note, an Admin's move, and running on once it's under
+  way don't. A request can't start right away, as an Admin needs the time; nor repeat, so each
+  date is asked for on its own; nor join a waiting list, as a freed time would be booked with
+  nobody there to approve it; nor run longer or end early while it waits.
+- `/api/approvals` (Admin) lists what waits, the soonest first, and approves or declines it.
+  `LapseUnapprovedRequestsCommand` lets the undecided go every 30 seconds (`ApprovalLapseWorker`),
+  as the release of no-shows does (ADR-0030).
+
+**Why:**
+- The plan's backup pool: "approval flow: on resources like a company car, a booking is Pending
+  first, active once an admin approves it". A car is costly and shared by the whole company:
+  someone says yes before it's taken.
+- Holding the time: the other way - many requests for one time, the rest turned down when one
+  is approved - leaves an Admin choosing between people and everyone guessing until then. The
+  first to ask is first in line, as for any booking, and the Admin says yes or no to one.
+- A status of its own, so what isn't a booking can't be reminded, released or counted as one by
+  accident: only the places that ask whether a time is taken had to learn about it, and they
+  ask the one overlap rule.
+- Lapsing at the start: a request nobody answered can't be used then anyway, and kept, it would
+  hold the car for nothing.
+- **Trade-offs:**
+  - Admins decide, for every resource; a manager doesn't approve for their team's own
+    (ADR-0022).
+  - No series and no waiting list for such kinds, so every request is one date an Admin can
+    weigh. An Admin's own bookings of them, a series too, need no approval.
+  - A request moved after its approval waits again, even for an hour's change.
+  - Asking for approval from a kind's next bookings on leaves those already made as they are.

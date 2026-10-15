@@ -73,8 +73,9 @@ public sealed class GetDoorScreenQueryHandler(IApplicationDbContext db, IFronten
 
         var bookings = await db.Reservations
             .AsNoTracking()
+            // Waiting for approval holds the time too (ADR-0049), with nothing to check in yet.
             .Where(r => r.ResourceId == request.ResourceId
-                && r.Status == ReservationStatus.Confirmed
+                && r.Status != ReservationStatus.Cancelled
                 && r.EndDateTime > now
                 && r.StartDateTime < dayEnd)
             .OrderBy(r => r.StartDateTime)
@@ -82,7 +83,7 @@ public sealed class GetDoorScreenQueryHandler(IApplicationDbContext db, IFronten
             .Select(r => new DoorBookingDto(
                 r.StartDateTime,
                 r.EndDateTime,
-                r.CheckInRequired && r.Resource.CheckInRequired,
+                r.Status == ReservationStatus.Confirmed && r.CheckInRequired && r.Resource.CheckInRequired,
                 r.CheckedInAt != null))
             .ToListAsync(cancellationToken);
         var blocks = await db.ResourceBlocks

@@ -55,7 +55,7 @@ public sealed class CreateResourceBlockCommandHandler(
             ? await db.Reservations
                 .AsNoTracking()
                 .Where(r => r.ResourceId == request.ResourceId)
-                .Where(ReservationOverlap.ConfirmedOverlapping(start, end))
+                .Where(ReservationOverlap.TakenOverlapping(start, end))
                 .Select(r => r.Id)
                 .OrderBy(id => id)
                 .ToListAsync(cancellationToken)
@@ -98,7 +98,7 @@ public sealed class CreateResourceBlockCommandHandler(
 
             var clashing = await db.Reservations
                 .Where(r => r.ResourceId == request.ResourceId)
-                .Where(ReservationOverlap.ConfirmedOverlapping(start, end))
+                .Where(ReservationOverlap.TakenOverlapping(start, end))
                 .ToListAsync(cancellationToken);
 
             // Booked after the look, before the lock, so not locked here.

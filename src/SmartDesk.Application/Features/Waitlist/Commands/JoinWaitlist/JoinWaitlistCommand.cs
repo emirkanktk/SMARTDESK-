@@ -8,6 +8,7 @@ using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Waitlist.Common;
 using SmartDesk.Application.Resources;
+using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Rules;
 
@@ -62,6 +63,16 @@ public sealed class JoinWaitlistCommandHandler(
         // kind than they may have (ADR-0046).
         await policy.EnsureAllowedAsync(new BookingClaim(userId, request.ResourceId, start, end), cancellationToken);
 
+        // A freed time is booked for whoever waited, with nobody there to approve it (ADR-0049):
+        // a kind that waits for an Admin's approval has no waiting list.
+        if (await policy.ApprovingKindAsync(request.ResourceId, currentUser.IsInRole(Roles.Admin), cancellationToken) is { } kind)
+        {
+            throw new ConflictException(string.Format(Messages.Approval_NoWaitingList, kind))
+            {
+                Code = ConflictCodes.ApprovalRequired,
+            };
+        }
+
         // Nothing to wait for when it's free.
         var conflicts = await BookingGuard.FindConflictsAsync(
             db, request.ResourceId, resource.Name, [new Occurrence(start, end)], null, cancellationToken);
@@ -75,7 +86,7 @@ public sealed class JoinWaitlistCommandHandler(
 
         var ownBooking = await db.Reservations
             .Where(r => r.ResourceId == request.ResourceId && r.UserId == userId)
-            .AnyAsync(ReservationOverlap.ConfirmedOverlapping(start, end), cancellationToken);
+            .AnyAsync(ReservationOverlap.TakenOverlapping(start, end), cancellationToken);
         if (ownBooking)
         {
             throw new ConflictException(string.Format(Messages.Waitlist_BookedAlready, resource.Name));

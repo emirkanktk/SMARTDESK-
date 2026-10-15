@@ -20,16 +20,18 @@ public sealed record OfficeHoursDto(
 }
 
 // A kind's own rules; one that's null isn't set, and only the rule for every booking applies.
+// RequiresApproval: its bookings wait for an Admin's approval (ADR-0049).
 public sealed record ResourceTypeRulesDto(
     Guid ResourceTypeId,
     string Name,
     int? MaxDurationMinutes,
     int? MaxDaysAhead,
     int? MaxActivePerUser,
-    bool OfficeHoursOnly)
+    bool OfficeHoursOnly,
+    bool RequiresApproval = false)
 {
     public static ResourceTypeRulesDto From(ResourceType type) =>
-        new(type.Id, type.Name, type.MaxDurationMinutes, type.MaxDaysAhead, type.MaxActivePerUser, type.OfficeHoursOnly);
+        new(type.Id, type.Name, type.MaxDurationMinutes, type.MaxDaysAhead, type.MaxActivePerUser, type.OfficeHoursOnly, type.RequiresApproval);
 }
 
 // The most a kind's rules may be set to. The first two are also the rules for every booking

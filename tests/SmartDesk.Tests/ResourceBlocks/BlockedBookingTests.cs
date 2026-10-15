@@ -30,7 +30,7 @@ public class BlockedBookingTests : IDisposable
         await using var context = _database.CreateContext();
         await new CreateReservationCommandHandler(
                 context, new FakeCurrentUser(UserId), new FakeIdentityService(), Mock.Of<IReservationNotifier>(),
-                TestInvitations.For(context, new FakeCurrentUser(UserId)), TestPolicy.For(context, new FakeTimeProvider(Now)))
+                TestInvitations.For(context, new FakeCurrentUser(UserId)), TestPolicy.For(context, new FakeTimeProvider(Now)), TestApprovals.For(context, new FakeTimeProvider(Now)))
             .Handle(new CreateReservationCommand(resourceId, At(startHour), At(endHour), null), CancellationToken.None);
     }
 
@@ -65,7 +65,7 @@ public class BlockedBookingTests : IDisposable
         await using var context = _database.CreateContext();
         var handler = new UpdateReservationCommandHandler(
             context, new FakeCurrentUser(UserId, Roles.Employee), new FakeIdentityService(),
-            Mock.Of<IReservationNotifier>(), new FakeTimeProvider(Now), TestInvitations.For(context, new FakeCurrentUser(UserId, Roles.Employee)), TestPolicy.For(context, new FakeTimeProvider(Now)));
+            Mock.Of<IReservationNotifier>(), new FakeTimeProvider(Now), TestInvitations.For(context, new FakeCurrentUser(UserId, Roles.Employee)), TestPolicy.For(context, new FakeTimeProvider(Now)), TestApprovals.For(context, new FakeTimeProvider(Now)));
         var act = () => handler.Handle(
             new UpdateReservationCommand(room.Id, At(11), At(12), null) { Id = reservation.Id }, CancellationToken.None);
 

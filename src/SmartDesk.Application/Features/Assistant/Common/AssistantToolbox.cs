@@ -172,7 +172,7 @@ public sealed class AssistantToolbox(ISender sender, TimeZoneInfo zone, TimeProv
         var (rangeStart, rangeEnd) = (ToUtc(from), ToUtc(to.AddDays(1)));
         var mine = await sender.Send(new GetMyReservationsQuery(), cancellationToken);
         var listed = mine
-            .Where(r => r.Status == ReservationStatus.Confirmed && r.StartDateTime < rangeEnd && r.EndDateTime > rangeStart)
+            .Where(r => r.Status != ReservationStatus.Cancelled && r.StartDateTime < rangeEnd && r.EndDateTime > rangeStart)
             .OrderBy(r => r.StartDateTime)
             .ToList();
 
@@ -189,6 +189,8 @@ public sealed class AssistantToolbox(ISender sender, TimeZoneInfo zone, TimeProv
                 start = ToLocal(r.StartDateTime),
                 end = ToLocal(r.EndDateTime),
                 note = r.Note,
+                // Asked for, and an Admin hasn't approved it yet (ADR-0049).
+                awaitingApproval = r.Status == ReservationStatus.Pending,
             }),
         };
     }
@@ -237,7 +239,7 @@ public sealed class AssistantToolbox(ISender sender, TimeZoneInfo zone, TimeProv
         var reservation = (await sender.Send(new GetMyReservationsQuery(), cancellationToken))
             .SingleOrDefault(r => r.Id == reservationId)
             ?? throw new InputException("That isn't one of the user's reservations.");
-        if (reservation.Status != ReservationStatus.Confirmed || reservation.EndDateTime <= timeProvider.GetUtcNow().UtcDateTime)
+        if (reservation.Status == ReservationStatus.Cancelled || reservation.EndDateTime <= timeProvider.GetUtcNow().UtcDateTime)
         {
             throw new InputException("That reservation is already cancelled or over.");
         }

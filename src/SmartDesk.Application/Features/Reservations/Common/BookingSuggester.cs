@@ -77,7 +77,7 @@ public sealed class BookingSuggester(
         var bookings = await db.Reservations
             .AsNoTracking()
             .Where(r => r.ResourceId == request.ResourceId && r.Id != request.MovingReservationId)
-            .Where(ReservationOverlap.ConfirmedOverlapping(from, to))
+            .Where(ReservationOverlap.TakenOverlapping(from, to))
             .Select(r => new { r.StartDateTime, r.EndDateTime })
             .ToListAsync(cancellationToken);
         var blocks = await db.ResourceBlocks
@@ -105,7 +105,7 @@ public sealed class BookingSuggester(
         var people = 1 + (request.AttendeeIds ?? []).Distinct().Count();
         var taken = db.Reservations
             .Where(r => r.Id != request.MovingReservationId)
-            .Where(ReservationOverlap.ConfirmedOverlapping(start, end))
+            .Where(ReservationOverlap.TakenOverlapping(start, end))
             .Select(r => r.ResourceId);
         var blocked = db.ResourceBlocks
             .Where(ResourceBlockOverlap.Overlapping(start, end))

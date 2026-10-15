@@ -10,7 +10,7 @@ public static class ConflictCodes
     // A blocked window covers part of the requested time.
     public const string ResourceBlocked = "resource-blocked";
 
-    // Another Confirmed reservation covers part of the requested time.
+    // Another reservation covers part of the requested time: Confirmed, or waiting for approval.
     public const string ReservationOverlaps = "reservation-overlaps";
 
     // A new blocked window would overlap another one on the same resource.
@@ -52,4 +52,18 @@ public static class ConflictCodes
     // A date of a series outside office hours, for a kind booked within them only (ADR-0046):
     // skipped like a date that isn't free. Only ever a date's code, never a response's.
     public const string OutsideOfficeHours = "outside-office-hours";
+
+    // Approving or declining a booking that isn't waiting for approval (ADR-0049): approved or
+    // declined already, cancelled, or never asked for one.
+    public const string NotAwaitingApproval = "not-awaiting-approval";
+
+    // Approving a request whose start has come: it lapses instead.
+    public const string ApprovalLapsed = "approval-lapsed";
+
+    // Something a booking that waits for an Admin's approval can't have: a series, a place on
+    // the waiting list, a booking at the door. Ask for one date, in the app.
+    public const string ApprovalRequired = "approval-required";
+
+    // Running longer, or ending, a booking still waiting for approval: it isn't one yet.
+    public const string AwaitingApproval = "awaiting-approval";
 }
