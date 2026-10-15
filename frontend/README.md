@@ -48,16 +48,30 @@ the dev certificate yet: `dotnet dev-certs https --trust`.
 A resource's QR code opens its page on the phone that scans it (ADR-0030, ADR-0037), so it's
 worth trying on a real one. A phone can't reach `localhost` on the computer; give it an address
 it can reach, and start the API with `App__FrontendUrl` set to that address, so the QR codes it
-makes point there:
+makes point there. Either way only the dev server's port is reached: it passes `/api` and `/hubs`
+on to the API.
+
+- **Any network, through a tunnel:** a tunnel gives the dev server an https address on the
+  internet, which a phone opens from any Wi-Fi or over mobile data; over https it keeps the
+  session cookie, too. Cloudflare's quick tunnel needs no account, only `cloudflared`, a single
+  program ([releases](https://github.com/cloudflare/cloudflared/releases), or
+  `winget install Cloudflare.cloudflared`):
+
+  ```bash
+  cloudflared tunnel --url http://localhost:4200 --http-host-header localhost:4200
+  ```
+
+  It prints the address, `https://<four random words>.trycloudflare.com`: that is
+  `App__FrontendUrl`. `--http-host-header` passes each request on as one for `localhost`, which
+  the dev server answers; a tunnel that keeps its own host name needs that name in
+  `allowedHosts` (the `serve` options in `angular.json`) instead. Every start of `cloudflared`
+  gives a new address. While the tunnel is open, anyone who has the address reaches the app,
+  and a Development build lists its demo sign-ins on the front page: close it when you're done.
 
 - **The same Wi-Fi:** `ng serve --host 0.0.0.0`, then open `http://<the computer's IP>:4200` on
-  the phone (`ipconfig` shows the IP; Windows Firewall has to let port 4200 in). Only that port
-  needs to be open: the dev server passes `/api` and `/hubs` on to the API. Over plain http the
-  phone doesn't keep the session cookie, which is `Secure` (ADR-0026), so a reload asks you to
-  sign in again.
-- **A tunnel:** VS Code's Ports view (Forward a Port, 4200, visibility Public), ngrok or
-  Cloudflare Tunnel give an https address, which keeps the cookie. Start
-  `ng serve --allowed-hosts` so the dev server answers to the tunnel's host name.
+  the phone (`ipconfig` shows the IP; Windows Firewall has to let port 4200 in). A guest network
+  may keep its devices from reaching each other. Over plain http the phone doesn't keep the
+  session cookie, which is `Secure` (ADR-0026), so a reload asks you to sign in again.
 - A printed code keeps the address it was made with: print the ones for the doors once the app
   has its final domain.
 

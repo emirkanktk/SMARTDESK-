@@ -438,6 +438,6 @@ plan by the lift.
 | A new block doesn't show in the Calendar | Blocks send no live events - reload, or move to another week and back. |
 | "Your session has expired" | The session ended: 14 days without use (30 days at most), a password change, or an admin's change to the account. Sign in again. |
 | No **Assistant** button | The API has no `Assistant:ApiKey`. The assistant is optional, and everything else works without it. |
-| The phone can't open a QR code | The code carries the API's `App:FrontendUrl`, `localhost` by default, which a phone can't reach. Use the computer's IP or a tunnel, and set `App__FrontendUrl` to it (frontend README, "On a phone"). |
+| The phone can't open a QR code | The code carries the API's `App:FrontendUrl`, `localhost` by default, which a phone can't reach. Open a tunnel, which a phone reaches from any network, or use the computer's IP on the same Wi-Fi, and set `App__FrontendUrl` to that address (frontend README, "On a phone"). |
 | On a phone, a reload asks to sign in again | Over plain http the phone doesn't keep the session cookie, which is `Secure`. A tunnel gives https and keeps it. |
 | Old bookings from rehearsals | Clear them as in DEMO.md, step 3. |
