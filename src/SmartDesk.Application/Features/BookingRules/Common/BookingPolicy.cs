@@ -117,6 +117,46 @@ public sealed class BookingPolicy(IApplicationDbContext db, TimeProvider timePro
         }
     }
 
+    // When a booking of the resource that the caller makes waits for an Admin's approval
+    // (ADR-0049) - its kind asks for it, and the caller isn't an Admin - the kind as the
+    // request's language names it, to say so; null when it doesn't.
+    public async Task<string?> ApprovingKindAsync(Guid resourceId, bool callerIsAdmin, CancellationToken cancellationToken) =>
+        !callerIsAdmin && await ForResourceAsync(resourceId, cancellationToken) is { RequiresApproval: true } limits
+            ? limits.Kind
+            : null;
+
+    // Whether a booking of the resource from `start` that the caller makes, or moves, waits for
+    // an Admin's approval. One that does can't start right away (400 on the start): an Admin
+    // needs the time to approve it.
+    public async Task<bool> NeedsApprovalAsync(Guid resourceId, DateTime start, bool callerIsAdmin, CancellationToken cancellationToken)
+    {
+        if (await ApprovingKindAsync(resourceId, callerIsAdmin, cancellationToken) is not { } kind)
+        {
+            return false;
+        }
+
+        if (start <= Now)
+        {
+            throw new ValidationException(
+                [new ValidationFailure(BookingLimits.StartProperty, string.Format(Messages.Approval_NotRightAway, kind))]);
+        }
+
+        return true;
+    }
+
+    // A series (ADR-0035) of a kind that waits for an Admin's approval: 400 on the resource,
+    // unless an Admin books it. Each date is asked for on its own.
+    public async Task EnsureCanRepeatAsync(Guid resourceId, bool callerIsAdmin, CancellationToken cancellationToken)
+    {
+        if (await ApprovingKindAsync(resourceId, callerIsAdmin, cancellationToken) is { } kind)
+        {
+            throw new ValidationException(
+                [new ValidationFailure(ResourceProperty, string.Format(Messages.Approval_CantRepeat, kind))]);
+        }
+    }
+
+    private const string ResourceProperty = "ResourceId";
+
     // The kinds of resource whose rules let [start, end) be booked, for the search: what can't
     // be booked isn't available.
     public async Task<IReadOnlyList<Guid>> KindsBookableAsync(DateTime start, DateTime end, CancellationToken cancellationToken)
@@ -162,15 +202,15 @@ public sealed class BookingPolicy(IApplicationDbContext db, TimeProvider timePro
             : null;
     }
 
-    // The owner's Confirmed bookings of the kind that haven't ended, counted under their lock so
-    // the count holds until the transaction ends.
+    // The owner's bookings of the kind that haven't ended, those waiting for approval too
+    // (ADR-0049), counted under their lock so the count holds until the transaction ends.
     private async Task<int> UpcomingAsync(BookingLimits limits, Guid ownerId, CancellationToken cancellationToken)
     {
         await db.LockBookerAsync(ownerId, cancellationToken);
         var now = Now;
         return await db.Reservations.CountAsync(
             r => r.UserId == ownerId
-                && r.Status == ReservationStatus.Confirmed
+                && r.Status != ReservationStatus.Cancelled
                 && r.EndDateTime > now
                 && r.Resource.ResourceTypeId == limits.TypeId,
             cancellationToken);

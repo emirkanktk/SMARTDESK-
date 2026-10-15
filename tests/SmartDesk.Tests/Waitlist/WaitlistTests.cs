@@ -376,7 +376,7 @@ public class WaitlistTests : IDisposable
         await JoinAsync(_mehmet, room, At(10), At(11));
 
         await FreeingAsync(context => new UpdateReservationCommandHandler(
-                context, As(_ayse), Names(), _reservations.Object, _clock, TestInvitations.For(context, As(_ayse), _accounts.Object, clock: _clock), TestPolicy.For(context, _clock))
+                context, As(_ayse), Names(), _reservations.Object, _clock, TestInvitations.For(context, As(_ayse), _accounts.Object, clock: _clock), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
             .Handle(new UpdateReservationCommand(room.Id, At(14), At(15), null) { Id = ayses.Id }, CancellationToken.None));
 
         (await BookingsAsync(room.Id)).Select(r => r.UserId).Should().Equal(_mehmet.Id, _ayse.Id);

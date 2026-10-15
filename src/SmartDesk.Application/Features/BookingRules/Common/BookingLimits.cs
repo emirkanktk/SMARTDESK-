@@ -22,7 +22,13 @@ public sealed record BookingLimits(
     public const string UntilProperty = nameof(Recurrence) + "." + nameof(Recurrence.Until);
 
     public static BookingLimits Of(ResourceType type, OfficeWeek office) =>
-        new(type.Id, type.Name, type.MaxDurationMinutes, type.MaxDaysAhead, type.MaxActivePerUser, type.OfficeHoursOnly, office);
+        new(type.Id, type.Name, type.MaxDurationMinutes, type.MaxDaysAhead, type.MaxActivePerUser, type.OfficeHoursOnly, office)
+        {
+            RequiresApproval = type.RequiresApproval,
+        };
+
+    // A booking of the kind waits for an Admin's approval (ADR-0049), unless an Admin makes it.
+    public bool RequiresApproval { get; init; }
 
     // The kind as the request's language names it: "Desk", "Masa".
     public string Kind => Languages.DescribeType(TypeName);

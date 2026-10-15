@@ -34,7 +34,7 @@ public sealed class GetDashboardQueryHandler(
         var visible = reservations.OnUsableResources(currentUser);
 
         var today = await visible
-            .Where(ReservationOverlap.ConfirmedOverlapping(todayStart, todayEnd))
+            .Where(ReservationOverlap.TakenOverlapping(todayStart, todayEnd))
             .OrderBy(r => r.StartDateTime)
             .ThenBy(r => r.Resource.Name)
             .Select(ReservationDto.Projection)
@@ -48,7 +48,7 @@ public sealed class GetDashboardQueryHandler(
             .ToListAsync(cancellationToken);
 
         var myUpcomingQuery = reservations
-            .Where(r => r.UserId == userId && r.Status == ReservationStatus.Confirmed && r.StartDateTime > now);
+            .Where(r => r.UserId == userId && r.Status != ReservationStatus.Cancelled && r.StartDateTime > now);
         var myUpcomingCount = await myUpcomingQuery.CountAsync(cancellationToken);
         var myUpcoming = await myUpcomingQuery
             .OrderBy(r => r.StartDateTime)

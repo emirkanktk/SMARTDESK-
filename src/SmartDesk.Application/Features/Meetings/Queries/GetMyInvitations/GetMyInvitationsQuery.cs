@@ -28,7 +28,7 @@ public sealed class GetMyInvitationsQueryHandler(
         var invited = await db.Reservations
             .AsNoTracking()
             .OnUsableResources(currentUser)
-            .Where(r => r.Status == ReservationStatus.Confirmed
+            .Where(r => r.Status != ReservationStatus.Cancelled
                 && r.EndDateTime > now
                 && r.Attendees.Any(a => a.UserId == userId))
             .OrderBy(r => r.StartDateTime)

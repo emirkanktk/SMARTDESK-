@@ -165,7 +165,7 @@ a clash, and the extension options.
 |---|---|---|---|---|
 | GET | `/api/booking-rules` | any authenticated user | `GetBookingRulesQuery` | the office's hours, each kind's rules (by name), and how far a kind's rules may go |
 | PUT | `/api/booking-rules/office-hours` | Admin | `UpdateOfficeHoursCommand` | body `{ timeZone, opensAt, closesAt, workdays }` → 200 with the office's hours |
-| PUT | `/api/booking-rules/types/{id}` | Admin | `UpdateResourceTypeRulesCommand` | body `{ maxDurationMinutes, maxDaysAhead, maxActivePerUser, officeHoursOnly }` → 200 with the kind's rules; null leaves a rule unset. 404 for a kind that isn't there |
+| PUT | `/api/booking-rules/types/{id}` | Admin | `UpdateResourceTypeRulesCommand` | body `{ maxDurationMinutes, maxDaysAhead, maxActivePerUser, officeHoursOnly, requiresApproval }` → 200 with the kind's rules; null leaves a rule unset. 404 for a kind that isn't there |
 
 ```json
 {
@@ -177,7 +177,7 @@ a clash, and the extension options.
   },
   "types": [                                 // by name
     { "resourceTypeId": "…", "name": "Company Car", "maxDurationMinutes": null, "maxDaysAhead": null,
-      "maxActivePerUser": 1, "officeHoursOnly": false },
+      "maxActivePerUser": 1, "officeHoursOnly": false, "requiresApproval": true },
     { "resourceTypeId": "…", "name": "Desk", "maxDurationMinutes": 540, "maxDaysAhead": 7,
       "maxActivePerUser": 2, "officeHoursOnly": true }
   ],
@@ -188,10 +188,12 @@ a clash, and the extension options.
 - **`maxDurationMinutes`**: the longest a booking may last, 15 minutes to 31 days, in quarter hours.
 - **`maxDaysAhead`**: how many days after today, on the office's calendar, a booking may start:
   0 is today only, 7 up to the end of the same weekday next week. At most 180.
-- **`maxActivePerUser`**: how many `Confirmed` bookings of the kind one person may have that
-  haven't ended, 1 to 100. They're the owner's, even when an Admin books or moves them; moving a
+- **`maxActivePerUser`**: how many bookings of the kind one person may have that haven't ended,
+  those waiting for approval too, 1 to 100. They're the owner's, even when an Admin books or moves them; moving a
   booking within its kind isn't one more. It holds for bookings made at once (ADR-0011).
 - **`officeHoursOnly`**: a booking starts and ends within the office's hours, on one workday.
+- **`requiresApproval`**: a booking waits for an Admin's approval, unless an Admin makes it
+  (ADR-0049, see Approvals). Left out of the body, it's false.
 - **Office hours**: `opensAt` and `closesAt` on the quarter hour (`"08:30"` or `"08:30:00"`),
   closing after opening, on at least one workday. The usage report measures against them too.
 - A rule left unset leaves only the rules for every booking (31 days long, 180 days ahead), which
@@ -311,7 +313,7 @@ A resource's place is cleared when its `location` changes: it was on another flo
 | POST | `/api/reservations/{id}/extend` | owner or Admin | `ExtendReservationCommand` | body: `{ minutes }` (15, 30 or 60) → 200 with the reservation, its end that much later. See Running over. |
 | POST | `/api/reservations/{id}/response` | someone invited | `RespondToInvitationCommand` | body: `{ response: "Accepted" \| "Declined", reason?, following? }` → 200 with the meeting. Declining needs a `reason` (max 500), which goes to the organizer only. `following: true` on a date of a series answers it and every later date the caller is invited to (ADR-0035). See Meetings. |
 | GET | `/api/reservations/{id}/calendar` | owner or someone invited | `GetReservationCalendarQuery`, then `ICalendarWriter` | the booking as an iCalendar file to add to a calendar app (ADR-0048): `text/calendar`, named `smartdesk-2026-10-06.ics`, in the language of `Accept-Language`. Anyone else gets 404. See Calendar. |
-| GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: `Confirmed` reservations overlapping `[from, to)`, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. Only reservations on resources the caller may use (ADR-0022). |
+| GET | `/api/reservations?from=&to=&resourceId=&resourceTypeId=` | any authenticated user | `GetReservationsQuery` | the calendar: the reservations overlapping `[from, to)`, `Confirmed` and `Pending` approval, optionally for one resource or type, earliest first. `to` must be after `from`, at most 42 days apart - a six-week month grid - plus an hour, because six local weeks that cross the autumn clock change are 42 days and an hour (400 otherwise). Everyone sees who booked what - it's a shared office calendar. Only reservations on resources the caller may use (ADR-0022). |
 
 Every reservation endpoint returns this shape; it is also the payload of the SignalR events:
 
@@ -322,7 +324,7 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
   "resourceLocation": "2nd Floor",
   "userId": "…",
   "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:30:00Z",
-  "status": "Confirmed",          // "Confirmed" | "Cancelled"
+  "status": "Confirmed",          // "Confirmed" | "Cancelled" | "Pending" (waiting for approval, ADR-0049)
   "note": "Sprint planning",
   "reminderMinutes": 15,           // null when no reminder is set
   "checkInRequired": true,         // has to be checked in at the door, or it's released
@@ -334,7 +336,12 @@ Every reservation endpoint returns this shape; it is also the payload of the Sig
   "attendees": [                   // who's invited, by name (ADR-0032); usually empty
     { "id": "…", "name": "Mehmet Demir", "response": "Accepted" }  // "Pending" | "Accepted" | "Declined"
   ],
-  "series": null                   // the rule of the series it's one date of (ADR-0035), see Series
+  "series": null,                  // the rule of the series it's one date of (ADR-0035), see Series
+  "requestedAt": null,             // approval (ADR-0049): when it last went to an Admin; null if it never needed one
+  "decidedAt": null,               // when it was approved or declined, or lapsed undecided at its start
+  "decidedBy": null,               // the Admin who decided, and their name; null when it lapsed
+  "decidedByName": null,
+  "declineReason": null            // why it was declined
 }
 ```
 
@@ -347,7 +354,7 @@ A reservation appears in a calendar range exactly when it would block a booking 
 |---|---|
 | 400 | `endDateTime` not after `startDateTime`; `startDateTime` more than 5 minutes in the past, or more than 180 days ahead (ADR-0024); longer than 31 days; `note` over 500 chars; `reminderMinutes` not one of 5, 15, 30, 60; a time its kind's rules don't allow (see Booking rules) |
 | 404 | the resource doesn't exist |
-| 409 | the resource isn't `Active` (`code: "resource-unavailable"`, `"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`code: "resource-blocked"`, `"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a `Confirmed` reservation overlapping `[startDateTime, endDateTime)` (`code: "reservation-overlaps"`, `"Meeting Room A is already reserved for part of that time."`); the caller already has as many bookings of the kind as its rules allow (`code: "booking-limit"`) |
+| 409 | the resource isn't `Active` (`code: "resource-unavailable"`, `"Camera C-1 can't be reserved right now (status: Maintenance)."`), it has a block overlapping the range (`code: "resource-blocked"`, `"Meeting Room A is blocked for part of that time: Projector replacement"`), or it already has a reservation overlapping `[startDateTime, endDateTime)`, `Confirmed` or `Pending` approval (`code: "reservation-overlaps"`, `"Meeting Room A is already reserved for part of that time."`); the caller already has as many bookings of the kind as its rules allow (`code: "booking-limit"`) |
 
 The 409 detail is written to be shown to the user as-is. Overlap uses the same half-open rule as
 the availability search, so back-to-back bookings are allowed. It holds under concurrent
@@ -539,14 +546,19 @@ The signed-in user's own messages; nobody sees anyone else's.
                                  //   the reason is the block's)
                                  // | WaitlistBooked (ADR-0043: to someone waiting, the time freed
                                  //   up and is booked for them; the times are the booking's)
+                                 // | ApprovalRequested (ADR-0049: to every Admin, from whoever asked)
+                                 // | BookingApproved | BookingDeclined (to whoever asked, from the
+                                 //   Admin; the reason is why it was declined) | ApprovalLapsed
+                                 //   (to whoever asked: nobody approved it before its start)
   "reservationId": "…",          // null once the booking is gone
-  "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release or a WaitlistBooked,
-                                 // which nobody sent
+  "senderId": "…", "senderName": "Zeynep Kaya",  // both null for a release, a WaitlistBooked or
+                                 // an ApprovalLapsed, which nobody sent
   "resourceName": "Board Room",  // the meeting as it was when the message was sent
   "startDateTime": "2026-10-05T10:00:00Z", "endDateTime": "2026-10-05T11:00:00Z",
   "note": "Sprint planning",
   "reason": null,                // why someone can't come, in a MeetingDeclined or SeriesDeclined;
-                                 // the block's reason in a CancelledByBlock
+                                 // the block's reason in a CancelledByBlock; why an Admin
+                                 // declined, in a BookingDeclined
   "series": null,                // for a Series* message: the rule; the times are then its first
                                  // date the message covers ("from Mon 5 Oct, every Monday ...")
   "issueCategory": null,         // for an IssueResolved message: what the problem was
@@ -556,6 +568,39 @@ The signed-in user's own messages; nobody sees anyone else's.
 ```
 
 The app writes the sentence from `kind`, in the reader's language.
+
+## Approvals (ADR-0049)
+
+A kind of resource can ask for an Admin's approval (`requiresApproval`, see Booking rules): a
+company car, say. A booking of it that anyone but an Admin makes - `POST /api/reservations` as
+usual - comes back `201` with `status: "Pending"`: asked for, not booked yet. It holds its time
+as a booking does, so nobody else can take it meanwhile, and every active Admin's inbox gets an
+`ApprovalRequested` message. While it waits there's no reminder, no check-in and no report; an
+Admin approves it - then it's `Confirmed` - or declines it, saying why, and its owner's inbox
+says so. A request still waiting at its start lapses: `Cancelled`, with `decidedAt` and no
+`decidedBy`, and its owner is told.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/approvals` | Admin | `GetApprovalRequestsQuery` | what waits for approval, every resource, the soonest start first |
+| POST | `/api/approvals/{id}/approve` | Admin | `ApproveReservationCommand` | → 200 with the booking, `Confirmed`; its owner gets `BookingApproved` |
+| POST | `/api/approvals/{id}/decline` | Admin | `DeclineReservationCommand` | body `{ reason }`, required, at most 500 chars → 200 with the booking, `Cancelled`, its time free again; its owner gets `BookingDeclined` with the reason, and anyone invited `MeetingCancelled` |
+
+- **Asking again.** An owner who moves a booking of such a kind to another time to come, or
+  another resource of it, asks again: `Pending`, with a new `requestedAt`, approved or not, and
+  the Admins are told. Shortening it, changing only its note, reminder or invitees, an Admin's
+  move, and running on once it's under way leave it as it is. Moved to a kind that doesn't ask,
+  it's simply booked.
+- **What a request can't have.** It can't start right away, as an Admin needs the time (400 on
+  `StartDateTime`, `"Company Car bookings wait for an Admin's approval, so they can't start right
+  away: ask for a later time."`); nor repeat (400 on `ResourceId` for a series and its preview);
+  nor a waiting list (409 `approval-required`); nor run longer or end early while it waits (409
+  `awaiting-approval`). It can be changed or cancelled like any booking.
+- It counts towards the kind's `maxActivePerUser`. Approving or declining what isn't waiting -
+  approved, declined, cancelled, never asked - is 409 `not-awaiting-approval`; approving one whose
+  start has come, 409 `approval-lapsed`. Declining needs a reason (400).
+- The usage report counts only what was booked: a request declined, lapsed or withdrawn is
+  neither a reservation nor a cancellation there.
 
 ## Waiting list (ADR-0043)
 

@@ -61,7 +61,7 @@ public sealed class RespondToInvitationCommandHandler(
                     .Where(a => a.UserId == userId
                         && a.ReservationId != reservation.Id
                         && dates.Contains(a.ReservationId)
-                        && a.Reservation.Status == ReservationStatus.Confirmed
+                        && a.Reservation.Status != ReservationStatus.Cancelled
                         && a.Reservation.EndDateTime > now)
                     .ToListAsync(cancellationToken)
                 : [];

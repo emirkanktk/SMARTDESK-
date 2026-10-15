@@ -66,7 +66,7 @@ public sealed class BookingPolicyTests : IDisposable
         await using var context = _database.CreateContext();
         return await new CreateReservationCommandHandler(
                 context, caller, new FakeIdentityService(), Mock.Of<IReservationNotifier>(), TestInvitations.For(context, caller),
-                TestPolicy.For(context, _clock))
+                TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
             .Handle(new CreateReservationCommand(resourceId, start, end, null), CancellationToken.None);
     }
 
@@ -76,7 +76,7 @@ public sealed class BookingPolicyTests : IDisposable
         await using var context = _database.CreateContext();
         return await new UpdateReservationCommandHandler(
                 context, caller, new FakeIdentityService(), Mock.Of<IReservationNotifier>(), _clock,
-                TestInvitations.For(context, caller, clock: _clock), TestPolicy.For(context, _clock))
+                TestInvitations.For(context, caller, clock: _clock), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
             .Handle(new UpdateReservationCommand(resourceId, start, end, null) { Id = id }, CancellationToken.None);
     }
 
@@ -323,7 +323,7 @@ public sealed class BookingPolicyTests : IDisposable
         await using var context = _database.CreateContext();
         var policy = TestPolicy.For(context, _clock);
         var handler = new CreateReservationCommandHandler(
-            context, Ayse, new FakeIdentityService(), Mock.Of<IReservationNotifier>(), TestInvitations.For(context, Ayse), policy);
+            context, Ayse, new FakeIdentityService(), Mock.Of<IReservationNotifier>(), TestInvitations.For(context, Ayse), policy, TestApprovals.For(context, _clock));
         var behavior = new BookingSuggestionsBehavior<CreateReservationCommand>(new BookingSuggester(context, Ayse, _clock, policy));
         var conflict = await ConflictAsync(() => behavior.Handle(command, ct => handler.Handle(command, ct), CancellationToken.None));
 

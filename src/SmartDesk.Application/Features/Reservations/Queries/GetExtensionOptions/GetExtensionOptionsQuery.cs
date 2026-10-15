@@ -46,6 +46,12 @@ public sealed class GetExtensionOptionsQueryHandler(
             throw new ConflictException(Messages.Reservations_CancelledCantChange);
         }
 
+        // Not a booking yet (ADR-0049): its request is what changes.
+        if (reservation.Status == ReservationStatus.Pending)
+        {
+            throw new ConflictException(Messages.Approval_StillWaiting) { Code = ConflictCodes.AwaitingApproval };
+        }
+
         if (reservation.EndDateTime <= timeProvider.GetUtcNow().UtcDateTime)
         {
             throw new ConflictException(Messages.Reservations_EndedCantChange);
@@ -65,7 +71,7 @@ public sealed class GetExtensionOptionsQueryHandler(
         var furthest = end.AddMinutes(ExtensionRules.MaxMinutes);
         var nextBooking = await db.Reservations
             .Where(r => r.ResourceId == reservation.ResourceId && r.Id != reservation.Id)
-            .Where(ReservationOverlap.ConfirmedOverlapping(end, furthest))
+            .Where(ReservationOverlap.TakenOverlapping(end, furthest))
             .MinAsync(r => (DateTime?)r.StartDateTime, cancellationToken);
         var nextBlock = await db.ResourceBlocks
             .Where(b => b.ResourceId == reservation.ResourceId)

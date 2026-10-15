@@ -43,6 +43,20 @@ public class Reservation
     // When it was released because nobody checked in; its Status is Cancelled from then on.
     public DateTime? ReleasedAt { get; set; }
 
+    // Its kind waits for an Admin's approval (ADR-0049): when it last went to one, on being
+    // asked for or changed; null for a booking that never needed it.
+    public DateTime? RequestedAt { get; set; }
+
+    // When an Admin approved or declined it, or it lapsed at its start still waiting; cleared
+    // when it goes to be approved again.
+    public DateTime? DecidedAt { get; set; }
+
+    // The Admin who decided; null while it waits, and when it lapsed.
+    public Guid? DecidedByUserId { get; set; }
+
+    // Why it was declined, for its owner.
+    public string? DeclineReason { get; set; }
+
     // The repeating booking it's one date of (ADR-0035); null for a booking made on its own.
     public Guid? SeriesId { get; set; }
 

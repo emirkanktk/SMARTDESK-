@@ -129,7 +129,7 @@ public sealed class BookingRulesTests : IDisposable
         async Task MoveAsync(TimeSpan to)
         {
             await using var context = _database.CreateContext();
-            await new UpdateReservationCommandHandler(context, new FakeCurrentUser(OwnerId), new FakeIdentityService(), Mock.Of<IReservationNotifier>(), _clock, TestInvitations.For(context, new FakeCurrentUser(OwnerId)), TestPolicy.For(context, _clock))
+            await new UpdateReservationCommandHandler(context, new FakeCurrentUser(OwnerId), new FakeIdentityService(), Mock.Of<IReservationNotifier>(), _clock, TestInvitations.For(context, new FakeCurrentUser(OwnerId)), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
                 .Handle(new UpdateReservationCommand(room.Id, In(to), In(to + TimeSpan.FromHours(1)), null) { Id = booking.Id }, CancellationToken.None);
         }
 

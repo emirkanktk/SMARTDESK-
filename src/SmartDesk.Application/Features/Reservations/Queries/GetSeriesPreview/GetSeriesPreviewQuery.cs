@@ -6,6 +6,7 @@ using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Reservations.Commands.CreateReservationSeries;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
+using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Enums;
 
 namespace SmartDesk.Application.Features.Reservations.Queries.GetSeriesPreview;
@@ -78,6 +79,9 @@ public sealed class GetSeriesPreviewQueryHandler(IApplicationDbContext db, ICurr
 
         // As for booking: 404 for another team's resource, 409 for one out of use.
         var resource = await BookingGuard.EnsureResourceBookableAsync(db, currentUser, request.ResourceId, cancellationToken);
+
+        // A kind that waits for an Admin's approval doesn't repeat (ADR-0049): 400, as for booking.
+        await policy.EnsureCanRepeatAsync(request.ResourceId, currentUser.IsInRole(Roles.Admin), cancellationToken);
 
         // And as for booking, its kind's rules (ADR-0046): 400 for the first or last date, and the
         // dates outside office hours shown as not free, with why.

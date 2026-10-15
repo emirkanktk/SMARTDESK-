@@ -66,6 +66,27 @@
   <data name="Accounts_UnknownRole" xml:space="preserve">
     <value>Role must be one of: {0}.</value>
   </data>
+  <data name="Approval_CantRepeat" xml:space="preserve">
+    <value>{0} bookings wait for an Admin's approval, so they can't repeat: ask for each date on its own.</value>
+  </data>
+  <data name="Approval_Lapsed" xml:space="preserve">
+    <value>Its start has come, so the request lapsed: it can't be approved now.</value>
+  </data>
+  <data name="Approval_NoWaitingList" xml:space="preserve">
+    <value>{0} bookings wait for an Admin's approval, so there's no waiting list for them: ask for another time.</value>
+  </data>
+  <data name="Approval_NotRightAway" xml:space="preserve">
+    <value>{0} bookings wait for an Admin's approval, so they can't start right away: ask for a later time.</value>
+  </data>
+  <data name="Approval_NotWaiting" xml:space="preserve">
+    <value>This booking isn't waiting for approval.</value>
+  </data>
+  <data name="Approval_ReasonRequired" xml:space="preserve">
+    <value>Say why it's declined: whoever asked reads it.</value>
+  </data>
+  <data name="Approval_StillWaiting" xml:space="preserve">
+    <value>It's still waiting for an Admin's approval: change the request instead.</value>
+  </data>
   <data name="Assistant_LastFromUser" xml:space="preserve">
     <value>The conversation has to end with your message.</value>
   </data>

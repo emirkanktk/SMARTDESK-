@@ -7,6 +7,7 @@ using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
+using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
 
@@ -53,6 +54,7 @@ public sealed class CreateReservationSeriesCommandHandler(
             await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
             var resource = await BookingGuard.EnsureResourceBookableAsync(db, currentUser, request.ResourceId, cancellationToken);
+            await policy.EnsureCanRepeatAsync(request.ResourceId, currentUser.IsInRole(Roles.Admin), cancellationToken);
 
             // Its kind's rules (ADR-0046): the first date as any booking, the last no further
             // ahead than allowed. A date outside office hours is skipped like one that isn't free.

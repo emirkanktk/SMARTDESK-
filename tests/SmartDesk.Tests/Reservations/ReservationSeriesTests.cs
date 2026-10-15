@@ -460,7 +460,7 @@ public sealed class ReservationSeriesTests : IDisposable
         {
             var user = As(Zeynep);
             var third = series.Booked[2];
-            await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user), TestPolicy.For(context, _clock))
+            await new UpdateReservationCommandHandler(context, user, Names(), _reservations.Object, _clock, Invitations(context, user), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock))
                 .Handle(new UpdateReservationCommand(room.Id, third.StartDateTime, third.EndDateTime, third.Note, 15, [Mehmet.Id]) { Id = third.Id }, CancellationToken.None);
         }
 

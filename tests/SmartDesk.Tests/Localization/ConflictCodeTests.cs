@@ -26,7 +26,7 @@ public sealed class ConflictCodeTests : IDisposable
     private async Task BookAsync(Guid resourceId, int from, int to)
     {
         await using var context = _database.CreateContext();
-        await new CreateReservationCommandHandler(context, new FakeCurrentUser(UserId), new FakeIdentityService(), Mock.Of<IReservationNotifier>(), TestInvitations.For(context, new FakeCurrentUser(UserId)), TestPolicy.For(context))
+        await new CreateReservationCommandHandler(context, new FakeCurrentUser(UserId), new FakeIdentityService(), Mock.Of<IReservationNotifier>(), TestInvitations.For(context, new FakeCurrentUser(UserId)), TestPolicy.For(context), TestApprovals.For(context))
             .Handle(new CreateReservationCommand(resourceId, At(from), At(to), null), CancellationToken.None);
     }
 

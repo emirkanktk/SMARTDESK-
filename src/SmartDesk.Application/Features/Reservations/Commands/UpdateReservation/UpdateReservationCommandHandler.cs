@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Extensions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.Approvals.Common;
 using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
@@ -22,7 +23,8 @@ public sealed class UpdateReservationCommandHandler(
     IReservationNotifier notifier,
     TimeProvider timeProvider,
     MeetingInvitations invitations,
-    BookingPolicy policy) : IRequestHandler<UpdateReservationCommand, ReservationDto>
+    BookingPolicy policy,
+    BookingApprovals approvals) : IRequestHandler<UpdateReservationCommand, ReservationDto>
 {
     public async Task<ReservationDto> Handle(UpdateReservationCommand request, CancellationToken cancellationToken)
     {
@@ -92,6 +94,8 @@ public sealed class UpdateReservationCommandHandler(
                     [new ValidationFailure(nameof(UpdateReservationCommand.StartDateTime), Messages.Reservations_StartInPast)]);
             }
 
+            // Its kind waits for an Admin's approval (ADR-0049): asked for again when moved.
+            string? askAgainFor = null;
             if (!staysWithinItsSlot)
             {
                 // Moving the booking in time or to another resource is a new claim on that
@@ -119,6 +123,21 @@ public sealed class UpdateReservationCommandHandler(
                 {
                     reservation.CheckInRequired = resource.CheckInRequired;
                 }
+
+                // An owner who asks for another time to come, or another resource, of a kind that
+                // waits for an Admin's approval (ADR-0049) asks again, approved or not; an Admin's
+                // move leaves it as it is. Moved to a kind that doesn't ask, it's simply booked.
+                // One under way only runs on, as it may.
+                if (start > now
+                    && await policy.NeedsApprovalAsync(request.ResourceId, start, currentUser.IsInRole(Roles.Admin), cancellationToken))
+                {
+                    askAgainFor = resource.Name;
+                }
+                else if (reservation.Status == ReservationStatus.Pending
+                    && (await policy.ForResourceAsync(request.ResourceId, cancellationToken))?.RequiresApproval != true)
+                {
+                    BookingApprovals.Book(reservation);
+                }
             }
             else
             {
@@ -128,6 +147,12 @@ public sealed class UpdateReservationCommandHandler(
 
             changed = resourceChanged || timeChanged || reminderChanged || note != reservation.Note;
             reservation.Note = note;
+
+            // Written once the booking is as it will be, so the Admins read what's asked for now.
+            if (askAgainFor is not null)
+            {
+                messages.AddRange(await approvals.RequestAsync(reservation, askAgainFor, cancellationToken));
+            }
 
             // A new start or a new reminder time means the reminder is due at a new moment, so
             // it goes out again even if the old one was already sent (ADR-0018).

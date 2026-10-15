@@ -384,6 +384,16 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("CheckedInByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DecidedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime>("EndDateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -404,6 +414,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RequestedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("ResourceId")
@@ -430,6 +443,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasFilter("\"ReminderMinutes\" IS NOT NULL AND \"ReminderSentAt\" IS NULL");
 
                     b.HasIndex("ResourceId", "Status", "StartDateTime", "EndDateTime");
+
+                    b.HasIndex(new[] { "StartDateTime" }, "IX_Reservations_AwaitingApproval")
+                        .HasFilter("\"Status\" = 2");
 
                     b.HasIndex(new[] { "StartDateTime" }, "IX_Reservations_AwaitingCheckIn")
                         .HasFilter("\"CheckInRequired\" AND \"CheckedInAt\" IS NULL AND \"Status\" = 0");
@@ -673,6 +689,9 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<bool>("OfficeHoursOnly")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("RequiresApproval")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
@@ -685,31 +704,36 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a01"),
                             Name = "Meeting Room",
-                            OfficeHoursOnly = false
+                            OfficeHoursOnly = false,
+                            RequiresApproval = false
                         },
                         new
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a02"),
                             Name = "Desk",
-                            OfficeHoursOnly = false
+                            OfficeHoursOnly = false,
+                            RequiresApproval = false
                         },
                         new
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a03"),
                             Name = "Company Car",
-                            OfficeHoursOnly = false
+                            OfficeHoursOnly = false,
+                            RequiresApproval = false
                         },
                         new
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a04"),
                             Name = "Projector",
-                            OfficeHoursOnly = false
+                            OfficeHoursOnly = false,
+                            RequiresApproval = false
                         },
                         new
                         {
                             Id = new Guid("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a05"),
                             Name = "Camera",
-                            OfficeHoursOnly = false
+                            OfficeHoursOnly = false,
+                            RequiresApproval = false
                         });
                 });
 

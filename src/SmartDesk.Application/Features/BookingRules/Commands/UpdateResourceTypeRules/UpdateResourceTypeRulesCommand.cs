@@ -11,12 +11,14 @@ using SmartDesk.Domain.Entities;
 namespace SmartDesk.Application.Features.BookingRules.Commands.UpdateResourceTypeRules;
 
 // An Admin sets how a kind of resource may be booked (ADR-0046); null leaves a rule unset. As for
-// the office's hours, bookings already made stay as they are.
+// the office's hours, bookings already made stay as they are: switching approval on (ADR-0049)
+// asks it of bookings made or moved from then on.
 public sealed record UpdateResourceTypeRulesCommand(
     int? MaxDurationMinutes,
     int? MaxDaysAhead,
     int? MaxActivePerUser,
-    bool OfficeHoursOnly) : IRequest<ResourceTypeRulesDto>
+    bool OfficeHoursOnly,
+    bool RequiresApproval = false) : IRequest<ResourceTypeRulesDto>
 {
     // Comes from the route (PUT /api/booking-rules/types/{id}), not the body.
     [JsonIgnore]
@@ -53,6 +55,7 @@ public sealed class UpdateResourceTypeRulesCommandHandler(IApplicationDbContext 
         type.MaxDaysAhead = request.MaxDaysAhead;
         type.MaxActivePerUser = request.MaxActivePerUser;
         type.OfficeHoursOnly = request.OfficeHoursOnly;
+        type.RequiresApproval = request.RequiresApproval;
         await db.SaveChangesAsync(cancellationToken);
 
         return ResourceTypeRulesDto.From(type);

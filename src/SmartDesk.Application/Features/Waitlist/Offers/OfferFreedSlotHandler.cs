@@ -8,6 +8,7 @@ using SmartDesk.Application.Features.Meetings.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Features.Resources.Common;
 using SmartDesk.Application.Features.Waitlist.Common;
+using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Enums;
 
@@ -117,6 +118,14 @@ public sealed class OfferFreedSlotHandler(
             // Likewise when the kind's rules have changed since and don't allow it, or they have
             // as many of the kind as they may (ADR-0046): one of theirs may go yet.
             if (!await policy.AllowsAsync(new BookingClaim(entry.UserId, resourceId, start, entry.EndDateTime), cancellationToken))
+            {
+                return;
+            }
+
+            // Nor is anything booked unasked for a kind that has since come to wait for an
+            // Admin's approval (ADR-0049); there's no joining its list now, and this entry waits
+            // until its time is past.
+            if (await policy.ApprovingKindAsync(resourceId, person!.Role == Roles.Admin, cancellationToken) is not null)
             {
                 return;
             }

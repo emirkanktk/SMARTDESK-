@@ -57,7 +57,7 @@ public class BookingSuggestionsTests : IDisposable
     {
         await using var context = _database.CreateContext();
         var handler = new CreateReservationCommandHandler(
-            context, Ayse, new FakeIdentityService(), Mock.Of<IReservationNotifier>(), TestInvitations.For(context, Ayse), TestPolicy.For(context, _clock));
+            context, Ayse, new FakeIdentityService(), Mock.Of<IReservationNotifier>(), TestInvitations.For(context, Ayse), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock));
         var behavior = new BookingSuggestionsBehavior<CreateReservationCommand>(new BookingSuggester(context, Ayse, _clock, TestPolicy.For(context, _clock)));
 
         var act = () => behavior.Handle(command, ct => handler.Handle(command, ct), CancellationToken.None);
@@ -70,7 +70,7 @@ public class BookingSuggestionsTests : IDisposable
         var command = new UpdateReservationCommand(reservation.ResourceId, start, end, null) { Id = reservation.Id };
         await using var context = _database.CreateContext();
         var handler = new UpdateReservationCommandHandler(
-            context, Ayse, new FakeIdentityService(), Mock.Of<IReservationNotifier>(), _clock, TestInvitations.For(context, Ayse, clock: _clock), TestPolicy.For(context, _clock));
+            context, Ayse, new FakeIdentityService(), Mock.Of<IReservationNotifier>(), _clock, TestInvitations.For(context, Ayse, clock: _clock), TestPolicy.For(context, _clock), TestApprovals.For(context, _clock));
         var behavior = new BookingSuggestionsBehavior<UpdateReservationCommand>(new BookingSuggester(context, Ayse, _clock, TestPolicy.For(context, _clock)));
 
         var act = () => behavior.Handle(command, ct => handler.Handle(command, ct), CancellationToken.None);

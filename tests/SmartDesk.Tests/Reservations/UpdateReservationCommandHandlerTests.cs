@@ -32,7 +32,8 @@ public class UpdateReservationCommandHandlerTests : IDisposable
         await using var context = _database.CreateContext();
         var handler = new UpdateReservationCommandHandler(
             context, caller ?? new FakeCurrentUser(OwnerId, Roles.Employee), new FakeIdentityService(),
-            _notifier.Object, new FakeTimeProvider(Now), TestInvitations.For(context, caller ?? new FakeCurrentUser(OwnerId, Roles.Employee)), TestPolicy.For(context, new FakeTimeProvider(Now)));
+            _notifier.Object, new FakeTimeProvider(Now), TestInvitations.For(context, caller ?? new FakeCurrentUser(OwnerId, Roles.Employee)), TestPolicy.For(context, new FakeTimeProvider(Now)),
+            TestApprovals.For(context, new FakeTimeProvider(Now)));
         return await handler.Handle(command with { Id = reservation.Id }, CancellationToken.None);
     }
 
