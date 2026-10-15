@@ -1,4 +1,4 @@
-import { DatePipe, formatDate } from '@angular/common';
+import { DOCUMENT, DatePipe, formatDate } from '@angular/common';
 import { Component, LOCALE_ID, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -17,14 +17,16 @@ import {
 import { ApiError } from '../../core/models/api-error.model';
 import { AttendeeResponse, Reservation, checkInWindow } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
+import { CalendarService } from '../../core/services/calendar.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ExtendBooking } from '../../shared/components/extend-booking/extend-booking';
 import { MeetingAnswer } from '../../shared/components/meeting-answer/meeting-answer';
-import { formatDuration } from '../../shared/utils/date-time';
+import { formatDuration, toDateParam } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
 import { describeSeries } from '../../shared/utils/recurrence';
+import { saveFile } from '../../shared/utils/save-file';
 import { resourceTypeLabel } from '../../core/i18n/labels';
 import { WaitingList } from './waiting-list/waiting-list';
 
@@ -79,6 +81,8 @@ export class MyReservations implements OnInit {
   private readonly hub = inject(ReservationHubService);
   private readonly authService = inject(AuthService);
   private readonly notifications = inject(NotificationService);
+  private readonly calendar = inject(CalendarService);
+  private readonly document = inject(DOCUMENT);
   private readonly locale = inject(LOCALE_ID);
 
   protected readonly tabs: { id: Tab; label: string }[] = [
@@ -100,6 +104,8 @@ export class MyReservations implements OnInit {
   protected readonly cancellingFollowingId = signal<string | null>(null);
   /** Id of the booking in progress whose ways to run longer are open (ADR-0033). */
   protected readonly extendingId = signal<string | null>(null);
+  /** Id of the booking being fetched as an .ics file (ADR-0048). */
+  protected readonly addingToCalendarId = signal<string | null>(null);
 
   /** Each value starts a load; true shows the loading state, false refreshes quietly. */
   private readonly loads = new Subject<boolean>();
@@ -276,6 +282,22 @@ export class MyReservations implements OnInit {
           }
           this.load(false);
         },
+      });
+  }
+
+  /**
+   * The booking as an .ics file (ADR-0048), which a calendar app adds when it's opened. A
+   * failure raises the usual toast.
+   */
+  protected addToCalendar(item: Item): void {
+    const { reservation } = item;
+    this.addingToCalendarId.set(reservation.id);
+    this.calendar
+      .getReservationFile(reservation.id)
+      .pipe(finalize(() => this.addingToCalendarId.set(null)))
+      .subscribe({
+        next: (file) => saveFile(file, `smartdesk-${toDateParam(item.start)}.ics`, this.document),
+        error: () => undefined,
       });
   }
 

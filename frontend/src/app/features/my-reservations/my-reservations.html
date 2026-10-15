@@ -1,8 +1,12 @@
 <div class="page-header">
   <h1 i18n="@@nav.myReservations">My reservations</h1>
-  <a class="btn btn-primary" routerLink="/availability" i18n="@@dashboard.findFree"
-    >Find a free resource</a
-  >
+  <div class="header-actions">
+    <!-- All of them in a calendar app: the personal link is on the profile (ADR-0048). -->
+    <a class="btn btn-secondary" routerLink="/profile" i18n="@@mine.calendarLink">Calendar link</a>
+    <a class="btn btn-primary" routerLink="/availability" i18n="@@dashboard.findFree"
+      >Find a free resource</a
+    >
+  </div>
 </div>
 
 <app-waiting-list />
@@ -147,6 +151,15 @@
                   i18n="@@mine.details"
                   >Details</a
                 >
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm add-to-calendar"
+                  [disabled]="addingToCalendarId() === item.reservation.id"
+                  (click)="addToCalendar(item)"
+                  i18n="@@mine.addToCalendar"
+                >
+                  Add to calendar
+                </button>
               </div>
             } @else if (activeTab() === 'upcoming') {
               <div class="actions">
@@ -167,6 +180,15 @@
                   i18n="@@dashboard.change"
                   >Change</a
                 >
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm add-to-calendar"
+                  [disabled]="addingToCalendarId() === item.reservation.id"
+                  (click)="addToCalendar(item)"
+                  i18n="@@mine.addToCalendar"
+                >
+                  Add to calendar
+                </button>
                 <button
                   type="button"
                   class="btn btn-secondary btn-sm cancel"

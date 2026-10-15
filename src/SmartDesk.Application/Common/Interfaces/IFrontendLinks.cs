@@ -23,4 +23,12 @@ public interface IFrontendLinks
 
     // A Manager's team, where requests to join it wait for approval.
     string Team();
+
+    // A booking's page, which a calendar entry links back to (ADR-0048).
+    string Reservation(Guid reservationId);
+
+    // Someone's personal calendar feed (ADR-0048), an .ics address: the API's, reached through
+    // the app's own address, which passes /api on. The token goes in the query string, which
+    // the container's web server leaves out of its log; it's hex, so URL-safe.
+    string CalendarFeed(string token);
 }

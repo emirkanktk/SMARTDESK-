@@ -8,16 +8,17 @@ import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { applyServerErrors } from '../../shared/utils/server-errors';
+import { CalendarLink } from './calendar-link/calendar-link';
 
 /** Mirrors the API's name rules (the same as signing up). */
 const MAX_NAME_LENGTH = 100;
 
 /**
- * The signed-in user's own account (`/profile`): their name, which they can change, and their
- * email and role, which an administrator changes.
+ * The signed-in user's own account (`/profile`): their name, which they can change, their
+ * email and role, which an administrator changes, and their calendar link (ADR-0048).
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [CalendarLink, ReactiveFormsModule, RouterLink],
   selector: 'app-profile',
   styleUrl: './profile.scss',
   templateUrl: './profile.html',

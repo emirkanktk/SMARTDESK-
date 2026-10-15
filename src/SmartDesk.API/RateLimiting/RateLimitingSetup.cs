@@ -28,6 +28,11 @@ public static class RateLimitingSetup
     // a photo of up to 2 MB, so a script sending them by the hundred is what this stops.
     public const string IssueReportPolicy = "issue-report";
 
+    // A personal calendar feed (ADR-0048) is fetched without a user, so it's limited by address.
+    // A calendar app fetches each feed every hour or so, but Google's and Microsoft's servers
+    // fetch everyone's from a few addresses: the default leaves room for that.
+    public const string CalendarFeedPolicy = "calendar-feed";
+
     // Identity's lockout (5 failures -> 5 minutes) protects one account at a time; this caps
     // how many sign-in attempts one client can make across all accounts, which is what a
     // password-spraying or credential-stuffing run looks like.
@@ -41,6 +46,7 @@ public static class RateLimitingSetup
         var checkInPermitsPerMinute = configuration.GetValue("RateLimiting:CheckInPermitsPerMinute", 20);
         var doorScreenPermitsPerMinute = configuration.GetValue("RateLimiting:DoorScreenPermitsPerMinute", 600);
         var issueReportPermitsPerMinute = configuration.GetValue("RateLimiting:IssueReportPermitsPerMinute", 10);
+        var calendarFeedPermitsPerMinute = configuration.GetValue("RateLimiting:CalendarFeedPermitsPerMinute", 120);
 
         services.AddRateLimiter(options =>
         {
@@ -92,6 +98,15 @@ public static class RateLimitingSetup
                     QueueLimit = 0,
                 }));
 
+            options.AddPolicy(CalendarFeedPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = calendarFeedPermitsPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+
             // Same ProblemDetails shape as every other error, plus Retry-After.
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -116,6 +131,7 @@ public static class RateLimitingSetup
                                 CheckInPolicy => Messages.Error_TooManyCheckIns,
                                 DoorScreenPolicy => Messages.Error_TooManyDoorScreenRequests,
                                 IssueReportPolicy => Messages.Error_TooManyIssueReports,
+                                CalendarFeedPolicy => Messages.Error_TooManyCalendarFeedRequests,
                                 _ => Messages.Error_TooManySignIns,
                             },
                         },

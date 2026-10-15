@@ -135,6 +135,30 @@
   <data name="Booking_TakenResource" xml:space="preserve">
     <value>The resource is already reserved for part of that time.</value>
   </data>
+  <data name="Calendar_CheckIn" xml:space="preserve">
+    <value>Check in at the door no later than {0} after the start; if nobody does, the booking is cancelled.</value>
+  </data>
+  <data name="Calendar_Coming" xml:space="preserve">
+    <value>You said you're coming.</value>
+  </data>
+  <data name="Calendar_Invited" xml:space="preserve">
+    <value>Invited: {0}</value>
+  </data>
+  <data name="Calendar_InvitedBy" xml:space="preserve">
+    <value>{0} invited you.</value>
+  </data>
+  <data name="Calendar_Name" xml:space="preserve">
+    <value>SmartDesk bookings</value>
+  </data>
+  <data name="Calendar_NotAnswered" xml:space="preserve">
+    <value>You haven't answered yet.</value>
+  </data>
+  <data name="Calendar_NotComing" xml:space="preserve">
+    <value>You said you can't come.</value>
+  </data>
+  <data name="Calendar_Open" xml:space="preserve">
+    <value>In SmartDesk: {0}</value>
+  </data>
   <data name="CheckIn_CodeExpired" xml:space="preserve">
     <value>This code has expired. Scan the code on the door screen of {0} again.</value>
   </data>
@@ -305,6 +329,9 @@
   </data>
   <data name="Error_TooManyAssistantRequests" xml:space="preserve">
     <value>You've asked the assistant a lot in the last minute. Wait a moment and try again.</value>
+  </data>
+  <data name="Error_TooManyCalendarFeedRequests" xml:space="preserve">
+    <value>This calendar was asked for too often. Try again in a minute.</value>
   </data>
   <data name="Error_TooManyCheckIns" xml:space="preserve">
     <value>Too many check-in attempts. Wait a minute and try again.</value>

@@ -10,9 +10,11 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Features.Auth.Common;
+using SmartDesk.Application.Features.Calendar.Common;
 using SmartDesk.Application.Features.Reports.Common;
 using SmartDesk.Domain.Rules;
 using SmartDesk.Infrastructure.Assistant;
+using SmartDesk.Infrastructure.Calendar;
 using SmartDesk.Infrastructure.Email;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence;
@@ -91,6 +93,9 @@ public static class DependencyInjection
 
         // The usage report as an Excel workbook (ADR-0045).
         services.AddSingleton<IUsageReportWorkbook, UsageReportWorkbook>();
+
+        // Bookings as iCalendar files and feeds (ADR-0048).
+        services.AddSingleton<ICalendarWriter, IcalCalendarWriter>();
 
         // Email (ADR-0019): handlers queue, a background worker sends - over SMTP when
         // Email:Smtp:Host is set, to the log otherwise. The log gets the whole email, reset

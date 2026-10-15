@@ -32,6 +32,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<IssueReportPhoto> IssueReportPhotos => Set<IssueReportPhoto>();
     public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
     public DbSet<OfficeHours> OfficeHours => Set<OfficeHours>();
+    public DbSet<CalendarFeed> CalendarFeeds => Set<CalendarFeed>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -73,6 +74,17 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 t.HasCheckConstraint("CK_OfficeHours_OpensBeforeCloses", "\"OpensAt\" < \"ClosesAt\"");
                 t.HasCheckConstraint("CK_OfficeHours_Workdays", "\"Workdays\" BETWEEN 1 AND 127");
             });
+        });
+
+        // Personal calendar links (ADR-0048), one per account: keyed by the account id, with no
+        // foreign key across the Identity boundary. A calendar app's fetch finds its link by the
+        // SHA-256 of the token it presents, 64 hex digits.
+        builder.Entity<CalendarFeed>(entity =>
+        {
+            entity.HasKey(e => e.UserId);
+            entity.Property(e => e.UserId).ValueGeneratedNever();
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64);
+            entity.HasIndex(e => e.TokenHash).IsUnique();
         });
 
         builder.Entity<Resource>(entity =>

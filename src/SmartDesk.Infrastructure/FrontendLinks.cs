@@ -34,4 +34,8 @@ public sealed class FrontendLinks(IOptions<AppOptions> options) : IFrontendLinks
     public string Users() => $"{Base}/admin/users";
 
     public string Team() => $"{Base}/team";
+
+    public string Reservation(Guid reservationId) => $"{Base}/reservations/{reservationId}/edit";
+
+    public string CalendarFeed(string token) => $"{Base}/api/calendar/feed.ics?token={Uri.EscapeDataString(token)}";
 }

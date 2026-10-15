@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SmartDesk.Application.Features.Calendar.Common;
+using SmartDesk.Application.Features.Calendar.Queries.GetReservationCalendar;
 using SmartDesk.Application.Features.Meetings.Commands.RespondToInvitation;
 using SmartDesk.Application.Features.Meetings.Queries.GetInvitees;
 using SmartDesk.Application.Features.Meetings.Queries.GetMyInvitations;
@@ -121,6 +123,17 @@ public sealed class ReservationsController(ISender sender) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<ReservationDto> Extend(Guid id, ExtendReservationCommand command, CancellationToken cancellationToken) =>
         sender.Send(command with { Id = id }, cancellationToken);
+
+    // The booking as an .ics file to add to a calendar app (ADR-0048), for its owner or someone
+    // invited to it, in the request's language.
+    [HttpGet("{id:guid}/calendar")]
+    [ProducesResponseType<FileContentResult>(StatusCodes.Status200OK, CalendarController.ContentType)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Calendar(Guid id, [FromServices] ICalendarWriter writer, CancellationToken cancellationToken)
+    {
+        var calendar = await sender.Send(new GetReservationCalendarQuery(id), cancellationToken);
+        return File(writer.Write(calendar), CalendarController.ContentType, $"smartdesk-{calendar.Entries[0].Start:yyyy-MM-dd}.ics");
+    }
 
     // The caller's answer to a meeting they're invited to (ADR-0032): Accepted, or Declined with
     // a reason for the organizer.

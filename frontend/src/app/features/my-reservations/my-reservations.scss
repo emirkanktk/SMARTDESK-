@@ -1,3 +1,9 @@
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
 .load-error {
   display: flex;
   flex-wrap: wrap;
@@ -169,7 +175,15 @@
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
+
+  // Beside the details on a wider screen: to the right, in two rows rather than one long one
+  // that would squeeze the details.
+  @media (min-width: 641px) {
+    justify-content: flex-end;
+    max-width: 21rem;
+  }
 }
 
 .cancel:hover:not(:disabled) {

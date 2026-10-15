@@ -400,6 +400,21 @@ plan by the lift.
   applies the rules to every way of booking - the form, a series, extending, the waiting list,
   the assistant - and the search and suggestions only offer what they allow (ADR-0046).
 
+### 23. In your own calendar
+
+- As Ayşe, **My reservations** → **Add to calendar** on an upcoming booking: an `.ics` file
+  downloads, and opening it adds the booking to Outlook or the computer's calendar, with the
+  room, the floor, the note and a link back to SmartDesk.
+- **Calendar link** at the top of the page → the profile's **Your calendar** → **Make my
+  calendar link**. The link is shown this once: **Copy link**, **Open in my calendar app** or
+  **Add to Google Calendar**. Below, "No calendar has fetched it yet."
+- Subscribe to it in a calendar app (Outlook: Add calendar → Subscribe from web). After its
+  first fetch, the profile says when a calendar last fetched it. Book, move or cancel something
+  in SmartDesk: the calendar follows at its next fetch.
+- Point out: one link per person, kept only as its hash; **New link** cuts off the old one at
+  once. Google Calendar and Outlook on the web fetch from the internet, so for them the app has
+  to be on the internet too: a tunnel does it (frontend README, "On a phone"; ADR-0048).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

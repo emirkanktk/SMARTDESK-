@@ -1,0 +1,123 @@
+<section id="calendar" class="card calendar-link" aria-labelledby="calendar-title">
+  <h2 id="calendar-title" class="section-title" i18n="@@calendarLink.title">Your calendar</h2>
+  <p class="text-muted intro" i18n="@@calendarLink.intro">
+    See your bookings and the meetings you're invited to in Outlook, Google Calendar or your phone's
+    calendar. Subscribe to your link once, and the calendar keeps up with them.
+  </p>
+
+  @if (loading()) {
+    <p class="text-muted" role="status" i18n="@@calendarLink.loading">
+      Loading your calendar link…
+    </p>
+  } @else if (loadFailed()) {
+    <div class="alert-error load-error" role="alert">
+      <span i18n="@@calendarLink.loadFailed">Your calendar link could not be loaded.</span>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        (click)="load()"
+        i18n="@@common.tryAgain"
+      >
+        Try again
+      </button>
+    </div>
+  } @else {
+    @if (link(); as url) {
+      <div class="new-link" role="status">
+        <span i18n="@@calendarLink.shownOnce"
+          >Here is your link. It's shown only now, so add it to your calendar or copy it before you
+          leave this page.</span
+        >
+        <input
+          class="input link"
+          readonly
+          [value]="url"
+          aria-label="Your calendar link"
+          i18n-aria-label="@@calendarLink.linkLabel"
+          (focus)="$any($event.target).select()"
+        />
+        <div class="actions">
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            (click)="copy(url)"
+            i18n="@@checkInCode.copy"
+          >
+            Copy link
+          </button>
+          <a class="btn btn-secondary btn-sm" [href]="webcal()" i18n="@@calendarLink.openApp"
+            >Open in my calendar app</a
+          >
+          <a
+            class="btn btn-secondary btn-sm"
+            [href]="google()"
+            target="_blank"
+            rel="noopener"
+            i18n="@@calendarLink.google"
+            >Add to Google Calendar</a
+          >
+        </div>
+        <span class="text-muted how" i18n="@@calendarLink.outlook"
+          >In Outlook: Add calendar, then Subscribe from web, and paste the link.</span
+        >
+        @if (offTheInternet()) {
+          <span class="off-internet" i18n="@@calendarLink.offTheInternet"
+            >This link isn't on the internet, so Google Calendar and Outlook on the web can't fetch
+            it. A calendar app on this computer or network can.</span
+          >
+        }
+      </div>
+    }
+
+    @if (subscription(); as current) {
+      <p class="state">
+        <ng-container i18n="@@calendarLink.since"
+          >You have a calendar link, made on
+          {{ current.createdAt | date: 'd MMM y, HH:mm' }}.</ng-container
+        >&ngsp;
+        @if (current.lastFetchedAt) {
+          <ng-container i18n="@@calendarLink.lastFetched"
+            >A calendar last fetched it on
+            {{ current.lastFetchedAt | date: 'd MMM y, HH:mm' }}.</ng-container
+          >
+        } @else {
+          <ng-container i18n="@@calendarLink.notFetched"
+            >No calendar has fetched it yet.</ng-container
+          >
+        }
+      </p>
+      <div class="actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [disabled]="busy()"
+          (click)="create()"
+          i18n="@@calendarLink.new"
+        >
+          New link
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [disabled]="busy()"
+          (click)="remove()"
+          i18n="@@calendarLink.remove"
+        >
+          Remove the link
+        </button>
+      </div>
+    } @else {
+      <div class="actions">
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="busy()"
+          (click)="create()"
+          i18n="@@calendarLink.create"
+        >
+          Make my calendar link
+        </button>
+      </div>
+    }
+  }
+</section>

@@ -5,10 +5,12 @@ import { Subject, of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { Reservation, ReservationAttendee } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
+import { CalendarService } from '../../core/services/calendar.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { WaitlistService } from '../../core/services/waitlist.service';
+import { fakeObjectUrls } from '../../../testing/object-urls';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { ATTENDEES_SHOWN, MyReservations } from './my-reservations';
 
@@ -44,6 +46,7 @@ describe('MyReservations', () => {
   let extend: ReturnType<typeof vi.fn>;
   let cancel: ReturnType<typeof vi.fn>;
   let cancelFollowing: ReturnType<typeof vi.fn>;
+  let getReservationFile: ReturnType<typeof vi.fn>;
   let success: ReturnType<typeof vi.fn>;
   let error: ReturnType<typeof vi.fn>;
   let confirmSpy: ReturnType<typeof vi.spyOn>;
@@ -74,6 +77,7 @@ describe('MyReservations', () => {
     );
     cancel = vi.fn((id: string) => of({ ...soon, id, status: 'Cancelled' }));
     cancelFollowing = vi.fn();
+    getReservationFile = vi.fn(() => of(new Blob(['BEGIN:VCALENDAR'], { type: 'text/calendar' })));
     success = vi.fn();
     error = vi.fn();
     confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -105,6 +109,7 @@ describe('MyReservations', () => {
         { provide: NotificationService, useValue: { success, error } },
         // What the user waits for has a spec of its own.
         { provide: WaitlistService, useValue: { getMine: () => of([]) } },
+        { provide: CalendarService, useValue: { getReservationFile } },
       ],
     }).compileComponents();
   });
@@ -214,6 +219,38 @@ describe('MyReservations', () => {
 
     expect(names()).toEqual(['Company Car']);
     expect(element.querySelector('.item')!.textContent).toContain('Cancelled');
+  });
+
+  it('saves a booking as an .ics file for a calendar app, named by its local date (ADR-0048)', async () => {
+    const urls = fakeObjectUrls();
+    const saved: { href: string; download: string }[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      saved.push({ href: this.getAttribute('href')!, download: this.download });
+    });
+    try {
+      await render();
+      const item = element.querySelectorAll('.item')[1]; // Meeting Room A, tomorrow
+      item.querySelector<HTMLButtonElement>('button.add-to-calendar')!.click();
+      await fixture.whenStable();
+
+      expect(getReservationFile).toHaveBeenCalledWith('rsv-1');
+      expect(saved).toEqual([{ href: 'blob:test-1', download: 'smartdesk-2026-10-06.ics' }]);
+      expect(item.querySelector<HTMLButtonElement>('button.add-to-calendar')!.disabled).toBe(false);
+    } finally {
+      click.mockRestore();
+      urls.restore();
+    }
+  });
+
+  it('points to the calendar link on the profile, for all of them at once', async () => {
+    await render();
+
+    const link = [...element.querySelectorAll<HTMLAnchorElement>('.page-header a')].find(
+      (a) => a.textContent!.trim() === 'Calendar link',
+    )!;
+    expect(link.getAttribute('href')).toBe('/profile');
   });
 
   it('links Change to the edit form', async () => {
@@ -381,6 +418,25 @@ describe('MyReservations', () => {
       expect(links[0].textContent!.trim()).toBe('Details');
       expect(links[0].getAttribute('href')).toBe('/reservations/rsv-20/edit');
       expect(element.querySelector('.item button.cancel')).toBeNull();
+    });
+
+    it('saves one as an .ics file for their own calendar too (ADR-0048)', async () => {
+      const urls = fakeObjectUrls();
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      try {
+        getInvited.mockReturnValue(of([invitation()]));
+        await render();
+        await openTab('Invitations');
+
+        element.querySelector<HTMLButtonElement>('.item button.add-to-calendar')!.click();
+        await fixture.whenStable();
+
+        expect(getReservationFile).toHaveBeenCalledWith('rsv-20');
+        expect(click).toHaveBeenCalledOnce();
+      } finally {
+        click.mockRestore();
+        urls.restore();
+      }
     });
 
     it('tells them when to check in, since they may do it too', async () => {
