@@ -5,9 +5,11 @@ import { apiAs, expect, PASSWORD, retire, test, TestResource, USERS } from './su
 const path = (url: string) => url.replace(/^https?:\/\/[^/]+/, '');
 
 // The page a QR code opens on a phone with no account (ADR-0050): the room, a check-in for the
-// booking waiting for it, whoever's it is, and a problem reported, all without signing in.
+// booking waiting for it, whoever's it is, and a problem reported, all without signing in. The
+// report reaches Reported problems at once, on the screen of whoever looks after the room.
 test('without an account, the QR code opens the room, checks in and reports a problem', async ({
   admin,
+  open,
   visit,
 }) => {
   const types = (await (await admin.get('resource-types')).json()) as { id: string }[];
@@ -69,7 +71,12 @@ test('without an account, the QR code opens the room, checks in and reports a pr
     expect(mine.find((r) => r.id === booking.id)?.checkedInAt).not.toBeNull();
     await ayseApi.dispose();
 
-    // A problem, reported without an account: those who look after the room see it, from nobody.
+    // A problem, reported without an account. The admin has Reported problems open: it comes in
+    // there at once, with a toast, from nobody, and is still there after a reload.
+    const selin = await open('admin');
+    await selin.goto('/issues');
+    await expect(selin.getByRole('heading', { name: 'Reported problems' })).toBeVisible();
+
     await phone.getByRole('button', { name: 'Report a problem' }).click();
     await phone.getByLabel('Cleaning').check();
     await phone.getByLabel("What's wrong?").fill('Coffee on the table');
@@ -78,12 +85,15 @@ test('without an account, the QR code opens the room, checks in and reports a pr
       phone.getByText('Thanks. The problem is reported', { exact: false }),
     ).toBeVisible();
     await expect(phone.locator('.issue', { hasText: 'Coffee on the table' })).toBeVisible();
-    const issues = (await (
-      await admin.get('issues', { params: { resourceId: room.id } })
-    ).json()) as { description: string; reportedByName: string | null }[];
-    expect(issues).toContainEqual(
-      expect.objectContaining({ description: 'Coffee on the table', reportedByName: null }),
-    );
+
+    await expect(
+      selin.getByText(`New problem at ${room.name}: Cleaning.`, { exact: false }),
+    ).toBeVisible();
+    const card = selin.locator('.issue', { hasText: 'Coffee on the table' });
+    await expect(card).toContainText(room.name);
+    await expect(card).toContainText('Reported at the door, without an account');
+    await selin.reload();
+    await expect(card).toContainText('Reported at the door, without an account');
 
     // Signing in comes back to the same page, signed in: the booking is hers, checked in.
     await phone.getByRole('link', { name: 'Sign in' }).click();
