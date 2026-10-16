@@ -88,6 +88,10 @@
                 <h2>{{ item.reservation.resourceName }}</h2>
                 @if (item.inProgress) {
                   <span class="pill in-progress" i18n="@@mine.inProgress">In progress</span>
+                } @else if (item.awaiting) {
+                  <span class="pill awaiting" i18n="@@status.reservation.pending"
+                    >Awaiting approval</span
+                  >
                 } @else if (item.releasedNote) {
                   <span class="pill cancelled-pill" i18n="@@mine.released">Released</span>
                 } @else if (item.reservation.status === 'Cancelled') {
@@ -119,6 +123,9 @@
                 }
                 @if (item.series; as series) {
                   · <span class="series">{{ series }}</span>
+                }
+                @if (item.decision; as decision) {
+                  · <span class="decision">{{ decision }}</span>
                 }
               </p>
               @if (item.attendees; as attendees) {

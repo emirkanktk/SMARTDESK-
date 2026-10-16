@@ -194,6 +194,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/issues/issues').then((m) => m.Issues),
       },
       {
+        // What waits for an Admin's approval (ADR-0049).
+        path: 'admin/approvals',
+        title: $localize`:@@title.approvals:Approvals · SmartDesk`,
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/approvals/approvals').then((m) => m.Approvals),
+      },
+      {
         // The rules bookings keep to (ADR-0046).
         path: 'admin/rules',
         title: $localize`:@@title.rules:Booking rules · SmartDesk`,

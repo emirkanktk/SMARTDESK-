@@ -41,6 +41,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   to office hours, and sets when the office is open. Every way of booking keeps to them, the
   booking form says them before it asks, and the search and suggestions only offer what they
   allow ([ADR-0046](docs/DECISIONS.md)).
+- **Approval** - a kind of resource, a company car say, can wait for an Admin's approval: a
+  booking of it is asked for and holds its time, Admins approve or decline it, saying why, on
+  **Approvals**, and whoever asked hears in their inbox. A request nobody answers lapses at its
+  start ([ADR-0049](docs/DECISIONS.md)).
 - **Waiting list** - or wait for that time instead: when it frees up - cancelled, released for
   want of a check-in, ended early or moved - it's booked for whoever joined the line first,
   and their inbox says so. My reservations shows what you wait for and your place in line
@@ -353,6 +357,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Series | `GET /api/reservations/series/preview`, `POST /api/reservations/series`, `POST /api/reservations/{id}/cancel-following` (ADR-0035) |
 | Running over | `GET /api/reservations/{id}/extension`, `POST /api/reservations/{id}/extend` (ADR-0033) |
 | Calendar | `GET /api/reservations/{id}/calendar` (an `.ics` file), `GET`/`POST`/`DELETE /api/calendar/subscription`, `GET /api/calendar/feed.ics?token=` (the link's token, no user) (ADR-0048) |
+| Approvals | `GET /api/approvals`, `POST /api/approvals/{id}/approve`, `POST /api/approvals/{id}/decline` (Admin) (ADR-0049) |
 | Booking rules | `GET /api/booking-rules`, `PUT /api/booking-rules/office-hours` (Admin), `PUT /api/booking-rules/types/{id}` (Admin) (ADR-0046) |
 | Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |
 | Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |

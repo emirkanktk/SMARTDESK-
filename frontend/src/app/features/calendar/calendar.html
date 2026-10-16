@@ -137,11 +137,17 @@
                     <a
                       class="entry"
                       [class.mine]="entry.mine"
+                      [class.awaiting]="entry.awaiting"
                       [routerLink]="['/reservations', entry.reservation.id, 'edit']"
                       [title]="entry.title"
                     >
                       <span class="entry-time">{{ entry.time }}</span>
                       <span class="entry-who">
+                        @if (entry.awaiting) {
+                          <span class="visually-hidden" i18n="@@status.reservation.pending"
+                            >Awaiting approval</span
+                          >
+                        }
                         @if (entry.checkedIn) {
                           <span class="checked-in-mark" aria-hidden="true">✓</span>
                           <span class="visually-hidden" i18n="@@calendar.checkedIn"
@@ -202,11 +208,17 @@
                         <a
                           class="entry"
                           [class.mine]="entry.mine"
+                          [class.awaiting]="entry.awaiting"
                           [routerLink]="['/reservations', entry.reservation.id, 'edit']"
                           [title]="item.resourceName + ', ' + entry.title"
                         >
                           <span class="entry-time">{{ entry.time }}</span>
                           <span class="entry-who">
+                            @if (entry.awaiting) {
+                              <span class="visually-hidden" i18n="@@status.reservation.pending"
+                                >Awaiting approval</span
+                              >
+                            }
                             @if (entry.checkedIn) {
                               <span class="checked-in-mark" aria-hidden="true">✓</span>
                               <span class="visually-hidden" i18n="@@calendar.checkedIn"

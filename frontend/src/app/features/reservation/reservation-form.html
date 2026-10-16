@@ -267,7 +267,11 @@
       </div>
     </div>
 
-    @if (mode() === 'create') {
+    @if (mode() === 'create' && needsApproval()) {
+      <p class="text-muted repeat-note" i18n="@@series.notWithApproval">
+        A booking that waits for approval doesn't repeat: ask for each date on its own.
+      </p>
+    } @else if (mode() === 'create') {
       <fieldset class="field repeat">
         <legend i18n="@@series.legend">Repeat</legend>
         <select
@@ -484,6 +488,8 @@
               >Book the {{ counts.free }} free dates</ng-container
             >
           }
+        } @else if (needsApproval()) {
+          <ng-container i18n="@@reservationForm.ask">Ask for it</ng-container>
         } @else {
           <ng-container i18n="@@availability.book">Book</ng-container>
         }

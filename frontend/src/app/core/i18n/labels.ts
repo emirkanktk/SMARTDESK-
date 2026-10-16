@@ -62,6 +62,8 @@ export function reservationStatusLabel(status: ReservationStatus): string {
       return $localize`:@@status.reservation.confirmed:Confirmed`;
     case 'Cancelled':
       return $localize`:@@status.reservation.cancelled:Cancelled`;
+    case 'Pending':
+      return $localize`:@@status.reservation.pending:Awaiting approval`;
   }
 }
 

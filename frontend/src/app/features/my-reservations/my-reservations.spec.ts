@@ -694,6 +694,71 @@ describe('MyReservations', () => {
       expect(itemText('Meeting Room A')).not.toContain('Check in at the door');
     });
   });
+
+  describe('a booking that waits for an Admin approval (ADR-0049)', () => {
+    const car = (id: string, start: string, end: string, extra: Partial<Reservation> = {}) =>
+      booking(id, 'Company Car 1', start, end, { reminderMinutes: 15, ...extra });
+
+    function itemText(name: string): string {
+      return Array.from(element.querySelectorAll('.item'))
+        .find((i) => i.querySelector('h2')!.textContent!.includes(name))!
+        .textContent!.replace(/\s+/g, ' ');
+    }
+
+    it('lists what waits among the upcoming, saying so, with no reminder yet', async () => {
+      getMine.mockReturnValue(
+        of([
+          car('rsv-car', '2026-10-06T09:00', '2026-10-06T17:00', {
+            status: 'Pending',
+            requestedAt: utc('2026-10-05T09:00'),
+          }),
+        ]),
+      );
+      await render();
+
+      expect(names()).toEqual(['Company Car 1']);
+      const text = itemText('Company Car 1');
+      expect(text).toContain('Awaiting approval');
+      expect(text).not.toContain('Reminder');
+      expect(element.querySelector('.item button.cancel')).not.toBeNull();
+    });
+
+    it('says who approved one, and who declined one and why, or that nobody did in time', async () => {
+      getMine.mockReturnValue(
+        of([
+          car('rsv-approved', '2026-10-06T09:00', '2026-10-06T17:00', {
+            requestedAt: utc('2026-10-05T08:00'),
+            decidedAt: utc('2026-10-05T09:00'),
+            decidedBy: 'u-selin',
+            decidedByName: 'Selin Kaya',
+          }),
+          booking('rsv-declined', 'Company Car 2', '2026-10-07T09:00', '2026-10-07T12:00', {
+            status: 'Cancelled',
+            requestedAt: utc('2026-10-05T08:00'),
+            decidedAt: utc('2026-10-05T09:30'),
+            decidedBy: 'u-selin',
+            decidedByName: 'Selin Kaya',
+            declineReason: 'The car is at the service',
+          }),
+          booking('rsv-lapsed', 'Company Car 3', '2026-10-05T09:00', '2026-10-05T10:00', {
+            status: 'Cancelled',
+            requestedAt: utc('2026-10-04T08:00'),
+            decidedAt: utc('2026-10-05T09:00'),
+          }),
+        ]),
+      );
+      await render();
+
+      expect(itemText('Company Car 1')).toContain('Approved by Selin Kaya');
+      expect(itemText('Company Car 1')).not.toContain('Awaiting approval');
+      await openTab('Cancelled');
+      expect(itemText('Company Car 2')).toContain(
+        'Declined by Selin Kaya: The car is at the service',
+      );
+      expect(itemText('Company Car 3')).toContain('Nobody approved it before it started');
+    });
+  });
+
   describe('a booking that repeats (ADR-0035)', () => {
     const pad = (day: number) => String(day).padStart(2, '0');
     const series = {

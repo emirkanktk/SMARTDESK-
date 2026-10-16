@@ -291,11 +291,18 @@ export class ReservationForm implements OnInit {
       ) ?? null
     );
   });
+  /**
+   * A booking of the chosen kind waits for an Admin's approval (ADR-0049): it's asked for, not
+   * booked yet, and doesn't repeat. An Admin's own bookings don't wait.
+   */
+  protected readonly needsApproval = computed(
+    () => this.kindRules()?.requiresApproval === true && !this.authService.isAdmin(),
+  );
   /** "Desk bookings: within office hours (Mon-Fri 09:00-18:00), at most 9 h long." */
   protected readonly rulesHint = computed(() => {
     const kind = this.kindRules();
     const office = this.bookingRules()?.officeHours;
-    const rules = kind && office ? describeRules(kind, office) : [];
+    const rules = kind && office ? describeRules(kind, office, this.needsApproval()) : [];
     if (!kind || rules.length === 0) return null;
     const name = resourceTypeLabel(kind.name);
     const list = rules.join(', ');
@@ -371,7 +378,7 @@ export class ReservationForm implements OnInit {
     const userId = this.authService.currentUser()?.id;
     return (
       !!reservation &&
-      reservation.status === 'Confirmed' &&
+      reservation.status !== 'Cancelled' &&
       new Date(reservation.endDateTime).getTime() > Date.now() &&
       reservation.attendees.some((a) => a.id === userId)
     );
@@ -408,7 +415,7 @@ export class ReservationForm implements OnInit {
   protected readonly recurrence = computed<Recurrence | null>(() => {
     const value = this.formValue();
     const startDay = this.startDay();
-    if (this.mode() !== 'create' || value.repeat === 'none' || !startDay) {
+    if (this.mode() !== 'create' || value.repeat === 'none' || !startDay || this.needsApproval()) {
       return null;
     }
     const weekly = value.repeat === 'weekly' || value.repeat === 'biweekly';
@@ -642,9 +649,15 @@ export class ReservationForm implements OnInit {
     const invites = body.attendeeIds.some((id) => !before.has(id));
     request.pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (saved) => {
+        // Asked for, or asked again, when it waits for an Admin's approval (ADR-0049).
+        const waits = saved.status === 'Pending';
         const done = reservation
-          ? $localize`:@@reservationForm.saved:Your changes to the ${saved.resourceName}:resource: reservation were saved.`
-          : $localize`:@@reservationForm.booked:${saved.resourceName}:resource: is booked for ${this.formatRange(saved)}:when:.`;
+          ? waits
+            ? $localize`:@@reservationForm.savedAwaiting:Your changes to the ${saved.resourceName}:resource: reservation were saved. It waits for an Admin's approval.`
+            : $localize`:@@reservationForm.saved:Your changes to the ${saved.resourceName}:resource: reservation were saved.`
+          : waits
+            ? $localize`:@@reservationForm.requested:${saved.resourceName}:resource: is asked for ${this.formatRange(saved)}:when:. An Admin approves it, and your inbox will say.`
+            : $localize`:@@reservationForm.booked:${saved.resourceName}:resource: is booked for ${this.formatRange(saved)}:when:.`;
         this.notifications.success(
           invites
             ? `${done} ${$localize`:@@reservationForm.invitesSent:Your invitations were sent.`}`

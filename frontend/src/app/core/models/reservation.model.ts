@@ -2,7 +2,8 @@
 
 import { Signal, signal } from '@angular/core';
 
-export const RESERVATION_STATUSES = ['Confirmed', 'Cancelled'] as const;
+/** Pending: waiting for an Admin's approval, which holds its time like a booking (ADR-0049). */
+export const RESERVATION_STATUSES = ['Confirmed', 'Cancelled', 'Pending'] as const;
 export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 
 /** Every reservation endpoint returns this shape; it is also the SignalR event payload. */
@@ -48,6 +49,16 @@ export interface Reservation {
    * its own. Each date is a booking of its own, moved or cancelled alone.
    */
   series?: ReservationSeries | null;
+  /**
+   * Approval (ADR-0049), for a kind that waits for an Admin's: when it last went to one, when it
+   * was approved or declined - or lapsed, with nobody named - by whom, and why it was declined.
+   * All null for a booking that never needed it.
+   */
+  requestedAt?: string | null;
+  decidedAt?: string | null;
+  decidedBy?: string | null;
+  decidedByName?: string | null;
+  declineReason?: string | null;
 }
 
 export const RECURRENCE_FREQUENCIES = ['Daily', 'Weekly'] as const;

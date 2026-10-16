@@ -24,6 +24,8 @@ export interface ResourceTypeRules {
   /** How many bookings of the kind one person may have that haven't ended. */
   maxActivePerUser: number | null;
   officeHoursOnly: boolean;
+  /** A booking waits for an Admin's approval, unless an Admin makes it (ADR-0049). */
+  requiresApproval: boolean;
 }
 
 /** The most a kind's rules may be set to. */

@@ -29,6 +29,10 @@ const KIND_ICONS: Record<InboxMessageKind, IconName> = {
   IssueResolved: 'check',
   CancelledByBlock: 'close',
   WaitlistBooked: 'calendar-check',
+  ApprovalRequested: 'shield',
+  BookingApproved: 'calendar-check',
+  BookingDeclined: 'close',
+  ApprovalLapsed: 'clock',
 };
 
 /** News of a meeting the reader is still invited to, which they can answer. */
@@ -45,11 +49,22 @@ const ABOUT_AN_ANSWER: readonly InboxMessageKind[] = [
   'SeriesAccepted',
   'SeriesDeclined',
 ];
-/** Messages whose quote is their reason: why someone can't come, or why a resource closed. */
+/**
+ * Messages whose quote is their reason: why someone can't come, why a resource closed, or why
+ * an Admin declined a booking (ADR-0049).
+ */
 const WITH_A_REASON: readonly InboxMessageKind[] = [
   'MeetingDeclined',
   'SeriesDeclined',
   'CancelledByBlock',
+  'BookingDeclined',
+];
+/** News of the reader's own booking: one the waiting list made, or what an Admin decided. */
+const ABOUT_A_BOOKING: readonly InboxMessageKind[] = [
+  'WaitlistBooked',
+  'BookingApproved',
+  'BookingDeclined',
+  'ApprovalLapsed',
 ];
 
 interface Item {
@@ -66,8 +81,12 @@ interface Item {
    * invitation.
    */
   quote: string | null;
-  /** The meeting's page, for news of one the reader is still invited to or organizes. */
+  /**
+   * The meeting's page, for news of one the reader is still invited to or organizes; the
+   * booking's, for news of their own; what waits for approval, for an Admin asked (ADR-0049).
+   */
   link: string[] | null;
+  linkLabel: string;
   /**
    * The meeting to answer, on the newest message about one the reader is still invited to;
    * older messages about it don't ask again. For a meeting that repeats, its next date.
@@ -144,9 +163,17 @@ export class Inbox implements OnInit {
             ? null
             : message.note,
         link:
-          target !== null && (invitation || answer || message.kind === 'WaitlistBooked')
-            ? ['/reservations', target, 'edit']
-            : null,
+          message.kind === 'ApprovalRequested'
+            ? ['/admin', 'approvals']
+            : target !== null && (invitation || answer || ABOUT_A_BOOKING.includes(message.kind))
+              ? ['/reservations', target, 'edit']
+              : null,
+        linkLabel:
+          message.kind === 'ApprovalRequested'
+            ? $localize`:@@inbox.openApprovals:See what waits for approval`
+            : ABOUT_A_BOOKING.includes(message.kind)
+              ? $localize`:@@inbox.openBooking:See the booking`
+              : $localize`:@@inbox.openMeeting:See the meeting`,
         meeting: found,
         following: message.kind === 'SeriesInvitation',
       };
@@ -256,7 +283,7 @@ export class Inbox implements OnInit {
   private track(reservation: Reservation): void {
     const userId = this.auth.currentUser()?.id;
     const invited =
-      reservation.status === 'Confirmed' &&
+      reservation.status !== 'Cancelled' &&
       new Date(reservation.endDateTime).getTime() > Date.now() &&
       reservation.attendees.some((a) => a.id === userId);
     const listed = this.invitations().has(reservation.id);

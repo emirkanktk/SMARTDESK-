@@ -307,6 +307,22 @@ describe('Calendar', () => {
       );
     });
 
+    it('shows a request waiting for approval, which holds its time, as such (ADR-0049)', async () => {
+      await render();
+
+      hub.created$.next(
+        booking('rsv-asked', desk.id, '2026-10-08T13:00', '2026-10-08T14:00', {
+          status: 'Pending',
+        }),
+      );
+      await fixture.whenStable();
+
+      const entry = cell('Desk 12', 3).querySelector('.entry')!;
+      expect(entry.classList).toContain('awaiting');
+      expect(entry.textContent).toContain('Awaiting approval');
+      expect(entry.getAttribute('title')).toMatch(/, Awaiting approval$/);
+    });
+
     it('moves a changed reservation, and drops one moved out of the week', async () => {
       await render();
       hub.updated$.next({

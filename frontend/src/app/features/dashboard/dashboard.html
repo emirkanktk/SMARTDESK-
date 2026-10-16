@@ -79,6 +79,11 @@
                 @if (row.checkedIn) {
                   <span class="pill checked-in" i18n="@@dashboard.checkedIn">Checked in</span>
                 }
+                @if (row.reservation.status === 'Pending') {
+                  <span class="pill awaiting" i18n="@@status.reservation.pending"
+                    >Awaiting approval</span
+                  >
+                }
                 {{ row.who }}
               </span>
             </li>
@@ -144,6 +149,13 @@
                   <span class="text-muted">
                     {{ row.reservation.startDateTime | date: 'EEE d MMM, HH:mm' }}
                   </span>
+                  @if (row.reservation.status === 'Pending') {
+                    <span
+                      ><span class="pill awaiting" i18n="@@status.reservation.pending"
+                        >Awaiting approval</span
+                      ></span
+                    >
+                  }
                 </span>
                 <a
                   class="btn btn-secondary btn-sm"

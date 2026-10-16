@@ -148,7 +148,7 @@ export class TakeOutOfUse implements OnInit {
                 (bookings) =>
                   bookings.filter(
                     (r) =>
-                      r.status === 'Confirmed' &&
+                      r.status !== 'Cancelled' &&
                       new Date(r.startDateTime) < end &&
                       now < new Date(r.endDateTime),
                   ).length,

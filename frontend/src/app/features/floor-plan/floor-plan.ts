@@ -461,7 +461,8 @@ export class FloorPlan {
       ...day,
       bookings: [
         ...day.bookings.filter((r) => r.id !== reservation.id),
-        ...(reservation.status === 'Confirmed' && onDay ? [reservation] : []),
+        // Waiting for approval holds the time too (ADR-0049).
+        ...(reservation.status !== 'Cancelled' && onDay ? [reservation] : []),
       ],
     }));
   }

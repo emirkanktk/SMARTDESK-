@@ -165,6 +165,12 @@
     border-left-color: var(--color-primary);
     background: var(--color-primary-soft);
   }
+
+  // Asked for, waiting for an Admin's approval (ADR-0049): its time is held, not booked yet.
+  &.awaiting {
+    border-left-style: dashed;
+    border-left-color: var(--color-warning);
+  }
 }
 
 .entry-time {

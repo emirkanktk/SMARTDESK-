@@ -1,0 +1,112 @@
+<div class="page-header">
+  <h1 i18n="@@approvals.title">Approvals</h1>
+  <a class="btn btn-secondary" routerLink="/admin/rules" i18n="@@admin.rules">Booking rules</a>
+</div>
+<p class="text-muted intro" i18n="@@approvals.intro">
+  Bookings of the kinds that wait for an Admin's approval. Each holds its time until you decide; one
+  nobody approves before its start lapses.
+</p>
+
+@if (loading()) {
+  <p class="text-muted" role="status" i18n="@@approvals.loading">Loading the requests…</p>
+} @else if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span i18n="@@approvals.loadFailed">The requests could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="load()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
+  </div>
+} @else if (items().length === 0) {
+  <div class="card empty">
+    <p i18n="@@approvals.none">Nothing waits for approval.</p>
+  </div>
+} @else {
+  <ul class="list">
+    @for (item of items(); track item.request.id) {
+      <li class="card request">
+        <div class="what">
+          <h2>{{ item.request.resourceName }}</h2>
+          <p class="text-muted meta">
+            {{ typeLabel(item.request.resourceTypeName) }} · {{ item.request.resourceLocation }}
+          </p>
+          <p class="when">{{ item.when }}</p>
+          <p class="meta">
+            <ng-container i18n="@@approvals.askedBy">Asked by {{ item.who }}</ng-container>
+            @if (item.asked; as asked) {
+              <span class="text-muted"> · {{ asked }}</span>
+            }
+          </p>
+          @if (item.request.note) {
+            <p class="note">{{ item.request.note }}</p>
+          }
+        </div>
+
+        @if (decliningId() === item.request.id) {
+          <form class="decline" (ngSubmit)="decline(item.request)">
+            <label [for]="'reason-' + item.request.id" i18n="@@approvals.reasonLabel"
+              >Why it's declined</label
+            >
+            <textarea
+              [id]="'reason-' + item.request.id"
+              class="input"
+              rows="2"
+              name="reason"
+              required
+              [(ngModel)]="reason"
+              [attr.maxlength]="reasonMaxLength"
+              i18n-placeholder="@@approvals.reasonPlaceholder"
+              placeholder="For example: the car is at the service that day"
+            ></textarea>
+            <span class="text-muted hint" i18n="@@approvals.reasonHint"
+              >{{ item.who }} reads this in their inbox.</span
+            >
+            <div class="actions">
+              <button
+                type="submit"
+                class="btn btn-primary btn-sm"
+                [disabled]="busyId() === item.request.id || !reason.trim()"
+                i18n="@@approvals.declineConfirm"
+              >
+                Decline it
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                (click)="stopDeclining()"
+                i18n="@@common.back"
+              >
+                Back
+              </button>
+            </div>
+          </form>
+        } @else {
+          <div class="actions">
+            <button
+              type="button"
+              class="btn btn-primary btn-sm approve"
+              [disabled]="busyId() === item.request.id"
+              (click)="approve(item.request)"
+              i18n="@@approvals.approve"
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm decline-start"
+              [disabled]="busyId() === item.request.id"
+              (click)="startDeclining(item.request)"
+              i18n="@@approvals.decline"
+            >
+              Decline
+            </button>
+          </div>
+        }
+      </li>
+    }
+  </ul>
+}

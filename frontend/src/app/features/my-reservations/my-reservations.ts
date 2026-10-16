@@ -37,6 +37,10 @@ export const ATTENDEES_SHOWN = 3;
 
 interface Item {
   reservation: Reservation;
+  /** Asked for, and waiting for an Admin's approval (ADR-0049). */
+  awaiting: boolean;
+  /** "Approved by Selin Kaya", "Declined by Selin Kaya: …", or that nobody did in time. */
+  decision: string | null;
   start: Date;
   end: Date;
   sameDay: boolean;
@@ -123,10 +127,12 @@ export class MyReservations implements OnInit {
     const now = this.now();
     const confirmed = this.items().filter((i) => i.reservation.status === 'Confirmed');
     return {
-      // Soonest first: what's next matters most.
-      upcoming: confirmed.filter((i) => i.end.getTime() > now).sort(byStart),
+      // Soonest first: what's next matters most. With what waits for approval (ADR-0049).
+      upcoming: this.items()
+        .filter((i) => i.reservation.status !== 'Cancelled' && i.end.getTime() > now)
+        .sort(byStart),
       invited: this.invitations()
-        .filter((r) => r.status === 'Confirmed' && new Date(r.endDateTime).getTime() > now)
+        .filter((r) => r.status !== 'Cancelled' && new Date(r.endDateTime).getTime() > now)
         .map((reservation) => this.toItem(reservation, now, true))
         .sort(byStart),
       // Most recent first.
@@ -329,7 +335,7 @@ export class MyReservations implements OnInit {
     }
 
     const invited =
-      reservation.status === 'Confirmed' && reservation.attendees.some((a) => a.id === userId);
+      reservation.status !== 'Cancelled' && reservation.attendees.some((a) => a.id === userId);
     const listed = this.invitations().some((r) => r.id === reservation.id);
     if (invited) {
       this.invitations.update((list) => [
@@ -351,6 +357,8 @@ export class MyReservations implements OnInit {
     const time = (date: Date | string) => formatDate(date, 'HH:mm', this.locale);
     return {
       reservation,
+      awaiting: reservation.status === 'Pending',
+      decision: this.decision(reservation),
       start,
       end,
       sameDay: start.toDateString() === end.toDateString(),
@@ -380,6 +388,20 @@ export class MyReservations implements OnInit {
         ? $localize`:@@mine.repeats:Repeats ${describeSeries(reservation.series, this.locale)}:rule:`
         : null,
     };
+  }
+
+  /** What an Admin decided about a booking that waited for approval (ADR-0049), if anything. */
+  private decision(reservation: Reservation): string | null {
+    if (!reservation.decidedAt || reservation.status === 'Pending') return null;
+    const name = reservation.decidedByName ?? $localize`:@@common.someone:Someone`;
+    if (reservation.status === 'Confirmed') {
+      return $localize`:@@mine.approvedBy:Approved by ${name}:name:`;
+    }
+    if (!reservation.decidedBy) {
+      return $localize`:@@mine.lapsed:Nobody approved it before it started`;
+    }
+    const reason = reservation.declineReason ?? '';
+    return $localize`:@@mine.declinedBy:Declined by ${name}:name:: ${reason}:reason:`;
   }
 
   private checkedInBy(reservation: Reservation): string | null {

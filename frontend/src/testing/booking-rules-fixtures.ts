@@ -28,6 +28,7 @@ export function fakeKindRules(overrides: Partial<ResourceTypeRules> = {}): Resou
     maxDaysAhead: null,
     maxActivePerUser: null,
     officeHoursOnly: false,
+    requiresApproval: false,
     ...overrides,
   };
 }
