@@ -25,6 +25,7 @@ public interface IApplicationDbContext
     DbSet<WaitlistEntry> WaitlistEntries { get; }
     DbSet<OfficeHours> OfficeHours { get; }
     DbSet<CalendarFeed> CalendarFeeds { get; }
+    DbSet<FavoriteResource> FavoriteResources { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

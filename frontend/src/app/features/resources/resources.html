@@ -40,6 +40,10 @@
       }
     </select>
   </div>
+  <label class="favorites-only">
+    <input type="checkbox" formControlName="favoritesOnly" />
+    <span i18n="@@resources.favoritesOnly">Favourites only</span>
+  </label>
   <button type="button" class="btn btn-secondary" (click)="clearFilters()" i18n="@@common.clear">
     Clear
   </button>
@@ -83,6 +87,7 @@
           <tr [class.unavailable]="resource.status !== 'Active'">
             <td>
               <div class="resource-name">
+                <app-favorite-toggle [resource]="resource" />
                 <app-resource-photo
                   class="thumb"
                   [resourceId]="resource.id"

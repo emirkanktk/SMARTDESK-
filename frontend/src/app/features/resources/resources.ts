@@ -11,17 +11,22 @@ import {
   ResourceType,
 } from '../../core/models/resource.model';
 import { AuthService } from '../../core/services/auth.service';
+import { FavoriteService } from '../../core/services/favorite.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ResourceService } from '../../core/services/resource.service';
+import { FavoriteToggle } from '../../shared/components/favorite-toggle/favorite-toggle';
 import { ResourcePhoto } from '../../shared/components/resource-photo/resource-photo';
 import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { canManageResource, teamLabel } from '../../shared/utils/resource-access';
 import { searchKey } from '../../shared/utils/search';
 import { resourceStatusLabel, resourceTypeLabel } from '../../core/i18n/labels';
 
-/** Resource list for everyone; admins also get create, edit and activate/deactivate. */
+/**
+ * Resource list for everyone, each with a star to make it a favourite (ADR-0051); admins also
+ * get create, edit and activate/deactivate.
+ */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, StatusBadge, ResourcePhoto],
+  imports: [ReactiveFormsModule, RouterLink, StatusBadge, ResourcePhoto, FavoriteToggle],
   selector: 'app-resources',
   styleUrl: './resources.scss',
   templateUrl: './resources.html',
@@ -29,6 +34,7 @@ import { resourceStatusLabel, resourceTypeLabel } from '../../core/i18n/labels';
 export class Resources {
   private readonly resourceService = inject(ResourceService);
   private readonly notifications = inject(NotificationService);
+  private readonly favorites = inject(FavoriteService);
 
   private readonly auth = inject(AuthService);
   /** Admins add any resource; a manager adds one to their own team (ADR-0022). */
@@ -42,6 +48,7 @@ export class Resources {
     search: [''],
     resourceTypeId: [''],
     status: ['' as ResourceStatus | ''],
+    favoritesOnly: [false],
   });
 
   protected readonly types = signal<ResourceType[]>([]);
@@ -51,21 +58,25 @@ export class Resources {
   /** Id of the resource whose status is being changed, to disable its button meanwhile. */
   protected readonly busyId = signal<string | null>(null);
 
-  // Type and status are filtered by the API; the free-text search runs on the loaded list.
+  // Type and status are filtered by the API; the free-text search and the favourites run on the
+  // loaded list.
   private readonly search = toSignal(this.filters.controls.search.valueChanges, {
     initialValue: '',
+  });
+  private readonly favoritesOnly = toSignal(this.filters.controls.favoritesOnly.valueChanges, {
+    initialValue: false,
   });
 
   protected readonly visibleResources = computed(() => {
     const term = searchKey(this.search().trim());
-    if (!term) {
-      return this.resources();
-    }
+    const favorites = this.favorites.ids();
     return this.resources().filter(
       (r) =>
-        searchKey(r.name).includes(term) ||
-        searchKey(r.location).includes(term) ||
-        r.features.some((f) => searchKey(f).includes(term)),
+        (!this.favoritesOnly() || favorites.has(r.id)) &&
+        (!term ||
+          searchKey(r.name).includes(term) ||
+          searchKey(r.location).includes(term) ||
+          r.features.some((f) => searchKey(f).includes(term))),
     );
   });
 

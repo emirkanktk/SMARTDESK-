@@ -183,8 +183,8 @@
         [class.invalid]="resourceError()"
       >
         <option value="" disabled i18n="@@reservationForm.selectResource">Select a resource</option>
-        @for (group of resourceGroups(); track group.typeName) {
-          <optgroup [label]="typeLabel(group.typeName)">
+        @for (group of resourceGroups(); track group.key) {
+          <optgroup [label]="group.label">
             @for (option of group.options; track option.id) {
               <option [value]="option.id">{{ option.name }}</option>
             }

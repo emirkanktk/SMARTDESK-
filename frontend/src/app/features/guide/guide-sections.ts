@@ -52,6 +52,7 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
       $localize`:@@guide.book.repeat:To repeat it, choose how often and the last day. The dates are listed first, any that aren't free with why, and booking skips those.`,
       $localize`:@@guide.book.taken:If it's taken, you're told so, with the nearest free times and what else is free then: choose one, and book again.`,
       $localize`:@@guide.book.wait:Or join the waiting list: if the time frees up, it's booked for you, and your inbox says so.`,
+      $localize`:@@guide.book.favorites:Book something often? Star it on Resources: your favourites are on the dashboard, saying whether each is free, and first in the booking form.`,
     ],
     link: { path: '/reservations/new', label: $localize`:@@guide.book.link:Book a resource` },
   },

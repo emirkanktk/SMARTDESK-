@@ -176,6 +176,24 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("CalendarFeeds");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.FavoriteResource", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "ResourceId");
+
+                    b.HasIndex("ResourceId");
+
+                    b.ToTable("FavoriteResources");
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.FloorPlan", b =>
                 {
                     b.Property<string>("Location")
@@ -962,6 +980,17 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartDesk.Domain.Entities.FavoriteResource", b =>
+                {
+                    b.HasOne("SmartDesk.Domain.Entities.Resource", "Resource")
+                        .WithMany()
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Resource");
                 });
 
             modelBuilder.Entity("SmartDesk.Domain.Entities.InboxMessage", b =>

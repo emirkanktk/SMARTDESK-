@@ -381,6 +381,11 @@ picker drops seconds and any difference would count as a change.
   the room's state with the door screen's `doorState`, checks in the booking waiting for it, and
   reports a problem with `<app-report-issue [doorCode]>`. Signed in, the router goes on to the
   shell's own `check-in/:resourceId`, so the printed codes keep their address.
+- **Favourites (ADR-0051).** `FavoriteService` (in root) keeps the signed-in user's starred
+  resources, loaded once for whoever is signed in and changed on screen before the API answers;
+  `<app-favorite-toggle>` is the star wherever a resource is listed. The dashboard's **Your
+  favourites** works out each one's state with `roomNowFor`, from today's bookings it already
+  has and today's blocked windows, asked once a day.
 - **The guide.** `/guide` lists `GUIDE_SECTIONS` (`features/guide/guide-sections.ts`): each
   part's steps as `$localize` texts, the numbers in them taken from the rules' constants
   (`CHECK_IN`, `EXTENSION_OPTIONS`), filtered by role and by whether the server has the
