@@ -52,6 +52,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **Calendar and dashboard** - reservations in a date range (who booked what), and a daily
   overview: today's reservations, what's in use right now, and your upcoming bookings, with
   "today" computed in the user's time zone.
+- **Favourite resources** - a star on **Resources** keeps what you book often with your
+  account, the same on every device: the dashboard lists your favourites with whether each is
+  free and a **Book** button, and the booking form has them first
+  ([ADR-0051](docs/DECISIONS.md)).
 - **In your own calendar** - "Add to calendar" on a booking or an invitation gives an `.ics`
   file that Outlook, Google Calendar or a phone's calendar adds. Or make a personal calendar link
   on your profile and subscribe to it once: the calendar then shows your bookings and the
@@ -356,6 +360,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 |---|---|
 | Auth | `POST /api/auth/login`, `GET /api/auth/me` |
 | Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin), `PATCH /api/resources/{id}/status` (Admin) |
+| Favourites | `GET /api/favorites`, `PUT /api/favorites/{resourceId}`, `DELETE /api/favorites/{resourceId}` (ADR-0051) |
 | Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |
 | Reservations | `POST /api/reservations`, `GET /api/reservations?from=&to=` (calendar), `GET /api/reservations/mine`, `GET /api/reservations/{id}`, `PUT /api/reservations/{id}`, `POST /api/reservations/{id}/cancel` |
 | Series | `GET /api/reservations/series/preview`, `POST /api/reservations/series`, `POST /api/reservations/{id}/cancel-following` (ADR-0035) |

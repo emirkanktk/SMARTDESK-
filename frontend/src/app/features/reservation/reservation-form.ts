@@ -56,6 +56,7 @@ import { Resource } from '../../core/models/resource.model';
 import { BookingRules } from '../../core/models/booking-rules.model';
 import { AuthService } from '../../core/services/auth.service';
 import { BookingRulesService } from '../../core/services/booking-rules.service';
+import { FavoriteService } from '../../core/services/favorite.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReminderAlertsService } from '../../core/services/reminder-alerts.service';
 import { ReservationService } from '../../core/services/reservation.service';
@@ -174,6 +175,7 @@ export class ReservationForm implements OnInit {
   private readonly document = inject(DOCUMENT);
   private readonly waitlist = inject(WaitlistService);
   private readonly bookingRulesService = inject(BookingRulesService);
+  private readonly favorites = inject(FavoriteService);
 
   /** Route parameter; absent when booking. */
   readonly id = input<string>();
@@ -245,7 +247,28 @@ export class ReservationForm implements OnInit {
       },
     ];
   });
-  protected readonly resourceGroups = computed(() => groupByType(this.resourceOptions()));
+  /** The user's favourites first, on their own (ADR-0051), then the rest by type. */
+  protected readonly resourceGroups = computed(() => {
+    const favorites = this.favorites.ids();
+    const options = this.resourceOptions();
+    const starred = options.filter((o) => favorites.has(o.id));
+    return [
+      ...(starred.length > 0
+        ? [
+            {
+              key: 'favorites',
+              label: $localize`:@@reservationForm.favorites:Your favourites`,
+              options: starred,
+            },
+          ]
+        : []),
+      ...groupByType(options.filter((o) => !favorites.has(o.id))).map((group) => ({
+        key: group.typeName,
+        label: resourceTypeLabel(group.typeName),
+        options: group.options,
+      })),
+    ];
+  });
 
   /** Who the caller may invite; only Managers and Admins ask. */
   private readonly invitees = signal<Invitee[]>([]);
@@ -496,6 +519,7 @@ export class ReservationForm implements OnInit {
   });
 
   ngOnInit(): void {
+    this.favorites.load();
     if (this.authService.isManager() || this.authService.isAdmin()) {
       this.reservationService.getInvitees().subscribe({
         next: (invitees) => this.invitees.set(invitees),

@@ -13,6 +13,7 @@ import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceService } from '../../core/services/resource.service';
 import { WaitlistService } from '../../core/services/waitlist.service';
 import { fakeBookingRules, fakeKindRules } from '../../../testing/booking-rules-fixtures';
+import { FakeFavorites, favoritesStub } from '../../../testing/favorites-stub';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
 import { DESK_TYPE, fakeResource } from '../../../testing/resource-fixtures';
 import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
@@ -61,12 +62,14 @@ describe('ReservationForm', () => {
     requestPermissionIfUnasked: ReturnType<typeof vi.fn>;
   };
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
+  let favorites: FakeFavorites;
   let fixture: ComponentFixture<ReservationForm>;
   let element: HTMLElement;
 
   beforeEach(async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
+    favorites = new FakeFavorites();
     currentUser.set(owner);
     isAdmin.set(false);
     isManager.set(false);
@@ -123,6 +126,7 @@ describe('ReservationForm', () => {
         { provide: WaitlistService, useValue: { join: joinWaitlist } },
         { provide: BookingRulesService, useValue: { get: getRules } },
         RESOURCE_PHOTO_STUB,
+        favoritesStub(favorites),
       ],
     }).compileComponents();
 
@@ -221,6 +225,21 @@ describe('ReservationForm', () => {
 
       const groups = Array.from(element.querySelectorAll('optgroup')).map((g) => g.label);
       expect(groups).toEqual(['Desk', 'Meeting Room']);
+    });
+
+    it('puts the favourites first, on their own', async () => {
+      favorites.list.set([room]);
+      await render();
+
+      const groups = Array.from(element.querySelectorAll('optgroup')).map((g) => ({
+        label: g.label,
+        options: Array.from(g.querySelectorAll('option')).map((o) => o.textContent!.trim()),
+      }));
+      expect(groups).toEqual([
+        { label: 'Your favourites', options: ['Meeting Room A'] },
+        { label: 'Desk', options: ['Desk 12'] },
+      ]);
+      expect(favorites.load).toHaveBeenCalled();
     });
 
     it('books with UTC times and a trimmed note, then goes to my reservations', async () => {

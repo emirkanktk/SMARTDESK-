@@ -6,7 +6,7 @@
 
 .filters {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr auto auto;
   gap: var(--space-3);
   align-items: end;
   margin-bottom: var(--space-5);
@@ -19,6 +19,17 @@
   @media (max-width: 720px) {
     grid-template-columns: 1fr;
   }
+}
+
+// As high as the inputs beside it, so it lines up with them (ADR-0051).
+.favorites-only {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.625rem;
+  font-weight: 400;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .resource-name {

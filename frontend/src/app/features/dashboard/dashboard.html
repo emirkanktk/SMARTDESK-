@@ -93,6 +93,45 @@
     </section>
 
     <div class="side">
+      <section class="card panel" aria-labelledby="favorites-heading">
+        <h2 id="favorites-heading">
+          <app-icon name="star" />
+          <span i18n="@@dashboard.favorites">Your favourites</span>
+        </h2>
+        @if (favorites().length === 0) {
+          <div class="empty-note">
+            <span class="empty-icon"><app-icon name="star" /></span>
+            <p class="text-muted" i18n="@@dashboard.noFavorites">
+              Star what you book often on <a routerLink="/resources">Resources</a>, and book it from
+              here.
+            </p>
+          </div>
+        } @else {
+          <ul class="rows">
+            @for (favorite of favorites(); track favorite.resource.id) {
+              <li class="row compact">
+                <span class="what">
+                  <strong>{{ favorite.resource.name }}</strong>
+                  <span class="text-muted">{{ favorite.now }}</span>
+                </span>
+                <span class="until">
+                  <app-favorite-toggle [resource]="favorite.resource" />
+                  @if (favorite.resource.status === 'Active') {
+                    <a
+                      class="btn btn-secondary btn-sm"
+                      routerLink="/reservations/new"
+                      [queryParams]="{ resourceId: favorite.resource.id }"
+                      i18n="@@dashboard.book"
+                      >Book</a
+                    >
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
       <section class="card panel" aria-labelledby="in-use-heading">
         <h2 id="in-use-heading">
           <app-icon name="zap" />

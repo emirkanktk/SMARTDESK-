@@ -49,6 +49,7 @@ const ICONS = {
   sliders: 'M4 7h9M17 7h3M4 17h3M11 17h9' + circle(15, 7, 2) + circle(9, 17, 2),
   sparkles:
     'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z',
+  star: 'M12 2.8l2.5 6.1 6.5.5-5 4.2 1.6 6.4L12 16.5l-5.6 3.5 1.6-6.4-5-4.2 6.5-.5z',
   sun:
     circle(12, 12, 4) +
     'M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
@@ -67,6 +68,7 @@ export type IconName = keyof typeof ICONS;
 /**
  * A line icon from the app's small set, in the text's colour and 1.25em square unless a
  * style says otherwise. Always decoration: whatever it stands for is written next to it.
+ * `--icon-fill` fills it in, as a star that's on.
  */
 @Component({
   selector: 'app-icon',
@@ -82,7 +84,7 @@ export type IconName = keyof typeof ICONS;
     svg {
       width: 100%;
       height: 100%;
-      fill: none;
+      fill: var(--icon-fill, none);
       stroke: currentColor;
       stroke-width: 1.8;
       stroke-linecap: round;

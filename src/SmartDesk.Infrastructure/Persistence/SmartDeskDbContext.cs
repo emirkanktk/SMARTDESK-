@@ -33,6 +33,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
     public DbSet<OfficeHours> OfficeHours => Set<OfficeHours>();
     public DbSet<CalendarFeed> CalendarFeeds => Set<CalendarFeed>();
+    public DbSet<FavoriteResource> FavoriteResources => Set<FavoriteResource>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -74,6 +75,17 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 t.HasCheckConstraint("CK_OfficeHours_OpensBeforeCloses", "\"OpensAt\" < \"ClosesAt\"");
                 t.HasCheckConstraint("CK_OfficeHours_Workdays", "\"Workdays\" BETWEEN 1 AND 127");
             });
+        });
+
+        // Favourite resources (ADR-0051): one row per account and resource, the account id first
+        // so someone's list is one range of the key. They go with their resource.
+        builder.Entity<FavoriteResource>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.ResourceId });
+            entity.HasOne(e => e.Resource)
+                .WithMany()
+                .HasForeignKey(e => e.ResourceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Personal calendar links (ADR-0048), one per account: keyed by the account id, with no

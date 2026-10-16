@@ -1658,3 +1658,36 @@ new tables.
     that down, and one reported without an account can't be asked about.
   - The page asks again every 30 seconds while it's open. A door screen's code stops opening it
     after half an hour; the page then says it may be out of date.
+
+## ADR-0051: Favourite resources, kept with the account
+
+**Decision:**
+- Anyone signed in can star the resources they book often. A star is a `FavoriteResource` row,
+  keyed by the account and the resource, with no foreign key across the Identity boundary, and
+  deleted with its resource. `GET /api/favorites` lists the caller's own by name,
+  `PUT /api/favorites/{resourceId}` stars one and `DELETE` unstars it; both are idempotent.
+- Only what the caller may use is starred or listed (ADR-0022): another team's resource is 404,
+  and a favourite that moves to another team stays starred, out of sight until it's theirs to
+  use again. One switched off or in maintenance is still listed, with its status, so it says why
+  it can't be booked rather than going missing. At most `FavoriteRules.MaxPerUser` (30), then
+  409 `favorites-full`.
+- The app keeps them in one `FavoriteService`, loaded once for whoever is signed in. A star
+  changes on screen at once and the API is told after; one it refuses goes back.
+- They show where booking starts: a star on every row of **Resources**, with **Favourites only**
+  among its filters; on the dashboard, **Your favourites**, each with what it's doing now -
+  free until when, in use until when, or not available - and **Book**; and in the booking form,
+  first among the resources, in a group of their own.
+
+**Why:**
+- The plan's backup pool: "UI: dark mode, TR/EN, PWA, favourite resources". Most people book the
+  same two or three resources again and again; finding them in a list of thirty each time is the
+  slow part of booking.
+- With the account rather than in the browser, so the phone at the door and the laptop at the
+  desk have the same ones.
+- The dashboard works out each one's state from what it already has - today's bookings - and
+  today's blocked windows, asked once a day, with the same `roomNowFor` as the check-in page and
+  the floor plan, rather than a new endpoint saying the same.
+- **Trade-offs:**
+  - The count isn't locked: two stars at the same moment can make one more than the most.
+  - A star shows before the API has it; reloading the page at once can lose it.
+  - A blocked window made after the dashboard opened shows from the next day, or a reload.

@@ -6,6 +6,7 @@ import { ApiError } from '../../core/models/api-error.model';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ResourceService } from '../../core/services/resource.service';
+import { FakeFavorites, favoritesStub } from '../../../testing/favorites-stub';
 import { DESK_TYPE, MEETING_ROOM_TYPE, fakeResource } from '../../../testing/resource-fixtures';
 import { RESOURCE_PHOTO_STUB } from '../../../testing/resource-photo-stub';
 import { simulateTurkishBrowser } from '../../../testing/turkish-locale';
@@ -31,6 +32,7 @@ describe('Resources', () => {
 
   let getResources: ReturnType<typeof vi.fn>;
   let changeStatus: ReturnType<typeof vi.fn>;
+  let favorites: FakeFavorites;
   let fixture: ComponentFixture<Resources>;
   let element: HTMLElement;
 
@@ -38,6 +40,7 @@ describe('Resources', () => {
     isAdmin.set(false);
     isManager.set(false);
     currentUser.set({ id: 'u-ayse' });
+    favorites = new FakeFavorites();
     getResources = vi.fn(() => of([room, desk]));
     changeStatus = vi.fn((id: string, status: string) =>
       of({ ...[room, desk].find((r) => r.id === id)!, status }),
@@ -57,6 +60,7 @@ describe('Resources', () => {
           },
         },
         RESOURCE_PHOTO_STUB,
+        favoritesStub(favorites),
       ],
     }).compileComponents();
   });
@@ -99,6 +103,30 @@ describe('Resources', () => {
       img.getAttribute('src'),
     );
     expect(pictures).toEqual(['blob:photo-of-res-1', 'type-picture:Desk']);
+  });
+
+  it('stars a resource with its own button, and shows only the starred when asked', async () => {
+    await render();
+    const stars = () => Array.from(element.querySelectorAll<HTMLButtonElement>('tbody .star'));
+
+    expect(stars().map((s) => s.getAttribute('aria-label'))).toEqual([
+      'Meeting Room A in your favourites',
+      'Desk 12 in your favourites',
+    ]);
+    stars()[1].click();
+    await fixture.whenStable();
+
+    expect(favorites.toggle).toHaveBeenCalledWith(desk);
+    expect(stars()[1].getAttribute('aria-pressed')).toBe('true');
+    expect(stars()[0].getAttribute('aria-pressed')).toBe('false');
+
+    element.querySelector<HTMLInputElement>('.favorites-only input')!.click();
+    await fixture.whenStable();
+    expect(rowNames()).toEqual(['Desk 12']);
+
+    element.querySelector<HTMLButtonElement>('form.filters button')!.click();
+    await fixture.whenStable();
+    expect(rowNames()).toEqual(['Meeting Room A', 'Desk 12']);
   });
 
   it('reloads from the API when the type or status filter changes', async () => {

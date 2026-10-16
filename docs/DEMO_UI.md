@@ -448,6 +448,16 @@ plan by the lift.
   account is needed - but then a photo of a printed code checks in anyone's booking, which a
   door screen's changing code stops (ADR-0050).
 
+### 26. Favourites
+
+- As Ayşe, **Resources**: every row has a star. Star Meeting Room A and Board Room, then tick
+  **Favourites only**: those two are left.
+- The dashboard has **Your favourites**, each saying what it's doing now - free until when, in use
+  until when, or not available - with **Book**, which opens the form with it picked. In the form,
+  the favourites come first among the resources.
+- Point out: they're kept with the account, so the phone has the same stars; and only what she
+  may use can be starred (ADR-0051).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

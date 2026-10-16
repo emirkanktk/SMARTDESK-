@@ -8,7 +8,10 @@ import { Reservation } from '../../core/models/reservation.model';
 import { AuthService } from '../../core/services/auth.service';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
+import { ResourceBlockService } from '../../core/services/resource-block.service';
+import { FakeFavorites, favoritesStub } from '../../../testing/favorites-stub';
 import { OWNER_ID, fakeReservation } from '../../../testing/reservation-fixtures';
+import { fakeResource } from '../../../testing/resource-fixtures';
 import { Dashboard } from './dashboard';
 
 // Local wall-clock time -> the UTC ISO string the API uses, whatever zone the tests run in.
@@ -55,6 +58,8 @@ describe('Dashboard', () => {
   }
 
   let getDashboard: ReturnType<typeof vi.fn>;
+  let getBlocks: ReturnType<typeof vi.fn>;
+  let favorites: FakeFavorites;
   let hub: {
     created$: Subject<Reservation>;
     updated$: Subject<Reservation>;
@@ -66,6 +71,8 @@ describe('Dashboard', () => {
 
   beforeEach(async () => {
     getDashboard = vi.fn(() => of(dashboard()));
+    getBlocks = vi.fn(() => of([]));
+    favorites = new FakeFavorites();
     hub = {
       created$: new Subject(),
       updated$: new Subject(),
@@ -83,6 +90,8 @@ describe('Dashboard', () => {
           provide: AuthService,
           useValue: { displayName: signal('Ayşe Yılmaz'), currentUser: signal({ id: OWNER_ID }) },
         },
+        { provide: ResourceBlockService, useValue: { getBlocks } },
+        favoritesStub(favorites),
       ],
     }).compileComponents();
   });
@@ -112,6 +121,71 @@ describe('Dashboard', () => {
   function rows(heading: string): string[] {
     return Array.from(section(heading).querySelectorAll('.row')).map(text);
   }
+
+  describe('favourites', () => {
+    const board = fakeResource({ id: 'res-board', name: 'Board Room' });
+    const camera = fakeResource({ id: 'res-cam', name: 'Camera C-1', status: 'Maintenance' });
+    const car = fakeResource({ id: 'res-car', name: 'Company Car' });
+    const desk = fakeResource({ id: 'res-desk', name: 'Desk 12' });
+    const focus = fakeResource({ id: 'res-focus', name: 'Focus Room' });
+
+    it('says what each is doing now, and books one with a click', async () => {
+      favorites.list.set([board, camera, car, desk, focus]);
+      getDashboard.mockReturnValue(
+        of(
+          dashboard({
+            today: [
+              booking('rsv-b', 'Board Room', '2026-10-05T09:30', '2026-10-05T11:00', {
+                resourceId: 'res-board',
+              }),
+              booking('rsv-d', 'Desk 12', '2026-10-05T14:00', '2026-10-05T15:00', {
+                resourceId: 'res-desk',
+              }),
+            ],
+          }),
+        ),
+      );
+      getBlocks.mockReturnValue(
+        of([
+          {
+            id: 'blk-1',
+            resourceId: 'res-car',
+            resourceName: 'Company Car',
+            startDateTime: utc('2026-10-05T10:00'),
+            endDateTime: utc('2026-10-05T12:00'),
+            reason: 'At the service',
+            createdByUserId: 'u-admin',
+          },
+        ]),
+      );
+      await render();
+
+      expect(favorites.load).toHaveBeenCalled();
+      expect(getBlocks).toHaveBeenCalledWith({
+        from: utc('2026-10-05T00:00'),
+        to: utc('2026-10-06T00:00'),
+      });
+      expect(rows('Your favourites')).toEqual([
+        'Board Room In use until 11:00 Book',
+        'Camera C-1 Not available',
+        'Company Car Not available until 12:00 Book',
+        'Desk 12 Free until 14:00 Book',
+        'Focus Room Free for the rest of the day Book',
+      ]);
+      const book = Array.from(
+        section('Your favourites').querySelectorAll<HTMLAnchorElement>('a.btn'),
+      ).map((a) => a.getAttribute('href'));
+      expect(book[0]).toBe('/reservations/new?resourceId=res-board');
+    });
+
+    it('says how to have some when there are none', async () => {
+      await render();
+
+      expect(section('Your favourites').textContent!.replace(/\s+/g, ' ')).toContain(
+        'Star what you book often on Resources, and book it from here.',
+      );
+    });
+  });
 
   it('greets the user with the date of their today', async () => {
     await render();

@@ -279,6 +279,16 @@ duplicates ignoring case and surrounding spaces (`"TV"` and `" tv"` clash).
 - Send times as UTC (`2026-10-05T11:00:00Z`). An explicit offset (`+03:00`) is converted
   correctly, and a time without an offset is treated as UTC.
 
+## Favourites (ADR-0051)
+
+The resources someone starred to book them quickly: their own, kept with their account.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/favorites` | any authenticated user | `GetFavoritesQuery` | the caller's favourites, by name, as `ResourceDto`s like `GET /api/resources`: those they may use (another team's is left out until it's theirs again), whatever their status |
+| PUT | `/api/favorites/{resourceId}` | any authenticated user | `AddFavoriteCommand` | → 204, also when it's starred already. 404 for a resource the caller may not use, or none. 409 `favorites-full` with 30 starred already: `"You can keep up to 30 favourites. Remove one before you add another."` |
+| DELETE | `/api/favorites/{resourceId}` | any authenticated user | `RemoveFavoriteCommand` | → 204, also when it isn't starred |
+
 ## Floor plans (ADR-0041)
 
 A floor is a `location` the resources share ("5th Floor"). An Admin uploads a picture of it, and
