@@ -13,7 +13,14 @@ import { firstValueFrom, isObservable, of } from 'rxjs';
 import { Roles } from '../constants/roles';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
-import { adminGuard, authGuard, guestGuard, managerGuard, sessionGuard } from './auth.guard';
+import {
+  adminGuard,
+  authGuard,
+  guestGuard,
+  managerGuard,
+  sessionGuard,
+  visitorGuard,
+} from './auth.guard';
 
 describe('route guards', () => {
   let signedIn: boolean;
@@ -111,6 +118,35 @@ describe('route guards', () => {
     it('lets a signed-in user through when the renewal got no answer', async () => {
       known = true;
       expect(await settle(run(sessionGuard))).toBe(true);
+    });
+  });
+
+  describe('visitorGuard', () => {
+    // A CanMatchFn: false sends the router on to the next route for the same address.
+    const match = () =>
+      settle(
+        TestBed.runInInjectionContext(() =>
+          visitorGuard(
+            { path: 'check-in/:resourceId' },
+            [],
+            {} as Parameters<typeof visitorGuard>[2],
+          ),
+        ),
+      );
+
+    it('matches for someone without an account, once there was no session to renew', async () => {
+      expect(await match()).toBe(true);
+    });
+
+    it("doesn't match for someone signed in, or whose session goes on", async () => {
+      signedIn = true;
+      expect(await match()).toBe(false);
+      signedIn = false;
+      renewable = true;
+      expect(await match()).toBe(false);
+      renewable = false;
+      known = true;
+      expect(await match()).toBe(false);
     });
   });
 

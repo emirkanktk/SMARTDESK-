@@ -26,8 +26,9 @@ export interface IssueReport {
   status: IssueStatus;
   /** Its photo comes from `GET /api/issues/{id}/photo`. */
   hasPhoto: boolean;
-  reportedByUserId: string;
-  /** Null when the account is gone. */
+  /** Null when it was reported at the door without an account (ADR-0050). */
+  reportedByUserId: string | null;
+  /** Null when the account is gone, or there was none. */
   reportedByName: string | null;
   createdAt: string;
   resolvedAt: string | null;
@@ -55,11 +56,20 @@ export function canBeDuplicate(category: IssueCategory): boolean {
   return category !== 'Other';
 }
 
+/**
+ * What a page at the door knows of a problem already reported there: enough to show it, and to
+ * warn before it's reported again. The page without an account knows no more (ADR-0050).
+ */
+export type KnownIssue = Pick<
+  IssueReport,
+  'id' | 'category' | 'description' | 'isBlocking' | 'status' | 'createdAt'
+>;
+
 /** The open report a new one of `category` would repeat, if any. */
-export function sameProblem(
-  open: readonly IssueReport[],
+export function sameProblem<T extends KnownIssue>(
+  open: readonly T[],
   category: IssueCategory,
-): IssueReport | undefined {
+): T | undefined {
   return canBeDuplicate(category)
     ? open.find((issue) => issue.category === category && issue.status !== 'Resolved')
     : undefined;
@@ -69,9 +79,9 @@ export function sameProblem(
  * As the API lists reports: unresolved first, the ones that make a resource unusable first
  * among those, then the newest.
  */
-export function compareIssues(a: IssueReport, b: IssueReport): number {
-  const resolved = (issue: IssueReport) => Number(issue.status === 'Resolved');
-  const blocking = (issue: IssueReport) => Number(issue.isBlocking);
+export function compareIssues(a: KnownIssue, b: KnownIssue): number {
+  const resolved = (issue: KnownIssue) => Number(issue.status === 'Resolved');
+  const blocking = (issue: KnownIssue) => Number(issue.isBlocking);
   return (
     resolved(a) - resolved(b) ||
     blocking(b) - blocking(a) ||

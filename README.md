@@ -81,6 +81,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   yet, and the same problem isn't reported twice. Every resource has a QR code now, check-in or
   not, and **QR labels** prints many at once, eight to an A4 sheet with lines to cut along
   ([ADR-0037](docs/DECISIONS.md)).
+- **No account needed at the door** - a phone nobody is signed in on opens the page a QR code
+  leads to as it is: the room and what it's doing now, a check-in for the booking waiting for
+  it, whoever's it is, and a way to report a problem. Booking on the spot still takes an
+  account, and signing in comes back to the same page ([ADR-0050](docs/DECISIONS.md)).
 - **Reported problems** - Admins, and managers for their team's own resources, see reports come
   in live, with a toast and a count in the menu. They take them up and resolve them, and the
   reporter is told in their inbox. A broken resource can be taken out of use until a chosen time:
@@ -360,6 +364,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Approvals | `GET /api/approvals`, `POST /api/approvals/{id}/approve`, `POST /api/approvals/{id}/decline` (Admin) (ADR-0049) |
 | Booking rules | `GET /api/booking-rules`, `PUT /api/booking-rules/office-hours` (Admin), `PUT /api/booking-rules/types/{id}` (Admin) (ADR-0046) |
 | Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |
+| Door page | `GET /api/door/{id}/visit`, `POST /api/door/{id}/check-in`, `POST /api/door/{id}/issues` (the QR code's code, no user) (ADR-0050) |
 | Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |
 | Inbox | `GET /api/inbox`, `GET /api/inbox/unread-count`, `POST /api/inbox/{id}/read`, `POST /api/inbox/read-all` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |

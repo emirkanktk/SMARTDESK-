@@ -813,7 +813,8 @@ new tables.
   in resource responses. Replacing it retires the printed one.
 - **The window.** From 10 minutes before the start until 15 minutes after, and never once the
   booking is over. Only the owner checks in, only a `Confirmed` booking. (Anyone invited to it
-  may too, since ADR-0032. Since ADR-0040 the 15 minutes are a setting, `CheckIn:GraceMinutes`.)
+  may too, since ADR-0032. Since ADR-0040 the 15 minutes are a setting, `CheckIn:GraceMinutes`.
+  Since ADR-0050, whoever is at the door without an account checks in the booking waiting.)
 - **Release.** A booking nobody checked in to when its window closes is released: `Cancelled`,
   with `ReleasedAt`. A background job looks every 30 seconds. Calendars free the slot through
   the usual `ReservationCancelled`; the owner also gets `ReservationReleased`, a toast saying why.
@@ -1127,7 +1128,8 @@ new tables.
   page its QR code opens (ADR-0030). A report has a category (a screen or TV, the projector, the
   camera and sound, air conditioning, cleaning, furniture, other), what's wrong in up to 500
   characters, whether it makes the resource unusable, and optionally a photo taken there. It's
-  an `IssueReport`, with its photo in `IssueReportPhotos`.
+  an `IssueReport`, with its photo in `IssueReportPhotos`. (Since ADR-0050, also at the door
+  without an account: the report then names nobody.)
 - **One report per problem.** While a report of a category is unresolved on a resource, another
   of the same category is refused with 409 `issue-already-reported`. The page at the door lists
   the open ones, so people see them first. `Other` is never a duplicate. Reporting takes the
@@ -1606,3 +1608,53 @@ new tables.
     weigh. An Admin's own bookings of them, a series too, need no approval.
   - A request moved after its approval waits again, even for an hour's change.
   - Asking for approval from a kind's next bookings on leaves those already made as they are.
+
+## ADR-0050: The page a QR code opens works without an account
+
+**Decision:**
+- A phone nobody is signed in on opens the page a resource's QR code leads to
+  (`/check-in/{id}?code=…`, ADR-0030) without being sent to sign in. While nobody is signed in,
+  the router matches a page of its own for that address (`visitorGuard`, a `canMatch`), and the
+  signed-in page in the shell otherwise, so the codes already printed keep working as they are.
+- The code is what lets the page in. `GET /api/door/{id}/visit` takes it in a header
+  (`X-Check-In-Code`), as the door screen takes its token (ADR-0034): the printed code, or with
+  a door screen set up, one of its codes of the last half hour (`CheckInRules.SeenAtTheDoor`).
+  It answers with what the door screen shows - the room, the rest of today's bookings as times,
+  its blocked windows - with what the room has, and with the problems reported there and not
+  fixed yet, but not who reported them. A wrong code is the same 404 as no resource.
+- Whoever is there checks in the booking waiting for it, whoever's it is:
+  `POST /api/door/{id}/check-in` with the code. It's the signed-in check-in (`CheckInCommand`,
+  with `AtTheDoor`) under the same rules: the window, the reservation's lock, and with a door
+  screen, its current code only (ADR-0034). A code that doesn't open the page is the same 404
+  here, before anything that would name the room. The booking remembers nobody as having checked
+  it in, and the answer is its times.
+- A problem is reported the same way, `POST /api/door/{id}/issues` with the code in the form
+  (`CreateIssueReportCommand`, with `DoorCode`). Its `ReportedByUserId` is then null: the list
+  says it was reported at the door without an account, and nobody is told when it's fixed.
+- Booking on the spot, running longer or ending a booking, and anything about one's own bookings
+  still take an account. The page links to sign in, and signing in comes back to the same page,
+  signed in.
+- Without a user, the limits go by address: the page's own
+  (`RateLimiting:DoorPagePermitsPerMinute`, 300 a minute), and checking in and reporting a
+  problem, which go by the user when there is one, and by address when there isn't.
+
+**Why:**
+- The user: scanning the code asked for an email; the page should be open to everyone, with no
+  account. A sign-in between the door and the check-in is where people give up, and the room is
+  then released while they're in it.
+- The code shows its holder was at the door, and that is what a check-in is for: the room is in
+  use. Who it is matters less than that someone is there; with a door screen, someone is there
+  now.
+- The same handlers with a flag rather than new ones, so the window, the locks, the duplicate
+  rule and the notices stay one each.
+- Times only, and no reporter's name, as on the door screen: anyone with a photo of a code can
+  open the page.
+- **Trade-offs:**
+  - Without a door screen, a photo of the printed code checks in from anywhere, and now anyone's
+    booking, not only the owner's own: ADR-0030's trade-off, wider. A door screen closes it.
+  - A booking checked in at the door without an account names nobody, so its owner can't tell
+    who kept it.
+  - Anyone with the code can report a problem: the duplicate rule and the limit by address keep
+    that down, and one reported without an account can't be asked about.
+  - The page asks again every 30 seconds while it's open. A door screen's code stops opening it
+    after half an hour; the page then says it may be out of date.

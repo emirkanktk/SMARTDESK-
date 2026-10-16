@@ -17,9 +17,16 @@ public sealed class IssueReader(IIdentityService identityService)
             return dtos;
         }
 
+        // Reported at the door without an account: nobody to name (ADR-0050).
         var names = await identityService.GetDisplayNamesAsync(
-            dtos.Select(d => d.ReportedByUserId).Distinct().ToList(), cancellationToken);
-        return dtos.Select(d => d with { ReportedByName = names.GetValueOrDefault(d.ReportedByUserId) }).ToList();
+            dtos.Where(d => d.ReportedByUserId is not null).Select(d => d.ReportedByUserId!.Value).Distinct().ToList(),
+            cancellationToken);
+        return dtos
+            .Select(d => d with
+            {
+                ReportedByName = d.ReportedByUserId is { } reporter ? names.GetValueOrDefault(reporter) : null,
+            })
+            .ToList();
     }
 
     public async Task<IssueReportDto> GetAsync(IQueryable<IssueReport> issues, CancellationToken cancellationToken) =>

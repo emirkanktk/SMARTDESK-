@@ -1,0 +1,107 @@
+// What the pages a resource's QR code opens share: the signed-in one (ADR-0030) and the one for
+// someone without an account (ADR-0050). Each lays itself out; these are the parts that look
+// the same on both.
+
+// What the room is doing now, under its name (as its door screen says it): a glance at the
+// door, before anything else.
+@mixin room-state {
+  .room-facts {
+    margin: var(--space-1) 0 0;
+  }
+
+  .room-state {
+    display: inline-block;
+    margin: var(--space-2) 0 0;
+    padding: 0.125rem var(--space-2);
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 700;
+
+    &.free {
+      background: var(--color-success-soft);
+      color: var(--color-success);
+    }
+
+    &.busy {
+      background: var(--color-warning-soft);
+      color: var(--color-warning);
+    }
+
+    &.unavailable {
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
+    }
+  }
+}
+
+// The problems known at this resource, and the way to report one (ADR-0037).
+@mixin issues {
+  .issues {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 720px;
+    margin-top: var(--space-4);
+  }
+
+  .issues-title {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+
+  .issue-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .issue {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-left: 4px solid var(--color-warning);
+    border-radius: var(--radius);
+    background: var(--color-warning-soft);
+
+    &.blocking {
+      border-left-color: var(--color-danger);
+      background: var(--color-danger-soft);
+    }
+
+    p {
+      margin: var(--space-1) 0 0;
+    }
+  }
+
+  .issue-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  // Text in the surface colour: white on the light theme's deep red, dark on the dark theme's pale one.
+  .blocking-badge {
+    background: var(--color-danger);
+    color: var(--color-surface);
+  }
+
+  .issue-text {
+    overflow-wrap: anywhere;
+  }
+
+  .issue-when {
+    font-size: 0.875rem;
+  }
+
+  .no-issues {
+    margin: 0;
+  }
+
+  .report-button {
+    align-self: flex-start;
+    min-height: 3rem;
+  }
+}

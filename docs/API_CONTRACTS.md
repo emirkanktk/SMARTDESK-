@@ -721,6 +721,17 @@ the printed code is refused.
 - **Who checked in.** A reservation carries `checkedInBy` and `checkedInByName`; moving it to a
   new start or another resource clears them with `checkedInAt`.
 
+**The page without an account (ADR-0050).** The page a QR code opens works for someone nobody is
+signed in for, with the code alone: the printed one, or with a door screen set up, one of its
+codes of the last half hour (checking in still takes its current one). A wrong code is the same
+404 as no resource, another team's resource included.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/door/{resourceId}/visit?timeZone=` | the code, in `X-Check-In-Code` (no user) | `GetDoorVisitQuery` | what the door screen shows - the room, the rest of today's bookings (times only, at most 20), blocked windows - with `resourceTypeName`, `description`, `features` and `checkInRequired`, and the problems still open there, in `openIssues` (`id`, `category`, `description`, `isBlocking`, `status`, `createdAt`: no reporter, no photo). 429 after 300 a minute from one address (`RateLimiting:DoorPagePermitsPerMinute`). |
+| POST | `/api/door/{resourceId}/check-in` | the code, in the body (no user) | `CheckInCommand`, with `AtTheDoor` | body `{ code }`: checks in the booking of the resource waiting for its check-in now, whoever's it is → 200 `{ startDateTime, endDateTime, checkInNeeded: true, checkedIn: true }`. A code that doesn't open the page is 404 before anything else; then the errors below, with `"No booking of Board Room is waiting for its check-in right now. …"` for `nothing-to-check-in`. The booking's `checkedInBy` stays null, unless someone signed in sent it. |
+| POST | `/api/door/{resourceId}/issues` | the code, in the form (no user) | `CreateIssueReportCommand`, with `DoorCode` | as `POST /api/resources/{id}/issues`, with a `code` field → 201 with the report, its `reportedByUserId` and `reportedByName` null. 404 for a wrong code. |
+
 **Check-in - errors**
 
 | Status | When |
@@ -729,7 +740,7 @@ the printed code is refused.
 | 403 | the code isn't the resource's current one: printed before it was replaced (`"This QR code is no longer valid. Scan the current code for Board Room."`), or, with a door screen, not this step's or the last one's (`"This code has expired. Scan the code on the door screen of Board Room again."`) |
 | 404 | the resource doesn't exist, or belongs to other teams |
 | 409 | the resource doesn't use check-in (`code: "check-in-not-used"`), or none of the caller's bookings of it is open for one now (`code: "nothing-to-check-in"`, `"You have no booking of Board Room to check in to right now. Check-in opens 10 minutes before the start and closes 15 minutes after it."`) |
-| 429 | more than 20 check-ins a minute from one user (`RateLimiting:CheckInPermitsPerMinute`) |
+| 429 | more than 20 check-ins a minute from one user, or without a user, from one address (`RateLimiting:CheckInPermitsPerMinute`) |
 
 ## Problem reports (ADR-0037)
 
@@ -742,7 +753,7 @@ Admins, and the Manager of the one team it belongs to - follow the reports up.
 | GET | `/api/resources/{id}/issues` | any authenticated user | `GetOpenIssuesQuery` | the problems still open on the resource (`Open` or `InProgress`), those that make it unusable first, then the newest. 404 for another team's resource. |
 | POST | `/api/resources/{id}/issues` | any authenticated user | `CreateIssueReportCommand` | `multipart/form-data`: `category`, `description` (up to 500 chars), `isBlocking` (false when left out) and an optional `photo`, a JPEG, PNG or WebP of at most 2 MB, as for a resource's photo → 201 with the report. 429 after 10 a minute from one user (`RateLimiting:IssueReportPermitsPerMinute`). |
 | GET | `/api/issues?status=&resourceId=` | Admin or Manager | `GetIssueReportsQuery` | every report for an Admin; for a Manager, those on resources that belong to their team alone. Unresolved first, the blocking ones first among those, then the newest. |
-| PATCH | `/api/issues/{id}` | Admin or Manager | `UpdateIssueStatusCommand` | body `{ status }`: `Open` and `InProgress` back and forth, then `Resolved`, which is final; resolving again changes nothing. Resolving sends the reporter an `IssueResolved` inbox message, unless they resolved it themselves. Only those who may manage the resource. |
+| PATCH | `/api/issues/{id}` | Admin or Manager | `UpdateIssueStatusCommand` | body `{ status }`: `Open` and `InProgress` back and forth, then `Resolved`, which is final; resolving again changes nothing. Resolving sends the reporter an `IssueResolved` inbox message, unless they resolved it themselves or reported it without an account (ADR-0050). Only those who may manage the resource. |
 | GET | `/api/issues/{id}/photo` | any authenticated user | `GetIssuePhotoQuery` | the image, for anyone who may use the resource, with `Cache-Control: private, max-age=86400` (a report's photo never changes) and `X-Content-Type-Options: nosniff`; 404 when there's none |
 
 ```json
@@ -754,7 +765,8 @@ Admins, and the Manager of the one team it belongs to - follow the reports up.
   "isBlocking": true,            // the resource can't be used until it's fixed
   "status": "Open",              // Open | InProgress | Resolved
   "hasPhoto": true,
-  "reportedByUserId": "…", "reportedByName": "Ayşe Yılmaz",
+  "reportedByUserId": "…", "reportedByName": "Ayşe Yılmaz",   // both null when reported at the
+                                 // door without an account (ADR-0050)
   "createdAt": "2026-10-08T10:00:00Z",
   "resolvedAt": null
 }

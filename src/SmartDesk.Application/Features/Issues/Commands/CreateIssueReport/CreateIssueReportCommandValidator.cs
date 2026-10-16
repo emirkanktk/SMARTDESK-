@@ -12,6 +12,8 @@ public sealed class CreateIssueReportCommandValidator : AbstractValidator<Create
     public CreateIssueReportCommandValidator()
     {
         RuleFor(x => x.ResourceId).NotEmpty();
+        // A wrong code of the right shape is a 404 from the handler, like a wrong resource.
+        RuleFor(x => x.DoorCode).NotEmpty().MaximumLength(CheckInRules.CodeLength).When(x => x.DoorCode is not null);
         RuleFor(x => x.Category).NotNull().IsInEnum();
         RuleFor(x => x.Description)
             .Must(description => !string.IsNullOrWhiteSpace(description))

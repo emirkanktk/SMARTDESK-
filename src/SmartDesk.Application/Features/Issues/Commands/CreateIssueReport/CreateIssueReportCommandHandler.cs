@@ -20,7 +20,13 @@ public sealed class CreateIssueReportCommandHandler(
 {
     public async Task<IssueReportDto> Handle(CreateIssueReportCommand request, CancellationToken cancellationToken)
     {
-        var userId = currentUser.UserId ?? throw new UnauthorizedException();
+        // At the door, nobody needs to be signed in (ADR-0050): the code is what lets them in.
+        var userId = currentUser.UserId;
+        if (userId is null && request.DoorCode is null)
+        {
+            throw new UnauthorizedException();
+        }
+
         var id = Guid.CreateVersion7();
 
         // Under the resource's lock (ADR-0011), so two people reporting the same problem at the
@@ -29,13 +35,7 @@ public sealed class CreateIssueReportCommandHandler(
         {
             await db.LockResourceForBookingAsync(request.ResourceId, cancellationToken);
 
-            // Another team's resource isn't there for the caller (ADR-0022).
-            var resourceName = await db.Resources
-                .UsableBy(currentUser)
-                .Where(r => r.Id == request.ResourceId)
-                .Select(r => r.Name)
-                .SingleOrDefaultAsync(cancellationToken)
-                ?? throw new NotFoundException(nameof(Resource), request.ResourceId);
+            var resourceName = await ResourceNameAsync(request, cancellationToken);
 
             var category = request.Category!.Value;
             if (IssueRules.CanBeDuplicate(category)
@@ -76,5 +76,30 @@ public sealed class CreateIssueReportCommandHandler(
         var dto = await reader.GetAsync(db.IssueReports.AsNoTracking().Where(i => i.Id == id), cancellationToken);
         await notifier.IssueReportedAsync(dto, cancellationToken);
         return dto;
+    }
+
+    // Another team's resource isn't there for the caller (ADR-0022). At the door it is, for
+    // whoever has its code; a wrong code is the same 404 as no resource, so nothing is given away.
+    private async Task<string> ResourceNameAsync(CreateIssueReportCommand request, CancellationToken cancellationToken)
+    {
+        if (request.DoorCode is null)
+        {
+            return await db.Resources
+                .UsableBy(currentUser)
+                .Where(r => r.Id == request.ResourceId)
+                .Select(r => r.Name)
+                .SingleOrDefaultAsync(cancellationToken)
+                ?? throw new NotFoundException(nameof(Resource), request.ResourceId);
+        }
+
+        var resource = await db.Resources
+            .Where(r => r.Id == request.ResourceId)
+            .Select(r => new { r.Name, r.CheckInCode, r.DoorScreenTokenHash })
+            .SingleOrDefaultAsync(cancellationToken);
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        return resource is not null
+            && CheckInRules.SeenAtTheDoor(resource.CheckInCode, resource.DoorScreenTokenHash, request.DoorCode, now)
+            ? resource.Name
+            : throw new NotFoundException(nameof(Resource), request.ResourceId);
     }
 }

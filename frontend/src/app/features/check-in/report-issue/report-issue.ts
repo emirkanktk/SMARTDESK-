@@ -19,9 +19,11 @@ import {
   ISSUE_LIMITS,
   IssueCategory,
   IssueReport,
+  KnownIssue,
   sameProblem,
 } from '../../../core/models/issue.model';
 import { RESOURCE_PHOTO } from '../../../core/models/resource.model';
+import { DoorVisitService } from '../../../core/services/door-visit.service';
 import { IssueService } from '../../../core/services/issue.service';
 import { preparePhoto } from '../../../shared/utils/photo';
 
@@ -40,7 +42,12 @@ import { preparePhoto } from '../../../shared/utils/photo';
 export class ReportIssue {
   readonly resourceId = input.required<string>();
   /** The problems already open there, so the same one isn't sent twice. */
-  readonly open = input<readonly IssueReport[]>([]);
+  readonly open = input<readonly KnownIssue[]>([]);
+  /**
+   * The code the page was opened with, on the page without an account (ADR-0050): the report
+   * then goes with it to the door's own endpoint.
+   */
+  readonly doorCode = input<string | null>(null);
 
   readonly reported = output<IssueReport>();
   /** The API said someone reported it meanwhile: the page should look at the open ones again. */
@@ -48,6 +55,7 @@ export class ReportIssue {
   readonly cancelled = output<void>();
 
   private readonly issues = inject(IssueService);
+  private readonly door = inject(DoorVisitService);
 
   protected readonly categories = ISSUE_CATEGORIES;
   protected readonly limits = ISSUE_LIMITS;
@@ -141,13 +149,17 @@ export class ReportIssue {
 
     this.sending.set(true);
     this.error.set(null);
-    this.issues
-      .report(this.resourceId(), {
-        category,
-        description: description.trim(),
-        isBlocking,
-        photo: this.photo()?.blob ?? null,
-      })
+    const report = {
+      category,
+      description: description.trim(),
+      isBlocking,
+      photo: this.photo()?.blob ?? null,
+    };
+    const code = this.doorCode();
+    (code
+      ? this.door.report(this.resourceId(), code, report)
+      : this.issues.report(this.resourceId(), report)
+    )
       .pipe(finalize(() => this.sending.set(false)))
       .subscribe({
         next: (issue) => this.reported.emit(issue),

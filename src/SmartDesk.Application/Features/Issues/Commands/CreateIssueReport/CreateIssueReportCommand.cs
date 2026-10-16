@@ -12,4 +12,9 @@ public sealed record CreateIssueReportCommand(
     IssueCategory? Category,
     string Description,
     bool IsBlocking,
-    byte[]? Photo) : IRequest<IssueReportDto>;
+    byte[]? Photo) : IRequest<IssueReportDto>
+{
+    // From the door's own endpoint (POST /api/door/{id}/issues, ADR-0050): the code the page was
+    // opened with, which lets whoever is there report without an account.
+    public string? DoorCode { get; init; }
+}

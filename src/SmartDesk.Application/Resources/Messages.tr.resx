@@ -189,6 +189,9 @@
   <data name="CheckIn_NothingToCheckIn" xml:space="preserve">
     <value>Şu anda {0} için check-in yapabileceğiniz bir rezervasyonunuz yok. Check-in, başlangıçtan {1} dakika önce açılır ve {2} dakika sonra kapanır.</value>
   </data>
+  <data name="CheckIn_NothingWaiting" xml:space="preserve">
+    <value>Şu anda {0} için check-in bekleyen bir rezervasyon yok. Check-in, başlangıçtan {1} dakika önce açılır ve {2} dakika sonra kapanır.</value>
+  </data>
   <data name="CheckIn_WrongCode" xml:space="preserve">
     <value>Bu QR kod artık geçerli değil. {0} için güncel kodu okutun.</value>
   </data>
@@ -359,6 +362,9 @@
   </data>
   <data name="Error_TooManyDoorScreenRequests" xml:space="preserve">
     <value>Kapı ekranı çok sık istekte bulundu. Bir dakika sonra yeniden deneyecek.</value>
+  </data>
+  <data name="Error_TooManyDoorPageRequests" xml:space="preserve">
+    <value>Bu sayfa için kısa sürede çok fazla istek yapıldı. Bir dakika bekleyip tekrar deneyin.</value>
   </data>
   <data name="Error_TooManyIssueReports" xml:space="preserve">
     <value>Kısa sürede çok fazla sorun bildirildi. Bir dakika bekleyip tekrar deneyin.</value>

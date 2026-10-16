@@ -67,6 +67,7 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
         $localize`:@@guide.door.released:If nobody checks in by then, the booking is released so others can use the room. Everyone on it is warned ${warnBeforeReleaseMinutes}:minutes: minutes before.`,
         $localize`:@@guide.door.screen:A room with a screen at the door shows a code that changes every 30 seconds: scan the screen itself, not a photo of it.`,
         $localize`:@@guide.door.end:Done early? End the booking from the check-in page, and the room is free again.`,
+        $localize`:@@guide.door.noAccount:Not signed in on that phone? The code still opens the room's page: anyone there can check in the booking waiting for it, or report a problem.`,
       ];
     },
   },
