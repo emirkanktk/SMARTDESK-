@@ -177,8 +177,12 @@ export function nextRefreshMs(screen: DoorScreenData): number {
 /**
  * What the room is doing at `now`: out of use (its status or a blocked window), in use by a
  * booking (waiting for its check-in until when, if it needs one), or free until the next one.
+ * The page a QR code opens without an account says it the same way (ADR-0050).
  */
-export function doorState(screen: DoorScreenData, now: number): DoorState {
+export function doorState(
+  screen: Pick<DoorScreenData, 'status' | 'bookings' | 'blocks'>,
+  now: number,
+): DoorState {
   const time = (value: string) => new Date(value).getTime();
   if (screen.status !== 'Active') {
     return { kind: 'unavailable', reason: resourceStatusLabel(screen.status), until: null };
@@ -212,7 +216,8 @@ export function doorState(screen: DoorScreenData, now: number): DoorState {
   return { kind: 'free', until: next === undefined ? null : new Date(next) };
 }
 
-function browserTimeZone(): string {
+/** The device's own time zone, which says where "today" ends; UTC when it won't say. */
+export function browserTimeZone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   } catch {

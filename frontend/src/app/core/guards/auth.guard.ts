@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import { CanActivateFn, CanMatchFn, Router, UrlTree } from '@angular/router';
 import { map } from 'rxjs';
 import { Role, Roles } from '../constants/roles';
 import { NotificationService } from '../services/notification.service';
@@ -46,6 +46,20 @@ export const sessionGuard: CanActivateFn = () => {
     .pipe(
       map((token) => (token || authService.isAuthenticated() ? true : router.parseUrl('/login'))),
     );
+};
+
+/**
+ * Matches only when nobody is signed in, once a session that could be renewed has been tried:
+ * the page a QR code opens for someone without an account (ADR-0050). Signed in, the router goes
+ * on to the next route for the same address, the resource's own page in the shell.
+ */
+export const visitorGuard: CanMatchFn = () => {
+  const authService = inject(AuthService);
+
+  if (authService.hasValidSession()) {
+    return false;
+  }
+  return authService.validToken().pipe(map((token) => !token && !authService.isAuthenticated()));
 };
 
 /** Keeps signed-in users off the login screen. */

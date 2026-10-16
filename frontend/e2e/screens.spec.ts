@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import { Page } from '@playwright/test';
-import { expect, test } from './support';
+import { APIRequestContext, Page } from '@playwright/test';
+import { expect, retire, test } from './support';
 
 // Every screen, in Turkish (the default, and the longer words) and in both colour themes:
 // nothing axe finds against WCAG 2.1 AA and its best practices, and nothing wider than a
@@ -72,6 +72,31 @@ const MANAGER: Screen[] = [
 
 const PHONE = { width: 390, height: 844 };
 
+/**
+ * A room of its own that asks for check-in, and the path its QR code opens: the page without an
+ * account (ADR-0050) needs both.
+ */
+async function roomWithCode(admin: APIRequestContext): Promise<{ id: string; path: string }> {
+  const types = (await (await admin.get('resource-types')).json()) as { id: string }[];
+  const created = await admin.post('resources', {
+    data: {
+      name: `E2E screens ${Date.now().toString(36).toUpperCase()}`,
+      resourceTypeId: types[0].id,
+      capacity: 4,
+      location: 'E2E floor',
+      features: ['TV'],
+      teamIds: [],
+      checkInRequired: true,
+    },
+  });
+  expect(created.status(), 'create the room').toBe(201);
+  const { id } = (await created.json()) as { id: string };
+  const { url } = (await (await admin.get(`resources/${id}/check-in-code`)).json()) as {
+    url: string;
+  };
+  return { id, path: url.replace(/^https?:\/\/[^/]+/, '') };
+}
+
 async function check(page: Page, screens: Screen[]): Promise<void> {
   for (const screen of screens) {
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -122,12 +147,17 @@ async function useTheme(page: Page, theme: 'light' | 'dark'): Promise<void> {
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`${theme} theme`, () => {
-    test('the public pages', async ({ browser }) => {
+    test('the public pages', async ({ browser, admin }) => {
+      const room = await roomWithCode(admin);
       const context = await browser.newContext();
       const page = await context.newPage();
       await useTheme(page, theme);
-      await check(page, PUBLIC);
-      await context.close();
+      try {
+        await check(page, [...PUBLIC, { path: room.path }]);
+      } finally {
+        await context.close();
+        await retire(admin, room.id);
+      }
     });
 
     test("an admin's screens", async ({ open }) => {

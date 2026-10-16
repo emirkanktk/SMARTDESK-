@@ -28,6 +28,11 @@ public static class RateLimitingSetup
     // a photo of up to 2 MB, so a script sending them by the hundred is what this stops.
     public const string IssueReportPolicy = "issue-report";
 
+    // The page a QR code opens without an account (ADR-0050) asks without a user too, so it's
+    // limited by address: a phone asks about twice a minute while the page is open, and the
+    // phones in a building, or behind one tunnel, often share one address.
+    public const string DoorPagePolicy = "door-page";
+
     // A personal calendar feed (ADR-0048) is fetched without a user, so it's limited by address.
     // A calendar app fetches each feed every hour or so, but Google's and Microsoft's servers
     // fetch everyone's from a few addresses: the default leaves room for that.
@@ -46,6 +51,7 @@ public static class RateLimitingSetup
         var checkInPermitsPerMinute = configuration.GetValue("RateLimiting:CheckInPermitsPerMinute", 20);
         var doorScreenPermitsPerMinute = configuration.GetValue("RateLimiting:DoorScreenPermitsPerMinute", 600);
         var issueReportPermitsPerMinute = configuration.GetValue("RateLimiting:IssueReportPermitsPerMinute", 10);
+        var doorPagePermitsPerMinute = configuration.GetValue("RateLimiting:DoorPagePermitsPerMinute", 300);
         var calendarFeedPermitsPerMinute = configuration.GetValue("RateLimiting:CalendarFeedPermitsPerMinute", 120);
 
         services.AddRateLimiter(options =>
@@ -71,8 +77,9 @@ public static class RateLimitingSetup
                     QueueLimit = 0,
                 }));
 
+            // Per signed-in user; at the door without an account (ADR-0050), per address.
             options.AddPolicy(CheckInPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
-                httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+                UserOrAddress(httpContext),
                 _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = checkInPermitsPerMinute,
@@ -90,10 +97,19 @@ public static class RateLimitingSetup
                 }));
 
             options.AddPolicy(IssueReportPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
-                httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+                UserOrAddress(httpContext),
                 _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = issueReportPermitsPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+
+            options.AddPolicy(DoorPagePolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = doorPagePermitsPerMinute,
                     Window = TimeSpan.FromMinutes(1),
                     QueueLimit = 0,
                 }));
@@ -130,6 +146,7 @@ public static class RateLimitingSetup
                                 AssistantPolicy => Messages.Error_TooManyAssistantRequests,
                                 CheckInPolicy => Messages.Error_TooManyCheckIns,
                                 DoorScreenPolicy => Messages.Error_TooManyDoorScreenRequests,
+                                DoorPagePolicy => Messages.Error_TooManyDoorPageRequests,
                                 IssueReportPolicy => Messages.Error_TooManyIssueReports,
                                 CalendarFeedPolicy => Messages.Error_TooManyCalendarFeedRequests,
                                 _ => Messages.Error_TooManySignIns,
@@ -141,4 +158,10 @@ public static class RateLimitingSetup
 
         return services;
     }
+
+    // The signed-in user's own limit, or for someone without an account, their address's: one
+    // shared by everyone without one would let a single script use it up for every door.
+    private static string UserOrAddress(HttpContext httpContext) =>
+        httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? $"address:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
 }

@@ -431,6 +431,23 @@ plan by the lift.
   meets a clash; until approved it has no reminder or check-in and isn't in the report; one
   nobody answers lapses at its start. Untick the box afterwards, for the next demo (ADR-0049).
 
+### 25. A phone with no account
+
+- Best on a phone that has never signed in, through the tunnel ("On a phone" in the frontend
+  README): scan Board Room's code from step 13, or one on **QR labels**. On one machine, paste
+  the link into a private window.
+- The room's own page opens, not the sign-in form: where it is, what it has, whether it's free
+  or in use and until when, as its door screen says it - times only, nobody's name.
+- With a booking of Board Room starting within ten minutes, Ayşe's say: "The booking from …
+  is waiting for its check-in" and **Check in**. Press it: the room is kept for it, and Ayşe's
+  **My reservations** says **Checked in** at once.
+- **Report a problem**, as in step 19: it goes in without an account, and on **Problems** the
+  admin sees "Reported at the door, without an account".
+- **Sign in** at the bottom comes back to the same page, signed in, with booking on the spot.
+- Point out: the code shows someone is at the door, and that's what a check-in is for, so no
+  account is needed - but then a photo of a printed code checks in anyone's booking, which a
+  door screen's changing code stops (ADR-0050).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in
@@ -453,7 +470,8 @@ plan by the lift.
   colours keep 4.5:1 contrast on their backgrounds, and the signed-out pages have a main
   landmark.
 - **A limit, said up front:** a photo of a printed QR code checks in from anywhere, as long as
-  the code isn't replaced; checking in proves you hold the code, not that you're at the door.
+  the code isn't replaced, and with no account needed at the door, anyone's booking (ADR-0050);
+  checking in proves you hold the code, not that you're at the door.
   **Replace code** retires a code that got around, and a door screen closes the gap: its code
   changes every 30 seconds, so a photo of it works for a minute at most (ADR-0030, ADR-0034,
   ADR-0039).

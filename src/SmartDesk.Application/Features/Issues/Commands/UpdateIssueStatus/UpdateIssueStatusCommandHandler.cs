@@ -85,10 +85,11 @@ public sealed class UpdateIssueStatusCommandHandler(
         return dto;
     }
 
-    // Whoever reported it hears that it's fixed, unless they fixed it themselves.
+    // Whoever reported it hears that it's fixed, unless they fixed it themselves, or reported it
+    // at the door without an account (ADR-0050).
     private IReadOnlyList<InboxMessage> TellReporter(IssueReport issue, Guid resolvedBy)
     {
-        if (issue.ReportedByUserId == resolvedBy)
+        if (issue.ReportedByUserId is not { } reporter || reporter == resolvedBy)
         {
             return [];
         }
@@ -96,7 +97,7 @@ public sealed class UpdateIssueStatusCommandHandler(
         var message = new InboxMessage
         {
             Id = Guid.CreateVersion7(),
-            RecipientId = issue.ReportedByUserId,
+            RecipientId = reporter,
             Kind = InboxMessageKind.IssueResolved,
             SenderId = resolvedBy,
             ResourceName = issue.Resource.Name,

@@ -147,6 +147,15 @@ describe('Issues', () => {
     expect(text(element.querySelector('.summary')!)).toBe('2 open, 0 in progress');
   });
 
+  it('says a report came from the door without an account, naming nobody', async () => {
+    getAll.mockReturnValue(of([{ ...dirty, reportedByUserId: null, reportedByName: null }, noAir]));
+    await render();
+
+    expect(text(cards()[1].querySelector('.meta')!)).toBe(
+      'Reported at the door, without an account · 11:00',
+    );
+  });
+
   it('shows the resolved ones, or one resource, when asked', async () => {
     await render();
 

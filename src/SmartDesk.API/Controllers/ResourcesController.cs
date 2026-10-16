@@ -235,24 +235,14 @@ public sealed class ResourcesController(ISender sender) : ControllerBase
     public async Task<ActionResult<IssueReportDto>> ReportIssue(
         Guid id, [FromForm] IssueReportForm form, CancellationToken cancellationToken)
     {
-        byte[]? photo = null;
-        if (form.Photo is { Length: > 0 } file)
-        {
-            using var data = new MemoryStream();
-            await file.CopyToAsync(data, cancellationToken);
-            photo = data.ToArray();
-        }
-
-        var issue = await sender.Send(
-            new CreateIssueReportCommand(id, form.Category, form.Description ?? string.Empty, form.IsBlocking, photo),
-            cancellationToken);
+        var issue = await sender.Send(form.ToCommand(id, await form.ReadPhotoAsync(cancellationToken)), cancellationToken);
         return StatusCode(StatusCodes.Status201Created, issue);
     }
 }
 
 // The form a problem is reported with. Category is nullable so that a form without one is
 // refused by the validator, in the caller's language, rather than read as the first category.
-public sealed class IssueReportForm
+public class IssueReportForm
 {
     public IssueCategory? Category { get; init; }
 
@@ -261,4 +251,26 @@ public sealed class IssueReportForm
     public bool IsBlocking { get; init; }
 
     public IFormFile? Photo { get; init; }
+
+    public CreateIssueReportCommand ToCommand(Guid resourceId, byte[]? photo) =>
+        new(resourceId, Category, Description ?? string.Empty, IsBlocking, photo);
+
+    public async Task<byte[]?> ReadPhotoAsync(CancellationToken cancellationToken)
+    {
+        if (Photo is not { Length: > 0 } file)
+        {
+            return null;
+        }
+
+        using var data = new MemoryStream();
+        await file.CopyToAsync(data, cancellationToken);
+        return data.ToArray();
+    }
+}
+
+// The same form from the page a QR code opens without an account (ADR-0050), with the code the
+// page was opened with.
+public sealed class DoorIssueReportForm : IssueReportForm
+{
+    public string? Code { get; init; }
 }

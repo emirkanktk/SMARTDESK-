@@ -1,0 +1,213 @@
+<header class="top">
+  <a class="brand" routerLink="/"><app-logo /></a>
+  <span class="preferences">
+    <app-language-switch />
+    <app-theme-switch />
+  </span>
+</header>
+
+<main class="page">
+  @if (!secret()) {
+    <h1 i18n="@@checkIn.title">Check in</h1>
+    <p class="alert-error" role="alert" i18n="@@doorVisit.noCode">
+      This page opens from the QR code at a resource's door. Scan it with your phone's camera.
+    </p>
+  } @else if (loading()) {
+    <h1 i18n="@@checkIn.title">Check in</h1>
+    <p class="text-muted" role="status" i18n="@@common.loading">Loading…</p>
+  } @else if (notFound()) {
+    <h1 i18n="@@checkIn.title">Check in</h1>
+    <p class="alert-error" role="alert" i18n="@@doorVisit.notFound">
+      This QR code isn't valid any more. Scan the code at the door again.
+    </p>
+  } @else if (loadFailed()) {
+    <h1 i18n="@@checkIn.title">Check in</h1>
+    <p class="alert-error" role="alert" i18n="@@doorVisit.loadFailed">
+      This page could not be loaded. Check your connection and try again.
+    </p>
+  } @else if (visit(); as room) {
+    @let name = room.resourceName;
+    <div class="page-header">
+      <div>
+        <h1>{{ name }}</h1>
+        <p class="text-muted room-facts">
+          {{ room.location }} ·
+          <ng-container i18n="@@availability.people.count">{{ room.capacity }} people</ng-container>
+          @if (room.features.length > 0) {
+            · {{ room.features.join(', ') }}
+          }
+        </p>
+        @let roomState = state();
+        @if (roomState?.kind === 'free') {
+          <p class="room-state free" i18n="@@checkIn.stateFree">Free now</p>
+        } @else if (roomState?.kind === 'busy' && roomState; as busy) {
+          @if (busy.kind === 'busy') {
+            <p class="room-state busy" i18n="@@checkIn.stateBusy">
+              In use until {{ when(busy.until) }}
+            </p>
+          }
+        } @else if (roomState?.kind === 'unavailable' && roomState; as out) {
+          @if (out.kind === 'unavailable') {
+            @if (out.until) {
+              <p class="room-state unavailable" i18n="@@checkIn.stateUnavailableUntil">
+                Not available until {{ when(out.until) }}
+              </p>
+            } @else {
+              <p class="room-state unavailable" i18n="@@checkIn.stateUnavailable">Not available</p>
+            }
+          }
+        }
+      </div>
+    </div>
+
+    @if (stale()) {
+      <p class="stale" role="status" i18n="@@doorVisit.stale">
+        What's shown here may be out of date. Scan the code at the door again to see it as it is
+        now.
+      </p>
+    }
+
+    <section class="card visit">
+      <div class="body" aria-live="polite">
+        @if (room.description) {
+          <p class="text-muted description">{{ room.description }}</p>
+        }
+
+        @if (!room.checkInRequired) {
+          <p class="status" i18n="@@checkIn.notNeeded">{{ name }} doesn't need a check-in.</p>
+        } @else {
+          @let current = checkIn();
+          @if (current.kind === 'open') {
+            <p class="status" i18n="@@doorVisit.open">
+              The booking from {{ when(current.booking.startDateTime) }} to
+              {{ when(current.booking.endDateTime) }} is waiting for its check-in, until
+              {{ when(current.closesAt) }}. If nobody checks in by then, it's released.
+            </p>
+            <button
+              type="button"
+              class="btn btn-primary check-in-button"
+              [disabled]="checkingIn()"
+              (click)="checkInNow()"
+            >
+              @if (checkingIn()) {
+                <ng-container i18n="@@checkIn.checkingIn">Checking in…</ng-container>
+              } @else {
+                <ng-container i18n="@@checkIn.button">Check in</ng-container>
+              }
+            </button>
+          } @else if (current.kind === 'checkedIn') {
+            <p class="status done" i18n="@@doorVisit.done">
+              The booking from {{ when(current.booking.startDateTime) }} to
+              {{ when(current.booking.endDateTime) }} is checked in, so the room is kept for it.
+            </p>
+          } @else if (current.kind === 'later') {
+            <p class="status" i18n="@@doorVisit.later">
+              The next booking, at {{ when(current.booking.startDateTime) }}, can be checked in from
+              {{ when(current.opensAt) }}.
+            </p>
+          } @else {
+            <p class="status" i18n="@@doorVisit.none">
+              No booking of {{ name }} is waiting for a check-in.
+            </p>
+          }
+        }
+
+        @let roomNow = state();
+        @if (roomNow?.kind === 'busy' && roomNow; as busy) {
+          @if (busy.kind === 'busy') {
+            <p class="room-now busy" i18n="@@checkIn.roomBusy">
+              {{ name }} is in use until {{ when(busy.until) }}.
+            </p>
+          }
+        } @else if (roomNow?.kind === 'free' && roomNow; as free) {
+          @if (free.kind === 'free') {
+            <p class="room-now free">
+              @if (free.until) {
+                <ng-container i18n="@@checkIn.roomFreeUntil"
+                  >{{ name }} is free until {{ when(free.until) }}.</ng-container
+                >
+              } @else {
+                <ng-container i18n="@@checkIn.roomFreeDay"
+                  >{{ name }} is free for the rest of the day.</ng-container
+                >
+              }
+            </p>
+          }
+        } @else if (roomNow?.kind === 'unavailable' && roomNow; as out) {
+          <p class="room-now busy" i18n="@@checkIn.roomUnavailable">
+            {{ name }} can't be booked right now.
+          </p>
+          @if (out.kind === 'unavailable') {
+            <p class="text-muted room-why">{{ out.reason }}</p>
+          }
+        }
+
+        @if (error(); as message) {
+          <div class="alert-error" role="alert">{{ message }}</div>
+        }
+
+        <div class="sign-in">
+          <p class="text-muted" i18n="@@doorVisit.signInHint">
+            With your account you can also book it on the spot and see your own bookings.
+          </p>
+          <a
+            class="btn btn-secondary"
+            routerLink="/login"
+            [queryParams]="signInQuery()"
+            i18n="@@doorVisit.signIn"
+            >Sign in</a
+          >
+        </div>
+      </div>
+    </section>
+
+    <section class="card issues" aria-labelledby="issues-heading">
+      <h2 id="issues-heading" class="issues-title" i18n="@@checkIn.problems">Problems here</h2>
+      @if (room.openIssues.length > 0) {
+        <ul class="issue-list">
+          @for (issue of room.openIssues; track issue.id) {
+            <li class="issue" [class.blocking]="issue.isBlocking">
+              <div class="issue-head">
+                <strong>{{ categoryLabel(issue.category) }}</strong>
+                @if (issue.isBlocking) {
+                  <span class="badge blocking-badge" i18n="@@checkIn.issueBlocking"
+                    >Can't be used</span
+                  >
+                }
+                @if (issue.status === 'InProgress') {
+                  <span class="badge">{{ statusLabel(issue.status) }}</span>
+                }
+              </div>
+              <p class="issue-text">{{ issue.description }}</p>
+              <p class="text-muted issue-when" i18n="@@checkIn.issueSince">
+                Reported {{ when(issue.createdAt) }}
+              </p>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="text-muted no-issues" i18n="@@checkIn.noIssues">No problems reported here.</p>
+      }
+
+      @if (reporting()) {
+        <app-report-issue
+          [resourceId]="resourceId()"
+          [open]="room.openIssues"
+          [doorCode]="secret()"
+          (reported)="onReported($event)"
+          (alreadyReported)="refresh()"
+          (cancelled)="reporting.set(false)"
+        />
+      } @else {
+        <button
+          type="button"
+          class="btn btn-secondary report-button"
+          (click)="reporting.set(true)"
+          i18n="@@checkIn.reportProblem"
+        >
+          Report a problem
+        </button>
+      }
+    </section>
+  }
+</main>

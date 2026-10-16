@@ -6,6 +6,7 @@ import {
   managerGuard,
   resourceEditorGuard,
   sessionGuard,
+  visitorGuard,
 } from './core/guards/auth.guard';
 import { Shell } from './layout/shell/shell';
 
@@ -72,6 +73,16 @@ export const routes: Routes = [
     path: 'door/:resourceId',
     title: $localize`:@@title.door:Door screen · SmartDesk`,
     loadComponent: () => import('./features/door-screen/door-screen').then((m) => m.DoorScreen),
+  },
+  {
+    // The page a QR code opens, for someone without an account (ADR-0050): no shell, just the
+    // room, a check-in for whoever's booking is waiting, and a way to report a problem. The
+    // printed codes keep their address: signed in, the same one is the resource's page in the
+    // shell, below.
+    path: 'check-in/:resourceId',
+    canMatch: [visitorGuard],
+    title: $localize`:@@title.checkIn:Check in · SmartDesk`,
+    loadComponent: () => import('./features/door-visit/door-visit').then((m) => m.DoorVisit),
   },
   {
     // Every signed-in screen renders inside the shell. canActivateChild re-checks the

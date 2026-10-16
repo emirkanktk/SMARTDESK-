@@ -120,6 +120,34 @@ public static class CheckInRules
         return current | previous;
     }
 
+    // --- The page the code opens, for whoever is at the door (ADR-0050) ---
+
+    // How long a door screen's code still opens the resource's page without an account: long
+    // enough to read it and report a problem, photo and all. Checking in still takes this
+    // step's code or the last one's.
+    public static readonly TimeSpan ScreenCodeOpensPageFor = TimeSpan.FromMinutes(30);
+
+    // One of the screen's codes of the last `within`, each compared in constant time.
+    public static bool ChangingCodeSeenWithin(string screenKey, string? presented, DateTime utcNow, TimeSpan within)
+    {
+        var step = StepAt(utcNow);
+        var steps = (long)Math.Ceiling(within / CodeStep);
+        var seen = false;
+        for (var back = 0L; back <= steps; back++)
+        {
+            seen |= CodeMatches(ChangingCode(screenKey, step - back), presented);
+        }
+
+        return seen;
+    }
+
+    // Whether `presented` shows its holder was at the resource's door: its printed code, or with
+    // a door screen set up, one of the screen's codes of the last ScreenCodeOpensPageFor. The
+    // printed code still opens the page while a screen is on; it only stops checking in.
+    public static bool SeenAtTheDoor(string printedCode, string? screenKey, string? presented, DateTime utcNow) =>
+        CodeMatches(printedCode, presented)
+        | (screenKey is not null && ChangingCodeSeenWithin(screenKey, presented, utcNow, ScreenCodeOpensPageFor));
+
     // --- A door screen's own token ---
 
     // 32 random bytes as 64 hex digits; given out once, kept only as its hash.

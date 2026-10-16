@@ -231,9 +231,9 @@ Angular 22, standalone components throughout (no NgModules), feature-based folde
 `frontend/src/app/features/`, one folder per screen: the MVP list (login, dashboard,
 resources, availability, reservation, my-reservations, admin) plus home (the public front
 page), calendar, reports and resource-blocks, and since then floor-plan, booking-rules, inbox,
-issues, check-in, door-screen, qr-labels, team, users, profile, guide and approvals. Shared,
-cross-feature code (HTTP interceptor, auth guard, typed API clients) lives under
-`frontend/src/app/core/`.
+issues, check-in, door-screen, door-visit, qr-labels, team, users, profile, guide and
+approvals. Shared, cross-feature code (HTTP interceptor, auth guard, typed API clients) lives
+under `frontend/src/app/core/`.
 Forms use Reactive Forms; local/UI state uses Signals rather than a global store, since the
 app's state needs (a list of resources, a set of reservations, the current user) are small
 enough not to need one. Routing uses a functional route guard that reads the JWT/claims to
@@ -375,6 +375,12 @@ picker drops seconds and any difference would count as a change.
   room's state (`doorState`) and the QR code. The resource form's `<app-check-in-code>` sets
   the screen up. The check-in page reads the code once and drops it from the address, and
   offers what can be done at the door: run longer, end, or book on the spot.
+- **The page without an account (ADR-0050).** While nobody is signed in, `visitorGuard` (a
+  `canMatch`) gives `/check-in/:resourceId` a page of its own outside the shell, `DoorVisit`. It
+  asks `GET /api/door/{id}/visit` with the code in a header through `DoorVisitService`, draws
+  the room's state with the door screen's `doorState`, checks in the booking waiting for it, and
+  reports a problem with `<app-report-issue [doorCode]>`. Signed in, the router goes on to the
+  shell's own `check-in/:resourceId`, so the printed codes keep their address.
 - **The guide.** `/guide` lists `GUIDE_SECTIONS` (`features/guide/guide-sections.ts`): each
   part's steps as `$localize` texts, the numbers in them taken from the rules' constants
   (`CHECK_IN`, `EXTENSION_OPTIONS`), filtered by role and by whether the server has the

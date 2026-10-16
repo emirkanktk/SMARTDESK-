@@ -9,8 +9,9 @@ public class IssueReport
     public Guid Id { get; set; }
     public Guid ResourceId { get; set; }
 
-    // An account id, with no foreign key across the Identity boundary.
-    public Guid ReportedByUserId { get; set; }
+    // An account id, with no foreign key across the Identity boundary. Null when it was reported
+    // at the door without an account (ADR-0050).
+    public Guid? ReportedByUserId { get; set; }
 
     public IssueCategory Category { get; set; }
     public string Description { get; set; } = string.Empty;

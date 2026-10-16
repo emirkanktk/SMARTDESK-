@@ -15,11 +15,13 @@ public sealed record IssueReportDto(
     bool IsBlocking,
     IssueStatus Status,
     bool HasPhoto,
-    Guid ReportedByUserId,
+    // Null when it was reported at the door without an account (ADR-0050).
+    Guid? ReportedByUserId,
     DateTime CreatedAt,
     DateTime? ResolvedAt)
 {
-    // "Zeynep Kaya"; null when the account is gone. Filled afterwards: accounts live in Identity.
+    // "Zeynep Kaya"; null when the account is gone, or there was none. Filled afterwards:
+    // accounts live in Identity.
     public string? ReportedByName { get; init; }
 
     public static readonly Expression<Func<IssueReport, IssueReportDto>> Projection = i => new IssueReportDto(

@@ -288,7 +288,7 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsBlocking")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("ReportedByUserId")
+                    b.Property<Guid?>("ReportedByUserId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("ResolvedAt")

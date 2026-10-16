@@ -18,14 +18,7 @@ export class IssueService {
 
   /** Reports a problem. The form says why when it can't, so no toast. */
   report(resourceId: string, report: NewIssueReport): Observable<IssueReport> {
-    const form = new FormData();
-    form.append('category', report.category);
-    form.append('description', report.description);
-    form.append('isBlocking', String(report.isBlocking));
-    if (report.photo) {
-      form.append('photo', report.photo, `photo.${report.photo.type.split('/')[1] ?? 'jpg'}`);
-    }
-    return this.http.post<IssueReport>(this.resourceUrl(resourceId), form, {
+    return this.http.post<IssueReport>(this.resourceUrl(resourceId), issueReportForm(report), {
       context: new HttpContext().set(SKIP_ERROR_NOTIFICATION, true),
     });
   }
@@ -57,4 +50,16 @@ export class IssueService {
   private resourceUrl(resourceId: string): string {
     return `${environment.apiUrl}/resources/${encodeURIComponent(resourceId)}/issues`;
   }
+}
+
+/** A report as the form the API takes, from the signed-in page or the door's (ADR-0050). */
+export function issueReportForm(report: NewIssueReport): FormData {
+  const form = new FormData();
+  form.append('category', report.category);
+  form.append('description', report.description);
+  form.append('isBlocking', String(report.isBlocking));
+  if (report.photo) {
+    form.append('photo', report.photo, `photo.${report.photo.type.split('/')[1] ?? 'jpg'}`);
+  }
+  return form;
 }

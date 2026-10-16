@@ -264,7 +264,11 @@ export class Issues implements OnInit {
 
   private meta(issue: IssueReport): string {
     const who = issue.reportedByName ?? $localize`:@@common.someone:Someone`;
-    const reported = $localize`:@@issues.reportedBy:Reported by ${who}:name: · ${this.when(issue.createdAt)}:time:`;
+    // From the page a QR code opens without an account (ADR-0050): nobody to name.
+    const reported =
+      issue.reportedByUserId === null
+        ? $localize`:@@issues.reportedAtDoor:Reported at the door, without an account · ${this.when(issue.createdAt)}:time:`
+        : $localize`:@@issues.reportedBy:Reported by ${who}:name: · ${this.when(issue.createdAt)}:time:`;
     return issue.resolvedAt
       ? `${reported} · ${$localize`:@@issues.resolvedAt:resolved ${this.when(issue.resolvedAt)}:time:`}`
       : reported;
