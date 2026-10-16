@@ -113,9 +113,20 @@ export function ruleProblems(
   return { start: startProblem, end: endProblem };
 }
 
-/** The kind's own rules, a few words each, for the booking form; empty when it has none. */
-export function describeRules(kind: ResourceTypeRules, office: OfficeHours): string[] {
+/**
+ * The kind's own rules, a few words each, for the booking form; empty when it has none.
+ * `needsApproval`: its bookings wait for an Admin's approval (ADR-0049), as they do for anyone
+ * but an Admin.
+ */
+export function describeRules(
+  kind: ResourceTypeRules,
+  office: OfficeHours,
+  needsApproval = kind.requiresApproval,
+): string[] {
   const rules: string[] = [];
+  if (needsApproval) {
+    rules.push($localize`:@@rules.hintApproval:approved by an Admin first`);
+  }
   if (kind.officeHoursOnly) {
     rules.push(
       $localize`:@@rules.hintOfficeHours:within office hours (${office.description}:hours:)`,

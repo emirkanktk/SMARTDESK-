@@ -18,6 +18,12 @@ export const INBOX_MESSAGE_KINDS = [
   'IssueResolved',
   'CancelledByBlock',
   'WaitlistBooked',
+  // Approval (ADR-0049): to every Admin, someone asked; to whoever asked, approved, declined
+  // (with the reason) or lapsed at its start.
+  'ApprovalRequested',
+  'BookingApproved',
+  'BookingDeclined',
+  'ApprovalLapsed',
 ] as const;
 export type InboxMessageKind = (typeof INBOX_MESSAGE_KINDS)[number];
 

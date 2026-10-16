@@ -277,6 +277,12 @@
   color: var(--color-primary);
 }
 
+// Asked for, waiting for an Admin's approval (ADR-0049).
+.awaiting {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
 @keyframes breathe {
   50% {
     transform: scale(0.6);

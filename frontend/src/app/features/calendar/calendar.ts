@@ -25,7 +25,7 @@ import {
   toMonthParam,
 } from '../../shared/utils/date-time';
 import { EventBuffer } from '../../shared/utils/event-buffer';
-import { resourceTypeLabel } from '../../core/i18n/labels';
+import { reservationStatusLabel, resourceTypeLabel } from '../../core/i18n/labels';
 
 const WEEK_DAYS = 7;
 const DEFAULT_BOOKING_HOUR = 9;
@@ -51,6 +51,8 @@ interface Entry {
   mine: boolean;
   /** Checked in at the door (ADR-0030): a tick, which turns up live as it happens. */
   checkedIn: boolean;
+  /** Asked for, and waiting for an Admin's approval, which holds its time (ADR-0049). */
+  awaiting: boolean;
   title: string;
 }
 
@@ -425,7 +427,7 @@ export class Calendar {
   private isInView(reservation: Reservation): boolean {
     const { start, end } = this.range();
     return (
-      reservation.status === 'Confirmed' &&
+      reservation.status !== 'Cancelled' &&
       overlaps(reservation, start, end) &&
       this.resources().some((r) => r.id === reservation.resourceId)
     );
@@ -475,13 +477,16 @@ export class Calendar {
     const checkedInAt = reservation.checkedInAt
       ? `, ${$localize`:@@calendar.checkedInAt:checked in at ${formatDate(reservation.checkedInAt, 'HH:mm', this.locale)}:time:`}`
       : '';
+    const awaiting = reservation.status === 'Pending';
+    const asked = awaiting ? `, ${reservationStatusLabel('Pending')}` : '';
     return {
       reservation,
       mine,
       who,
       checkedIn: reservation.checkedInAt !== null,
+      awaiting,
       time: this.timeInDay(start, end, day),
-      title: `${this.fullRange(start, end)}, ${who}${note}${checkedInAt}`,
+      title: `${this.fullRange(start, end)}, ${who}${note}${checkedInAt}${asked}`,
     };
   }
 

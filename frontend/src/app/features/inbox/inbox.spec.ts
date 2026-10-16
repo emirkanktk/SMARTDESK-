@@ -453,6 +453,51 @@ describe('Inbox', () => {
     expect(message.querySelector('app-meeting-answer')).toBeNull();
   });
 
+  it('tells an Admin what waits for approval, and whoever asked what they decided (ADR-0049)', async () => {
+    list.mockReturnValue(
+      of([
+        inboxMessage({
+          id: 'm-asked',
+          kind: 'ApprovalRequested',
+          senderName: 'Ayşe Yılmaz',
+          reservationId: 'rsv-car',
+          note: 'Client visit',
+        }),
+        inboxMessage({
+          id: 'm-declined',
+          kind: 'BookingDeclined',
+          senderName: 'Selin Kaya',
+          reservationId: 'rsv-car',
+          reason: 'The car is at the service',
+          note: 'Client visit',
+        }),
+        inboxMessage({
+          id: 'm-lapsed',
+          kind: 'ApprovalLapsed',
+          senderId: null,
+          senderName: null,
+          reservationId: 'rsv-car',
+        }),
+      ]),
+    );
+    await render();
+    const [asked, declined, lapsed] = messages();
+
+    expect(headlines()).toEqual([
+      'Ayşe Yılmaz asks for a booking that needs your approval',
+      'Selin Kaya declined your booking',
+      'Nobody approved your booking before it started, so it lapsed',
+    ]);
+    const toApprovals = asked.querySelector<HTMLAnchorElement>('.actions a')!;
+    expect(text(toApprovals)).toBe('See what waits for approval');
+    expect(toApprovals.getAttribute('href')).toBe('/admin/approvals');
+    expect(text(asked.querySelector('.note')!)).toBe('Client visit');
+    expect(text(declined.querySelector('.note')!)).toBe('The car is at the service');
+    const toBooking = lapsed.querySelector<HTMLAnchorElement>('.actions a')!;
+    expect(text(toBooking)).toBe('See the booking');
+    expect(toBooking.getAttribute('href')).toBe('/reservations/rsv-car/edit');
+  });
+
   it('tells a reporter their problem is resolved, with what it was and their own words (ADR-0037)', async () => {
     list.mockReturnValue(
       of([

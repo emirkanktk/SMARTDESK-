@@ -231,8 +231,9 @@ Angular 22, standalone components throughout (no NgModules), feature-based folde
 `frontend/src/app/features/`, one folder per screen: the MVP list (login, dashboard,
 resources, availability, reservation, my-reservations, admin) plus home (the public front
 page), calendar, reports and resource-blocks, and since then floor-plan, booking-rules, inbox,
-issues, check-in, door-screen, qr-labels, team, users, profile and guide. Shared, cross-feature code
-(HTTP interceptor, auth guard, typed API clients) lives under `frontend/src/app/core/`.
+issues, check-in, door-screen, qr-labels, team, users, profile, guide and approvals. Shared,
+cross-feature code (HTTP interceptor, auth guard, typed API clients) lives under
+`frontend/src/app/core/`.
 Forms use Reactive Forms; local/UI state uses Signals rather than a global store, since the
 app's state needs (a list of resources, a set of reservations, the current user) are small
 enough not to need one. Routing uses a functional route guard that reads the JWT/claims to
@@ -457,7 +458,8 @@ English throughout (ADR-0023, ADR-0025), sessions renewed from an HttpOnly cooki
 resource photos (ADR-0027), the booking assistant (ADR-0029, ADR-0036), meetings (ADR-0032),
 running over (ADR-0033) and problems reported at the door (ADR-0037). From the plan's backup
 pool came bookings in a calendar app: a file per booking and a personal link to subscribe to
-(ADR-0048).
+(ADR-0048); and bookings that wait for an Admin's approval, which hold their time meanwhile
+(ADR-0049).
 
 ## 9. Team ownership boundaries
 

@@ -328,7 +328,7 @@ export class CheckIn implements OnInit {
       ...day,
       bookings: [
         ...day.bookings.filter((r) => r.id !== reservation.id),
-        ...(reservation.status === 'Confirmed' ? [reservation] : []),
+        ...(reservation.status !== 'Cancelled' ? [reservation] : []),
       ],
     }));
   }

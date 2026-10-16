@@ -42,6 +42,7 @@ describe('BookingRulesService', () => {
       maxDaysAhead: 7,
       maxActivePerUser: null,
       officeHoursOnly: true,
+      requiresApproval: false,
     };
     service.setOfficeHours(hours).subscribe();
     service.setTypeRules('type/1', rules).subscribe();

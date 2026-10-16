@@ -1,3 +1,17 @@
+// What waits for approval, on the Approvals link: the brand's colour, as an unread count.
+.waiting {
+  min-width: 1.35rem;
+  margin-left: var(--space-1);
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--gradient-brand);
+  color: var(--color-on-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.35rem;
+  text-align: center;
+}
+
 .header-actions {
   display: flex;
   flex-wrap: wrap;

@@ -22,6 +22,7 @@ import {
   Reservation,
 } from '../../core/models/reservation.model';
 import { RESOURCE_STATUSES, Resource, ResourceType } from '../../core/models/resource.model';
+import { ApprovalService } from '../../core/services/approval.service';
 import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
@@ -74,6 +75,7 @@ export class Admin {
 
   private readonly reservationService = inject(ReservationService);
   private readonly resourceService = inject(ResourceService);
+  private readonly approvals = inject(ApprovalService);
   private readonly hub = inject(ReservationHubService);
   private readonly authService = inject(AuthService);
   private readonly notifications = inject(NotificationService);
@@ -87,6 +89,8 @@ export class Admin {
   readonly type = input<string>();
 
   protected readonly statuses = RESOURCE_STATUSES;
+  /** How many bookings wait for an Admin's approval (ADR-0049); null until known. */
+  protected readonly waitingForApproval = signal<number | null>(null);
   protected readonly types = signal<ResourceType[]>([]);
   /** Null until loaded, so the counts don't read "0" meanwhile. */
   private readonly resources = signal<Resource[] | null>(null);
@@ -185,6 +189,14 @@ export class Admin {
   });
 
   constructor() {
+    // Quiet: the link is there either way, with its count when it can say.
+    this.approvals
+      .getWaiting(true)
+      .pipe(takeUntilDestroyed())
+      .subscribe({
+        next: (waiting) => this.waitingForApproval.set(waiting.length),
+        error: () => undefined,
+      });
     this.resourceService
       .getResourceTypes()
       .pipe(takeUntilDestroyed())
@@ -336,7 +348,7 @@ export class Admin {
     const { start, end } = this.range();
     const type = this.type();
     return (
-      reservation.status === 'Confirmed' &&
+      reservation.status !== 'Cancelled' &&
       new Date(reservation.startDateTime) < end &&
       new Date(reservation.endDateTime) > start &&
       (!type || reservation.resourceTypeId === type)

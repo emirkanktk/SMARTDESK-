@@ -30,11 +30,12 @@ export function roomNowFor(
   if (block) {
     return { kind: 'unavailable', reason: block.reason, until: new Date(block.endDateTime) };
   }
-  const current = day.bookings.find((r) => r.status === 'Confirmed' && covers(r));
+  // Waiting for approval holds the time too (ADR-0049).
+  const current = day.bookings.find((r) => r.status !== 'Cancelled' && covers(r));
   if (current) {
     return { kind: 'busy', until: new Date(current.endDateTime) };
   }
-  const next = [...day.bookings.filter((r) => r.status === 'Confirmed'), ...day.blocks]
+  const next = [...day.bookings.filter((r) => r.status !== 'Cancelled'), ...day.blocks]
     .map((item) => time(item.startDateTime))
     .filter((start) => start > now)
     .sort((a, b) => a - b)[0];

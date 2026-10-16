@@ -33,6 +33,8 @@ type KindForm = FormGroup<{
   daysAhead: FormControl<number | null>;
   perPerson: FormControl<number | null>;
   officeHoursOnly: FormControl<boolean>;
+  /** A booking waits for an Admin's approval (ADR-0049). */
+  requiresApproval: FormControl<boolean>;
 }>;
 
 /** One kind of resource on the page, with a form of its own. */
@@ -169,6 +171,7 @@ export class BookingRulesAdmin implements OnInit {
         maxDaysAhead: value.daysAhead,
         maxActivePerUser: value.perPerson,
         officeHoursOnly: value.officeHoursOnly,
+        requiresApproval: value.requiresApproval,
       })
       .pipe(finalize(() => row.saving.set(false)))
       .subscribe({
@@ -295,6 +298,7 @@ export class BookingRulesAdmin implements OnInit {
           wholeNumber,
         ]),
         officeHoursOnly: this.fb.control(rules.officeHoursOnly),
+        requiresApproval: this.fb.control(rules.requiresApproval),
       }),
       saving: signal(false),
       error: signal(null),

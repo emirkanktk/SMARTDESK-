@@ -415,6 +415,22 @@ plan by the lift.
   once. Google Calendar and Outlook on the web fetch from the internet, so for them the app has
   to be on the internet too: a tunnel does it (frontend README, "On a phone"; ADR-0048).
 
+### 24. A car that waits for approval
+
+- As the admin, **Admin** → **Booking rules**, on **Company Car** tick **Wait for an Admin's
+  approval**, **Save changes**.
+- As Ayşe, **New reservation**, Company Car 34 SD 001 on a working day after today,
+  09:00-17:00: under it, "Company Car bookings: approved by an Admin first.", no **Repeat**, and
+  the button says **Ask for it**. Press it: "… is asked for …". My reservations has it under
+  Upcoming, **Awaiting approval**; as Mehmet, the car at that time is taken.
+- As the admin, the inbox says "Ayşe Yılmaz asks for a booking that needs your approval", and
+  **Admin** shows **Approvals 1**. Open it: the car, the time, who asked and why. **Approve** -
+  Ayşe's list says "Approved by …" at once, and her inbox says so. Ask for another, and this time
+  **Decline** with a reason: her Cancelled tab shows it.
+- Point out: a request holds its time, so the first to ask is first in line and an approval never
+  meets a clash; until approved it has no reminder or check-in and isn't in the report; one
+  nobody answers lapses at its start. Untick the box afterwards, for the next demo (ADR-0049).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

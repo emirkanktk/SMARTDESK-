@@ -1566,6 +1566,38 @@ describe('ReservationForm', () => {
       expect(element.querySelector('.rules-note')).toBeNull();
     });
 
+    it("says a kind's bookings wait for an Admin's approval, don't repeat, and are asked for (ADR-0049)", async () => {
+      getRules.mockReturnValue(of(fakeBookingRules([fakeKindRules({ requiresApproval: true })])));
+      create.mockReturnValue(
+        of(fakeReservation({ resourceId: desk.id, resourceName: 'Desk 3-01', status: 'Pending' })),
+      );
+      await render({
+        resourceId: desk.id,
+        start: utc('2026-10-07T10:00'),
+        end: utc('2026-10-07T11:00'),
+      });
+
+      expect(element.querySelector('.rules-note')!.textContent!.trim()).toBe(
+        'Desk bookings: approved by an Admin first.',
+      );
+      expect(element.querySelector('.repeat select')).toBeNull();
+      expect(element.querySelector('.repeat-note')!.textContent).toContain("doesn't repeat");
+
+      await submit();
+
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(success.mock.calls[0][0]).toContain('Desk 3-01 is asked for');
+    });
+
+    it('lets an Admin book such a kind outright, a series too', async () => {
+      isAdmin.set(true);
+      getRules.mockReturnValue(of(fakeBookingRules([fakeKindRules({ requiresApproval: true })])));
+      await render({ resourceId: desk.id });
+
+      expect(element.querySelector('.rules-note')).toBeNull();
+      expect(element.querySelector('.repeat select')).not.toBeNull();
+    });
+
     it('keeps to them before asking, saying each on the field it is about', async () => {
       await render({
         resourceId: desk.id,

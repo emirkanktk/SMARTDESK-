@@ -45,6 +45,16 @@ export function inboxHeadline(message: InboxMessage): string {
     // What the reader was waiting for freed up, and it's theirs now (ADR-0043).
     case 'WaitlistBooked':
       return $localize`:@@inbox.waitlistBooked:A time you were waiting for freed up, and it's booked for you`;
+    // A booking that waits for an Admin's approval (ADR-0049): to the Admins, then its outcome
+    // to whoever asked.
+    case 'ApprovalRequested':
+      return $localize`:@@inbox.approvalRequested:${sender}:sender: asks for a booking that needs your approval`;
+    case 'BookingApproved':
+      return $localize`:@@inbox.bookingApproved:${sender}:sender: approved your booking`;
+    case 'BookingDeclined':
+      return $localize`:@@inbox.bookingDeclined:${sender}:sender: declined your booking`;
+    case 'ApprovalLapsed':
+      return $localize`:@@inbox.approvalLapsed:Nobody approved your booking before it started, so it lapsed`;
   }
 }
 

@@ -50,6 +50,7 @@ const ADMIN: Screen[] = [
   { path: '/admin/reports' },
   { path: '/admin/blocks' },
   { path: '/admin/rules' },
+  { path: '/admin/approvals' },
   { path: '/issues' },
   { path: '/resources/qr-labels' },
   { path: '/guide' },

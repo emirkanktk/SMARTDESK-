@@ -173,6 +173,7 @@ describe('BookingRulesAdmin', () => {
       maxDaysAhead: 7,
       maxActivePerUser: 2,
       officeHoursOnly: true,
+      requiresApproval: false,
     });
     expect(success).toHaveBeenCalledWith('Rules for Desk saved.');
   });
@@ -187,6 +188,25 @@ describe('BookingRulesAdmin', () => {
       maxDaysAhead: null,
       maxActivePerUser: null,
       officeHoursOnly: false,
+      requiresApproval: false,
+    });
+  });
+
+  it("asks an Admin's approval of a kind's bookings when that's ticked (ADR-0049)", async () => {
+    await render();
+
+    const approval = [...card('Company Car').querySelectorAll('label.check-option')]
+      .find((label) => label.textContent!.includes("Wait for an Admin's approval"))!
+      .querySelector('input')!;
+    approval.click();
+    await submit(card('Company Car').querySelector('form')!);
+
+    expect(setTypeRules).toHaveBeenCalledWith('type-car', {
+      maxDurationMinutes: null,
+      maxDaysAhead: null,
+      maxActivePerUser: null,
+      officeHoursOnly: false,
+      requiresApproval: true,
     });
   });
 
