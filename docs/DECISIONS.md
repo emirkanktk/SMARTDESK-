@@ -1768,3 +1768,43 @@ new tables.
     and email addresses (an email sent, a demo user seeded), and in Development without SMTP an
     email itself, a password reset link included (ADR-0019).
   - With Seq down, its lines wait in memory and are dropped past a limit; the console has them all.
+
+## ADR-0054: An app to install, which opens without a network
+
+**Decision:**
+- The app is a Progressive Web App: `manifest.webmanifest` (its name, colours and icon, the icon
+  as SVG, with a maskable one that fills the square) and Angular's service worker
+  (`@angular/service-worker`, `ngsw-config.json`). A phone adds it to the home screen, where it
+  opens on its own, without the browser's bars; on a computer, Chrome and Edge offer to install
+  it.
+- The worker keeps the app itself - `index.html`, its scripts and styles and the Turkish texts,
+  fetched in the background after the first visit, and pictures and fonts as they're used - and
+  never an answer from the API: `/api`, `/hubs` and `/health` always go to the server, so a
+  screen never shows old data from a cache, and nobody's bookings stay on a shared phone.
+- Without a network the app still opens, and says it's offline and that nothing can be booked or
+  changed until it's back (`ConnectivityService`).
+- A new release is fetched in the background, then the app says "A new version of SmartDesk is
+  ready" with **Reload** (`AppUpdateService`); a page left open asks for one every hour. A door
+  screen, which nobody stands at, reloads by itself, and so does a page whose version can't be
+  loaded any more.
+- Only in a production build (`provideServiceWorker`, `enabled: !isDevMode()`), so `ng serve`
+  and the tests always run what's on disk. nginx checks `ngsw-worker.js` and the manifest again
+  on every visit, like `index.html`, rather than keeping them a year like the hashed scripts.
+
+**Why:**
+- The plan's backup pool: "UI: dark mode, TR/EN, PWA, favourite resources", the last of it.
+- The QR codes at the doors are scanned with phones (ADR-0030, ADR-0050): from the home screen
+  the app is a tap away, and it opens where the signal is weak.
+- The API's answers stay out of the cache on purpose: bookings change by the minute, live
+  updates come over SignalR anyway, and a phone may be shared.
+- One SVG draws the icon at every size; Chrome installs with it, which the browser tests check
+  with Chrome's own list of reasons not to.
+- **Trade-offs:**
+  - Offline, the app opens but has nothing new to show: reading bookings offline would mean
+    keeping them on the device.
+  - An iPhone takes no SVG for its home screen and shows a picture of the page instead, until a
+    PNG `apple-touch-icon` is added.
+  - The installed app belongs to its address: through a quick tunnel, whose address changes with
+    each start (frontend README, "On a phone"), it's installed again each time.
+  - `ng serve` has no worker, and changes the pages it serves, so it can't be tried there: the
+    whole app in Docker serves the build as it is.

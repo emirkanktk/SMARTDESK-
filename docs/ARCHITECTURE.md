@@ -404,6 +404,11 @@ picker drops seconds and any difference would count as a change.
   the address (`?resourceId=`, the link on the resource form). `audit-text.ts` says each entry
   in words - what and which, who, each column before and after - with the names the page brings
   and the kinds of resource, in the screen's language and time zone.
+- **Installed (ADR-0054).** `provideServiceWorker` in a production build, with `ngsw-config.json`
+  saying what it keeps - the app's own files, never the API's answers - and
+  `manifest.webmanifest`. `AppUpdateService` offers a new version once the worker has it (a door
+  screen just reloads), `ConnectivityService` follows the browser going offline and back, and
+  the notification host shows both above its toasts.
 - **The guide.** `/guide` lists `GUIDE_SECTIONS` (`features/guide/guide-sections.ts`): each
   part's steps as `$localize` texts, the numbers in them taken from the rules' constants
   (`CHECK_IN`, `EXTENSION_OPTIONS`), filtered by role and by whether the server has the
@@ -489,8 +494,9 @@ running over (ADR-0033), problems reported at the door (ADR-0037) and the door's
 an account (ADR-0050). From the plan's backup pool came bookings in a calendar app: a file per
 booking and a personal link to subscribe to (ADR-0048); bookings that wait for an Admin's
 approval, which hold their time meanwhile (ADR-0049); favourite resources (ADR-0051); a
-history of every change for Admins, written by an interceptor in the same save (ADR-0052); and
-logs to query in Seq, a line per request with whose it was (ADR-0053).
+history of every change for Admins, written by an interceptor in the same save (ADR-0052);
+logs to query in Seq, a line per request with whose it was (ADR-0053); and an app to install,
+which opens without a network (ADR-0054).
 
 ## 9. Team ownership boundaries
 

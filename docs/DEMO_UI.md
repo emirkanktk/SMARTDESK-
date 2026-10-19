@@ -473,6 +473,18 @@ plan by the lift.
   something is left out and nothing rolled back is in it; a password or a QR code only shows that
   it changed (ADR-0052).
 
+### 28. On the home screen
+
+- Run the whole app in Docker, a production build ("the whole app in Docker" in the README), and
+  open it on a phone through a tunnel to its port, as in step 25, or in Chrome or Edge on the
+  computer.
+- Chrome's menu: **Install app**; on an iPhone, **Share**, then **Add to Home Screen**. It opens
+  from the home screen on its own, without the browser's bars.
+- Turn on airplane mode and open it again: it opens, saying it's offline, and nothing can be
+  booked until the network is back.
+- Point out: it keeps the app, never the bookings, which always come from the server; and a new
+  release asks to reload, while a door screen takes it by itself (ADR-0054).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

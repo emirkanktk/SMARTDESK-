@@ -226,6 +226,14 @@ jobs:
           curl -fsS http://localhost:4200/i18n/tr.json > /dev/null
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4200/api/assistant)" = 401
 
+      # The installed app's files (ADR-0054): the worker and its list checked again on every
+      # visit, not kept a year like the hashed scripts, and the manifest as a manifest.
+      - name: nginx serves the service worker and the manifest
+        run: |
+          curl -fsS http://localhost:4200/ngsw.json | grep -q '"configVersion"'
+          curl -fsSI http://localhost:4200/ngsw-worker.js | grep -qi '^cache-control: no-cache'
+          curl -fsSI http://localhost:4200/manifest.webmanifest | grep -qi '^content-type: application/manifest+json'
+
       # That 401 is in Seq as a line of its own, found by its fields (ADR-0053). Seq gets the
       # API's lines every few seconds.
       - name: The API's logs reach Seq
@@ -251,10 +259,11 @@ jobs:
           npx playwright install --with-deps chromium
 
       # Signing in, a booking with a conflict, one showing up live in another window over
-      # SignalR's WebSocket, and the language switch, all through nginx.
+      # SignalR's WebSocket, the language switch, and the app installed and opened offline, all
+      # through nginx.
       - name: Browser tests through nginx
         working-directory: frontend
-        run: npx playwright test e2e/booking.spec.ts e2e/language.spec.ts
+        run: npx playwright test e2e/booking.spec.ts e2e/language.spec.ts e2e/pwa.spec.ts
 
       - name: Keep the containers' logs of a failed run
         if: failure()
