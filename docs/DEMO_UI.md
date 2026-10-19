@@ -494,6 +494,9 @@ plan by the lift.
 - **Accessibility:** every screen passes an axe-core WCAG 2.1 AA scan, in both themes. Text
   colours keep 4.5:1 contrast on their backgrounds, and the signed-out pages have a main
   landmark.
+- **Logs:** each request is a line in Seq (`http://localhost:5341`, `docker compose up -d seq`)
+  with its status, time and user, and every value in a message a field: `StatusCode >= 400`
+  lists what went wrong, newest first, and a `UserId` everything one person did (ADR-0053).
 - **A limit, said up front:** a photo of a printed QR code checks in from anywhere, as long as
   the code isn't replaced, and with no account needed at the door, anyone's booking (ADR-0050);
   checking in proves you hold the code, not that you're at the door.
@@ -512,6 +515,7 @@ plan by the lift.
 | A new block doesn't show in the Calendar | Blocks send no live events - reload, or move to another week and back. |
 | "Your session has expired" | The session ended: 14 days without use (30 days at most), a password change, or an admin's change to the account. Sign in again. |
 | No **Assistant** button | The API has no `Assistant:ApiKey`. The assistant is optional, and everything else works without it. |
+| Something failed and the screen doesn't say why | Find the request in Seq at `http://localhost:5341` (`docker compose up -d seq`): `StatusCode >= 400` lists the failures, newest first, each with its user, and its `RequestId` the lines written meanwhile (ADR-0053). |
 | The phone can't open a QR code | The code carries the API's `App:FrontendUrl`, `localhost` by default, which a phone can't reach. Open a tunnel, which a phone reaches from any network, or use the computer's IP on the same Wi-Fi, and set `App__FrontendUrl` to that address (frontend README, "On a phone"). |
 | On a phone, a reload asks to sign in again | Over plain http the phone doesn't keep the session cookie, which is `Secure`. A tunnel gives https and keeps it. |
 | Old bookings from rehearsals | Clear them as in DEMO.md, step 3. |

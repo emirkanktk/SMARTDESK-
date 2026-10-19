@@ -215,7 +215,7 @@ jobs:
       - name: JWT key for this run
         run: echo "JWT_KEY=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
 
-      # Both images, then PostgreSQL, Mailpit, the API and nginx, until each is healthy.
+      # Both images, then PostgreSQL, Mailpit, Seq, the API and nginx, until each is healthy.
       - name: Build and start the app profile
         run: docker compose --profile app up -d --build --wait --wait-timeout 300
 
@@ -225,6 +225,18 @@ jobs:
           curl -fsS http://localhost:4200/reservations/mine | grep -q '<app-root>'
           curl -fsS http://localhost:4200/i18n/tr.json > /dev/null
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4200/api/assistant)" = 401
+
+      # That 401 is in Seq as a line of its own, found by its fields (ADR-0053). Seq gets the
+      # API's lines every few seconds.
+      - name: The API's logs reach Seq
+        run: |
+          query="http://localhost:5341/api/events?count=1&filter=RequestPath%20%3D%20'%2Fapi%2Fassistant'%20and%20StatusCode%20%3D%20401"
+          for i in $(seq 1 30); do
+            curl -fsS "$query" | grep -q '"StatusCode","Value":401' && exit 0
+            sleep 2
+          done
+          curl -sS "http://localhost:5341/api/events?count=10"
+          exit 1
 
       - uses: actions/setup-node@v7
         with:

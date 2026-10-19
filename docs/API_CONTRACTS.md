@@ -1097,3 +1097,4 @@ to be told why it's gone.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/health` | none | `200 Healthy` when the API can reach PostgreSQL and the database has no pending migrations, `503 Unhealthy` otherwise. Plain text, for container health checks and uptime monitors. |
+| GET | `/health/live` | none | `200 Healthy` while the process runs, whatever the database says: for a liveness probe (ADR-0053). Plain text. |

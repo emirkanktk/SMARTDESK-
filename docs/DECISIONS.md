@@ -1731,3 +1731,40 @@ new tables.
   - A booking made for the first in a waiting list (ADR-0043) is written as done by whoever freed
     the time: it happens in their request.
   - People and resources are named as they're called now.
+
+## ADR-0053: Structured logs with Serilog, searchable in Seq
+
+**Decision:**
+- Serilog writes the API's log (`LoggingSetup`): what every `ILogger` says, with each value in a
+  message - `{ReservationId}`, `{Count}` - kept as a field of its own. Always to the console, a
+  line of text each; and, with `Seq:ServerUrl` set (`Seq:ApiKey` if it asks for one), to Seq,
+  where any field can be searched: `StatusCode >= 500`, `UserId = '…'`. Development sends to
+  `http://localhost:5341`, where `docker compose up -d` now starts Seq, and the compose file's
+  API sends to it as well. How much is written comes from the `Serilog` section of the
+  settings, which replaces `Logging`, with the same levels: Information, and ASP.NET Core's own
+  lines and EF Core's SQL at Warning.
+- A line for every request (`UseSerilogRequestLogging`): its method and path, its status, how
+  long it took, and `UserId` when someone is signed in; an exception or a 5xx as an error.
+  Health checks are below what's written. Every line written while a request runs carries its
+  `UserId` too (`UseUserInLogs`, after authentication), and ASP.NET Core's `RequestId` and the
+  trace id, so a request's lines are found together.
+- Never in a line: a query string, which carries SignalR's token and a calendar feed's; bodies;
+  headers. The path is all that's written of an address, and ASP.NET Core's own request lines,
+  which have the whole URL, stay at Warning.
+- `GET /health/live` answers `Healthy` while the process runs, for a liveness probe; `/health`
+  still says whether it's ready: the database answers, with every migration applied.
+
+**Why:**
+- The plan's backup pool: "Logging: structured logging with Serilog + Seq, /health endpoints".
+- The messages were written as templates from the start. Serilog keeps their fields rather than
+  flattening them into text, so "everything this person did today" or "every 500 this week" is a
+  query, not a search through text.
+- The host's own logger rather than Serilog's static one, as the tests run several hosts side by
+  side; the request lines are handed it, or they'd go to the static one and nowhere.
+- **Trade-offs:**
+  - Seq is free for one person's development; a team, or production, needs its licence or
+    another sink. `ACCEPT_EULA` in docker-compose accepts it for development.
+  - The local Seq has no sign-in, like Mailpit: it's for this machine. Its lines hold user ids
+    and email addresses (an email sent, a demo user seeded), and in Development without SMTP an
+    email itself, a password reset link included (ADR-0019).
+  - With Seq down, its lines wait in memory and are dropped past a limit; the console has them all.
