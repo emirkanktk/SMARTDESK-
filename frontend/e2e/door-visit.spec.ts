@@ -89,8 +89,9 @@ test('without an account, the QR code opens the room, checks in and reports a pr
     await expect(
       selin.getByText(`New problem at ${room.name}: Cleaning.`, { exact: false }),
     ).toBeVisible();
-    const card = selin.locator('.issue', { hasText: 'Coffee on the table' });
-    await expect(card).toContainText(room.name);
+    // This room's: a database that has run the tests before has other rooms' coffee too.
+    const card = selin.locator('.issue', { hasText: room.name });
+    await expect(card).toContainText('Coffee on the table');
     await expect(card).toContainText('Reported at the door, without an account');
     await selin.reload();
     await expect(card).toContainText('Reported at the door, without an account');
