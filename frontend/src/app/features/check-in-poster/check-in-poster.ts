@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { CHECK_IN } from '../../core/models/reservation.model';
+import { CHECK_IN_WORDS } from '../../core/models/reservation.model';
 import { CheckInCode, Resource } from '../../core/models/resource.model';
 import { ResourceService } from '../../core/services/resource.service';
 import { Logo } from '../../shared/components/logo/logo';
@@ -27,7 +27,7 @@ export class CheckInPoster implements OnInit {
 
   private readonly resourceService = inject(ResourceService);
 
-  protected readonly checkIn = CHECK_IN;
+  protected readonly checkIn = CHECK_IN_WORDS;
   protected readonly resource = signal<Resource | null>(null);
   protected readonly code = signal<CheckInCode | null>(null);
   protected readonly failed = signal(false);

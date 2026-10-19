@@ -142,3 +142,10 @@ export function formatDuration(start: Date, end: Date): string {
   }
   return parts.join(' ');
 }
+
+/** "1 minute", "15 minutes": English needs the two, Turkish says "dakika" after any number. */
+export function formatMinutes(minutes: number): string {
+  return minutes === 1
+    ? $localize`:@@duration.oneMinute:1 minute`
+    : $localize`:@@duration.minutesLong:${minutes}:minutes: minutes`;
+}

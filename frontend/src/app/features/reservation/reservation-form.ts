@@ -32,7 +32,7 @@ import {
 } from '../../core/models/booking-suggestions.model';
 import {
   AttendeeResponse,
-  CHECK_IN,
+  CHECK_IN_WORDS,
   CreateSeriesRequest,
   DEFAULT_REMINDER_MINUTES,
   Invitee,
@@ -185,7 +185,7 @@ export class ReservationForm implements OnInit {
   readonly end = input<string>();
 
   protected readonly limits = L;
-  protected readonly checkIn = CHECK_IN;
+  protected readonly checkIn = CHECK_IN_WORDS;
   protected readonly reminderOptions = REMINDER_OPTIONS;
   /** Desktop notifications turned off in the browser: the reminder then only shows in the app. */
   protected readonly desktopBlocked = this.reminderAlerts.permission() === 'denied';

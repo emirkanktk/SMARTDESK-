@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of, throwError } from 'rxjs';
 import { Role, Roles } from '../../core/constants/roles';
+import { DEFAULT_CHECK_IN_TIMES, setCheckInTimes } from '../../core/models/reservation.model';
 import { AssistantService } from '../../core/services/assistant.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Guide } from './guide';
@@ -98,6 +99,18 @@ describe('Guide', () => {
     expect(text()).toContain('from 10 minutes before the start until 15 minutes after');
     expect(text()).toContain('Everyone on it is warned 5 minutes before');
     expect(text()).toContain('Make it run 15, 30 or 60 minutes longer');
+  });
+
+  it('says a one-minute grace, and its warning, as a minute', async () => {
+    setCheckInTimes({ opensBeforeMinutes: 10, graceMinutes: 1, warnBeforeReleaseMinutes: 1 });
+    try {
+      await render();
+
+      expect(text()).toContain('from 10 minutes before the start until 1 minute after');
+      expect(text()).toContain('Everyone on it is warned 1 minute before');
+    } finally {
+      setCheckInTimes(DEFAULT_CHECK_IN_TIMES);
+    }
   });
 
   it('links each part to where it is done', async () => {

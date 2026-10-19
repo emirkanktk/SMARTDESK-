@@ -1249,8 +1249,10 @@ new tables.
 - **Trade-offs:**
   - A booking's window isn't stored, so a new grace applies at once to every booking, the ones
     waiting at the door too.
-  - The English texts that give the grace in minutes say "1 minutes" for a one-minute grace.
-    It's a demo setting, and the Turkish texts have no plural there.
+  - The English texts that give the grace in minutes said "1 minutes" for a one-minute grace.
+    Since 2026-10-19 they say "1 minute": `formatMinutes` picks the word, and `CHECK_IN_WORDS`
+    has the times in words for every text that gives them. The Turkish texts have no plural
+    there.
   - The app waits for the times as it starts, five seconds at most, and goes on with the
     defaults without them.
 

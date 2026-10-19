@@ -4,6 +4,7 @@ import {
   addMonths,
   floorToQuarterHour,
   formatDuration,
+  formatMinutes,
   fromDateTimeLocal,
   nextHalfHour,
   parseDateParam,
@@ -103,5 +104,11 @@ describe('date-time helpers', () => {
     expect(formatDuration(start, addMinutes(start, 60))).toBe('1 h');
     expect(formatDuration(start, addMinutes(start, 90))).toBe('1 h 30 min');
     expect(formatDuration(start, addMinutes(start, 3 * 24 * 60 + 120))).toBe('3 days 2 h');
+  });
+
+  it('says one minute as one, and any other number of them as minutes', () => {
+    expect(formatMinutes(1)).toBe('1 minute');
+    expect(formatMinutes(15)).toBe('15 minutes');
+    expect(formatMinutes(0)).toBe('0 minutes');
   });
 });

@@ -12,7 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Observable, finalize, map, of, switchMap, tap } from 'rxjs';
 import { Roles } from '../../../core/constants/roles';
 import { ApiError } from '../../../core/models/api-error.model';
-import { CHECK_IN } from '../../../core/models/reservation.model';
+import { CHECK_IN_WORDS } from '../../../core/models/reservation.model';
 import {
   RESOURCE_LIMITS,
   RESOURCE_PHOTO,
@@ -99,7 +99,7 @@ export class ResourceForm implements OnInit {
     checkInRequired: [false],
   });
 
-  protected readonly checkIn = CHECK_IN;
+  protected readonly checkIn = CHECK_IN_WORDS;
   /** Whether the box is ticked now, saved or not: the door screen's part shows as soon as it is. */
   protected readonly checkInOn = toSignal(this.form.controls.checkInRequired.valueChanges, {
     initialValue: false,
