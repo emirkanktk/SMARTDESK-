@@ -8,5 +8,8 @@ public sealed class FakeCurrentUser(Guid? userId, params string[] roles) : ICurr
 
     public Guid? TeamId { get; init; }
 
+    // False for a background job, which serves no request (ADR-0052).
+    public bool InRequest { get; init; } = true;
+
     public bool IsInRole(string role) => roles.Contains(role);
 }

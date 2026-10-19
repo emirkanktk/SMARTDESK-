@@ -920,6 +920,50 @@ What the numbers mean (ADR-0017):
   `Confirmed` bookings only, nights and weekends included. On the day the clocks change, the
   missing hour reads 0 and the doubled one counts once, at most full.
 
+## History (ADR-0052)
+
+Every change to the rows below, written by the save that makes it, in the same transaction: who,
+when, and each column before and after. Nothing in it is ever changed or deleted.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/audit?area=&resourceId=&entityType=&entityId=&userId=&from=&to=&before=&take=` | Admin | `GetAuditEntriesQuery` | newest first, `take` at a time (50 unless asked, 1-200), with `hasMore`; the next page with `before`, the last `id` shown. Every filter is optional, and they add up. `area`: `bookings`, `resources`, `rules`, `problems` or `accounts`, else 400 `"Choose bookings, resources, rules, problems or accounts."`. `resourceId`: what's about that resource - itself, its bookings and invitations, features, teams, photo, blocked windows and problems. `entityType` and `entityId`: one row's (`entityId` without `entityType` → 400). `userId`: what that person did. `from`, `to`: instants, `from` in and `to` out (`to` not after `from` → 400). |
+
+```json
+{
+  "items": [
+    { "id": 1042, "at": "2026-10-19T08:12:03.123Z", "actor": "User", "userId": "…",
+      "entityType": "Reservation", "entityId": "…", "action": "Updated", "resourceId": "…",
+      "label": "2026-10-21T08:00:00.0000000Z 2026-10-21T09:00:00.0000000Z",
+      "changes": [ { "property": "Status", "old": "Confirmed", "new": "Cancelled" } ] }
+  ],
+  "hasMore": true,
+  "people": { "…": "Ayşe Yılmaz" },     // who did each, whose account, and people in the changes
+  "resources": { "…": "Board Room" }    // the resources the page mentions, named as they are now
+}
+```
+
+- **`actor`**: `User`, someone signed in, with `userId`; `Anonymous`, a request without an
+  account - the door page (ADR-0050), signing up, resetting a password; `System`, a job - a
+  booking released for want of a check-in, a request nobody approved in time.
+- **`entityType`**, by `area`: `Reservation` and `Attendee` (an invitation) - bookings;
+  `Resource`, `ResourceFeature`, `ResourceTeam`, `ResourcePhoto`, `ResourceBlock` (a blocked
+  window) and `FloorPlan` - resources; `ResourceType` and `OfficeHours` - rules; `IssueReport` -
+  problems; `User` and `UserRole` - accounts. **`entityId`** is the row's key, two joined with
+  `|`: an invitation's booking and person, a team's resource and team, a role's person and role.
+- **`action`**: `Created`, `Updated` or `Deleted`. **`changes`**: every column a row was made
+  with, or had when deleted; for `Updated`, only those that changed. Values are text: instants in
+  UTC (ISO 8601), dates `yyyy-MM-dd`, times `HH:mm`, enums by name, `true`/`false`, `null` for
+  none. A secret - `CheckInCode`, `DoorScreenTokenHash`, `PasswordHash` - reads `"***"`, or
+  `null` without one; replaced, it's `"***"` to `"***"`.
+- **`label`**: the row as it was then, in a few words: a resource's, a kind's or a feature's
+  name, a floor's location, a problem's category, a person's name, a role, or a booking's, an
+  invitation's or a blocked window's start and end, two UTC instants. `null` when there's
+  nothing to say (office hours, a team, a photo).
+- Not in it: reminders sent and other bookkeeping, favourites, waiting lists, the inbox, calendar
+  links, sign-ins, pictures' bytes, and what's written without loading the row first - the inbox
+  marked read, a language, one's own name.
+
 ## Assistant
 
 Optional (ADR-0029): answers only when the server has `Assistant:ApiKey`.

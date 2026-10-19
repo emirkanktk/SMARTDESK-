@@ -10,6 +10,7 @@ using SmartDesk.Application.Resources;
 using SmartDesk.Domain.Entities;
 using SmartDesk.Domain.Rules;
 using SmartDesk.Infrastructure.Identity;
+using SmartDesk.Infrastructure.Persistence.Auditing;
 using SmartDesk.Infrastructure.Persistence.Seed;
 
 namespace SmartDesk.Infrastructure.Persistence;
@@ -34,6 +35,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<OfficeHours> OfficeHours => Set<OfficeHours>();
     public DbSet<CalendarFeed> CalendarFeeds => Set<CalendarFeed>();
     public DbSet<FavoriteResource> FavoriteResources => Set<FavoriteResource>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -75,6 +77,21 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 t.HasCheckConstraint("CK_OfficeHours_OpensBeforeCloses", "\"OpensAt\" < \"ClosesAt\"");
                 t.HasCheckConstraint("CK_OfficeHours_Workdays", "\"Workdays\" BETWEEN 1 AND 127");
             });
+        });
+
+        // The history of changes (ADR-0052): written by the saves themselves, never changed, and
+        // listed newest first by Id. Indexed for its filters: one row's history, one resource's,
+        // one person's, and a time range.
+        builder.Entity<AuditEntry>(entity =>
+        {
+            entity.Property(e => e.EntityType).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.EntityId).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Label).HasMaxLength(AuditInterceptor.LabelLength);
+            entity.Property(e => e.Changes).IsRequired().HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.EntityType, e.EntityId });
+            entity.HasIndex(e => e.ResourceId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.At);
         });
 
         // Favourite resources (ADR-0051): one row per account and resource, the account id first

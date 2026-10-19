@@ -18,6 +18,7 @@ using SmartDesk.Infrastructure.Calendar;
 using SmartDesk.Infrastructure.Email;
 using SmartDesk.Infrastructure.Identity;
 using SmartDesk.Infrastructure.Persistence;
+using SmartDesk.Infrastructure.Persistence.Auditing;
 using SmartDesk.Infrastructure.Persistence.Seed;
 using SmartDesk.Infrastructure.Persistence.Seed.DemoData;
 using SmartDesk.Infrastructure.Reports;
@@ -31,14 +32,18 @@ public static class DependencyInjection
         // A query that loads collections sends one statement per collection. In one statement,
         // two collections come back multiplied: a resource with 20 features and 20 teams would
         // be 400 rows.
-        // Every save notes the times it frees for the waiting list (ADR-0043).
+        // Every save notes the times it frees for the waiting list (ADR-0043), and writes the
+        // history of what it changes (ADR-0052).
         services.AddScoped<FreedSlotsInterceptor>();
+        services.AddScoped<AuditInterceptor>();
         services.AddDbContext<SmartDeskDbContext>((provider, options) =>
             options
                 .UseNpgsql(
                     configuration.GetConnectionString("DefaultConnection"),
                     npgsql => npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
-                .AddInterceptors(provider.GetRequiredService<FreedSlotsInterceptor>()));
+                .AddInterceptors(
+                    provider.GetRequiredService<FreedSlotsInterceptor>(),
+                    provider.GetRequiredService<AuditInterceptor>()));
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<SmartDeskDbContext>());
 
         // Backs GET /health: "Healthy" only if PostgreSQL answers and the schema is up to date,

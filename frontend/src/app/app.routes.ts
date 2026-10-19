@@ -212,6 +212,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/approvals/approvals').then((m) => m.Approvals),
       },
       {
+        // Who changed what, and when (ADR-0052); ?resourceId= for one resource's.
+        path: 'admin/history',
+        title: $localize`:@@title.history:History · SmartDesk`,
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/history/history').then((m) => m.AuditHistory),
+      },
+      {
         // The rules bookings keep to (ADR-0046).
         path: 'admin/rules',
         title: $localize`:@@title.rules:Booking rules · SmartDesk`,

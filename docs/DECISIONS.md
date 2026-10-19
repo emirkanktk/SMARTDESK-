@@ -1691,3 +1691,43 @@ new tables.
   - The count isn't locked: two stars at the same moment can make one more than the most.
   - A star shows before the API has it; reloading the page at once can lose it.
   - A blocked window made after the dashboard opened shows from the next day, or a reload.
+
+## ADR-0052: A history of changes, written by the saves themselves
+
+**Decision:**
+- Every save writes, in its own transaction, an `AuditEntry` for each audited row it creates,
+  changes or deletes: when; who - `Actor` is a signed-in `User`, with their id; `Anonymous`, a
+  request without an account (the door page, ADR-0050, or signing up); or `System`, a background
+  job; the kind of row and its key; the resource it's about; a few words naming the row as it was
+  (`Label`: a resource's name, a booking's two UTC instants); and what changed (`Changes`,
+  jsonb: each column before and after, as text). `AuditInterceptor`, an EF Core
+  `SaveChangesInterceptor` like `FreedSlotsInterceptor` (ADR-0043), reads it from the change
+  tracker, so every way of changing a row is in it, now and later.
+- Audited (`AuditedTypes`): bookings and invitations; resources, with their features, teams and
+  photo; blocked windows; kinds of resource and office hours, the booking rules; floor plans;
+  problems; accounts and their roles. Left out: bookkeeping a job writes (a reminder sent),
+  personal lists (favourites, places in a waiting list, the inbox, calendar links), a series' own
+  row (each of its bookings is in it), sign-in sessions, and pictures' bytes. A secret - the QR
+  code's, a door screen's token, a password - is kept only as whether there is one ("***"). Writes that go straight to the database (`ExecuteUpdate`: the inbox marked read, a
+  language, one's own name, sessions) aren't in it.
+- `GET /api/audit` (Admin) lists it newest first, 50 a page, the next asked for with `before`, an
+  entry's id in the order written; by area (bookings, resources, rules, problems, accounts),
+  resource, row, person and time. The people and resources it mentions come named alongside.
+  Nothing in it is ever changed or deleted.
+- **History** under Admin says it in words: what, which, who, when, and each changed column
+  before and after, with filters. A resource's edit page links to its own.
+
+**Why:**
+- The plan's backup pool: "audit log: change history with an EF Core SaveChangesInterceptor and an
+  admin history screen". "Who cancelled this?" and "who switched check-in off?" had no answer.
+- In the save itself, not in each handler: nothing to forget, a change rolled back leaves nothing
+  behind, and the next handler is covered without a line.
+- Columns as text, so one shape fits every kind, and the screen says it in the reader's language
+  and time zone.
+- Who as three kinds, so a release for want of a check-in reads as SmartDesk's doing, not as
+  nobody's.
+- **Trade-offs:**
+  - It grows without limit: nothing is deleted from it.
+  - A booking made for the first in a waiting list (ADR-0043) is written as done by whoever freed
+    the time: it happens in their request.
+  - People and resources are named as they're called now.

@@ -1,0 +1,103 @@
+<div class="page-header">
+  <div>
+    <h1 i18n="@@history.title">History</h1>
+    <p class="text-muted subtitle" i18n="@@history.subtitle">
+      Who changed what, and when: bookings, resources, booking rules, problems and accounts.
+    </p>
+  </div>
+  <a class="btn btn-secondary" routerLink="/admin" i18n="@@report.backToAdmin">Back to admin</a>
+</div>
+
+<form class="filters card" [formGroup]="filters" (submit)="$event.preventDefault()">
+  <div class="field">
+    <label for="history-area" i18n="@@history.filter.area">What</label>
+    <select id="history-area" class="input" formControlName="area">
+      <option value="" i18n="@@history.filter.everything">Everything</option>
+      @for (area of areas; track area.value) {
+        <option [value]="area.value">{{ area.label }}</option>
+      }
+    </select>
+  </div>
+  <div class="field">
+    <label for="history-user" i18n="@@history.filter.user">Who</label>
+    <select id="history-user" class="input" formControlName="userId">
+      <option value="" i18n="@@history.filter.anyone">Anyone</option>
+      @for (person of people(); track person.id) {
+        <option [value]="person.id">{{ person.displayName }}</option>
+      }
+    </select>
+  </div>
+  <div class="field">
+    <label for="history-from" i18n="@@history.filter.from">From</label>
+    <input id="history-from" class="input" type="date" formControlName="from" />
+  </div>
+  <div class="field">
+    <label for="history-to" i18n="@@history.filter.to">To</label>
+    <input id="history-to" class="input" type="date" formControlName="to" />
+  </div>
+  <button type="button" class="btn btn-secondary" (click)="clear()" i18n="@@common.clear">
+    Clear
+  </button>
+</form>
+
+@if (resourceId()) {
+  <p class="narrowed" role="status">
+    @if (resourceName(); as name) {
+      <ng-container i18n="@@history.onlyResource">Only {{ name }}.</ng-container>
+    } @else {
+      <ng-container i18n="@@history.onlyOneResource">Only one resource.</ng-container>
+    }
+  </p>
+}
+
+@if (loading()) {
+  <p class="text-muted" role="status" i18n="@@common.loading">Loading…</p>
+} @else if (failed()) {
+  <div class="alert-error" role="alert" i18n="@@history.loadFailed">
+    The history could not be loaded. Please try again.
+  </div>
+} @else if (rows().length === 0) {
+  <p class="text-muted empty" i18n="@@history.empty">
+    Nothing here. Every change from now on is kept: who made it, when, and what it was before.
+  </p>
+} @else {
+  <ol class="entries">
+    @for (row of rows(); track row.entry.id) {
+      <li class="card entry">
+        <div class="entry-head">
+          <span class="what">
+            <strong>{{ row.entity }}</strong>
+            @if (row.subject) {
+              <span>{{ row.subject }}</span>
+            }
+          </span>
+          <span class="badge" [attr.data-action]="row.entry.action">{{ row.action }}</span>
+        </div>
+        <p class="text-muted meta">
+          {{ row.who }} · <time [attr.datetime]="row.entry.at">{{ row.when }}</time>
+        </p>
+        @if (row.lines.length > 0) {
+          <dl class="changes">
+            @for (line of row.lines; track $index) {
+              <div class="change">
+                <dt>{{ line.label }}</dt>
+                <dd>{{ line.text }}</dd>
+              </div>
+            }
+          </dl>
+        }
+      </li>
+    }
+  </ol>
+  @if (hasMore()) {
+    <button
+      type="button"
+      class="btn btn-secondary more"
+      [disabled]="loadingMore()"
+      (click)="showOlder()"
+      i18n="@@history.older"
+    >
+      Show older
+    </button>
+  }
+}

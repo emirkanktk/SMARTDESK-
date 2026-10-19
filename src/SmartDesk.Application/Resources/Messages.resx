@@ -189,6 +189,9 @@
   <data name="CheckIn_NothingToCheckIn" xml:space="preserve">
     <value>You have no booking of {0} to check in to right now. Check-in opens {1} minutes before the start and closes {2} minutes after it.</value>
   </data>
+  <data name="Audit_UnknownArea" xml:space="preserve">
+    <value>Choose bookings, resources, rules, problems or accounts.</value>
+  </data>
   <data name="Favorites_Full" xml:space="preserve">
     <value>You can keep up to {0} favourites. Remove one before you add another.</value>
   </data>

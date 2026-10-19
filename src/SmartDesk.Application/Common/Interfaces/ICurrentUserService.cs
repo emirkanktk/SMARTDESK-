@@ -10,4 +10,9 @@ public interface ICurrentUserService
     Guid? TeamId { get; }
 
     bool IsInRole(string role);
+
+    // Whether a request is being served at all: false in the background jobs, which change
+    // things on nobody's behalf. A request without a UserId is someone without an account
+    // (ADR-0052).
+    bool InRequest => true;
 }

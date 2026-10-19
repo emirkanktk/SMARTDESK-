@@ -145,6 +145,7 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
       $localize`:@@guide.admin.overview:Admin shows every reservation, and the resources out of use.`,
       $localize`:@@guide.admin.blocks:Block a resource for cleaning or repairs under Blocked windows; bookings already there have to go first.`,
       $localize`:@@guide.admin.users:Approve sign-ups, change roles and disable accounts in Users; see how the resources are used in the usage report.`,
+      $localize`:@@guide.admin.history:Who cancelled a booking, or changed a room? History, under Admin, keeps every change: who made it, when, and what it was before.`,
     ],
     link: { path: '/admin', label: $localize`:@@guide.admin.link:Open Admin` },
     roles: [Roles.Admin],

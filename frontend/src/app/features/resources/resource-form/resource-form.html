@@ -6,9 +6,20 @@
       <ng-container i18n="@@resources.new">New resource</ng-container>
     }
   </h1>
-  <a class="btn btn-secondary" routerLink="/resources" i18n="@@resourceForm.back"
-    >Back to resources</a
-  >
+  <div class="header-actions">
+    @if (isEdit() && isAdmin()) {
+      <a
+        class="btn btn-secondary"
+        routerLink="/admin/history"
+        [queryParams]="{ resourceId: id() }"
+        i18n="@@resourceForm.history"
+        >History</a
+      >
+    }
+    <a class="btn btn-secondary" routerLink="/resources" i18n="@@resourceForm.back"
+      >Back to resources</a
+    >
+  </div>
 </div>
 
 @if (loading()) {

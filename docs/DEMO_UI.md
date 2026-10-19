@@ -458,6 +458,21 @@ plan by the lift.
 - Point out: they're kept with the account, so the phone has the same stars; and only what she
   may use can be starred (ADR-0051).
 
+### 27. Who changed what
+
+- As the admin, **Admin** → **History**: every change, the newest first - what and which, who
+  and when, and each field before and after. The steps above are in it: Ayşe's bookings, the
+  car approved, a problem reported "by someone without an account", a booking nobody checked in
+  to released by "SmartDesk, by itself".
+- **What** → **Bookings**, a person under **Who**, or some days under **From** and **To** narrow
+  it; **Show older** goes further back.
+- From **Resources**, open Board Room's edit page: **History** beside **Back to resources** shows
+  only Board Room's, with its bookings. Change its capacity, save, and look again: the old number
+  and the new.
+- Point out: the saves write it themselves, in the same transaction, so no way of changing
+  something is left out and nothing rolled back is in it; a password or a QR code only shows that
+  it changed (ADR-0052).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in
