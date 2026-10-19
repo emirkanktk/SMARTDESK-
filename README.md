@@ -113,6 +113,11 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   map of weekdays and hours, and how often bookings go unused: the share cancelled, and the
   share of check-ins nobody came to ([ADR-0044](docs/DECISIONS.md)). It downloads as an Excel
   workbook, in the app's language ([ADR-0045](docs/DECISIONS.md)).
+- **History** - for Admins, every change to bookings, resources, the booking rules, problems
+  and accounts, kept as it's saved: what, who - or that it was someone at the door without an
+  account, or SmartDesk itself - when, and each field before and after, in words. Filters narrow
+  it to an area, a person or some days, and a resource's edit page opens its own history.
+  Passwords and QR codes only show that they changed ([ADR-0052](docs/DECISIONS.md)).
 - **Live updates** - after a reservation is created, changed, or cancelled, every connected
   screen receives `ReservationCreated`, `ReservationUpdated`, or `ReservationCancelled`
   ([ADR-0014](docs/DECISIONS.md)).
@@ -374,6 +379,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Inbox | `GET /api/inbox`, `GET /api/inbox/unread-count`, `POST /api/inbox/{id}/read`, `POST /api/inbox/read-all` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
 | Reports | `GET /api/reports/usage?from=&to=&timeZone=` (Admin) |
+| History | `GET /api/audit?area=&resourceId=&userId=&from=&to=&before=` (Admin) (ADR-0052) |
 | Assistant | `GET /api/assistant`, `POST /api/assistant/messages` (optional, ADR-0029) |
 | Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled`; to one user: `ReservationStartingSoon`, `ReservationReleased`, `ReservationReleaseWarning`, `ReservationEndingSoon`, `InboxMessageReceived` |
 | Ops | `GET /health` |

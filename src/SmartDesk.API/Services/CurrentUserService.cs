@@ -17,4 +17,6 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
         Guid.TryParse(User?.FindFirstValue(SmartDeskClaims.Team), out var team) ? team : null;
 
     public bool IsInRole(string role) => User?.IsInRole(role) ?? false;
+
+    public bool InRequest => httpContextAccessor.HttpContext is not null;
 }

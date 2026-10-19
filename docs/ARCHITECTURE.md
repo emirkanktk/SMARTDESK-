@@ -86,6 +86,11 @@ request has succeeded (ADR-0043). Rules that depend on what a booking is for - h
 ahead, office hours, how many per person - are applied in one place, `BookingPolicy`, which every
 way of booking asks (ADR-0046).
 
+A second interceptor, `AuditInterceptor`, keeps the history of changes: in every save, an
+`AuditEntry` for each row it adds, changes or deletes - who, when, and each column before and
+after - in the same transaction, so a change rolled back leaves nothing behind and no handler has
+to remember it (ADR-0052).
+
 Application code that needs something from outside (Identity, token signing, the current
 HTTP caller) asks for it through an interface in `Application/Common/Interfaces`
 (`IIdentityService`, `IJwtTokenGenerator`, `ICurrentUserService`); Infrastructure or API
@@ -104,10 +109,10 @@ src/
     Entities/          Resource (its features, photo, teams, blocks, place on a plan),
                           ResourceType (with its booking rules), Reservation (attendees,
                           series), InboxMessage, IssueReport, FloorPlan, WaitlistEntry,
-                          OfficeHours
+                          OfficeHours, AuditEntry
     Enums/              ResourceStatus, ReservationStatus, AccountStatus, AttendeeResponse,
                           InboxMessageKind, IssueCategory, IssueStatus, RecurrenceFrequency,
-                          WeekDays
+                          WeekDays, AuditAction, AuditActor
     Constants/          Roles (Admin, Manager, Employee)
     Rules/              ReservationOverlap and ResourceBlockOverlap - the one definition of
                           "time range taken"; CheckInRules - the check-in window and when a
@@ -126,9 +131,10 @@ src/
   SmartDesk.Infrastructure/
     Identity/           ApplicationUser, IdentityService, JwtTokenGenerator,
                           JwtOptions, sessions, IdentityDataSeeder
-    Persistence/         SmartDeskDbContext, Migrations/, FreedSlotsInterceptor, Seed/
-                          (resource types, office hours, Development demo resources,
-                          DemoData/ for `--demo-data`)
+    Persistence/         SmartDeskDbContext, Migrations/, FreedSlotsInterceptor, Auditing/
+                          (AuditInterceptor and what it keeps), Seed/ (resource types,
+                          office hours, Development demo resources, DemoData/ for
+                          `--demo-data`)
     Email/               the email queue, sent over SMTP or to the log
     Reports/             UsageReportWorkbook: the usage report as Excel (ClosedXML)
     Calendar/            IcalCalendarWriter: bookings as iCalendar files and feeds (Ical.Net)
@@ -231,8 +237,8 @@ Angular 22, standalone components throughout (no NgModules), feature-based folde
 `frontend/src/app/features/`, one folder per screen: the MVP list (login, dashboard,
 resources, availability, reservation, my-reservations, admin) plus home (the public front
 page), calendar, reports and resource-blocks, and since then floor-plan, booking-rules, inbox,
-issues, check-in, door-screen, door-visit, qr-labels, team, users, profile, guide and
-approvals. Shared, cross-feature code (HTTP interceptor, auth guard, typed API clients) lives
+issues, check-in, door-screen, door-visit, qr-labels, team, users, profile, guide,
+approvals and history. Shared, cross-feature code (HTTP interceptor, auth guard, typed API clients) lives
 under `frontend/src/app/core/`.
 Forms use Reactive Forms; local/UI state uses Signals rather than a global store, since the
 app's state needs (a list of resources, a set of reservations, the current user) are small
@@ -386,6 +392,11 @@ picker drops seconds and any difference would count as a change.
   `<app-favorite-toggle>` is the star wherever a resource is listed. The dashboard's **Your
   favourites** works out each one's state with `roomNowFor`, from today's bookings it already
   has and today's blocked windows, asked once a day.
+- **History (ADR-0052).** `/admin/history` (`AuditHistory`) asks `GET /api/audit` through
+  `AuditService` a page at a time, with its filters in a reactive form and a resource's id from
+  the address (`?resourceId=`, the link on the resource form). `audit-text.ts` says each entry
+  in words - what and which, who, each column before and after - with the names the page brings
+  and the kinds of resource, in the screen's language and time zone.
 - **The guide.** `/guide` lists `GUIDE_SECTIONS` (`features/guide/guide-sections.ts`): each
   part's steps as `$localize` texts, the numbers in them taken from the rules' constants
   (`CHECK_IN`, `EXTENSION_OPTIONS`), filtered by role and by whether the server has the
@@ -467,10 +478,11 @@ another way, the reason is here too.
 Besides the plan, the same months brought accounts and teams (ADR-0020 - ADR-0022), Turkish and
 English throughout (ADR-0023, ADR-0025), sessions renewed from an HttpOnly cookie (ADR-0026),
 resource photos (ADR-0027), the booking assistant (ADR-0029, ADR-0036), meetings (ADR-0032),
-running over (ADR-0033) and problems reported at the door (ADR-0037). From the plan's backup
-pool came bookings in a calendar app: a file per booking and a personal link to subscribe to
-(ADR-0048); and bookings that wait for an Admin's approval, which hold their time meanwhile
-(ADR-0049).
+running over (ADR-0033), problems reported at the door (ADR-0037) and the door's page without
+an account (ADR-0050). From the plan's backup pool came bookings in a calendar app: a file per
+booking and a personal link to subscribe to (ADR-0048); bookings that wait for an Admin's
+approval, which hold their time meanwhile (ADR-0049); favourite resources (ADR-0051); and a
+history of every change for Admins, written by an interceptor in the same save (ADR-0052).
 
 ## 9. Team ownership boundaries
 

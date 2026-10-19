@@ -26,6 +26,7 @@ public interface IApplicationDbContext
     DbSet<OfficeHours> OfficeHours { get; }
     DbSet<CalendarFeed> CalendarFeeds { get; }
     DbSet<FavoriteResource> FavoriteResources { get; }
+    DbSet<AuditEntry> AuditEntries { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
