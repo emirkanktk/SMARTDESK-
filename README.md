@@ -283,10 +283,10 @@ not for a shared one.
 
 ### Optional: run the API in Docker
 
-`docker compose up -d` starts PostgreSQL, Mailpit and Seq only. To run the API next to them, set a
-signing key of at least 32 characters and start the `api` profile. Do not also `dotnet run`
-against the same database if you only wanted one of them; they can share PostgreSQL, but
-the container listens on port 8080, not the launchSettings ports.
+`docker compose up -d` starts PostgreSQL, Mailpit and Seq only. To run the API next to them,
+set a signing key of at least 32 characters and start the `api` profile. Do not also
+`dotnet run` against the same database if you only wanted one of them; they can share
+PostgreSQL, but the container listens on port 8080, not the launchSettings ports.
 
 ```bash
 export JWT_KEY="<a long random string>"
