@@ -41,6 +41,8 @@ public sealed class PostgresApiFixture : WebApplicationFactory<Program>, IAsyncL
         builder.UseSetting("Assistant:ApiKey", string.Empty);
         // So a test can wait for a reminder the real job sends, instead of up to 30 seconds.
         builder.UseSetting("Reminders:IntervalSeconds", "1");
+        // The tests' logs stay out of a developer's own Seq (ADR-0053).
+        builder.UseSetting("Seq:ServerUrl", string.Empty);
         builder.UseEnvironment("Development");
     }
 }

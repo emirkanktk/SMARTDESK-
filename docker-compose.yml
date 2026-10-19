@@ -24,8 +24,22 @@ services:
       - "1025:1025"
       - "8025:8025"
 
-  # Opt-in. `docker compose up -d` starts PostgreSQL and Mailpit only; the `api` profile adds
-  # the API on port 8080, and the `app` profile the API and the app behind nginx (`web`).
+  # The API's logs, each line with its fields, to search at http://localhost:5341 (ADR-0053).
+  # Seq is free for one person's development; ACCEPT_EULA accepts its licence for that. It has
+  # no sign-in, so it answers this machine only.
+  seq:
+    image: datalust/seq:2026.1
+    container_name: smartdesk-seq
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
+    ports:
+      - "127.0.0.1:5341:80"
+    volumes:
+      - smartdesk-seq-data:/data
+
+  # Opt-in. `docker compose up -d` starts PostgreSQL, Mailpit and Seq only; the `api` profile
+  # adds the API on port 8080, and the `app` profile the API and the app behind nginx (`web`).
   api:
     build: .
     profiles: ["api", "app"]
@@ -41,6 +55,7 @@ services:
       Database__MigrateOnStartup: "true"
       Jwt__Key: ${JWT_KEY:-}
       Email__Smtp__Host: mailpit
+      Seq__ServerUrl: http://seq
       # nginx in `web` is the reverse proxy whose X-Forwarded-For it believes (ADR-0028).
       ForwardedHeaders__KnownProxies__0: 172.28.42.10
     networks: [default, proxy]
@@ -83,3 +98,4 @@ networks:
 
 volumes:
   smartdesk-postgres-data:
+  smartdesk-seq-data:

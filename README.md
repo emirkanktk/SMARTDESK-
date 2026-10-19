@@ -153,6 +153,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   anonymous; account lockout plus a per-client login rate limit ([ADR-0008](docs/DECISIONS.md)).
 - **Every error is RFC 7807 ProblemDetails**, and the 409 messages are written to be shown to
   users as-is.
+- **Logs you can query.** Every request is a line with its status, time and user, and every
+  value in a message a field of its own, searchable in Seq; tokens in query strings never reach
+  it ([ADR-0053](docs/DECISIONS.md)).
 
 ## Prerequisites
 
@@ -168,7 +171,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 ## Backend setup
 
 ```bash
-# 1. Start PostgreSQL and Mailpit (catches the emails the API sends)
+# 1. Start PostgreSQL, Mailpit (catches the emails the API sends) and Seq (its log)
 docker compose up -d
 
 # 2. Set the JWT signing key (local dev only - never commit this; at least 32 characters)
@@ -200,6 +203,15 @@ elsewhere). For a real mail server, set `Email:Smtp:Host`, `Port` and `From`, pl
 `Username` / `Password` as environment variables or secrets. Outside Development the API
 refuses to start without `Email:Smtp:Host`. In Development, leaving it out writes each email,
 link included, to the API log instead.
+
+**Logs (ADR-0053).** The API logs with Serilog: to the console, and in Development to **Seq**,
+started by `docker compose up -d`: open `http://localhost:5341` to search it. Every request is
+a line - method, path, status, time, and `UserId` when someone is signed in - and every value
+in a message is a field of its own, so `StatusCode >= 500` or `UserId = 'â€¦'` finds what you're
+after. Without Seq the console has it all. Elsewhere, set `Seq:ServerUrl` (and `Seq:ApiKey`)
+for a Seq of your own, or leave it out. How much is written comes from the `Serilog` section
+of `appsettings.json`: `Serilog__MinimumLevel__Default=Debug` as an environment variable, say.
+Query strings, which can carry tokens, are never written.
 
 **Check-in.** A booking of a resource that asks for a check-in is released when nobody has
 checked in `CheckIn:GraceMinutes` after its start: 15 by default, from 1 to 60 (ADR-0040).
@@ -244,7 +256,8 @@ Five wrong passwords in a row lock an account for five minutes, and one client c
 most 60 logins a minute in Development (10 elsewhere; `RateLimiting:LoginPermitsPerMinute`).
 
 `GET /health` answers `Healthy` once the API can reach PostgreSQL and every migration has
-been applied - a quick check that the backend is up and usable.
+been applied - a quick check that the backend is up and usable. `GET /health/live` answers
+as long as the process runs, whatever the database says.
 
 **A lived-in office for a demo (ADR-0047).** On a fresh Development database - migrated, with
 no bookings yet - run the API once with `--demo-data`:
@@ -270,10 +283,10 @@ not for a shared one.
 
 ### Optional: run the API in Docker
 
-`docker compose up -d` starts PostgreSQL and Mailpit only. To run the API next to them, set a
-signing key of at least 32 characters and start the `api` profile. Do not also `dotnet run`
-against the same database if you only wanted one of them; they can share PostgreSQL, but
-the container listens on port 8080, not the launchSettings ports.
+`docker compose up -d` starts PostgreSQL, Mailpit and Seq only. To run the API next to them,
+set a signing key of at least 32 characters and start the `api` profile. Do not also
+`dotnet run` against the same database if you only wanted one of them; they can share
+PostgreSQL, but the container listens on port 8080, not the launchSettings ports.
 
 ```bash
 export JWT_KEY="<a long random string>"
@@ -293,8 +306,9 @@ resource types come from a migration and exist in every environment (ADR-0010).
 
 ### Optional: the whole app in Docker
 
-The `app` profile runs everything in containers: PostgreSQL, Mailpit, the API, and the
-app's production build behind nginx (ADR-0031). No .NET SDK or Node.js needed, only Docker:
+The `app` profile runs everything in containers: PostgreSQL, Mailpit, Seq, the API, and the
+app's production build behind nginx (ADR-0031). The API's log is in Seq at
+`http://localhost:5341`. No .NET SDK or Node.js needed, only Docker:
 
 ```bash
 export JWT_KEY="<a long random string>"
@@ -382,7 +396,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | History | `GET /api/audit?area=&resourceId=&userId=&from=&to=&before=` (Admin) (ADR-0052) |
 | Assistant | `GET /api/assistant`, `POST /api/assistant/messages` (optional, ADR-0029) |
 | Real-time | SignalR hub `/hubs/reservations`: `ReservationCreated`, `ReservationUpdated`, `ReservationCancelled`; to one user: `ReservationStartingSoon`, `ReservationReleased`, `ReservationReleaseWarning`, `ReservationEndingSoon`, `InboxMessageReceived` |
-| Ops | `GET /health` |
+| Ops | `GET /health`, `GET /health/live` |
 
 ## Frontend setup
 

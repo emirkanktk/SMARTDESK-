@@ -3,11 +3,13 @@ using System.Net;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SmartDesk.API.Authentication;
 using SmartDesk.API.Hubs;
+using SmartDesk.API.Logging;
 using SmartDesk.API.Middleware;
 using SmartDesk.API.OpenApi;
 using SmartDesk.API.RateLimiting;
@@ -19,6 +21,9 @@ using SmartDesk.Infrastructure;
 using SmartDesk.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Structured logs, to the console and to Seq (ADR-0053).
+builder.Services.AddSmartDeskLogging();
 
 // Add services to the container.
 
@@ -174,6 +179,10 @@ if (app.Environment.IsDevelopment())
 // client's address and scheme rather than a reverse proxy's (ADR-0028).
 app.UseForwardedHeaders();
 
+// A line for every request (ADR-0053). Outside the exception handler, so a request it answers
+// with a 500 is logged once, as that 500.
+app.UseRequestLogging();
+
 // Then the language, so everything after it - errors included - answers in the request's language
 // (ADR-0023). Accept-Language picks Turkish or English; no header, or any other language, is
 // English. Only the UI culture follows it, which is what messages are looked up in. Formatting
@@ -201,6 +210,7 @@ app.UseHttpsRedirection();
 app.UseCors(FrontendCorsPolicy);
 
 app.UseAuthentication();
+app.UseUserInLogs();
 app.UseAuthorization();
 
 // After CORS so a 429 still carries the CORS headers the browser needs to read it, and after
@@ -213,6 +223,9 @@ app.UsePasswordChangeGate();
 app.MapControllers();
 app.MapHub<ReservationHub>("/hubs/reservations");
 app.MapHealthChecks("/health").AllowAnonymous();
+// Alive, for a liveness probe: the process answers, whatever the database says (ADR-0053).
+// /health above is ready: the database answers, with every migration applied.
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).AllowAnonymous();
 
 app.Run();
 

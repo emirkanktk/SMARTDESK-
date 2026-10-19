@@ -20,7 +20,8 @@ reflects reservation changes to every open screen in real time.
 | Auth | ASP.NET Core Identity + JWT bearer tokens |
 | Real-time | SignalR |
 | API docs | Built-in ASP.NET Core OpenAPI (`/openapi/v1.json`) + Swagger UI (`/swagger`), Development only |
-| Local infra | Docker Compose: PostgreSQL and Mailpit; optionally the API, or the API and the app behind nginx (ADR-0031) |
+| Logging | Serilog, to the console and to Seq (ADR-0053) |
+| Local infra | Docker Compose: PostgreSQL, Mailpit and Seq; optionally the API, or the API and the app behind nginx (ADR-0031) |
 
 ## 3. Backend: Onion Architecture
 
@@ -101,6 +102,11 @@ them to `ProblemDetails` responses: FluentValidation's `ValidationException` →
 `UnauthorizedException` → 401, `ForbiddenAccessException` → 403, `NotFoundException` →
 404, `ConflictException` → 409, anything unexpected → 500 (logged).
 
+Logs are Serilog's (ADR-0053): every `ILogger` message keeps its values as fields, on the
+console and in Seq when `Seq:ServerUrl` is set. `LoggingSetup` adds a line per request, with
+whose it was, and puts the user on every line written while a request runs; query strings,
+bodies and headers are never written.
+
 ### 3.3 Backend project structure
 
 ```
@@ -155,6 +161,7 @@ src/
                           asking whether a booking about to end needs longer
     OpenApi/              Bearer security scheme for Swagger UI
     Middleware/           GlobalExceptionHandler
+    Logging/              LoggingSetup: Serilog, a line per request, the user on every line
 tests/
   SmartDesk.Tests/        unit tests for Application handlers and Domain rules;
                           handlers that query run against SmartDeskDbContext on
@@ -481,8 +488,9 @@ resource photos (ADR-0027), the booking assistant (ADR-0029, ADR-0036), meetings
 running over (ADR-0033), problems reported at the door (ADR-0037) and the door's page without
 an account (ADR-0050). From the plan's backup pool came bookings in a calendar app: a file per
 booking and a personal link to subscribe to (ADR-0048); bookings that wait for an Admin's
-approval, which hold their time meanwhile (ADR-0049); favourite resources (ADR-0051); and a
-history of every change for Admins, written by an interceptor in the same save (ADR-0052).
+approval, which hold their time meanwhile (ADR-0049); favourite resources (ADR-0051); a
+history of every change for Admins, written by an interceptor in the same save (ADR-0052); and
+logs to query in Seq, a line per request with whose it was (ADR-0053).
 
 ## 9. Team ownership boundaries
 
