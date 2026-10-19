@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
+import { DEFAULT_CHECK_IN_TIMES, setCheckInTimes } from '../../core/models/reservation.model';
 import { ResourceService } from '../../core/services/resource.service';
 import { fakeResource } from '../../../testing/resource-fixtures';
 import { qrModules } from '../../shared/utils/qr';
@@ -45,6 +46,19 @@ describe('CheckInPoster', () => {
       'from 10 minutes before your start until 15 minutes after',
     );
     expect(element.querySelector('.report')!.textContent).toContain('report the problem');
+  });
+
+  it('says a one-minute grace as a minute', async () => {
+    setCheckInTimes({ ...DEFAULT_CHECK_IN_TIMES, graceMinutes: 1 });
+    try {
+      const element = await render();
+
+      expect(element.querySelector('.how')!.textContent).toContain(
+        'from 10 minutes before your start until 1 minute after',
+      );
+    } finally {
+      setCheckInTimes(DEFAULT_CHECK_IN_TIMES);
+    }
   });
 
   it("for a resource without check-in, says what scanning is for, and doesn't ask to check in", async () => {

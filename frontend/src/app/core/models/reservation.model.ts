@@ -1,6 +1,7 @@
 // Shapes of the reservation endpoints - see docs/API_CONTRACTS.md, Reservations.
 
-import { Signal, signal } from '@angular/core';
+import { Signal, computed, signal } from '@angular/core';
+import { formatMinutes } from '../../shared/utils/date-time';
 
 /** Pending: waiting for an Admin's approval, which holds its time like a booking (ADR-0049). */
 export const RESERVATION_STATUSES = ['Confirmed', 'Cancelled', 'Pending'] as const;
@@ -214,6 +215,19 @@ export const CHECK_IN: Signal<CheckInTimes> = checkInTimes.asReadonly();
 export function setCheckInTimes(times: CheckInTimes): void {
   checkInTimes.set(times);
 }
+
+/**
+ * The check-in times in words - "10 minutes", or "1 minute" with a one-minute grace - for the
+ * texts that say them.
+ */
+export const CHECK_IN_WORDS = computed(() => {
+  const { opensBeforeMinutes, graceMinutes, warnBeforeReleaseMinutes } = CHECK_IN();
+  return {
+    opensBefore: formatMinutes(opensBeforeMinutes),
+    grace: formatMinutes(graceMinutes),
+    warnBefore: formatMinutes(warnBeforeReleaseMinutes),
+  };
+});
 
 export interface CheckInWindow {
   opensAt: Date;

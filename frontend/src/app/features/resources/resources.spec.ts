@@ -237,6 +237,11 @@ describe('Resources', () => {
     expect(
       rowFor('Meeting Room A').querySelector('a[href="/resources/res-1/edit"]'),
     ).not.toBeNull();
+    // Its QR code to print, a click from the list.
+    expect(
+      rowFor('Meeting Room A').querySelector('a[href="/resources/res-1/check-in-poster"]')!
+        .textContent,
+    ).toContain('QR code');
     expect(rowFor('Meeting Room A').querySelector('.actions button')).not.toBeNull();
     for (const name of ['Projector P-1', 'Van', 'Desk 12']) {
       expect(rowFor(name).querySelector('.actions')!.children.length).toBe(0);
@@ -249,7 +254,8 @@ describe('Resources', () => {
     getResources.mockReturnValue(of([fakeResource({ teams: [zeynep, okan] }), desk]));
     await render();
 
-    expect(element.querySelectorAll('.actions a').length).toBe(2);
+    expect(element.querySelectorAll('.actions a').length).toBe(4);
+    expect(element.querySelectorAll('.actions a.qr').length).toBe(2);
     expect(element.querySelectorAll('.actions button').length).toBe(2);
   });
 
