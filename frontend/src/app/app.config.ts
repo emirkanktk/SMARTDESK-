@@ -1,11 +1,13 @@
 import {
   ApplicationConfig,
   inject,
+  isDevMode,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideServiceWorker } from '@angular/service-worker';
 import { routes } from './app.routes';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { jwtInterceptor } from './core/interceptors/jwt.interceptor';
@@ -25,5 +27,12 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => inject(AuthService).restoreSession()),
     // And reads the check-in times the API uses, since the grace is a setting (ADR-0040).
     provideAppInitializer(() => inject(CheckInTimesService).load()),
+    // Installable, and opening without a network (ADR-0054). In a production build only, so
+    // `ng serve` and the tests always run what's on disk. Registered once the app has settled,
+    // so its first load isn't slowed by the files the worker fetches.
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
   ],
 };

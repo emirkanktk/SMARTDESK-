@@ -74,6 +74,11 @@ on to the API.
   session cookie, which is `Secure` (ADR-0026), so a reload asks you to sign in again.
 - A printed code keeps the address it was made with: print the ones for the doors once the app
   has its final domain.
+- **As an app (ADR-0054):** a production build has a service worker, and the browser offers to
+  install it: **Install app** in Chrome's menu, or **Share**, then **Add to Home Screen** on an
+  iPhone. `ng serve` has none, and changes the pages it serves, so try it on the whole app in
+  Docker, which serves the build as it is. The installed app belongs to its address: a new
+  tunnel address means installing it again.
 
 ## Before a pull request
 

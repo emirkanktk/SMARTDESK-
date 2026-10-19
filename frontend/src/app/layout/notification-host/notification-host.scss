@@ -32,6 +32,14 @@
     border-color: var(--color-danger);
   }
 
+  &.offline {
+    border-color: var(--color-warning);
+  }
+
+  &.update {
+    align-items: center;
+  }
+
   span {
     flex: 1;
   }
