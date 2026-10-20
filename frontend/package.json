@@ -6,6 +6,7 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "serve:build": "node scripts/serve-build.mjs",
     "test": "ng test",
     "test:time-zones": "node scripts/test-time-zones.mjs",
     "i18n:extract": "node scripts/i18n.mjs",

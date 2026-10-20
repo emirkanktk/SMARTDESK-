@@ -1804,9 +1804,10 @@ new tables.
 - **Trade-offs:**
   - Offline, the app opens but has nothing new to show: reading bookings offline would mean
     keeping them on the device.
-  - An iPhone takes no SVG for its home screen and shows a picture of the page instead, until a
-    PNG `apple-touch-icon` is added.
+  - An iPhone takes no SVG for its home screen. Since 2026-10-20 it has a PNG
+    `apple-touch-icon`, and the manifest PNGs at 192 and 512 pixels besides the SVGs.
   - The installed app belongs to its address: through a quick tunnel, whose address changes with
     each start (frontend README, "On a phone"), it's installed again each time.
   - `ng serve` has no worker, and changes the pages it serves, so it can't be tried there: the
-    whole app in Docker serves the build as it is.
+    whole app in Docker serves the build as it is, and so does `npm run serve:build`, which
+    passes `/api` and `/hubs` on to an API on the machine as nginx does.
