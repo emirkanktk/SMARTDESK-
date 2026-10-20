@@ -57,12 +57,23 @@
   background: var(--color-danger);
 }
 
+// On a phone the plan keeps a size its names can be read at and scrolls sideways, which the hint
+// says (ADR-0055).
+.plan-scroll {
+  margin-bottom: var(--space-3);
+}
+
+.scroll-hint {
+  display: none;
+  margin: 0 0 var(--space-2);
+  font-size: 0.8125rem;
+}
+
 // The floor: its plan stretched to the box, which has the plan's own shape, and the resources
 // placed on it by their fractions of its width and height.
 .plan {
   position: relative;
   width: 100%;
-  margin-bottom: var(--space-3);
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -207,9 +218,22 @@
 }
 
 @media (max-width: 600px) {
-  .spot {
-    max-width: 6.5rem;
-    font-size: 0.6875rem;
+  .plan-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .plan {
+    min-width: 40rem;
+  }
+
+  // Inside the plan, where the scrolling box doesn't cut it off.
+  .plan.arranging {
+    outline-offset: -2px;
+  }
+
+  .scroll-hint {
+    display: block;
   }
 
   .arrange {

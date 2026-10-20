@@ -1,38 +1,29 @@
-import { Component, Signal, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { Role, Roles } from '../../core/constants/roles';
+import { Roles } from '../../core/constants/roles';
 import { AuthService } from '../../core/services/auth.service';
 import { InboxService } from '../../core/services/inbox.service';
 import { IssueAlertsService } from '../../core/services/issue-alerts.service';
-import { Icon, IconName } from '../../shared/components/icon/icon';
+import { Icon } from '../../shared/components/icon/icon';
 import { HideOnScroll } from '../../shared/directives/hide-on-scroll';
 import { LanguageSwitch } from '../../shared/components/language-switch/language-switch';
 import { Logo } from '../../shared/components/logo/logo';
 import { ThemeSwitch } from '../../shared/components/theme-switch/theme-switch';
 import { Assistant } from '../assistant/assistant';
 import { EndingSoon } from '../ending-soon/ending-soon';
+import { NavItem } from '../nav-item';
 import { ProfileMenu } from '../profile-menu/profile-menu';
-
-interface NavItem {
-  path: string;
-  label: string;
-  icon: IconName;
-  /** Shown only to these roles; everyone sees it when left out. */
-  roles?: readonly Role[];
-  /** A number next to the label while it isn't 0, e.g. unread messages. */
-  count?: Signal<number>;
-  /** What the number counts, for screen readers: unread messages unless it says otherwise. */
-  counts?: 'new';
-}
+import { TabBar } from '../tab-bar/tab-bar';
 
 /**
  * Frame around every signed-in screen: the navigation, the language and theme switches, and
  * the user's menu (profile, password, sign out). A sidebar on wide screens, with the user's
- * card at the bottom; on narrower ones a bar on top, its links in a row that scrolls sideways.
- * That bar gets out of the way while the page scrolls down and is back on the way up. The
- * assistant's button sits in the bottom corner when the server has one (ADR-0029). The Inbox
- * link counts the unread messages (ADR-0032), and a booking about to end asks in the other
- * corner whether it needs longer (ADR-0033).
+ * card at the bottom; on narrower ones a bar on top, its links in a row that scrolls sideways,
+ * and on a phone a tab bar at the bottom instead of that row (ADR-0055). The bar on top gets out
+ * of the way while the page scrolls down and is back on the way up. The assistant's button sits
+ * in the bottom corner when the server has one (ADR-0029). The Inbox link counts the unread
+ * messages (ADR-0032), and a booking about to end asks in the other corner whether it needs
+ * longer (ADR-0033).
  */
 @Component({
   imports: [
@@ -46,6 +37,7 @@ interface NavItem {
     LanguageSwitch,
     Logo,
     ProfileMenu,
+    TabBar,
     ThemeSwitch,
   ],
   selector: 'app-shell',

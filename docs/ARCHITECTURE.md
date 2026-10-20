@@ -409,6 +409,12 @@ picker drops seconds and any difference would count as a change.
   `manifest.webmanifest`. `AppUpdateService` offers a new version once the worker has it (a door
   screen just reloads), `ConnectivityService` follows the browser going offline and back, and
   the notification host shows both above its toasts.
+- **On a phone (ADR-0055).** Up to 640px the shell adds `<app-tab-bar>` (`layout/tab-bar`), a
+  bar at the bottom with four screens and **Menu**, a sheet with every screen in the shell's
+  `visibleNavItems` (`NavItem`, `layout/nav-item.ts`), and hides its own strip of links. While
+  it's there, `has-tab-bar` on `<body>` sets `--tab-bar-space`, which whatever is fixed at the
+  bottom (toasts, the assistant, the ending-soon card) and the page's own end add.
+  `ThemeService` keeps `<meta name="theme-color">` the top bar's colour in either theme.
 - **The guide.** `/guide` lists `GUIDE_SECTIONS` (`features/guide/guide-sections.ts`): each
   part's steps as `$localize` texts, the numbers in them taken from the rules' constants
   (`CHECK_IN`, `EXTENSION_OPTIONS`), filtered by role and by whether the server has the
@@ -495,8 +501,9 @@ an account (ADR-0050). From the plan's backup pool came bookings in a calendar a
 booking and a personal link to subscribe to (ADR-0048); bookings that wait for an Admin's
 approval, which hold their time meanwhile (ADR-0049); favourite resources (ADR-0051); a
 history of every change for Admins, written by an interceptor in the same save (ADR-0052);
-logs to query in Seq, a line per request with whose it was (ADR-0053); and an app to install,
-which opens without a network (ADR-0054).
+logs to query in Seq, a line per request with whose it was (ADR-0053); an app to install,
+which opens without a network (ADR-0054); and on a phone, the main screens in a bar at the
+bottom, where a thumb reaches (ADR-0055).
 
 ## 9. Team ownership boundaries
 

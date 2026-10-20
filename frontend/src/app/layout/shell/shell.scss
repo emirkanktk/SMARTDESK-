@@ -136,42 +136,37 @@ app-profile-menu {
   }
 }
 
-// Unread messages next to the Inbox link: the brand's colour, so it's seen at a glance.
-.nav-count {
-  min-width: 1.35rem;
-  padding: 0 0.4rem;
-  border-radius: 999px;
-  background: var(--gradient-brand);
-  color: var(--color-on-primary);
-  font-size: 0.7rem;
-  font-weight: 800;
-  line-height: 1.35rem;
-  text-align: center;
-}
-
+// At its end, room for a phone's tab bar too (--tab-bar-space, 0 without one).
 .content {
   flex: 1;
   width: 100%;
   max-width: 1240px;
   margin: 0 auto;
-  padding: var(--space-5);
+  padding: var(--space-5) var(--space-5) calc(var(--space-5) + var(--tab-bar-space));
 
   // Scrolled to the end, the page's last buttons stay clear of the assistant's.
   &.with-assistant {
-    padding-bottom: 6.5rem;
+    padding-bottom: calc(6.5rem + var(--tab-bar-space));
   }
 }
 
+// A phone: the links are in the tab bar at the bottom instead (ADR-0055).
 @media (max-width: 640px) {
   .bar {
     --edge: var(--space-4);
 
+    grid-template-areas: 'brand inbox preferences menu';
     gap: var(--space-2) var(--space-3);
-    padding-top: var(--space-2);
+    padding-block: var(--space-2);
+  }
+
+  .nav {
+    display: none;
   }
 
   .content {
-    padding: var(--space-4);
+    padding-inline: var(--space-4);
+    padding-top: var(--space-4);
   }
 }
 

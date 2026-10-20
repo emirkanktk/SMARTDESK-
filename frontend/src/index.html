@@ -4,14 +4,22 @@
     <meta charset="utf-8" />
     <title>SmartDesk</title>
     <base href="/" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- viewport-fit=cover: the page reaches a phone's rounded edges, and the tab bar keeps its
+         buttons clear of the home indicator with env(safe-area-inset-bottom) (ADR-0055). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" sizes="32x32" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <!-- Installable on a phone or a computer (ADR-0054). -->
     <link rel="manifest" href="manifest.webmanifest" />
-    <!-- An iPhone's home screen takes this PNG; it ignores the manifest's icons. -->
+    <!-- An iPhone's home screen takes this PNG; it ignores the manifest's icons. Opened from
+         there, the app has its own name and a status bar that keeps clear of the page. -->
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-    <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="SmartDesk" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- The status bar's colour: the top bar's, set again with the theme (theme.service.ts). -->
+    <meta name="theme-color" content="#ffffff" />
     <script>
       // The colour theme before anything is drawn, so a dark page never flashes white: the
       // stored choice, or the system's setting (core/theme/theme.service.ts keeps it after).
@@ -27,6 +35,8 @@
               : 'light';
         }
         document.documentElement.setAttribute('data-theme', theme);
+        var bars = document.querySelector('meta[name="theme-color"]');
+        if (bars) bars.setAttribute('content', theme === 'dark' ? '#111727' : '#ffffff');
       })();
     </script>
   </head>

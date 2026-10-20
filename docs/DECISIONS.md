@@ -1811,3 +1811,45 @@ new tables.
   - `ng serve` has no worker, and changes the pages it serves, so it can't be tried there: the
     whole app in Docker serves the build as it is, and so does `npm run serve:build`, which
     passes `/api` and `/hubs` on to an API on the machine as nginx does.
+
+## ADR-0055: On a phone, the main screens in a bar at the bottom, and the rest in a menu
+
+**Decision:**
+- Up to 640px wide, a bar at the bottom (`TabBar`) has the screens used most away from a desk:
+  the dashboard, the floor plan, booking - in the middle, raised in the brand's colours - and
+  one's own bookings, and **Menu**, which opens every screen this user may open in a sheet from
+  below, each with what it counts (unread messages, new problems). A dot on Menu says something
+  in it is waiting. The bar on top keeps the logo, the inbox, the preferences and the account
+  menu; its strip of links is gone at that width. Wider screens are as they were: the bar on
+  top, the sidebar from 1100px.
+- The sheet is a modal dialog: the focus goes into it and Tab goes round inside it. Escape, its
+  Close button, the backdrop or choosing a screen closes it; Escape and Close give the focus
+  back to Menu.
+- What's fixed at the bottom - the toasts, the assistant's button, the "ending soon" card -
+  stands above the bar, and a page leaves room for it at its end: `has-tab-bar` on `<body>` sets
+  `--tab-bar-space` (`styles.scss`), which they add to their own distance from the bottom.
+- The page reaches a phone's rounded edges (`viewport-fit=cover`), and the bar keeps its buttons
+  clear of the home indicator (`env(safe-area-inset-bottom)`).
+- The status bar and the browser's toolbar (`theme-color`) take the top bar's colour, white or
+  the dark theme's navy, rather than the brand's indigo: set before the app starts by the script
+  in `index.html`, and again with every change of theme by `ThemeService`. Opened from an
+  iPhone's home screen the app is called SmartDesk (`apple-mobile-web-app-*`).
+- On a phone, fields are 16px, so an iPhone doesn't zoom in when one is touched, and a tap
+  doesn't flash grey.
+- The floor plan keeps a width of 40rem (640px) on a phone and scrolls sideways in a box of its
+  own, which a line above it says, rather than shrinking to the screen with its names at 11px.
+
+**Why:**
+- At 390px the links on top scrolled sideways, most of them out of sight; the assistant's
+  button covered the end of a page; the floor plan's names overlapped; and an iPhone zoomed
+  into every field it was given.
+- A thumb reaches the bottom of a phone, which is where phone apps keep their main screens. The
+  four in the bar are what people do on the way to a desk or a room: see their day, find what's
+  free, book it, and see their bookings. Everything else is one tap further, in Menu.
+- Menu lists what the bar on top lists (the shell's `visibleNavItems`, as `NavItem`s), with the
+  same roles and counts, so the two can't say different things.
+- **Trade-offs:**
+  - Two ways around the app, one for each width, to keep in step; the one list of screens does
+    most of it.
+  - A tablet held upright (641px to 1099px) keeps the bar on top.
+  - A phone shows the floor plan a part at a time.

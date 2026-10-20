@@ -1,9 +1,9 @@
-// A button in the bottom corner, and above it the conversation. Toasts (z-index 1000) still
-// show over both. On a phone the conversation takes the whole screen.
+// A button in the bottom corner, above a phone's tab bar, and above it the conversation. Toasts
+// (z-index 1000) still show over both. On a phone the conversation takes the whole screen.
 .launcher {
   position: fixed;
   right: var(--space-4);
-  bottom: var(--space-4);
+  bottom: calc(var(--space-4) + var(--tab-bar-space));
   z-index: 890;
   display: inline-flex;
   align-items: center;

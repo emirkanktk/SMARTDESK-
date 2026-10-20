@@ -1,0 +1,99 @@
+<nav class="tabs" aria-label="Shortcuts" i18n-aria-label="@@tabs.label">
+  <a class="tab" routerLink="/dashboard" routerLinkActive="active" ariaCurrentWhenActive="page">
+    <app-icon name="dashboard" />
+    <span i18n="@@tabs.home">Home</span>
+  </a>
+  <a class="tab" routerLink="/floor-plan" routerLinkActive="active" ariaCurrentWhenActive="page">
+    <app-icon name="map" />
+    <span i18n="@@tabs.floor">Floor plan</span>
+  </a>
+  <a
+    class="tab book"
+    routerLink="/reservations/new"
+    routerLinkActive="active"
+    ariaCurrentWhenActive="page"
+  >
+    <span class="bubble"><app-icon name="calendar-plus" /></span>
+    <span i18n="@@tabs.book">Book</span>
+  </a>
+  <a
+    class="tab"
+    routerLink="/reservations/mine"
+    routerLinkActive="active"
+    ariaCurrentWhenActive="page"
+  >
+    <app-icon name="clipboard" />
+    <span i18n="@@tabs.mine">Mine</span>
+  </a>
+  <button
+    #menuButton
+    type="button"
+    class="tab"
+    [class.active]="open()"
+    [attr.aria-expanded]="open()"
+    aria-controls="tab-menu"
+    (click)="toggle()"
+  >
+    <span class="icon-wrap">
+      <app-icon name="menu" />
+      @if (attention()) {
+        <span class="attention" aria-hidden="true"></span>
+      }
+    </span>
+    <span i18n="@@tabs.menu">Menu</span>
+  </button>
+</nav>
+
+@if (open()) {
+  <div class="backdrop" (click)="close()"></div>
+  <div
+    #sheet
+    id="tab-menu"
+    class="sheet"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="tab-menu-title"
+    (keydown)="keepFocusIn($event)"
+  >
+    <div class="sheet-head">
+      <h2 id="tab-menu-title" i18n="@@tabs.menuTitle">Every screen</h2>
+      <button
+        type="button"
+        class="close"
+        aria-label="Close"
+        i18n-aria-label="@@tabs.close"
+        (click)="close(true)"
+      >
+        <app-icon name="close" />
+      </button>
+    </div>
+    <ul class="sheet-list">
+      @for (item of items(); track item.path) {
+        <li>
+          <a
+            class="sheet-link"
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: item.path === '/admin' }"
+            ariaCurrentWhenActive="page"
+            (click)="close()"
+          >
+            <app-icon [name]="item.icon" />
+            <span class="label">{{ item.label }}</span>
+            @if (item.count?.(); as count) {
+              @if (item.counts === 'new') {
+                <span class="nav-count" i18n="@@nav.new"
+                  >{{ count }}<span class="visually-hidden"> new</span></span
+                >
+              } @else {
+                <span class="nav-count" i18n="@@nav.unread"
+                  >{{ count }}<span class="visually-hidden"> unread</span></span
+                >
+              }
+            }
+          </a>
+        </li>
+      }
+    </ul>
+  </div>
+}
