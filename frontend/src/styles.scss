@@ -558,6 +558,20 @@ code {
   background: var(--color-surface-2);
 }
 
+// A count next to a link - unread messages, new problems - in the shell's links and a phone's
+// menu: the brand's colour, so it's seen at a glance.
+.nav-count {
+  min-width: 1.35rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--gradient-brand);
+  color: var(--color-on-primary);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.35rem;
+  text-align: center;
+}
+
 // On a phone (ADR-0055). The tab bar (layout/tab-bar) takes the bottom of the screen, home
 // indicator included: what's fixed at the bottom - toasts, the assistant's button, the
 // ending-soon card - rises by --tab-bar-space while it's there. A field tapped with text under
