@@ -475,9 +475,9 @@ plan by the lift.
 
 ### 28. On the home screen
 
-- Run the whole app in Docker, a production build ("the whole app in Docker" in the README), and
-  open it on a phone through a tunnel to its port, as in step 25, or in Chrome or Edge on the
-  computer.
+- Run a production build: the whole app in Docker ("the whole app in Docker" in the README), or
+  `npx ng build` and `npm run serve:build` in place of `ng serve` (frontend README). Open it on a
+  phone through a tunnel to its port, as in step 25, or in Chrome or Edge on the computer.
 - Chrome's menu: **Install app**; on an iPhone, **Share**, then **Add to Home Screen**. It opens
   from the home screen on its own, without the browser's bars.
 - Turn on airplane mode and open it again: it opens, saying it's offline, and nothing can be

@@ -38,7 +38,9 @@ so the session cookie is a same-site cookie in development too (ADR-0026):
 `frontend/Dockerfile` serves the `production` build with nginx, which passes `/api` and `/hubs` on
 to the API container: `docker compose --profile app up -d --build` runs the whole app at
 `http://localhost:4200` (ADR-0031, and "the whole app in Docker" in the main README).
-`nginx.conf` is its configuration.
+`nginx.conf` is its configuration. Without Docker, `npm run serve:build` does the same for a
+`npx ng build` on this machine (`scripts/serve-build.mjs`: port 4200, `/api` and `/hubs` on to
+`http://localhost:5291`; `--port`, `--api` and `--host` change them).
 
 If the lists stay empty and the console shows a certificate error, the browser doesn't trust
 the dev certificate yet: `dotnet dev-certs https --trust`.
@@ -76,9 +78,11 @@ on to the API.
   has its final domain.
 - **As an app (ADR-0054):** a production build has a service worker, and the browser offers to
   install it: **Install app** in Chrome's menu, or **Share**, then **Add to Home Screen** on an
-  iPhone. `ng serve` has none, and changes the pages it serves, so try it on the whole app in
-  Docker, which serves the build as it is. The installed app belongs to its address: a new
-  tunnel address means installing it again.
+  iPhone. `ng serve` has none, and changes the pages it serves, so try it on the build as it is:
+  `npx ng build`, then `npm run serve:build -- --host 0.0.0.0` on port 4200 in place of
+  `ng serve`, with the API from `dotnet run` (`--api` names another), or the whole app in
+  Docker. The installed app belongs to its address: a new tunnel address means installing it
+  again.
 
 ## Before a pull request
 
