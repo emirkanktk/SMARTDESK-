@@ -154,68 +154,73 @@
     </section>
   }
 
-  <div
-    #plan
-    class="plan"
-    [class.no-plan]="!planUrl()"
-    [class.arranging]="arranging()"
-    [style.aspect-ratio]="aspectRatio()"
-  >
-    @if (planUrl(); as url) {
-      <img class="plan-image" [src]="url" [alt]="planAlt()" />
-    }
-    @for (spot of placed(); track spot.resource.id) {
-      @let position = shownPosition(spot);
-      @if (arranging() && spot.mayMove) {
-        <button
-          type="button"
-          class="spot movable-spot"
-          [class.free]="spot.state.kind === 'free'"
-          [class.busy]="spot.state.kind === 'busy'"
-          [class.unavailable]="spot.state.kind === 'unavailable'"
-          [attr.data-resource]="spot.resource.id"
-          [style.left.%]="percent(position.x)"
-          [style.top.%]="percent(position.y)"
-          [attr.aria-label]="moveLabel(spot)"
-          (pointerdown)="startDrag($event, spot)"
-          (keydown)="nudge($event, spot)"
-          (keyup)="saveNudged($event, spot)"
-        >
-          <span class="dot" aria-hidden="true"></span>
-          <span class="name">{{ spot.resource.name }}</span>
-        </button>
-      } @else if (spot.book; as params) {
-        <a
-          class="spot"
-          [class.free]="spot.state.kind === 'free'"
-          [class.busy]="spot.state.kind === 'busy'"
-          [style.left.%]="percent(position.x)"
-          [style.top.%]="percent(position.y)"
-          routerLink="/reservations/new"
-          [queryParams]="params"
-          [attr.aria-label]="spot.label"
-          [title]="spot.label"
-        >
-          <span class="dot" aria-hidden="true"></span>
-          <span class="name">{{ spot.resource.name }}</span>
-        </a>
-      } @else {
-        <span
-          class="spot"
-          [class.free]="spot.state.kind === 'free'"
-          [class.busy]="spot.state.kind === 'busy'"
-          [class.unavailable]="spot.state.kind === 'unavailable'"
-          role="img"
-          [style.left.%]="percent(position.x)"
-          [style.top.%]="percent(position.y)"
-          [attr.aria-label]="spot.label"
-          [title]="spot.label"
-        >
-          <span class="dot" aria-hidden="true"></span>
-          <span class="name" aria-hidden="true">{{ spot.resource.name }}</span>
-        </span>
+  <p class="text-muted scroll-hint" i18n="@@floorPlan.scrollHint">
+    Swipe the plan sideways to see all of it.
+  </p>
+  <div class="plan-scroll">
+    <div
+      #plan
+      class="plan"
+      [class.no-plan]="!planUrl()"
+      [class.arranging]="arranging()"
+      [style.aspect-ratio]="aspectRatio()"
+    >
+      @if (planUrl(); as url) {
+        <img class="plan-image" [src]="url" [alt]="planAlt()" />
       }
-    }
+      @for (spot of placed(); track spot.resource.id) {
+        @let position = shownPosition(spot);
+        @if (arranging() && spot.mayMove) {
+          <button
+            type="button"
+            class="spot movable-spot"
+            [class.free]="spot.state.kind === 'free'"
+            [class.busy]="spot.state.kind === 'busy'"
+            [class.unavailable]="spot.state.kind === 'unavailable'"
+            [attr.data-resource]="spot.resource.id"
+            [style.left.%]="percent(position.x)"
+            [style.top.%]="percent(position.y)"
+            [attr.aria-label]="moveLabel(spot)"
+            (pointerdown)="startDrag($event, spot)"
+            (keydown)="nudge($event, spot)"
+            (keyup)="saveNudged($event, spot)"
+          >
+            <span class="dot" aria-hidden="true"></span>
+            <span class="name">{{ spot.resource.name }}</span>
+          </button>
+        } @else if (spot.book; as params) {
+          <a
+            class="spot"
+            [class.free]="spot.state.kind === 'free'"
+            [class.busy]="spot.state.kind === 'busy'"
+            [style.left.%]="percent(position.x)"
+            [style.top.%]="percent(position.y)"
+            routerLink="/reservations/new"
+            [queryParams]="params"
+            [attr.aria-label]="spot.label"
+            [title]="spot.label"
+          >
+            <span class="dot" aria-hidden="true"></span>
+            <span class="name">{{ spot.resource.name }}</span>
+          </a>
+        } @else {
+          <span
+            class="spot"
+            [class.free]="spot.state.kind === 'free'"
+            [class.busy]="spot.state.kind === 'busy'"
+            [class.unavailable]="spot.state.kind === 'unavailable'"
+            role="img"
+            [style.left.%]="percent(position.x)"
+            [style.top.%]="percent(position.y)"
+            [attr.aria-label]="spot.label"
+            [title]="spot.label"
+          >
+            <span class="dot" aria-hidden="true"></span>
+            <span class="name" aria-hidden="true">{{ spot.resource.name }}</span>
+          </span>
+        }
+      }
+    </div>
   </div>
 
   @if (!planUrl()) {

@@ -127,7 +127,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 - **An app on the home screen** - a phone installs it from the browser, and a computer from
   Chrome or Edge. It opens like an app, and without a network it still opens, saying so. A new
   release arrives in the background and asks for a reload; door screens take it by themselves
-  ([ADR-0054](docs/DECISIONS.md)).
+  ([ADR-0054](docs/DECISIONS.md)). On a phone the main screens are in a bar at the bottom,
+  where a thumb reaches, and the rest a tap away in its menu
+  ([ADR-0055](docs/DECISIONS.md)).
 - **Booking assistant (optional)** - with an Anthropic API key, a conversation in the corner of
   every screen: "a room for 4 tomorrow at 10". It looks things up as the user and offers
   bookings and cancellations as cards. Nothing is booked until the user presses a card's button

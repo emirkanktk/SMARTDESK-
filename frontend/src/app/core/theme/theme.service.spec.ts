@@ -67,6 +67,23 @@ describe('ThemeService', () => {
     expect(themes.theme()).toBe('light');
   });
 
+  it("gives a phone's status bar the top bar's colour in each theme", () => {
+    const meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    meta.content = '#4f46e5';
+    document.head.append(meta);
+    root.setAttribute('data-theme', 'light');
+    try {
+      const themes = create();
+      expect(meta.content).toBe('#ffffff');
+
+      themes.toggle();
+      expect(meta.content).toBe('#111727');
+    } finally {
+      meta.remove();
+    }
+  });
+
   it('still switches when storage is blocked', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('blocked');

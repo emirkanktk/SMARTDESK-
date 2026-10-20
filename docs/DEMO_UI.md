@@ -484,6 +484,10 @@ plan by the lift.
   booked until the network is back.
 - Point out: it keeps the app, never the bookings, which always come from the server; and a new
   release asks to reload, while a door screen takes it by itself (ADR-0054).
+- On the phone, the bar at the bottom: the dashboard, the floor plan, **Book** in the middle and
+  your bookings. **Menu** slides up with every other screen, and a dot on it when there's
+  something unread. The floor plan keeps its size and scrolls sideways; the status bar takes the
+  top bar's colour, in either theme (ADR-0055).
 
 ## Talking points
 

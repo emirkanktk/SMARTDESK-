@@ -558,6 +558,34 @@ code {
   background: var(--color-surface-2);
 }
 
+// On a phone (ADR-0055). The tab bar (layout/tab-bar) takes the bottom of the screen, home
+// indicator included: what's fixed at the bottom - toasts, the assistant's button, the
+// ending-soon card - rises by --tab-bar-space while it's there. A field tapped with text under
+// 16px makes iOS zoom the page in, so fields have 16px. And no grey flash on a tap: the active
+// and focus styles show it.
+:root {
+  --tab-bar-space: 0px;
+}
+
+@media (max-width: 640px) {
+  body.has-tab-bar {
+    --tab-bar-space: calc(4.25rem + env(safe-area-inset-bottom));
+  }
+
+  .input,
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+a,
+button,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
 // "Reduce motion": no rises, floats or glides anywhere; things simply appear.
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -7,6 +7,13 @@ export type Theme = 'light' | 'dark';
 export const THEME_STORAGE_KEY = 'smartdesk_theme';
 
 /**
+ * The colour a phone gives its status bar and the browser its toolbar (`theme-color`): the top
+ * bar's surface in each theme (--color-surface, styles.scss), so they run into each other
+ * (ADR-0055). index.html sets the first one too.
+ */
+export const THEME_COLORS: Record<Theme, string> = { light: '#ffffff', dark: '#111727' };
+
+/**
  * The colour theme. index.html puts `data-theme` on <html> before the app starts: the stored
  * choice, or the system's setting when there is none. This keeps it: switching stores the
  * choice for this browser, other open tabs follow it, and until someone chooses, the app
@@ -14,14 +21,16 @@ export const THEME_STORAGE_KEY = 'smartdesk_theme';
  */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  private readonly root = inject(DOCUMENT).documentElement;
+  private readonly document = inject(DOCUMENT);
+  private readonly root = this.document.documentElement;
   private readonly themeSignal = signal<Theme>(
     this.root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
   );
   readonly theme = this.themeSignal.asReadonly();
 
   constructor() {
-    const view = inject(DOCUMENT).defaultView;
+    const view = this.document.defaultView;
+    this.paintBars(this.themeSignal());
 
     const onStorage = (event: StorageEvent) => {
       if (event.key === THEME_STORAGE_KEY && isTheme(event.newValue)) {
@@ -57,6 +66,13 @@ export class ThemeService {
   private apply(theme: Theme): void {
     this.root.setAttribute('data-theme', theme);
     this.themeSignal.set(theme);
+    this.paintBars(theme);
+  }
+
+  private paintBars(theme: Theme): void {
+    this.document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', THEME_COLORS[theme]);
   }
 }
 

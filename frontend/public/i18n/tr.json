@@ -1225,6 +1225,14 @@
     "title.approvals": "Onaylar · SmartDesk",
     "title.history": "Geçmiş · SmartDesk",
     "nav.floorPlan": "Kat planı",
+    "tabs.label": "Kısayollar",
+    "tabs.home": "Panel",
+    "tabs.floor": "Kat planı",
+    "tabs.book": "Rezerve et",
+    "tabs.mine": "Benimkiler",
+    "tabs.menu": "Menü",
+    "tabs.menuTitle": "Tüm ekranlar",
+    "tabs.close": "Kapat",
     "floorPlan.title": "Kat planı",
     "floorPlan.loading": "Kat planı yükleniyor…",
     "floorPlan.loadFailed": "Kat planı yüklenemedi.",
@@ -1260,6 +1268,7 @@
     "floorPlan.freeUntil": "{$resource}, {$time} saatine kadar boş.",
     "floorPlan.freeAllDay": "{$resource} gün boyunca boş.",
     "floorPlan.busyUntil": "{$resource}, {$time} saatine kadar kullanımda.",
-    "floorPlan.unavailable": "{$resource} rezerve edilemiyor: {$reason}."
+    "floorPlan.unavailable": "{$resource} rezerve edilemiyor: {$reason}.",
+    "floorPlan.scrollHint": "Planın tamamını görmek için yana kaydırın."
   }
 }

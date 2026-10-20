@@ -18,7 +18,7 @@
 
   @media (max-width: 640px) {
     right: var(--space-4);
-    bottom: var(--space-4);
+    bottom: calc(var(--space-4) + var(--tab-bar-space));
     left: var(--space-4);
     width: auto;
   }

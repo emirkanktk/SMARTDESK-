@@ -1,7 +1,8 @@
 .stack {
   position: fixed;
-  // Bottom corner, so toasts never cover the top bar's user menu and sign-out button.
-  bottom: var(--space-4);
+  // Bottom corner, so toasts never cover the top bar's user menu and sign-out button; above a
+  // phone's tab bar.
+  bottom: calc(var(--space-4) + var(--tab-bar-space));
   right: var(--space-4);
   z-index: 1000;
   display: flex;
