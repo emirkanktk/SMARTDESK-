@@ -1883,6 +1883,12 @@ new tables.
 - Off without the server's VAPID key pair: `WebPush:PublicKey`, `WebPush:PrivateKey` and a
   contact, `WebPush:Subject` (a `mailto:` or `https:` address). `--vapid-keys` prints a new pair.
   `GET /api/push` gives the public key a browser subscribes with, or says it's off.
+- In the app, **Notifications** on the profile turns them on and off for this device and sends a
+  test (`PushService`, over Angular's `SwPush`). Turning on asks the browser's permission first,
+  in the click itself, as Safari on an iPhone requires; an iPhone has them only in the app added
+  to its Home Screen, which the page says. Found on, the device is handed over again, so it's the
+  signed-in user's. **Sign out** in the account menu first lets the device go: the server forgets
+  it and the browser drops the subscription.
 
 **Why:**
 - The installable app (ADR-0054) and its phone layout (ADR-0055) put SmartDesk on the home screen,
@@ -1903,8 +1909,9 @@ new tables.
   the office network.
 - **Trade-offs:**
   - Times are in the office's zone; someone elsewhere reads office time.
-  - A device notifies whoever turned them on there last. Signing out turns them off for it, but a
-    browser left without signing out keeps them until someone turns them on there again.
+  - A device notifies whoever turned them on there last, or opened their profile there since.
+    Signing out from the account menu lets it go; a session that ends any other way - it ran out,
+    or the server ended it - leaves it on.
   - An iPhone gets them only in the app added to its home screen, and a tap opens the address it
     was added from: with a quick tunnel, whose address changes on each start, that's stale once
     the tunnel is restarted.

@@ -281,7 +281,7 @@ turned them on there last.
 | Endpoint | string (2048) | the device's address at its push service, Apple's, Google's, Microsoft's or Mozilla's; unique |
 | P256dh | string (100) | the device's P-256 public key, base64url |
 | Auth | string (32) | the device's authentication secret, base64url |
-| SavedAt | DateTime | UTC, when notifications were last turned on there, which the app repeats on every start |
+| SavedAt | DateTime | UTC, when notifications were last turned on there, or found on by its profile page |
 
 ## Relationships
 

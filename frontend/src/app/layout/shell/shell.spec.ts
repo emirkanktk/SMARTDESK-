@@ -176,6 +176,8 @@ describe('Shell', () => {
     await fixture.whenStable();
     const items = Array.from(element.querySelectorAll<HTMLElement>('[role="menuitem"]'));
     items.find((item) => item.textContent!.trim() === 'Sign out')!.click();
+    // After this device's notifications are let go of (ADR-0056).
+    await fixture.whenStable();
 
     expect(logout).toHaveBeenCalled();
     expect(navigateByUrl).toHaveBeenCalledWith('/');

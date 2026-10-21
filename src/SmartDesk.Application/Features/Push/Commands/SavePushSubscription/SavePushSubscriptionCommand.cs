@@ -9,9 +9,9 @@ using SmartDesk.Domain.Rules;
 namespace SmartDesk.Application.Features.Push.Commands.SavePushSubscription;
 
 // Turns notifications on for the caller's device (PUT /api/push/subscription, ADR-0056): the
-// subscription the browser made, kept by its address. The same device again - the app sends it on
-// every start - only refreshes it; a device someone else had them on is the caller's now. Past the
-// most devices per person, the one seen longest ago is forgotten.
+// subscription the browser made, kept by its address. The same device again - the profile page
+// sends it whenever it finds them on - only refreshes it; a device someone else had them on is the
+// caller's now. Past the most devices per person, the one seen longest ago is forgotten.
 public sealed record SavePushSubscriptionCommand(string Endpoint, string P256dh, string Auth) : IRequest;
 
 public sealed class SavePushSubscriptionCommandHandler(
