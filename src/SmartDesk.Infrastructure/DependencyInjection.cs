@@ -21,6 +21,7 @@ using SmartDesk.Infrastructure.Persistence;
 using SmartDesk.Infrastructure.Persistence.Auditing;
 using SmartDesk.Infrastructure.Persistence.Seed;
 using SmartDesk.Infrastructure.Persistence.Seed.DemoData;
+using SmartDesk.Infrastructure.Push;
 using SmartDesk.Infrastructure.Reports;
 
 namespace SmartDesk.Infrastructure;
@@ -121,6 +122,22 @@ public static class DependencyInjection
                 ? ActivatorUtilities.CreateInstance<LoggingEmailTransport>(sp)
                 : ActivatorUtilities.CreateInstance<SmtpEmailTransport>(sp));
         services.AddHostedService<EmailDispatchWorker>();
+
+        // Notifications on phones and browsers (ADR-0056): handlers and notifiers queue, a background
+        // worker encrypts and sends. Off without the VAPID keys; with them, they must be a pair, and
+        // the push services need a way to reach whoever runs the server.
+        services.AddOptions<WebPushOptions>()
+            .Bind(configuration.GetSection(WebPushOptions.SectionName))
+            .Validate(o => !o.IsConfigured || VapidKeys.AreValid(o.PublicKey, o.PrivateKey),
+                "WebPush:PublicKey and WebPush:PrivateKey must be a P-256 key pair, base64url. Make one with: " +
+                "dotnet run --project src/SmartDesk.API -- --vapid-keys")
+            .Validate(o => !o.IsConfigured || o.HasValidSubject,
+                "WebPush:Subject must be a mailto: address or an https: page, not on localhost or .local, e.g. mailto:it@example.com.")
+            .ValidateOnStart();
+        services.AddSingleton<PushQueue>();
+        services.AddSingleton<IPushSender>(sp => sp.GetRequiredService<PushQueue>());
+        services.AddHttpClient(PushDispatchWorker.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(30));
+        services.AddHostedService<PushDispatchWorker>();
 
         // Reset links expire, and work once: a reset changes the security stamp they're tied to.
         services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = AccountEmails.ResetLinkLifetime);

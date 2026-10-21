@@ -130,6 +130,11 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   ([ADR-0054](docs/DECISIONS.md)). On a phone the main screens are in a bar at the bottom,
   where a thumb reaches, and the rest a tap away in its menu
   ([ADR-0055](docs/DECISIONS.md)).
+- **Notifications on the phone** - the reminder before a booking, the warning before it's
+  released, invitations, approvals and everything else that reaches the inbox, on the lock
+  screen of a phone or a computer even with the app closed - on an iPhone, from the app on its
+  home screen. Encrypted for each device and sent through its own push service by the API itself;
+  off until the server has its keys ([ADR-0056](docs/DECISIONS.md)).
 - **Booking assistant (optional)** - with an Anthropic API key, a conversation in the corner of
   every screen: "a room for 4 tomorrow at 10". It looks things up as the user and offers
   bookings and cancellations as cards. Nothing is booked until the user presses a card's button
@@ -141,6 +146,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 | Backend | .NET 10 Web API, Onion Architecture, CQRS with MediatR, FluentValidation |
 | Data | PostgreSQL via EF Core; ASP.NET Core Identity for users and roles |
 | Real-time | SignalR |
+| Notifications (optional) | Web Push, encrypted (RFC 8291) and signed (RFC 8292) by the API with .NET's own cryptography |
 | Assistant (optional) | Claude, through Anthropic's official .NET SDK, or Gemini over its REST API (ADR-0036) |
 
 ### Design highlights
@@ -364,6 +370,22 @@ the most one answer may take before the user is asked to try again). Each questi
 paid call to the model. A user can ask 20 a minute (`RateLimiting:AssistantPermitsPerMinute`),
 and the API log shows the tokens each answer used.
 
+### Optional: notifications on phones and browsers
+
+Notifications are off until the API has a VAPID key pair (ADR-0056). Make one:
+
+```bash
+dotnet run --project src/SmartDesk.API -- --vapid-keys
+```
+
+It prints the three `dotnet user-secrets set` lines to run: `WebPush:PublicKey`,
+`WebPush:PrivateKey`, and `WebPush:Subject`, where a push service can reach whoever runs the
+server - a `mailto:` address or an `https:` page, not on `localhost` or `.local`, which Apple
+refuses. Restart the API. Elsewhere, set `WebPush__PublicKey`, `WebPush__PrivateKey` and
+`WebPush__Subject` in the environment; never put the private key in `appsettings`. Keep the pair:
+the devices that turned notifications on with one get nothing sent with another until they turn
+them on again.
+
 ### Behind a reverse proxy
 
 In production the API sits behind a reverse proxy that terminates HTTPS (nginx, a load
@@ -391,6 +413,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Series | `GET /api/reservations/series/preview`, `POST /api/reservations/series`, `POST /api/reservations/{id}/cancel-following` (ADR-0035) |
 | Running over | `GET /api/reservations/{id}/extension`, `POST /api/reservations/{id}/extend` (ADR-0033) |
 | Calendar | `GET /api/reservations/{id}/calendar` (an `.ics` file), `GET`/`POST`/`DELETE /api/calendar/subscription`, `GET /api/calendar/feed.ics?token=` (the link's token, no user) (ADR-0048) |
+| Notifications | `GET /api/push`, `PUT`/`DELETE /api/push/subscription`, `POST /api/push/test` (ADR-0056) |
 | Approvals | `GET /api/approvals`, `POST /api/approvals/{id}/approve`, `POST /api/approvals/{id}/decline` (Admin) (ADR-0049) |
 | Booking rules | `GET /api/booking-rules`, `PUT /api/booking-rules/office-hours` (Admin), `PUT /api/booking-rules/types/{id}` (Admin) (ADR-0046) |
 | Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |

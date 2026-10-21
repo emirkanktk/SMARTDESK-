@@ -679,6 +679,30 @@ Google Calendar or a phone's calendar subscribes to and fetches again by itself.
   to the booking in the app (also its `URL`). A cancelled booking downloaded as a file comes
   as `CANCELLED`, and so does a meeting the reader declined.
 
+## Notifications (ADR-0056)
+
+Notifications on the user's phones and browsers, through each device's own push service (Web
+Push). Off until the API has its VAPID keys.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/push` | any authenticated user | `GetPushStatusQuery` | `{ enabled, publicKey }`: whether the server sends them, and the key a browser subscribes with (`applicationServerKey`), null while off |
+| PUT | `/api/push/subscription` | any authenticated user | `SavePushSubscriptionCommand` | body `{ endpoint, p256dh, auth }`, the address and keys of the browser's `PushSubscription` → 204. The same device again refreshes it; a device someone else had is the caller's now; past 10 devices the caller's one seen longest ago goes. 400 for an address that isn't Apple's, Google's, Microsoft's or Mozilla's push service over https, or keys that aren't a P-256 point and a 16-byte secret. 503 while off |
+| DELETE | `/api/push/subscription` | any authenticated user | `DeletePushSubscriptionCommand` | body `{ endpoint }` → 204, also when the device isn't the caller's or isn't there |
+| POST | `/api/push/test` | any authenticated user | `SendTestPushCommand` | → 202 `{ devices }`: a notification to each of the caller's devices; with none, nothing is sent. 503 while off; 429 after 5 a minute (`RateLimiting:PushTestPermitsPerMinute`) |
+
+- What's sent: the reminder, the warning before a release, the release and the question before a
+  booking ends, to whom they reach live (see Real-time), and every new inbox message. In the
+  recipient's saved language, with the times in the office's zone, worded as the inbox words
+  them. Switched-off accounts get none.
+- The payload is what Angular's service worker shows: `{ notification: { title, body, icon, tag,
+  data: { onActionClick: { default: { operation: "navigateLastFocusedOrOpen", url } } } } }`.
+  Tapping it opens `/reservations/mine`, `/inbox`, `/admin/approvals` or `/profile`.
+- Each is encrypted for its device (RFC 8291, `Content-Encoding: aes128gcm`) and carries a VAPID
+  token (RFC 8292, `Authorization: vapid t=…, k=…`, valid 12 hours), a `TTL` - 15 minutes for the
+  booking notices, an hour for a release, a day for a message - and an `Urgency`. A device its
+  push service answers 404 or 410 for is forgotten.
+
 ## Check-in (ADR-0030)
 
 A resource with `checkInRequired` has a QR code at its door. Whoever booked it scans the code,
