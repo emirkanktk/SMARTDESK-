@@ -7,6 +7,7 @@ using SmartDesk.Application.Features.Approvals.Common;
 using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Issues.Common;
 using SmartDesk.Application.Features.Meetings.Common;
+using SmartDesk.Application.Features.Push.Common;
 using SmartDesk.Application.Features.Reservations.Commands.CreateReservation;
 using SmartDesk.Application.Features.Reservations.Commands.UpdateReservation;
 using SmartDesk.Application.Features.Reservations.Common;
@@ -47,6 +48,10 @@ public static class DependencyInjection
         // after MediatR's own, so it runs inside validation: a request that isn't valid never
         // gets this far.
         services.AddScoped<BookingSuggester>();
+        // What reaches one person live goes to their phones and browsers too (ADR-0056); the API
+        // sends each event to these beside SignalR.
+        services.AddScoped<PushReservationNotifier>();
+        services.AddScoped<PushInboxNotifier>();
         services.AddTransient<IPipelineBehavior<CreateReservationCommand, ReservationDto>, BookingSuggestionsBehavior<CreateReservationCommand>>();
         services.AddTransient<IPipelineBehavior<UpdateReservationCommand, ReservationDto>, BookingSuggestionsBehavior<UpdateReservationCommand>>();
 

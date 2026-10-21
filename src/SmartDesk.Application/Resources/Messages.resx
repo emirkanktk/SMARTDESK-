@@ -906,4 +906,106 @@
   <data name="Waitlist_TooMany" xml:space="preserve">
     <value>You can wait for at most {0} times at once. Leave one first.</value>
   </data>
+  <data name="Push_BadKey" xml:space="preserve">
+    <value>The browser's notification keys aren't valid.</value>
+  </data>
+  <data name="Push_EndingSoon_Body" xml:space="preserve">
+    <value>{0} until {1}. Tap to run longer.</value>
+  </data>
+  <data name="Push_EndingSoon_Title" xml:space="preserve">
+    <value>Your booking ends soon</value>
+  </data>
+  <data name="Push_Inbox_ApprovalLapsed" xml:space="preserve">
+    <value>Nobody approved your booking before it started, so it lapsed</value>
+  </data>
+  <data name="Push_Inbox_ApprovalRequested" xml:space="preserve">
+    <value>{0} asks for a booking that needs your approval</value>
+  </data>
+  <data name="Push_Inbox_BookingApproved" xml:space="preserve">
+    <value>{0} approved your booking</value>
+  </data>
+  <data name="Push_Inbox_BookingDeclined" xml:space="preserve">
+    <value>{0} declined your booking</value>
+  </data>
+  <data name="Push_Inbox_CancelledByBlock" xml:space="preserve">
+    <value>{0} closed a resource, so a booking you're on was cancelled</value>
+  </data>
+  <data name="Push_Inbox_IssueResolved" xml:space="preserve">
+    <value>The problem you reported is resolved</value>
+  </data>
+  <data name="Push_Inbox_MeetingAccepted" xml:space="preserve">
+    <value>{0} is coming to your meeting</value>
+  </data>
+  <data name="Push_Inbox_MeetingCancelled" xml:space="preserve">
+    <value>{0} cancelled a meeting you were invited to</value>
+  </data>
+  <data name="Push_Inbox_MeetingChanged" xml:space="preserve">
+    <value>{0} changed a meeting you're invited to</value>
+  </data>
+  <data name="Push_Inbox_MeetingDeclined" xml:space="preserve">
+    <value>{0} can't come to your meeting</value>
+  </data>
+  <data name="Push_Inbox_MeetingExtended" xml:space="preserve">
+    <value>{0} extended a meeting you're invited to</value>
+  </data>
+  <data name="Push_Inbox_MeetingInvitation" xml:space="preserve">
+    <value>{0} invited you to a meeting</value>
+  </data>
+  <data name="Push_Inbox_MeetingReleased" xml:space="preserve">
+    <value>A meeting you were invited to was released because nobody checked in</value>
+  </data>
+  <data name="Push_Inbox_MeetingUninvited" xml:space="preserve">
+    <value>{0} removed you from a meeting</value>
+  </data>
+  <data name="Push_Inbox_New" xml:space="preserve">
+    <value>A new message in your inbox</value>
+  </data>
+  <data name="Push_Inbox_SeriesAccepted" xml:space="preserve">
+    <value>{0} is coming to your meeting that repeats</value>
+  </data>
+  <data name="Push_Inbox_SeriesCancelled" xml:space="preserve">
+    <value>{0} cancelled the rest of a meeting that repeats</value>
+  </data>
+  <data name="Push_Inbox_SeriesDeclined" xml:space="preserve">
+    <value>{0} can't come to your meeting that repeats</value>
+  </data>
+  <data name="Push_Inbox_SeriesInvitation" xml:space="preserve">
+    <value>{0} invited you to a meeting that repeats</value>
+  </data>
+  <data name="Push_Inbox_WaitlistBooked" xml:space="preserve">
+    <value>A time you were waiting for freed up, and it's booked for you</value>
+  </data>
+  <data name="Push_Off" xml:space="preserve">
+    <value>Notifications aren't set up on this server.</value>
+  </data>
+  <data name="Push_ReleaseWarning_Body" xml:space="preserve">
+    <value>{0}, {1}. Unless someone checks in, it's released at {2}.</value>
+  </data>
+  <data name="Push_ReleaseWarning_Title" xml:space="preserve">
+    <value>Nobody has checked in yet</value>
+  </data>
+  <data name="Push_Released_Body" xml:space="preserve">
+    <value>{0}, {1}: nobody checked in.</value>
+  </data>
+  <data name="Push_Released_Title" xml:space="preserve">
+    <value>Your booking was released</value>
+  </data>
+  <data name="Push_SeriesWhen" xml:space="preserve">
+    <value>from {0}</value>
+  </data>
+  <data name="Push_Someone" xml:space="preserve">
+    <value>Someone</value>
+  </data>
+  <data name="Push_StartingSoon_Title" xml:space="preserve">
+    <value>Your booking starts soon</value>
+  </data>
+  <data name="Push_Test_Body" xml:space="preserve">
+    <value>SmartDesk can tell this device when something needs you.</value>
+  </data>
+  <data name="Push_Test_Title" xml:space="preserve">
+    <value>Notifications are on</value>
+  </data>
+  <data name="Push_UnknownService" xml:space="preserve">
+    <value>This browser's push service isn't one SmartDesk sends to.</value>
+  </data>
 </root>

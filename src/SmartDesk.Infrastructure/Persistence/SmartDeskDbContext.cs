@@ -36,6 +36,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<CalendarFeed> CalendarFeeds => Set<CalendarFeed>();
     public DbSet<FavoriteResource> FavoriteResources => Set<FavoriteResource>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -103,6 +104,18 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
                 .WithMany()
                 .HasForeignKey(e => e.ResourceId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Devices that get notifications (ADR-0056): one row each, found by its push service address,
+        // and listed by account when one goes out. No foreign key across the Identity boundary. The
+        // keys are base64url: 87 characters for the public key, 22 for the secret.
+        builder.Entity<PushSubscription>(entity =>
+        {
+            entity.Property(e => e.Endpoint).IsRequired().HasMaxLength(PushRules.MaxEndpointLength);
+            entity.Property(e => e.P256dh).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Auth).IsRequired().HasMaxLength(32);
+            entity.HasIndex(e => e.Endpoint).IsUnique();
+            entity.HasIndex(e => e.UserId);
         });
 
         // Personal calendar links (ADR-0048), one per account: keyed by the account id, with no

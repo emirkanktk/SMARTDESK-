@@ -19,6 +19,18 @@ using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Localization;
 using SmartDesk.Infrastructure;
 using SmartDesk.Infrastructure.Identity;
+using SmartDesk.Infrastructure.Push;
+
+// `--vapid-keys`: a new key pair for notifications (ADR-0056), printed to put in the user secrets
+// or the environment; nothing starts.
+if (args.Contains("--vapid-keys"))
+{
+    var (publicKey, privateKey) = VapidKeys.Generate();
+    Console.WriteLine($"dotnet user-secrets set \"WebPush:PublicKey\" \"{publicKey}\" --project src/SmartDesk.API");
+    Console.WriteLine($"dotnet user-secrets set \"WebPush:PrivateKey\" \"{privateKey}\" --project src/SmartDesk.API");
+    Console.WriteLine("dotnet user-secrets set \"WebPush:Subject\" \"mailto:<who runs it>\" --project src/SmartDesk.API");
+    return;
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,10 +64,13 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-// Registered before the TryAdd below, so this wins and the null notifier stays a fallback.
-builder.Services.AddScoped<IReservationNotifier, SignalRReservationNotifier>();
+// Registered before the TryAdd below, so these win and the null notifiers stay a fallback. Open
+// screens hear every event over SignalR; what's one person's reaches their devices too (ADR-0056).
+builder.Services.AddScoped<SignalRReservationNotifier>();
+builder.Services.AddScoped<IReservationNotifier, ReservationNotifiers>();
 builder.Services.TryAddScoped<IReservationNotifier, NullReservationNotifier>();
-builder.Services.AddScoped<IInboxNotifier, SignalRInboxNotifier>();
+builder.Services.AddScoped<SignalRInboxNotifier>();
+builder.Services.AddScoped<IInboxNotifier, InboxNotifiers>();
 builder.Services.TryAddScoped<IInboxNotifier, NullInboxNotifier>();
 builder.Services.AddScoped<IIssueNotifier, SignalRIssueNotifier>();
 builder.Services.TryAddScoped<IIssueNotifier, NullIssueNotifier>();

@@ -906,4 +906,106 @@
   <data name="Waitlist_TooMany" xml:space="preserve">
     <value>Aynı anda en fazla {0} zaman için bekleyebilirsiniz. Önce birinden çıkın.</value>
   </data>
+  <data name="Push_BadKey" xml:space="preserve">
+    <value>Tarayıcının bildirim anahtarları geçerli değil.</value>
+  </data>
+  <data name="Push_EndingSoon_Body" xml:space="preserve">
+    <value>{0}, bitiş {1}. Uzatmak için dokunun.</value>
+  </data>
+  <data name="Push_EndingSoon_Title" xml:space="preserve">
+    <value>Rezervasyonunuz birazdan bitiyor</value>
+  </data>
+  <data name="Push_Inbox_ApprovalLapsed" xml:space="preserve">
+    <value>Rezervasyonunuzu başlamadan kimse onaylamadığı için talep düştü</value>
+  </data>
+  <data name="Push_Inbox_ApprovalRequested" xml:space="preserve">
+    <value>{0} onayınızı bekleyen bir rezervasyon istiyor</value>
+  </data>
+  <data name="Push_Inbox_BookingApproved" xml:space="preserve">
+    <value>{0} rezervasyonunuzu onayladı</value>
+  </data>
+  <data name="Push_Inbox_BookingDeclined" xml:space="preserve">
+    <value>{0} rezervasyonunuzu reddetti</value>
+  </data>
+  <data name="Push_Inbox_CancelledByBlock" xml:space="preserve">
+    <value>{0} bir kaynağı kapattı; dahil olduğunuz bir rezervasyon iptal edildi</value>
+  </data>
+  <data name="Push_Inbox_IssueResolved" xml:space="preserve">
+    <value>Bildirdiğiniz sorun çözüldü</value>
+  </data>
+  <data name="Push_Inbox_MeetingAccepted" xml:space="preserve">
+    <value>{0} toplantınıza katılıyor</value>
+  </data>
+  <data name="Push_Inbox_MeetingCancelled" xml:space="preserve">
+    <value>{0} davetli olduğunuz bir toplantıyı iptal etti</value>
+  </data>
+  <data name="Push_Inbox_MeetingChanged" xml:space="preserve">
+    <value>{0} davetli olduğunuz bir toplantıyı değiştirdi</value>
+  </data>
+  <data name="Push_Inbox_MeetingDeclined" xml:space="preserve">
+    <value>{0} toplantınıza katılamıyor</value>
+  </data>
+  <data name="Push_Inbox_MeetingExtended" xml:space="preserve">
+    <value>{0} davetli olduğunuz bir toplantıyı uzattı</value>
+  </data>
+  <data name="Push_Inbox_MeetingInvitation" xml:space="preserve">
+    <value>{0} sizi bir toplantıya davet etti</value>
+  </data>
+  <data name="Push_Inbox_MeetingReleased" xml:space="preserve">
+    <value>Davetli olduğunuz bir toplantı, kimse check-in yapmadığı için iptal edildi</value>
+  </data>
+  <data name="Push_Inbox_MeetingUninvited" xml:space="preserve">
+    <value>{0} sizi bir toplantıdan çıkardı</value>
+  </data>
+  <data name="Push_Inbox_New" xml:space="preserve">
+    <value>Gelen kutunuzda yeni bir mesaj var</value>
+  </data>
+  <data name="Push_Inbox_SeriesAccepted" xml:space="preserve">
+    <value>{0} tekrarlayan toplantınıza katılacak</value>
+  </data>
+  <data name="Push_Inbox_SeriesCancelled" xml:space="preserve">
+    <value>{0} tekrarlayan bir toplantının kalan tarihlerini iptal etti</value>
+  </data>
+  <data name="Push_Inbox_SeriesDeclined" xml:space="preserve">
+    <value>{0} tekrarlayan toplantınıza katılamayacak</value>
+  </data>
+  <data name="Push_Inbox_SeriesInvitation" xml:space="preserve">
+    <value>{0} sizi tekrarlayan bir toplantıya davet etti</value>
+  </data>
+  <data name="Push_Inbox_WaitlistBooked" xml:space="preserve">
+    <value>Beklediğiniz bir saat boşaldı ve sizin için rezerve edildi</value>
+  </data>
+  <data name="Push_Off" xml:space="preserve">
+    <value>Bu sunucuda bildirimler ayarlanmamış.</value>
+  </data>
+  <data name="Push_ReleaseWarning_Body" xml:space="preserve">
+    <value>{0}, {1}. Check-in yapılmazsa {2} itibarıyla boşaltılacak.</value>
+  </data>
+  <data name="Push_ReleaseWarning_Title" xml:space="preserve">
+    <value>Henüz kimse check-in yapmadı</value>
+  </data>
+  <data name="Push_Released_Body" xml:space="preserve">
+    <value>{0}, {1}: kimse check-in yapmadı.</value>
+  </data>
+  <data name="Push_Released_Title" xml:space="preserve">
+    <value>Rezervasyonunuz boşaltıldı</value>
+  </data>
+  <data name="Push_SeriesWhen" xml:space="preserve">
+    <value>{0} itibarıyla</value>
+  </data>
+  <data name="Push_Someone" xml:space="preserve">
+    <value>Biri</value>
+  </data>
+  <data name="Push_StartingSoon_Title" xml:space="preserve">
+    <value>Rezervasyonunuz birazdan başlıyor</value>
+  </data>
+  <data name="Push_Test_Body" xml:space="preserve">
+    <value>SmartDesk, sizi ilgilendiren bir şey olduğunda bu cihaza haber verebilir.</value>
+  </data>
+  <data name="Push_Test_Title" xml:space="preserve">
+    <value>Bildirimler açık</value>
+  </data>
+  <data name="Push_UnknownService" xml:space="preserve">
+    <value>Bu tarayıcının bildirim servisi SmartDesk'in gönderdiklerinden biri değil.</value>
+  </data>
 </root>

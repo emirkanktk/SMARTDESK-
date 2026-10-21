@@ -39,6 +39,10 @@ public sealed class PostgresApiFixture : WebApplicationFactory<Program>, IAsyncL
         // Development reads the developer's user secrets: an assistant key there must not turn
         // the assistant on in tests that expect it off. Tests that want one set their own.
         builder.UseSetting("Assistant:ApiKey", string.Empty);
+        // Likewise notifications (ADR-0056): off here, whatever keys the developer has; PushTests
+        // turns them on for a host of its own.
+        builder.UseSetting("WebPush:PublicKey", string.Empty);
+        builder.UseSetting("WebPush:PrivateKey", string.Empty);
         // So a test can wait for a reminder the real job sends, instead of up to 30 seconds.
         builder.UseSetting("Reminders:IntervalSeconds", "1");
         // The tests' logs stay out of a developer's own Seq (ADR-0053).

@@ -1853,3 +1853,62 @@ new tables.
     most of it.
   - A tablet held upright (641px to 1099px) keeps the bar on top.
   - A phone shows the floor plan a part at a time.
+
+## ADR-0056: Notifications on phones and browsers, sent by the API itself with Web Push
+
+**Decision:**
+- A device turns notifications on with the browser's Push API, through the app's service worker
+  (ADR-0054), and hands the subscription over: `PUT /api/push/subscription` with its push
+  service's address and its keys. `PushSubscriptions` keeps one row per device, its address
+  unique: the account is whoever turned them on there last, and past 10 devices a person's one
+  seen longest ago is forgotten. `DELETE` turns them off; the app does it when they're switched
+  off and when its user signs out. `POST /api/push/test` sends one to the caller's devices.
+- What goes out is what already reaches one person live - the reminder (ADR-0018), the warning
+  before a release (ADR-0034), the release (ADR-0030) and the question before a booking ends
+  (ADR-0033) - and every new inbox message (ADR-0032): invitations, answers, approvals, a time
+  from the waiting list. `PushReservationNotifier` and `PushInboxNotifier` take the same calls as
+  the SignalR notifiers, and the API's `ReservationNotifiers` and `InboxNotifiers` send each
+  event to both. Bookings made, changed or cancelled stay for open screens.
+- Each is written as the inbox writes it, in the recipient's saved language (Turkish when there's
+  none, ADR-0025), with the times in the office's zone (`OfficeHours`, ADR-0046); tapping it opens
+  the screen it's about. A switched-off account's devices get nothing.
+- The API sends them itself. Notifiers put a `PushNotice` on a queue (`PushQueue`, like the email
+  queue of ADR-0019) and `PushDispatchWorker` sends it: encrypted for each device as RFC 8291
+  says (one `aes128gcm` record, with .NET's own ECDH, HKDF and AES-GCM), with a VAPID token
+  (RFC 8292: ES256, for the push service's origin, 12 hours), a `TTL` - 15 minutes for the
+  booking notices, an hour for a release, a day for a message - and an `Urgency`. A device its
+  push service answers 404 or 410 for is forgotten.
+- Only the push services of the browsers people use are taken as addresses (Apple's, Google's,
+  Microsoft's and Mozilla's, `PushRules.KnownServices`), over https on their own port.
+- Off without the server's VAPID key pair: `WebPush:PublicKey`, `WebPush:PrivateKey` and a
+  contact, `WebPush:Subject` (a `mailto:` or `https:` address). `--vapid-keys` prints a new pair.
+  `GET /api/push` gives the public key a browser subscribes with, or says it's off.
+
+**Why:**
+- The installable app (ADR-0054) and its phone layout (ADR-0055) put SmartDesk on the home screen,
+  but it spoke only while open: a reminder before a meeting, the warning that a room is about to
+  be released or an invitation reached nobody whose phone was in their pocket. Email is no
+  substitute in the demo, where it goes to Mailpit.
+- Web Push is the browsers' own standard: no account with Apple or Google and no SDK, the push
+  service each browser already uses carries it, iPhones included for apps added to the home
+  screen (iOS 16.4 on).
+- Written here rather than taken from a library: it's two RFCs in some 150 lines on .NET's own
+  cryptography, checked byte for byte against RFC 8291's worked example, and the integration
+  tests read each notification as a device would, with its private key. No dependency to keep up.
+- Encrypted for the device: the push services carry a notification without being able to read it.
+- Queued like email, so a request never waits on Apple or Google, and a push service that's slow
+  or down costs no one a booking.
+- The list of push services: the server posts wherever a subscription points, so without it
+  anyone signed in could make it send requests to an address of their choosing - this machine,
+  the office network.
+- **Trade-offs:**
+  - Times are in the office's zone; someone elsewhere reads office time.
+  - A device notifies whoever turned them on there last. Signing out turns them off for it, but a
+    browser left without signing out keeps them until someone turns them on there again.
+  - An iPhone gets them only in the app added to its home screen, and a tap opens the address it
+    was added from: with a quick tunnel, whose address changes on each start, that's stale once
+    the tunnel is restarted.
+  - With the app open in front, a notification shows as well as the toast.
+  - A send that fails isn't tried again: the inbox has the message, and a late reminder is noise.
+  - The key pair has to be kept: a new one leaves the devices subscribed with the old one without
+    notifications until they're turned on again.

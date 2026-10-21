@@ -216,6 +216,15 @@ Inbox messages (ADR-0032) go to their recipient alone, through `IInboxNotifier`
 same transaction (`MeetingInvitations`), and push them only after it's committed, so a message
 never announces a change that rolled back.
 
+What reaches one person goes to their phones and browsers too, the app open or not (ADR-0056).
+The API's `ReservationNotifiers` and `InboxNotifiers` hand each event to the SignalR notifier and
+to `PushReservationNotifier` or `PushInboxNotifier`, which put a `PushNotice` on the queue behind
+`IPushSender`. `PushDispatchWorker` writes each notice for every device of its recipients - in the
+owner's language, with the office's time zone (`PushTexts`) - encrypts it for the device
+(`WebPushEncryption`, RFC 8291), signs a VAPID token (`VapidAuthorization`, RFC 8292) and posts it
+to the device's push service, forgetting a device the service no longer knows. Without the
+`WebPush` keys nothing is queued.
+
 The Angular app opens the connection when a session exists and closes it on logout.
 Negotiate does not send cookies (`withCredentials: false`); the hub uses the bearer token,
 renewed first if it's about to expire, on every (re)connect.
@@ -502,8 +511,9 @@ booking and a personal link to subscribe to (ADR-0048); bookings that wait for a
 approval, which hold their time meanwhile (ADR-0049); favourite resources (ADR-0051); a
 history of every change for Admins, written by an interceptor in the same save (ADR-0052);
 logs to query in Seq, a line per request with whose it was (ADR-0053); an app to install,
-which opens without a network (ADR-0054); and on a phone, the main screens in a bar at the
-bottom, where a thumb reaches (ADR-0055).
+which opens without a network (ADR-0054); on a phone, the main screens in a bar at the bottom,
+where a thumb reaches (ADR-0055); and notifications on phones and browsers with the app closed,
+which the API encrypts and sends itself (ADR-0056).
 
 ## 9. Team ownership boundaries
 

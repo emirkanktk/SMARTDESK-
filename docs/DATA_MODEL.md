@@ -268,6 +268,21 @@ hash, like a door screen's.
 | CreatedAt | DateTime | UTC, when this link was made |
 | LastFetchedAt | DateTime? | UTC, when a calendar app last fetched it; null until one has |
 
+### PushSubscription
+
+A phone or browser that turned notifications on (ADR-0056): the address of its push service and
+the keys a notification is encrypted with for it. One row per device; the account is whoever
+turned them on there last.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | key |
+| UserId | Guid | the account it notifies, with no FK across the Identity boundary |
+| Endpoint | string (2048) | the device's address at its push service, Apple's, Google's, Microsoft's or Mozilla's; unique |
+| P256dh | string (100) | the device's P-256 public key, base64url |
+| Auth | string (32) | the device's authentication secret, base64url |
+| SavedAt | DateTime | UTC, when notifications were last turned on there, which the app repeats on every start |
+
 ## Relationships
 
 Solid lines are foreign keys in the database. Dotted lines are account ids kept as plain values,
@@ -395,6 +410,12 @@ erDiagram
         string TokenHash UK "SHA-256 of the link's token"
         datetime LastFetchedAt
     }
+    PushSubscription {
+        uuid Id PK
+        uuid UserId "the account it notifies"
+        string Endpoint UK "its push service's address"
+        datetime SavedAt
+    }
 
     ApplicationUser |o--o{ ApplicationUser : manages
     ApplicationUser ||--o{ UserSession : "signs in with"
@@ -419,6 +440,7 @@ erDiagram
     ApplicationUser ||..o{ IssueReport : reports
     ApplicationUser ||..o{ WaitlistEntry : "waits in"
     ApplicationUser ||..o| CalendarFeed : "subscribes with"
+    ApplicationUser ||..o{ PushSubscription : "is notified on"
 ```
 
 - A resource with no `ResourceTeam` rows is shared by everyone (ADR-0022).
@@ -454,6 +476,8 @@ erDiagram
   freed up; `WaitlistEntries(UserId)` - someone's own list (ADR-0043).
 - `CalendarFeeds(TokenHash)` - unique: a calendar app's fetch finds its link by the hash of the
   token it presents (ADR-0048).
+- `PushSubscriptions(Endpoint)` - unique: a device that turns notifications on again finds its
+  row; `PushSubscriptions(UserId)` - someone's devices, when a notification goes out (ADR-0056).
 
 ## Constraints
 

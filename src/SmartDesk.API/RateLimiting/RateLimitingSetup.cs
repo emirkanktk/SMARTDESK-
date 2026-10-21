@@ -38,6 +38,10 @@ public static class RateLimitingSetup
     // fetch everyone's from a few addresses: the default leaves room for that.
     public const string CalendarFeedPolicy = "calendar-feed";
 
+    // A test notification (ADR-0056) goes out through Apple's, Google's or Microsoft's push service
+    // to every device the caller has: someone checks a new phone once or twice, not by the minute.
+    public const string PushTestPolicy = "push-test";
+
     // Identity's lockout (5 failures -> 5 minutes) protects one account at a time; this caps
     // how many sign-in attempts one client can make across all accounts, which is what a
     // password-spraying or credential-stuffing run looks like.
@@ -53,6 +57,7 @@ public static class RateLimitingSetup
         var issueReportPermitsPerMinute = configuration.GetValue("RateLimiting:IssueReportPermitsPerMinute", 10);
         var doorPagePermitsPerMinute = configuration.GetValue("RateLimiting:DoorPagePermitsPerMinute", 300);
         var calendarFeedPermitsPerMinute = configuration.GetValue("RateLimiting:CalendarFeedPermitsPerMinute", 120);
+        var pushTestPermitsPerMinute = configuration.GetValue("RateLimiting:PushTestPermitsPerMinute", 5);
 
         services.AddRateLimiter(options =>
         {
@@ -119,6 +124,15 @@ public static class RateLimitingSetup
                 _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = calendarFeedPermitsPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+
+            options.AddPolicy(PushTestPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = pushTestPermitsPerMinute,
                     Window = TimeSpan.FromMinutes(1),
                     QueueLimit = 0,
                 }));
