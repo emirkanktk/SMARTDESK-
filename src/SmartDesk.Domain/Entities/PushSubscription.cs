@@ -20,7 +20,7 @@ public class PushSubscription
     public string P256dh { get; set; } = string.Empty;
     public string Auth { get; set; } = string.Empty;
 
-    // When notifications were last turned on there, which the app repeats on every start: past the
-    // most devices per person, the one seen longest ago goes.
+    // When notifications were last turned on there, or found on by its profile page: past the most
+    // devices per person, the one seen longest ago goes.
     public DateTime SavedAt { get; set; }
 }

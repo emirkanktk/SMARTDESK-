@@ -83,6 +83,10 @@ on to the API.
   `ng serve`, with the API from `dotnet run` (`--api` names another), or the whole app in
   Docker. The installed app belongs to its address: a new tunnel address means installing it
   again.
+- **Notifications (ADR-0056):** the same production build, with the API's VAPID keys set (see
+  the root README), offers **Notifications** on the profile page. An iPhone has them only in the
+  app added to its Home Screen, and asks for permission when **Turn on for this device** is
+  tapped. On a computer, `http://localhost:4200` is secure enough for them.
 
 ## Before a pull request
 

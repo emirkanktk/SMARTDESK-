@@ -1,0 +1,37 @@
+:host {
+  display: block;
+}
+
+.push-settings {
+  max-width: 720px;
+  margin-bottom: var(--space-5);
+}
+
+.section-title {
+  margin-bottom: var(--space-3);
+  font-size: 1.125rem;
+}
+
+.intro,
+.state {
+  margin: 0 0 var(--space-3);
+}
+
+// On: said in the success colour, as a check-in is.
+.state.on {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

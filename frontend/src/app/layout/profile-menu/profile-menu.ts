@@ -12,6 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Roles } from '../../core/constants/roles';
 import { roleLabel } from '../../core/i18n/labels';
 import { AuthService } from '../../core/services/auth.service';
+import { PushService } from '../../core/services/push.service';
 import { Icon } from '../../shared/components/icon/icon';
 
 /**
@@ -32,6 +33,7 @@ import { Icon } from '../../shared/components/icon/icon';
 })
 export class ProfileMenu {
   private readonly authService = inject(AuthService);
+  private readonly push = inject(PushService);
   private readonly router = inject(Router);
   private readonly locale = inject(LOCALE_ID);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -117,10 +119,16 @@ export class ProfileMenu {
     }
   }
 
+  /**
+   * First this device stops notifying whoever signs out (ADR-0056), while their session can still
+   * tell the server; then the sign-out, whatever came of that.
+   */
   protected signOut(): void {
     this.open.set(false);
-    this.authService.logout();
-    void this.router.navigateByUrl('/');
+    void this.push.forgetThisDevice().then(() => {
+      this.authService.logout();
+      void this.router.navigateByUrl('/');
+    });
   }
 
   protected onDocumentClick(event: MouseEvent): void {

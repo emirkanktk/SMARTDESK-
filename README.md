@@ -386,6 +386,10 @@ refuses. Restart the API. Elsewhere, set `WebPush__PublicKey`, `WebPush__Private
 the devices that turned notifications on with one get nothing sent with another until they turn
 them on again.
 
+A device turns them on from **Profile**, under **Notifications**, in a production build, which has
+the service worker (ADR-0054; see the frontend README); an iPhone, from the app added to its Home
+Screen. **Send a test** reaches every device the account has them on.
+
 ### Behind a reverse proxy
 
 In production the API sits behind a reverse proxy that terminates HTTPS (nginx, a load

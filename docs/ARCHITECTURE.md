@@ -418,6 +418,13 @@ picker drops seconds and any difference would count as a change.
   `manifest.webmanifest`. `AppUpdateService` offers a new version once the worker has it (a door
   screen just reloads), `ConnectivityService` follows the browser going offline and back, and
   the notification host shows both above its toasts.
+- **Notifications (ADR-0056).** `PushService` (in root) over Angular's `SwPush`, so only in a
+  production build: `refresh()` works out where the device stands - no Push API, Safari on an
+  iPhone outside its Home Screen app, a server without keys, blocked, off or on - and hands a
+  subscription found on to the API again; `turnOn()` asks the browser's permission in the click
+  itself, then subscribes with the server's key. The profile's `<app-push-settings>` shows it,
+  and the account menu's sign-out awaits `forgetThisDevice()` first, a few seconds at most. The
+  service worker shows what arrives and opens the app on the notification's URL.
 - **On a phone (ADR-0055).** Up to 640px the shell adds `<app-tab-bar>` (`layout/tab-bar`), a
   bar at the bottom with four screens and **Menu**, a sheet with every screen in the shell's
   `visibleNavItems` (`NavItem`, `layout/nav-item.ts`), and hides its own strip of links. While

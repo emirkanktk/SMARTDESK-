@@ -489,6 +489,19 @@ plan by the lift.
   something unread. The floor plan keeps its size and scrolls sideways; the status bar takes the
   top bar's colour, in either theme (ADR-0055).
 
+### 29. Notifications on the phone
+
+- The API needs its VAPID keys ("Optional: notifications on phones and browsers" in the README).
+  On the phone, in the app opened from its home screen, as Ayşe: **Profile**, then
+  **Notifications**: **Turn on for this device**, and allow them when the phone asks. **Send a
+  test**: it arrives on the lock screen within seconds.
+- Lock the phone. On the computer, as the manager, book a room for 30 minutes from now inviting
+  Ayşe: the invitation reaches her lock screen at once, and tapping it opens her inbox. Her own
+  booking with a 15-minute reminder lights the phone up 15 minutes before it starts.
+- Point out: the notification is encrypted for the phone alone, so Apple's push service carries
+  it without being able to read it; the API sends it itself, with no account at Apple or Google
+  (ADR-0056). **Sign out** turns them off for that phone.
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in
