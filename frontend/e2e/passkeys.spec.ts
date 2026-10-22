@@ -90,7 +90,9 @@ test('a passkey added on the profile signs in without a password, until it is re
     await signOut(page);
     await page.goto('/login');
     await page.getByRole('button', { name: 'Sign in with a passkey' }).click();
-    await expect(page.locator('.alert-error')).toContainText("isn't on a SmartDesk account any more");
+    await expect(page.locator('.alert-error')).toContainText(
+      "isn't on a SmartDesk account any more",
+    );
     await expect(page).toHaveURL(/\/login/);
   } finally {
     expect((await admin.post(`users/${id}/disable`)).ok(), `disable ${email}`).toBe(true);
