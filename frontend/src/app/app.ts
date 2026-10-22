@@ -1,5 +1,6 @@
 import { Component, effect, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { AppBadgeService } from './core/services/app-badge.service';
 import { AppUpdateService } from './core/services/app-update.service';
 import { AuthService } from './core/services/auth.service';
 import { InboxService } from './core/services/inbox.service';
@@ -22,6 +23,8 @@ export class App {
     // Reminders only arrive while connected, i.e. signed in; so do inbox messages (ADR-0032).
     inject(ReminderAlertsService).start();
     inject(InboxService).start();
+    // Its unread count on the installed app's icon (ADR-0058).
+    inject(AppBadgeService).start();
     // New problem reports, for those who look after resources (ADR-0037).
     inject(IssueAlertsService).start();
     // A new version of the installed app, once its service worker has it (ADR-0054).

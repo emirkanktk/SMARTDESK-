@@ -421,8 +421,8 @@ picker drops seconds and any difference would count as a change.
   the address (`?resourceId=`, the link on the resource form). `audit-text.ts` says each entry
   in words - what and which, who, each column before and after - with the names the page brings
   and the kinds of resource, in the screen's language and time zone.
-- **Installed (ADR-0054).** `provideServiceWorker` in a production build, with `ngsw-config.json`
-  saying what it keeps - the app's own files, never the API's answers - and
+- **Installed (ADR-0054).** `provideServiceWorker` in a production build - SmartDesk's own
+  `smartdesk-worker.js`, which loads Angular's (ADR-0058) - with `ngsw-config.json` saying what it keeps - the app's own files, never the API's answers - and
   `manifest.webmanifest`. `AppUpdateService` offers a new version once the worker has it (a door
   screen just reloads), `ConnectivityService` follows the browser going offline and back, and
   the notification host shows both above its toasts.
@@ -433,6 +433,10 @@ picker drops seconds and any difference would count as a change.
   itself, then subscribes with the server's key. The profile's `<app-push-settings>` shows it,
   and the account menu's sign-out awaits `forgetThisDevice()` first, a few seconds at most. The
   service worker shows what arrives and opens the app on the notification's URL.
+- **The icon's count (ADR-0058).** `AppBadgeService` (in root) puts `InboxService.unread` on the
+  installed app's icon with the Badging API while the app is open; `public/smartdesk-worker.js`
+  loads Angular's worker and adds a `push` listener that sets it from each notification's
+  `badge` while it's closed.
 - **Passkeys (ADR-0057).** `PasskeyService` (in root) asks the API for options, hands them to
   `navigator.credentials` and sends the answer back with the options' token; `core/utils/webauthn.ts`
   turns the JSON into what the browser takes and back, where the browser can't do it itself. The
@@ -535,8 +539,9 @@ history of every change for Admins, written by an interceptor in the same save (
 logs to query in Seq, a line per request with whose it was (ADR-0053); an app to install,
 which opens without a network (ADR-0054); on a phone, the main screens in a bar at the bottom,
 where a thumb reaches (ADR-0055); notifications on phones and browsers with the app closed,
-which the API encrypts and sends itself (ADR-0056); and signing in with Face ID, a fingerprint or
-Windows Hello instead of a password, with passkeys Identity checks itself (ADR-0057).
+which the API encrypts and sends itself (ADR-0056); signing in with Face ID, a fingerprint or
+Windows Hello instead of a password, with passkeys Identity checks itself (ADR-0057); and the
+unread messages counted on the installed app's icon, the app open or not (ADR-0058).
 
 ## 9. Team ownership boundaries
 

@@ -730,7 +730,9 @@ Push). Off until the API has its VAPID keys.
   them. Switched-off accounts get none.
 - The payload is what Angular's service worker shows: `{ notification: { title, body, icon, tag,
   data: { onActionClick: { default: { operation: "navigateLastFocusedOrOpen", url } } } } }`.
-  Tapping it opens `/reservations/mine`, `/inbox`, `/admin/approvals` or `/profile`.
+  Tapping it opens `/reservations/mine`, `/inbox`, `/admin/approvals` or `/profile`. Beside it,
+  `badge`: the recipient's unread messages as it's sent, its own among them, which SmartDesk's
+  worker puts on the installed app's icon (ADR-0058).
 - Each is encrypted for its device (RFC 8291, `Content-Encoding: aes128gcm`) and carries a VAPID
   token (RFC 8292, `Authorization: vapid t=…, k=…`, valid 12 hours), a `TTL` - 15 minutes for the
   booking notices, an hour for a release, a day for a message - and an `Urgency`. A device its

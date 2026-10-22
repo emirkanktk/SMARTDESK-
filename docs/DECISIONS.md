@@ -1986,3 +1986,38 @@ new tables.
   - Version 3 of Identity's schema also limits the length of a few of its columns - login
     providers and token names to 128 characters, the unused phone number to 256 - which the
     migration applies along with the new table.
+
+## ADR-0058: The installed app's icon counts the unread messages
+
+**Decision:**
+- The installed app's icon - on a phone's home screen, a computer's taskbar or dock - shows how
+  many of the signed-in person's inbox messages are unread (the Badging API): the number the
+  **Inbox** link shows. None when nothing is unread, and none when nobody is signed in.
+- While the app is open, `AppBadgeService` keeps the icon on the inbox's own count
+  (`InboxService.unread`, which follows the hub, ADR-0032).
+- While it's closed, every notification (ADR-0056) carries its owner's unread count as it's
+  sent - `badge` in the payload, counted by `PushDispatchWorker` with the notice's own message
+  among them - and the app's service worker puts it on the icon. That worker is now SmartDesk's
+  own, `smartdesk-worker.js`: it loads Angular's (`importScripts('./ngsw-worker.js')`), which goes
+  on keeping the app and showing the notifications, and adds the one `push` listener that sets
+  the number. `provideServiceWorker` registers it; nginx and `serve-build` serve it uncached as
+  they do Angular's, and `ngsw-config.json` leaves it out of the files the app keeps.
+
+**Why:**
+- On a phone, a number on the icon is how an app says something is waiting for you, and
+  SmartDesk is installed (ADR-0054) and notifies (ADR-0056) like one. iPhones show it for Home
+  Screen apps since iOS 16.4, Chrome and Edge for installed apps on Windows and macOS.
+- With the app closed, only the server knows the count, and a notification is the one way it
+  reaches the phone - iOS refuses pushes that show nothing - so each one brings it along.
+- Unread messages, and nothing else: invitations, answers, approvals and times from the waiting
+  list all arrive there, and it's the count the app already shows.
+- Angular's worker has no place for this; loading it from a worker of our own is how Angular's
+  documentation says to add to it, and leaves the rest of it as it was.
+- **Trade-offs:**
+  - Messages read on another device leave the old number on the icon until the next
+    notification arrives or the app is opened.
+  - An iPhone shows it only in the app added to its Home Screen, with notifications allowed; a
+    computer only for the installed app. Anywhere else nothing changes.
+  - New problem reports (ADR-0037) aren't counted: they don't come to the inbox.
+  - Devices that installed the app with Angular's worker take SmartDesk's with the next version,
+    as every new version arrives (ADR-0054).

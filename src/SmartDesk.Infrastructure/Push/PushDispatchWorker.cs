@@ -19,7 +19,8 @@ namespace SmartDesk.Infrastructure.Push;
 
 // Sends what PushQueue collects (ADR-0056): each notice to every device its recipients turned
 // notifications on in, if their account is active - written in the owner's language with the times in
-// the office's zone, encrypted for the device (RFC 8291) and signed with the server's key (RFC 8292). A
+// the office's zone, with the owner's unread count for the app's icon (ADR-0058), encrypted for the
+// device (RFC 8291) and signed with the server's key (RFC 8292). A
 // device its push service no longer knows (404, 410) is forgotten. Anything else that fails is logged
 // and the next goes out: the inbox has the message anyway, and a reminder that waits comes too late.
 public sealed class PushDispatchWorker(
@@ -78,6 +79,14 @@ public sealed class PushDispatchWorker(
         var zone = await OfficeZoneAsync(db, cancellationToken);
         var client = httpClients.CreateClient(HttpClientName);
 
+        // The number on the app's icon (ADR-0058): each owner's unread messages as they stand now,
+        // this notice's own message among them.
+        var unread = await db.InboxMessages.AsNoTracking()
+            .Where(m => owners.Contains(m.RecipientId) && m.ReadAt == null)
+            .GroupBy(m => m.RecipientId)
+            .Select(g => new { RecipientId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.RecipientId, g => g.Count, cancellationToken);
+
         var gone = new List<PushSubscription>();
         foreach (var device in devices)
         {
@@ -87,7 +96,8 @@ public sealed class PushDispatchWorker(
             }
 
             var content = PushTexts.Compose(notice, Languages.CultureFor(language), zone, checkInTimes.Grace);
-            if (!await DeliverAsync(client, device, content, notice.Topic, key, cancellationToken))
+            var badge = unread.GetValueOrDefault(device.UserId);
+            if (!await DeliverAsync(client, device, content, badge, notice.Topic, key, cancellationToken))
             {
                 gone.Add(device);
             }
@@ -102,12 +112,18 @@ public sealed class PushDispatchWorker(
 
     // False when the device is gone for good, and should be forgotten.
     private async Task<bool> DeliverAsync(
-        HttpClient client, PushSubscription device, PushContent content, PushTopic topic, ECDsa key, CancellationToken cancellationToken)
+        HttpClient client,
+        PushSubscription device,
+        PushContent content,
+        int badge,
+        PushTopic topic,
+        ECDsa key,
+        CancellationToken cancellationToken)
     {
         byte[] body;
         try
         {
-            body = WebPushEncryption.Encrypt(Payload(content), PushKeys.Decode(device.P256dh)!, PushKeys.Decode(device.Auth)!);
+            body = WebPushEncryption.Encrypt(Payload(content, badge), PushKeys.Decode(device.P256dh)!, PushKeys.Decode(device.Auth)!);
         }
         catch (Exception exception) when (PushKeys.IsBadKey(exception))
         {
@@ -145,9 +161,11 @@ public sealed class PushDispatchWorker(
         return true;
     }
 
-    // What the Angular service worker shows, and opens the app on when it's tapped (ADR-0054).
-    private static byte[] Payload(PushContent content) => JsonSerializer.SerializeToUtf8Bytes(new
+    // What the Angular service worker shows, and opens the app on when it's tapped (ADR-0054), and
+    // the number SmartDesk's own worker puts on the app's icon (ADR-0058).
+    private static byte[] Payload(PushContent content, int badge) => JsonSerializer.SerializeToUtf8Bytes(new
     {
+        badge,
         notification = new
         {
             title = content.Title,

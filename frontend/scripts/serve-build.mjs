@@ -47,6 +47,7 @@ const TYPES = {
 const CHECKED_EVERY_TIME = new Set([
   '/index.html',
   '/ngsw-worker.js',
+  '/smartdesk-worker.js',
   '/ngsw.json',
   '/safety-worker.js',
   '/worker-basic.min.js',
