@@ -1919,3 +1919,70 @@ new tables.
   - A send that fails isn't tried again: the inbox has the message, and a late reminder is noise.
   - The key pair has to be kept: a new one leaves the devices subscribed with the old one without
     notifications until they're turned on again.
+
+## ADR-0057: Signing in with a passkey: Face ID, a fingerprint or Windows Hello
+
+**Decision:**
+- Besides the password, a person can sign in with a passkey: a key pair their device makes for
+  SmartDesk and keeps, unlocked by Face ID, a fingerprint, Windows Hello or the device's PIN. The
+  server keeps only the public key. ASP.NET Core Identity's own WebAuthn checks do the work
+  (`PasskeyHandler`, new in .NET 10), and the passkeys are kept where Identity keeps them:
+  `AspNetUserPasskeys`, from version 3 of its schema (`StoreOptions.SchemaVersion`).
+- Making one and signing in with one are two calls each: the options, whose challenge comes with
+  a token, then the browser's answer with the token back. Identity's `SignInManager` keeps that
+  state in a cookie and signs in with cookies; this API has neither (ADR-0008), so the state
+  travels in the token instead. It's encrypted and signed with Data Protection, names the
+  ceremony, the account (when adding one) and the page's address, is good for 5 minutes, and
+  takes one answer (`PasskeyChallengeLog`).
+- Adding one: **Passkeys** on the profile asks for the account's password -
+  `POST /api/auth/passkeys/creation-options` checks it as signing in does, failed attempts and
+  lockout included - then the device asks for the face or finger, and `POST /api/auth/passkeys`
+  keeps the passkey under a name, by default the kind of device ("iPhone"). Ten at most per
+  account. `GET /api/auth/passkeys` lists them, with when each was added and whether it's synced
+  (iCloud Keychain, Google Password Manager); `DELETE /api/auth/passkeys/{id}` removes one. The
+  history (ADR-0052) keeps each one added or removed, under its name.
+- Signing in: **Sign in with a passkey** on the sign-in page. `POST /api/auth/passkeys/request-options`
+  names no account, so the device offers the passkeys it has for this site and the person picks
+  theirs; `POST /api/auth/passkeys/sign-in` checks the answer and signs in as a password does: the
+  same account checks (waiting for approval or switched off is refused), the same session and
+  cookie (ADR-0026), the language remembered (ADR-0023). The passkey's counter and backup state are
+  saved. One taken off its account but still on the device gets an answer that says so. These
+  calls, and the one that takes the password, count towards the sign-in rate limit (ADR-0008).
+- A passkey must be kept on the device (a discoverable credential, so no email first), and the
+  device must verify the person, not just see someone tap.
+- A passkey belongs to the domain of the page it was made on. The API takes the page's address
+  from the request's `Origin`, which must be one the app is served at - `App:FrontendUrl` or one
+  of `Cors:AllowedOrigins` - and checks that the answer was made on that same page, never in a
+  frame inside another site.
+
+**Why:**
+- A password is the slowest part of using SmartDesk on a phone - signing in at a door to check
+  in, say - and Face ID is one look. A passkey also can't be phished, guessed or reused from
+  another site's leak: the device signs only for SmartDesk's own domain, and what the server
+  keeps can't sign anything.
+- Identity checks WebAuthn itself since .NET 10 - attestation and assertion, COSE keys, counters,
+  the store - so there's no library to keep up and the checks are Microsoft's. Only the token is
+  ours, because Identity's cookies don't fit a bearer-token API.
+- The password before adding one: otherwise an access token copied out of someone's browser
+  would be enough to add the copier's own passkey, a way in that outlasts the session and even a
+  password change.
+- The state in the token: no table of challenges to keep and clear, and it works the same behind
+  the dev server's proxy, nginx and a tunnel. One answer per challenge stops a copy of a sign-in
+  from being played again while its token would still be good.
+- The address from `Origin`, checked against the configured ones: behind the dev server and the
+  tunnel the request's `Host` is the API's, not the page's.
+- **Trade-offs:**
+  - A passkey works only on the domain it was made on. A quick tunnel's address changes on each
+    start, so one made through it stops working once the tunnel is restarted; the profile still
+    lists it, to remove. In production there's one address.
+  - Passkeys need https, or `localhost`: opened over plain http at the office network's address,
+    the app doesn't offer them.
+  - A password lockout doesn't stop a passkey: the lockout is there against guessing, and a
+    passkey can't be guessed.
+  - The challenges already answered are kept in memory, like the access checks' cache
+    (ADR-0020): with several API instances, a copy could be used once on each of the others.
+  - Nothing tells the owner when a passkey is added; the profile lists them and the history
+    keeps each one.
+  - Version 3 of Identity's schema also limits the length of a few of its columns - login
+    providers and token names to 128 characters, the unused phone number to 256 - which the
+    migration applies along with the new table.

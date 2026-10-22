@@ -61,6 +61,8 @@ public static class DependencyInjection
             {
                 options.Password.RequiredLength = 8;
                 options.User.RequireUniqueEmail = true;
+                // Version 3 keeps passkeys (ADR-0057).
+                options.Stores.SchemaVersion = SmartDeskDbContext.IdentitySchemaVersion;
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddErrorDescriber<LocalizedIdentityErrorDescriber>()
@@ -155,6 +157,10 @@ public static class DependencyInjection
                 "Sessions: IdleDays must be positive, MaxDays at least IdleDays, and ReuseGraceSeconds not negative.")
             .ValidateOnStart();
         services.AddScoped<UserAccessCache>();
+        // Passkeys (ADR-0057): checked by Identity, on the addresses the app is served at.
+        services.AddSingleton(sp => PasskeyOrigins.From(sp.GetRequiredService<IConfiguration>()));
+        services.AddSingleton<PasskeyChallengeLog>();
+        services.AddScoped<IPasskeys, Passkeys>();
         // The API registers the SignalR one first; this is the fallback without a hub.
         services.TryAddSingleton<IRealtimeSessions, NoRealtimeSessions>();
         services.AddScoped<IdentityDataSeeder>();

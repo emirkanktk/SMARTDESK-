@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using SmartDesk.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 
@@ -16,8 +18,13 @@ public sealed class PostgresApiFixture : WebApplicationFactory<Program>, IAsyncL
     {
         await _postgres.StartAsync();
 
+        // With the Identity schema version the app runs on, which Identity reads from its options.
+        var identity = new ServiceCollection()
+            .Configure<IdentityOptions>(o => o.Stores.SchemaVersion = SmartDeskDbContext.IdentitySchemaVersion)
+            .BuildServiceProvider();
         var options = new DbContextOptionsBuilder<SmartDeskDbContext>()
             .UseNpgsql(_postgres.GetConnectionString())
+            .UseApplicationServiceProvider(identity)
             .Options;
         await using var db = new SmartDeskDbContext(options);
         await db.Database.MigrateAsync();

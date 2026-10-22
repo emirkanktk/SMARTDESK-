@@ -40,6 +40,11 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
+    // Identity's tables as of version 3, which adds AspNetUserPasskeys (ADR-0057). Identity reads
+    // the version from the app's options (StoreOptions.SchemaVersion), so a context made without
+    // them - as the integration tests' migrator is - has to be given them too.
+    public static readonly Version IdentitySchemaVersion = IdentitySchemaVersions.Version3;
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -86,7 +91,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
         builder.Entity<AuditEntry>(entity =>
         {
             entity.Property(e => e.EntityType).IsRequired().HasMaxLength(32);
-            entity.Property(e => e.EntityId).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.EntityId).IsRequired().HasMaxLength(AuditInterceptor.EntityIdLength);
             entity.Property(e => e.Label).HasMaxLength(AuditInterceptor.LabelLength);
             entity.Property(e => e.Changes).IsRequired().HasColumnType("jsonb");
             entity.HasIndex(e => new { e.EntityType, e.EntityId });

@@ -333,6 +333,9 @@
   <data name="Entity_IssueReportPhoto" xml:space="preserve">
     <value>Photo</value>
   </data>
+  <data name="Entity_Passkey" xml:space="preserve">
+    <value>Passkey</value>
+  </data>
   <data name="Entity_Reservation" xml:space="preserve">
     <value>Reservation</value>
   </data>
@@ -1007,5 +1010,32 @@
   </data>
   <data name="Push_UnknownService" xml:space="preserve">
     <value>This browser's push service isn't one SmartDesk sends to.</value>
+  </data>
+  <data name="Passkey_BadCredential" xml:space="preserve">
+    <value>The browser's answer is missing, or isn't a passkey's.</value>
+  </data>
+  <data name="Passkey_Expired" xml:space="preserve">
+    <value>This passkey request has expired. Try again.</value>
+  </data>
+  <data name="Passkey_Failed" xml:space="preserve">
+    <value>The passkey couldn't be checked. Try again, or sign in with your password.</value>
+  </data>
+  <data name="Passkey_Full" xml:space="preserve">
+    <value>An account can have at most {0} passkeys. Remove one you no longer use first.</value>
+  </data>
+  <data name="Passkey_NameRequired" xml:space="preserve">
+    <value>Give the passkey a name, such as the device it's on.</value>
+  </data>
+  <data name="Passkey_NotAdded" xml:space="preserve">
+    <value>The new passkey couldn't be checked, so it wasn't added. Try again.</value>
+  </data>
+  <data name="Passkey_Unknown" xml:space="preserve">
+    <value>This passkey isn't on a SmartDesk account any more. Sign in with your password, and delete it from your device.</value>
+  </data>
+  <data name="Passkey_UnknownOrigin" xml:space="preserve">
+    <value>Passkeys can't be used at this address. Open SmartDesk at its usual address.</value>
+  </data>
+  <data name="Passkey_WrongPassword" xml:space="preserve">
+    <value>The password is wrong.</value>
   </data>
 </root>

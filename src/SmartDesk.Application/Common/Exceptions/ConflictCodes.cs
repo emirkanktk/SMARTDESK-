@@ -69,4 +69,7 @@ public static class ConflictCodes
 
     // Starring one more resource with FavoriteRules.MaxPerUser starred already (ADR-0051).
     public const string FavoritesFull = "favorites-full";
+
+    // Adding a passkey with PasskeyRules.MaxPerUser on the account already (ADR-0057).
+    public const string PasskeysFull = "passkeys-full";
 }
