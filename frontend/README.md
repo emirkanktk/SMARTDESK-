@@ -86,7 +86,9 @@ on to the API.
 - **Notifications (ADR-0056):** the same production build, with the API's VAPID keys set (see
   the root README), offers **Notifications** on the profile page. An iPhone has them only in the
   app added to its Home Screen, and asks for permission when **Turn on for this device** is
-  tapped. On a computer, `http://localhost:4200` is secure enough for them.
+  tapped. On a computer, `http://localhost:4200` is secure enough for them. The installed
+  app's icon counts the unread messages (ADR-0058) - on an iPhone once notifications are
+  allowed - from SmartDesk's worker, `public/smartdesk-worker.js`, which is Angular's plus that.
 - **Passkeys (ADR-0057):** **Sign in with a passkey** and the profile's **Passkeys** need https or
   `localhost` - the tunnel on a phone, `http://localhost:4200` on the computer - and an address
   the API has as `App__FrontendUrl` (or in `Cors:AllowedOrigins`). A passkey belongs to the

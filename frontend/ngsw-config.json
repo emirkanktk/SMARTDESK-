@@ -13,6 +13,7 @@
           "/manifest.webmanifest",
           "/*.css",
           "/*.js",
+          "!/smartdesk-worker.js",
           "/i18n/*.json"
         ]
       }

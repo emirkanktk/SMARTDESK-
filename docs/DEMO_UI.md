@@ -498,6 +498,8 @@ plan by the lift.
 - Lock the phone. On the computer, as the manager, book a room for 30 minutes from now inviting
   Ayşe: the invitation reaches her lock screen at once, and tapping it opens her inbox. Her own
   booking with a 15-minute reminder lights the phone up 15 minutes before it starts.
+- Without opening the app, look at its icon on the home screen: it shows 1, the unread
+  invitation (ADR-0058). Open the inbox and read it, and the number goes.
 - Point out: the notification is encrypted for the phone alone, so Apple's push service carries
   it without being able to read it; the API sends it itself, with no account at Apple or Google
   (ADR-0056). **Sign out** turns them off for that phone.

@@ -1,3 +1,4 @@
+import { Page } from '@playwright/test';
 import { expect, test } from './support';
 
 // The installed app (ADR-0054). Its service worker is in a production build only, so this runs
@@ -14,12 +15,7 @@ test('the app installs, and opens without a network saying so', async ({ visit }
 
   await page.goto('/login');
   await expect(page.locator('#email')).toBeVisible();
-  // Registered once the app has settled, within 30 seconds, and in charge from the next load.
-  await page.waitForFunction(
-    async () => !!(await navigator.serviceWorker.getRegistration())?.active,
-    null,
-    { timeout: 45_000 },
-  );
+  await workerActive(page);
   await page.reload();
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
 
@@ -43,3 +39,87 @@ test('the app installs, and opens without a network saying so', async ({ visit }
   await page.evaluate(() => window.dispatchEvent(new Event('online')));
   await expect(page.getByText("You're offline.", { exact: false })).toHaveCount(0);
 });
+
+// The number on the installed app's icon (ADR-0058): SmartDesk's own worker, around Angular's, sets
+// it from each notification. Here the notifications come as DevTools sends them, and the worker's
+// Badging API is a stand-in that notes what it's given: a browser test has no icon to look at.
+test("each notification puts its owner's unread count on the app's icon", async ({ visit }) => {
+  test.slow();
+  const page = await visit();
+  const ngsw = await page.request.get('/ngsw.json');
+  test.skip(
+    !ngsw.ok() || !(await ngsw.text()).includes('"configVersion"'),
+    'The service worker is in a production build only: run this through nginx.',
+  );
+
+  const cdp = await page.context().newCDPSession(page);
+  const registrationId = new Promise<string>((resolve) =>
+    cdp.on('ServiceWorker.workerRegistrationUpdated', ({ registrations }) => {
+      const live = registrations.find((r) => !r.isDeleted);
+      if (live) resolve(live.registrationId);
+    }),
+  );
+  await cdp.send('ServiceWorker.enable');
+  await page.goto('/login');
+  const origin = new URL(page.url()).origin;
+  await page.context().grantPermissions(['notifications'], { origin });
+  await workerActive(page);
+  const ours = (url: string) => url.endsWith('/smartdesk-worker.js');
+  const worker =
+    page
+      .context()
+      .serviceWorkers()
+      .find((w) => ours(w.url())) ??
+    (await page.context().waitForEvent('serviceworker', { predicate: (w) => ours(w.url()) }));
+
+  await worker.evaluate(() => {
+    const scope = self as unknown as { badges: (number | 'cleared')[]; navigator: object };
+    scope.badges = [];
+    Object.defineProperties(scope.navigator, {
+      setAppBadge: {
+        configurable: true,
+        value: async (count: number) => void scope.badges.push(count),
+      },
+      clearAppBadge: { configurable: true, value: async () => void scope.badges.push('cleared') },
+    });
+  });
+  const deliver = async (badge: number) =>
+    cdp.send('ServiceWorker.deliverPushMessage', {
+      origin,
+      registrationId: await registrationId,
+      data: JSON.stringify({
+        notification: { title: 'SmartDesk', body: `${badge} unread`, tag: `unread-${badge}` },
+        badge,
+      }),
+    });
+
+  await deliver(3);
+  await expect
+    .poll(() => worker.evaluate(() => (self as unknown as { badges: unknown[] }).badges))
+    .toEqual([3]);
+  // Everything read: the next one takes the number off.
+  await deliver(0);
+  await expect
+    .poll(() => worker.evaluate(() => (self as unknown as { badges: unknown[] }).badges))
+    .toEqual([3, 'cleared']);
+
+  // Angular's worker still shows each of them.
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        return (await registration!.getNotifications()).map((n) => n.tag).sort();
+      }),
+    )
+    .toEqual(['unread-0', 'unread-3']);
+});
+
+/** Registered once the app has settled, within 30 seconds, and active: the page asks until it is. */
+async function workerActive(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () => page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.active),
+      { timeout: 45_000 },
+    )
+    .toBe(true);
+}

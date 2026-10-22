@@ -29,8 +29,9 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => inject(CheckInTimesService).load()),
     // Installable, and opening without a network (ADR-0054). In a production build only, so
     // `ng serve` and the tests always run what's on disk. Registered once the app has settled,
-    // so its first load isn't slowed by the files the worker fetches.
-    provideServiceWorker('ngsw-worker.js', {
+    // so its first load isn't slowed by the files the worker fetches. SmartDesk's worker is
+    // Angular's, plus the unread count on the app's icon (ADR-0058, public/smartdesk-worker.js).
+    provideServiceWorker('smartdesk-worker.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',
     }),

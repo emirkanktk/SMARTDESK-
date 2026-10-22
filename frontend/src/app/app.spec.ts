@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../environments/environment';
 import { fakeJwt } from '../testing/fake-jwt';
 import { App } from './app';
+import { AppBadgeService } from './core/services/app-badge.service';
 import { AuthService } from './core/services/auth.service';
 import { InboxService } from './core/services/inbox.service';
 import { IssueAlertsService } from './core/services/issue-alerts.service';
@@ -17,6 +18,7 @@ describe('App', () => {
   };
   const reminderAlerts = { start: vi.fn() };
   const inbox = { start: vi.fn() };
+  const appBadge = { start: vi.fn() };
   const issueAlerts = { start: vi.fn() };
 
   beforeEach(async () => {
@@ -25,6 +27,7 @@ describe('App', () => {
     hub.disconnect.mockClear();
     reminderAlerts.start.mockClear();
     inbox.start.mockClear();
+    appBadge.start.mockClear();
     issueAlerts.start.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
@@ -34,6 +37,7 @@ describe('App', () => {
         { provide: ReservationHubService, useValue: hub },
         { provide: ReminderAlertsService, useValue: reminderAlerts },
         { provide: InboxService, useValue: inbox },
+        { provide: AppBadgeService, useValue: appBadge },
         { provide: IssueAlertsService, useValue: issueAlerts },
       ],
     }).compileComponents();
@@ -57,6 +61,7 @@ describe('App', () => {
 
     expect(reminderAlerts.start).toHaveBeenCalledTimes(1);
     expect(inbox.start).toHaveBeenCalledTimes(1);
+    expect(appBadge.start).toHaveBeenCalledTimes(1);
     expect(issueAlerts.start).toHaveBeenCalledTimes(1);
   });
 

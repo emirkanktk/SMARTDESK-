@@ -138,7 +138,8 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   released, invitations, approvals and everything else that reaches the inbox, on the lock
   screen of a phone or a computer even with the app closed - on an iPhone, from the app on its
   home screen. Encrypted for each device and sent through its own push service by the API itself;
-  off until the server has its keys ([ADR-0056](docs/DECISIONS.md)).
+  off until the server has its keys ([ADR-0056](docs/DECISIONS.md)). The app's icon shows how
+  many messages are unread, as an app's does ([ADR-0058](docs/DECISIONS.md)).
 - **Booking assistant (optional)** - with an Anthropic API key, a conversation in the corner of
   every screen: "a room for 4 tomorrow at 10". It looks things up as the user and offers
   bookings and cancellations as cards. Nothing is booked until the user presses a card's button
