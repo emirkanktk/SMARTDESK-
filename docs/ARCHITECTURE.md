@@ -193,6 +193,14 @@ endpoint requires an authenticated user unless it opts out with `[AllowAnonymous
 (ADR-0008). The signing key is never committed - see
 `docs/DECISIONS.md` (ADR-0005) and the README's setup steps for `dotnet user-secrets`.
 
+Besides the password, a passkey signs in (ADR-0057): Face ID, a fingerprint or Windows Hello.
+Identity's own WebAuthn handler (`PasskeyHandler`, .NET 10) checks what the device signs, and
+its store keeps the public keys (`AspNetUserPasskeys`). `Passkeys` in Infrastructure makes a
+handler per request for the domain of the page's `Origin`, which must be one the app is
+served at, and carries each challenge's state to the browser and back in a token protected with
+Data Protection, since Identity's own way keeps it in a cookie. A passkey sign-in ends in the
+same `SessionIssuer` as a password: the same account checks, and a session.
+
 ## 6. Real-time updates (SignalR)
 
 A single hub (`SmartDesk.API/Hubs/ReservationHub.cs`) broadcasts reservation
@@ -425,6 +433,13 @@ picker drops seconds and any difference would count as a change.
   itself, then subscribes with the server's key. The profile's `<app-push-settings>` shows it,
   and the account menu's sign-out awaits `forgetThisDevice()` first, a few seconds at most. The
   service worker shows what arrives and opens the app on the notification's URL.
+- **Passkeys (ADR-0057).** `PasskeyService` (in root) asks the API for options, hands them to
+  `navigator.credentials` and sends the answer back with the options' token; `core/utils/webauthn.ts`
+  turns the JSON into what the browser takes and back, where the browser can't do it itself. The
+  sign-in page's **Sign in with a passkey** ends in `AuthService.passkeySignIn()`, which starts the
+  session as a password does; the profile's `<app-passkeys>` lists them, adds one on this device
+  with the password, and removes them. Neither is offered without WebAuthn or off https and
+  `localhost`.
 - **On a phone (ADR-0055).** Up to 640px the shell adds `<app-tab-bar>` (`layout/tab-bar`), a
   bar at the bottom with four screens and **Menu**, a sheet with every screen in the shell's
   `visibleNavItems` (`NavItem`, `layout/nav-item.ts`), and hides its own strip of links. While
@@ -519,8 +534,9 @@ approval, which hold their time meanwhile (ADR-0049); favourite resources (ADR-0
 history of every change for Admins, written by an interceptor in the same save (ADR-0052);
 logs to query in Seq, a line per request with whose it was (ADR-0053); an app to install,
 which opens without a network (ADR-0054); on a phone, the main screens in a bar at the bottom,
-where a thumb reaches (ADR-0055); and notifications on phones and browsers with the app closed,
-which the API encrypts and sends itself (ADR-0056).
+where a thumb reaches (ADR-0055); notifications on phones and browsers with the app closed,
+which the API encrypts and sends itself (ADR-0056); and signing in with Face ID, a fingerprint or
+Windows Hello instead of a password, with passkeys Identity checks itself (ADR-0057).
 
 ## 9. Team ownership boundaries
 

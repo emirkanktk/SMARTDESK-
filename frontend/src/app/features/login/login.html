@@ -83,6 +83,23 @@
       </button>
     </form>
 
+    @if (passkeysSupported) {
+      <div class="or" i18n="@@login.or">or</div>
+      <button
+        type="button"
+        class="btn btn-secondary btn-block passkey"
+        [disabled]="submitting()"
+        aria-describedby="passkey-hint"
+        (click)="signInWithPasskey()"
+      >
+        <app-icon name="passkey" />
+        <ng-container i18n="@@login.passkey">Sign in with a passkey</ng-container>
+      </button>
+      <p id="passkey-hint" class="text-muted passkey-hint" i18n="@@login.passkeyHint">
+        Face ID, a fingerprint or Windows Hello, once you've added one on your profile.
+      </p>
+    }
+
     <p class="signup" i18n="@@login.signUp">
       New to SmartDesk? <a routerLink="/register">Sign up</a>
     </p>

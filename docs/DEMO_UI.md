@@ -502,6 +502,20 @@ plan by the lift.
   it without being able to read it; the API sends it itself, with no account at Apple or Google
   (ADR-0056). **Sign out** turns them off for that phone.
 
+### 30. Face ID instead of a password
+
+- On the phone, at the tunnel's address the API has as `App__FrontendUrl`, as Ayşe: **Profile**,
+  then **Passkeys**. The name already says "iPhone": type her password, **Add a passkey**, and
+  look at the phone when Face ID asks. It's listed, "synced to your other devices".
+- **Sign out**, and on the sign-in page tap **Sign in with a passkey**: the phone offers Ayşe's
+  passkey, Face ID again, and the dashboard opens. No email, no password.
+- On the computer, at `http://localhost:4200`, Windows Hello does the same. A passkey belongs to
+  the address it was made at, so the computer's and the phone's are two.
+- Point out: the passkey signs only for SmartDesk's own address, so a look-alike site gets nothing
+  it can use; the server keeps only the public key; adding one asks for the password, so a stolen
+  session can't plant one; and the checks are ASP.NET Core Identity's own, new in .NET 10
+  (ADR-0057). As the admin, **History** shows the passkey added under its name.
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in
