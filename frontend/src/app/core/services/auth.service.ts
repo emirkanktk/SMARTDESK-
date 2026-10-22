@@ -171,6 +171,20 @@ export class AuthService {
   }
 
   /**
+   * Signs in with a passkey (ADR-0057): what the device's passkey answered, and the token its
+   * challenge came with. The session is the one a password starts.
+   */
+  passkeySignIn(credential: unknown, token: string): Observable<LoginResponse> {
+    return this.http
+      .post<LoginResponse>(
+        `${environment.apiUrl}/auth/passkeys/sign-in`,
+        { credential, token },
+        { context: this.anonymousContext() },
+      )
+      .pipe(tap((response) => this.signedIn(response)));
+  }
+
+  /**
    * Replaces the signed-in user's password. Every session ends, so the answer starts a new one
    * for this browser, and the other tabs pick it up.
    */

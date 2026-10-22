@@ -19,6 +19,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   Admins can also add people with a temporary password, which is changed at the first sign-in.
   Admins change roles, move people between teams and disable accounts
   ([ADR-0020](docs/DECISIONS.md), [ADR-0021](docs/DECISIONS.md)).
+- **Face ID instead of a password** - a passkey, added on the profile with the password, signs
+  in with Face ID, a fingerprint or Windows Hello in one tap, no email or password. The device
+  keeps the key; the server keeps only what checks it, and only SmartDesk's own address can use
+  it, so it can't be phished ([ADR-0057](docs/DECISIONS.md)).
 - **Resources** - meeting rooms, desks, company cars, projectors, cameras - with type,
   capacity, location, features, a status (`Active` / `Inactive` / `Maintenance`) and a photo,
   or their type's picture until someone uploads one ([ADR-0027](docs/DECISIONS.md)).
@@ -144,7 +148,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
 |---|---|
 | Frontend | Angular 22 (standalone components, Signals, Reactive Forms) |
 | Backend | .NET 10 Web API, Onion Architecture, CQRS with MediatR, FluentValidation |
-| Data | PostgreSQL via EF Core; ASP.NET Core Identity for users and roles |
+| Data | PostgreSQL via EF Core; ASP.NET Core Identity for users, roles and passkeys (WebAuthn) |
 | Real-time | SignalR |
 | Notifications (optional) | Web Push, encrypted (RFC 8291) and signed (RFC 8292) by the API with .NET's own cryptography |
 | Assistant (optional) | Claude, through Anthropic's official .NET SDK, or Gemini over its REST API (ADR-0036) |
@@ -229,6 +233,13 @@ Query strings, which can carry tokens, are never written.
 checked in `CheckIn:GraceMinutes` after its start: 15 by default, from 1 to 60 (ADR-0040).
 For a demo, `CheckIn__GraceMinutes=1` shows a release within a minute or so; the app reads the
 setting from the API, so its texts and times follow.
+
+**Passkeys (ADR-0057).** Signing in with Face ID, a fingerprint or Windows Hello needs no setup,
+only a page opened over https or on `localhost`. A passkey belongs to the domain of the page it
+was made on, so the API takes passkeys only from the addresses the app is served at:
+`App:FrontendUrl` and `Cors:AllowedOrigins` (both `http://localhost:4200` in Development).
+Opening the app at another address - a tunnel to a phone, say - means setting `App__FrontendUrl`
+to it, and a passkey made there works only there.
 
 ### Demo users (Development only)
 
@@ -410,6 +421,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /api/auth/login`, `GET /api/auth/me` |
+| Passkeys | `GET /api/auth/passkeys`, `POST /api/auth/passkeys/creation-options`, `POST /api/auth/passkeys`, `DELETE /api/auth/passkeys/{id}`; `POST /api/auth/passkeys/request-options` and `POST /api/auth/passkeys/sign-in` (no user) (ADR-0057) |
 | Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin), `PATCH /api/resources/{id}/status` (Admin) |
 | Favourites | `GET /api/favorites`, `PUT /api/favorites/{resourceId}`, `DELETE /api/favorites/{resourceId}` (ADR-0051) |
 | Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |

@@ -95,6 +95,39 @@ examples below are the English ones.
   whether or not the account exists, because the email is queued rather than sent inline.
   Both endpoints share the sign-in rate limit above.
 
+## Passkeys (ADR-0057)
+
+Signing in with Face ID, a fingerprint or Windows Hello instead of a password. The device makes
+and keeps the key; ASP.NET Core Identity checks what it signs. Making one and signing in with one
+are two calls each: the options, whose `token` goes back with the browser's answer.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/auth/passkeys` | any authenticated user | `GetMyPasskeysQuery` | → `[{ id, name, createdAt, synced }]`, newest first. `id`: the credential's id, base64url. `synced`: kept by a password manager that copies it to the owner's other devices (iCloud Keychain, Google Password Manager) |
+| POST | `/api/auth/passkeys/creation-options` | any authenticated user | `StartPasskeyCreationCommand` | body `{ password }` → `{ options, token }`: `options` is WebAuthn's `PublicKeyCredentialCreationOptionsJSON`, for `PublicKeyCredential.parseCreationOptionsFromJSON`. 400 with `Password`: "The password is wrong." - counted as a failed sign-in, lockout included. 409 `passkeys-full` with 10 already. Shares the sign-in rate limit |
+| POST | `/api/auth/passkeys` | any authenticated user | `AddPasskeyCommand` | body `{ credential, token, name }`: `credential` is what `navigator.credentials.create()` gave, as its `toJSON()` writes it; `name` 1-50 characters, trimmed → **201** `{ id, name, createdAt, synced }`. 400 with `Credential` when it doesn't check out, or "This passkey request has expired. Try again." for a token that's over 5 minutes old, used already, from another address or another account's; 409 `passkeys-full` |
+| DELETE | `/api/auth/passkeys/{id}` | any authenticated user | `RemovePasskeyCommand` | → 204; 404 when the caller has no passkey with that id. Sessions it started go on |
+| POST | `/api/auth/passkeys/request-options` | none | `StartPasskeySignInCommand` | no body → `{ options, token }`: `PublicKeyCredentialRequestOptionsJSON` naming no account, so the device offers the passkeys it has for this site. Shares the sign-in rate limit |
+| POST | `/api/auth/passkeys/sign-in` | none | `PasskeySignInCommand` | body `{ credential, token }`, from `navigator.credentials.get()` → the same answer and session cookie as `POST /api/auth/login`. 401 with what went wrong: "This passkey request has expired. Try again.", "This passkey isn't on a SmartDesk account any more. Sign in with your password, and delete it from your device." or "The passkey couldn't be checked. Try again, or sign in with your password."; 403 for an account that isn't active, as signing in with a password. Shares the sign-in rate limit |
+
+- **The page's address.** Every call that makes options or checks an answer reads the request's
+  `Origin`, which a browser always sends with a POST. It must be an address the app is served at,
+  `App:FrontendUrl` or one of `Cors:AllowedOrigins`, or the answer is **403** "Passkeys can't be
+  used at this address. Open SmartDesk at its usual address.". Its host is the passkey's relying
+  party (`rp.id`, `rpId`): a passkey works only on the domain it was made on. The answer must
+  come from that same address, not from a frame inside another site.
+- **The token** is encrypted and signed by the API (Data Protection) and carries the challenge's
+  state, the ceremony, the address and, for adding one, the account. It's good for 5 minutes,
+  for one answer.
+- **What a passkey must be:** kept on the device (`residentKey: "required"`) and unlocked by the
+  person (`userVerification: "required"`: Face ID, a fingerprint, the device's PIN). SmartDesk
+  asks for no attestation.
+- **Signing in** with one does what signing in with a password does: the account checks above,
+  the language remembered, a session (ADR-0026). A password lockout doesn't stop it. Its
+  signature counter and backup state are saved each time.
+- The history (ADR-0052) keeps each passkey added or removed as a `Passkey` entry: the
+  account's id and the passkey's name.
+
 ## Users (Admin)
 
 Every account, for Admins (ADR-0020). An account is returned as:

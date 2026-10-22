@@ -74,6 +74,21 @@ describe('audit text', () => {
     ).toBe('');
   });
 
+  it("names a passkey and whose it is, and doesn't repeat the person below (ADR-0057)", () => {
+    const removed = entry({
+      entityType: 'Passkey',
+      entityId: 'AQID',
+      action: 'Deleted',
+      resourceId: null,
+      label: 'iPhone',
+      changes: [{ property: 'UserId', old: 'u-ayse', new: null }],
+    });
+
+    expect(entityLabel('Passkey')).toBe('Passkey');
+    expect(subject(removed, context)).toBe('iPhone · Ayşe Yılmaz');
+    expect(changeLines(removed, context)).toEqual([]);
+  });
+
   it('says what changed in words, before and after', () => {
     const lines = changeLines(
       entry({

@@ -16,6 +16,7 @@ public static class AuditEntityTypes
     public const string IssueReport = "IssueReport";
     public const string User = "User";
     public const string UserRole = "UserRole";
+    public const string Passkey = "Passkey";
 
     public static readonly IReadOnlyDictionary<string, string[]> Areas = new Dictionary<string, string[]>
     {
@@ -23,6 +24,6 @@ public static class AuditEntityTypes
         ["resources"] = [Resource, ResourceFeature, ResourceTeam, ResourcePhoto, ResourceBlock, FloorPlan],
         ["rules"] = [ResourceType, OfficeHours],
         ["problems"] = [IssueReport],
-        ["accounts"] = [User, UserRole],
+        ["accounts"] = [User, UserRole, Passkey],
     };
 }

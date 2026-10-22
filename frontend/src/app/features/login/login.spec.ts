@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { LoginResponse } from '../../core/models/auth.model';
 import { AuthService } from '../../core/services/auth.service';
+import { PasskeyService } from '../../core/services/passkey.service';
 import { Login } from './login';
 
 describe('Login', () => {
@@ -12,14 +13,20 @@ describe('Login', () => {
   let response: Subject<LoginResponse>;
   let login: ReturnType<typeof vi.fn>;
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
+  let passkeys: { supported: boolean; signIn: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     response = new Subject<LoginResponse>();
     login = vi.fn(() => response);
+    passkeys = { supported: true, signIn: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [Login],
-      providers: [provideRouter([]), { provide: AuthService, useValue: { login } }],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: { login } },
+        { provide: PasskeyService, useValue: passkeys },
+      ],
     }).compileComponents();
 
     navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
@@ -137,5 +144,55 @@ describe('Login', () => {
 
   it('offers a way to sign up', () => {
     expect(element.querySelector('a[href="/register"]')?.textContent).toContain('Sign up');
+  });
+
+  describe('with a passkey (ADR-0057)', () => {
+    const passkeyButton = () => element.querySelector<HTMLButtonElement>('button.passkey');
+
+    async function signInWithPasskey(): Promise<void> {
+      passkeyButton()!.click();
+      await fixture.whenStable();
+      // The sign-in awaits the device and the API; let it finish and render.
+      await new Promise((resolve) => setTimeout(resolve));
+      await fixture.whenStable();
+    }
+
+    it('signs in without an email or password and goes where it was asked to', async () => {
+      passkeys.signIn.mockResolvedValue({ accessToken: 't', expiresAt: '' });
+      fixture.componentRef.setInput('returnUrl', '/reservations/mine');
+
+      expect(passkeyButton()!.textContent).toContain('Sign in with a passkey');
+      await signInWithPasskey();
+
+      expect(passkeys.signIn).toHaveBeenCalled();
+      expect(login).not.toHaveBeenCalled();
+      expect(navigateByUrl).toHaveBeenCalledWith('/reservations/mine');
+    });
+
+    it("says so when no passkey was used, and what the API answered when one didn't work", async () => {
+      passkeys.signIn.mockRejectedValueOnce(new DOMException('closed', 'NotAllowedError'));
+      await signInWithPasskey();
+      expect(element.querySelector('[role="alert"]')?.textContent).toContain(
+        'No passkey was used. Try again, or sign in with your password.',
+      );
+
+      const unknown =
+        "This passkey isn't on a SmartDesk account any more. Sign in with your password, and delete it from your device.";
+      passkeys.signIn.mockRejectedValueOnce(new ApiError(401, 'Unauthorized', unknown));
+      await signInWithPasskey();
+      expect(element.querySelector('[role="alert"]')?.textContent).toContain(unknown);
+      expect(navigateByUrl).not.toHaveBeenCalled();
+      expect(passkeyButton()!.disabled).toBe(false);
+    });
+
+    it("isn't offered where the browser can't use passkeys", async () => {
+      passkeys.supported = false;
+      fixture = TestBed.createComponent(Login);
+      element = fixture.nativeElement;
+      await fixture.whenStable();
+
+      expect(passkeyButton()).toBeNull();
+      expect(element.querySelector('.or')).toBeNull();
+    });
   });
 });

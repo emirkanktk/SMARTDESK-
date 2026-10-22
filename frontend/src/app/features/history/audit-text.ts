@@ -60,6 +60,8 @@ export function entityLabel(entityType: string): string {
       return $localize`:@@history.entity.user:Account`;
     case 'UserRole':
       return $localize`:@@history.entity.role:Role`;
+    case 'Passkey':
+      return $localize`:@@history.entity.passkey:Passkey`;
     default:
       return entityType;
   }
@@ -126,6 +128,13 @@ export function subject(entry: AuditEntry, context: AuditContext): string {
       );
       break;
     }
+    // A passkey under the name its owner gave it, and whose it is (ADR-0057).
+    case 'Passkey': {
+      const person = entry.changes.find((c) => c.property === 'UserId');
+      const id = person?.new ?? person?.old;
+      parts.push(entry.label, id ? context.people[id] : null);
+      break;
+    }
     default:
       parts.push(entry.label);
   }
@@ -160,8 +169,11 @@ function shown(entry: AuditEntry, change: AuditChange): boolean {
   if (HIDDEN[entry.entityType]?.includes(change.property)) return false;
   // The resource is in the subject; only a move to another one is worth a line.
   if (change.property === 'ResourceId') return entry.action === 'Updated';
-  // A role's person is in its subject too.
-  return !(entry.entityType === 'UserRole' && change.property === 'UserId');
+  // A role's or a passkey's person is in its subject too.
+  return !(
+    (entry.entityType === 'UserRole' || entry.entityType === 'Passkey') &&
+    change.property === 'UserId'
+  );
 }
 
 function propertyLabel(property: string): string {

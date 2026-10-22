@@ -90,6 +90,12 @@ internal static class AuditedTypes
             AuditEntityTypes.UserRole,
             only: [nameof(IdentityUserRole<Guid>.UserId)],
             label: (context, r) => context.Set<IdentityRole<Guid>>().Find(r.RoleId)?.Name),
+        // A passkey added to an account or taken off it (ADR-0057), under the name its owner gave
+        // it. Not its keys, nor the counter each sign-in moves.
+        [typeof(IdentityUserPasskey<Guid>)] = Of<IdentityUserPasskey<Guid>>(
+            AuditEntityTypes.Passkey,
+            only: [nameof(IdentityUserPasskey<Guid>.UserId)],
+            label: (_, p) => p.Data?.Name),
     };
 
     public static AuditedType? Find(Type type) => ByType.GetValueOrDefault(type);

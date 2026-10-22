@@ -37,6 +37,22 @@ A sign-in session. The refresh token itself is never stored.
 A user's sessions that ended or expired more than `Sessions:MaxDays` ago are deleted when
 they next sign in.
 
+### Passkey (`AspNetUserPasskeys`, ASP.NET Core Identity's own, ADR-0057)
+
+A passkey someone signs in with, as Identity keeps it (`IdentityUserPasskey<Guid>`, version 3 of
+its schema). Only the public key: the private key never leaves the device.
+
+| Field | Type | Notes |
+|---|---|---|
+| CredentialId | byte[] (max 1024) | key: the id the device gave the passkey |
+| UserId | Guid | FK → `ApplicationUser.Id` (cascade delete) |
+| Data | jsonb | what Identity keeps of it: the public key, the owner's name for it, when it was made, the signature counter, its transports, whether the device verified the person, whether it can be and is backed up (synced), and the attestation and client data it was made with |
+
+At most 10 per account (`PasskeyRules.MaxPerUser`). Version 3 of Identity's schema also gave a
+length to a few of its columns SmartDesk doesn't use: `AspNetUserLogins.LoginProvider` and
+`ProviderKey` and `AspNetUserTokens.LoginProvider` and `Name` (128), `AspNetUsers.PhoneNumber`
+(256).
+
 ### ResourceType
 
 | Field | Type | Notes |
@@ -305,6 +321,11 @@ erDiagram
         string TokenHash UK "SHA-256 of the refresh token"
         datetime ExpiresAt
     }
+    AspNetUserPasskeys {
+        bytea CredentialId PK
+        uuid UserId FK
+        jsonb Data "public key, name, counter"
+    }
     ResourceType {
         uuid Id PK
         string Name UK
@@ -419,6 +440,7 @@ erDiagram
 
     ApplicationUser |o--o{ ApplicationUser : manages
     ApplicationUser ||--o{ UserSession : "signs in with"
+    ApplicationUser ||--o{ AspNetUserPasskeys : "signs in with"
     ResourceType ||--o{ Resource : types
     Resource ||--o{ ResourceFeature : has
     Resource ||--o| ResourcePhoto : "pictured by"
@@ -453,6 +475,8 @@ erDiagram
 - `AspNetUsers(ManagerId)` - a Manager's team.
 - `UserSessions(TokenHash)` - unique; `UserSessions(PreviousTokenHash)`, `UserSessions(UserId)` -
   finding the session a refresh token belongs to, and a user's open sessions.
+- `AspNetUserPasskeys(UserId)` - someone's passkeys, for their profile and the ones a new one
+  mustn't repeat (ADR-0057). A sign-in finds its passkey by the key, `CredentialId`.
 - `ResourceTypes(Name)` - unique.
 - `ResourceBlocks(ResourceId, StartDateTime, EndDateTime)` - the "is this resource blocked for
   `[start, end)`?" check on every booking, and the calendar's range query.

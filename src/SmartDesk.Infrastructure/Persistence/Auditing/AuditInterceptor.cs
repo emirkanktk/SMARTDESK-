@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -18,8 +19,9 @@ namespace SmartDesk.Infrastructure.Persistence.Auditing;
 // changes do.
 public sealed class AuditInterceptor(ICurrentUserService currentUser, TimeProvider timeProvider) : SaveChangesInterceptor
 {
-    // AuditEntries.Label's length.
+    // AuditEntries.Label's and EntityId's lengths.
     public const int LabelLength = 200;
+    public const int EntityIdLength = 80;
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -131,8 +133,17 @@ public sealed class AuditInterceptor(ICurrentUserService currentUser, TimeProvid
         return changes;
     }
 
-    private static string Key(EntityEntry entry) =>
-        string.Join('|', entry.Metadata.FindPrimaryKey()!.Properties.Select(p => Text(entry.Property(p.Name).CurrentValue, false)));
+    // A passkey's key is its credential id (ADR-0057): base64url, as the API names it, and cut to
+    // the column when it's longer, like a label.
+    private static string Key(EntityEntry entry)
+    {
+        var key = string.Join('|', entry.Metadata.FindPrimaryKey()!.Properties.Select(p => entry.Property(p.Name).CurrentValue switch
+        {
+            byte[] bytes => Base64Url.EncodeToString(bytes),
+            var value => Text(value, false),
+        }));
+        return key.Length > EntityIdLength ? key[..EntityIdLength] : key;
+    }
 
     // Every value as text, the same whatever the server's culture: instants in UTC.
     private static string? Text(object? value, bool secret) => value switch

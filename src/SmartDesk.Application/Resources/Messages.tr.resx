@@ -333,6 +333,9 @@
   <data name="Entity_IssueReportPhoto" xml:space="preserve">
     <value>Fotoğraf</value>
   </data>
+  <data name="Entity_Passkey" xml:space="preserve">
+    <value>Geçiş anahtarı</value>
+  </data>
   <data name="Entity_Reservation" xml:space="preserve">
     <value>Rezervasyon</value>
   </data>
@@ -1007,5 +1010,32 @@
   </data>
   <data name="Push_UnknownService" xml:space="preserve">
     <value>Bu tarayıcının bildirim servisi SmartDesk'in gönderdiklerinden biri değil.</value>
+  </data>
+  <data name="Passkey_BadCredential" xml:space="preserve">
+    <value>Tarayıcının yanıtı eksik ya da bir geçiş anahtarına ait değil.</value>
+  </data>
+  <data name="Passkey_Expired" xml:space="preserve">
+    <value>Geçiş anahtarı isteğinin süresi doldu. Yeniden deneyin.</value>
+  </data>
+  <data name="Passkey_Failed" xml:space="preserve">
+    <value>Geçiş anahtarı doğrulanamadı. Yeniden deneyin ya da parolanızla giriş yapın.</value>
+  </data>
+  <data name="Passkey_Full" xml:space="preserve">
+    <value>Bir hesapta en fazla {0} geçiş anahtarı olabilir. Önce artık kullanmadığınız birini kaldırın.</value>
+  </data>
+  <data name="Passkey_NameRequired" xml:space="preserve">
+    <value>Geçiş anahtarına bir ad verin; örneğin bulunduğu cihazın adı.</value>
+  </data>
+  <data name="Passkey_NotAdded" xml:space="preserve">
+    <value>Yeni geçiş anahtarı doğrulanamadığı için eklenmedi. Yeniden deneyin.</value>
+  </data>
+  <data name="Passkey_Unknown" xml:space="preserve">
+    <value>Bu geçiş anahtarı artık bir SmartDesk hesabına bağlı değil. Parolanızla giriş yapın ve anahtarı cihazınızdan silin.</value>
+  </data>
+  <data name="Passkey_UnknownOrigin" xml:space="preserve">
+    <value>Geçiş anahtarları bu adreste kullanılamaz. SmartDesk'i her zamanki adresinden açın.</value>
+  </data>
+  <data name="Passkey_WrongPassword" xml:space="preserve">
+    <value>Parola yanlış.</value>
   </data>
 </root>
