@@ -83,6 +83,17 @@ test("each notification puts its owner's unread count on the app's icon", async 
       clearAppBadge: { configurable: true, value: async () => void scope.badges.push('cleared') },
     });
   });
+  // Angular's worker passes each push on to the pages it controls, as SwPush hears it, before it
+  // shows the notification: proof it still gets them, where notifications themselves can't be
+  // seen (headless Chromium on Linux shows none).
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
+  await page.evaluate(() => {
+    const window_ = window as unknown as { pushes: unknown[] };
+    window_.pushes = [];
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'PUSH') window_.pushes.push(event.data.data.badge);
+    });
+  });
   const deliver = async (badge: number) =>
     cdp.send('ServiceWorker.deliverPushMessage', {
       origin,
@@ -103,15 +114,9 @@ test("each notification puts its owner's unread count on the app's icon", async 
     .poll(() => worker.evaluate(() => (self as unknown as { badges: unknown[] }).badges))
     .toEqual([3, 'cleared']);
 
-  // Angular's worker still shows each of them.
   await expect
-    .poll(() =>
-      page.evaluate(async () => {
-        const registration = await navigator.serviceWorker.getRegistration();
-        return (await registration!.getNotifications()).map((n) => n.tag).sort();
-      }),
-    )
-    .toEqual(['unread-0', 'unread-3']);
+    .poll(() => page.evaluate(() => (window as unknown as { pushes: unknown[] }).pushes))
+    .toEqual([3, 0]);
 });
 
 /** Registered once the app has settled, within 30 seconds, and active: the page asks until it is. */
