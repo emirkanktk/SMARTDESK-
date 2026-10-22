@@ -68,6 +68,7 @@ public sealed class PushTests(PostgresApiFixture fixture)
         (await ayse.GetFromJsonAsync<Status>("/api/push"))!.Should().Be(new Status(true, publicKey));
         (await ayse.PutAsJsonAsync("/api/push/subscription", device.Subscription)).StatusCode
             .Should().Be(HttpStatusCode.NoContent);
+        var unread = (await ayse.GetFromJsonAsync<UnreadCount>("/api/inbox/unread-count"))!.Unread;
 
         var test = await ayse.PostAsync("/api/push/test", null);
         test.StatusCode.Should().Be(HttpStatusCode.Accepted);
@@ -82,6 +83,7 @@ public sealed class PushTests(PostgresApiFixture fixture)
         sent.TimeToLive.Should().Be("300");
         sent.Notification.Title.Should().Be("Bildirimler açık");
         sent.Notification.Url.Should().Be("/profile");
+        sent.Badge.Should().Be(unread, "the app's icon shows her unread messages (ADR-0058)");
 
         // The manager invites Ayşe: the inbox message reaches her phone, in Turkish.
         var ayseId = (await ayse.GetFromJsonAsync<Me>("/api/auth/me"))!.Id;
@@ -100,6 +102,8 @@ public sealed class PushTests(PostgresApiFixture fixture)
         invitation.Notification.Body.Should().StartWith("Meeting room ");
         invitation.Notification.Url.Should().Be("/inbox");
         invitation.TimeToLive.Should().Be("86400");
+        invitation.Badge.Should().Be(unread + 1, "the invitation is one more unread message");
+        (await ayse.GetFromJsonAsync<UnreadCount>("/api/inbox/unread-count"))!.Unread.Should().Be(unread + 1);
 
         (await ayse.SendAsync(new HttpRequestMessage(HttpMethod.Delete, "/api/push/subscription")
         {
@@ -302,7 +306,8 @@ public sealed class PushTests(PostgresApiFixture fixture)
                     shown.GetProperty("data").GetProperty("onActionClick").GetProperty("default").GetProperty("url").GetString()!);
                 if (matches(notification))
                 {
-                    return new Sent(received.Authorization, received.ContentEncoding, received.TimeToLive, notification);
+                    var badge = payload.RootElement.TryGetProperty("badge", out var count) ? count.GetInt32() : (int?)null;
+                    return new Sent(received.Authorization, received.ContentEncoding, received.TimeToLive, notification, badge);
                 }
             }
         }
@@ -311,13 +316,16 @@ public sealed class PushTests(PostgresApiFixture fixture)
             string Endpoint, AuthenticationHeaderValue? Authorization, string ContentEncoding, string TimeToLive, byte[] Body);
     }
 
-    private sealed record Sent(AuthenticationHeaderValue? Authorization, string ContentEncoding, string TimeToLive, Notification Notification);
+    private sealed record Sent(
+        AuthenticationHeaderValue? Authorization, string ContentEncoding, string TimeToLive, Notification Notification, int? Badge);
 
     private sealed record Notification(string Title, string Body, string Tag, string Url);
 
     private sealed record Status(bool Enabled, string? PublicKey);
 
     private sealed record TestSent(int Devices);
+
+    private sealed record UnreadCount(int Unread);
 
     private sealed record LoginBody(string AccessToken);
 
