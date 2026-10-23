@@ -1320,6 +1320,16 @@
     "floorPlan.freeAllDay": "{$resource} gün boyunca boş.",
     "floorPlan.busyUntil": "{$resource}, {$time} saatine kadar kullanımda.",
     "floorPlan.unavailable": "{$resource} rezerve edilemiyor: {$reason}.",
+    "floorPlan.period": "Dönem",
+    "floorPlan.lastDays": "Son {$INTERPOLATION} gün",
+    "floorPlan.view": "Planın gösterdiği",
+    "floorPlan.viewAvailability": "Anlık durum",
+    "floorPlan.viewUsage": "Kullanım",
+    "floorPlan.usageNote": "Her birinin son {$INTERPOLATION} günde mesai saatlerinin ne kadarında rezerve edildiği.",
+    "floorPlan.usageReport": "Kaynak kaynak tüm sayılar kullanım raporunda",
+    "floorPlan.usageFailed": "Kullanım bilgisi yüklenemedi.",
+    "floorPlan.usageLoading": "Kullanım hesaplanıyor…",
+    "floorPlan.usageLabel": "{$resource} - son {$days} gün: doluluk {$share}, {$bookings} rezervasyon, {$noShows} gelmeyen.",
     "floorPlan.scrollHint": "Planın tamamını görmek için yana kaydırın."
   }
 }

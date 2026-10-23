@@ -1391,7 +1391,8 @@ new tables.
   chart library would add weight for one picture and still need a table beside it.
 - **Trade-offs:**
   - The lightest step is close to the page's own colour, so a nearly empty hour stands out by
-    its number more than by its shade.
+    its number more than by its shade. (Its steps are ADR-0059's since, which lifts the lightest
+    clear of the page.)
   - On the day the clocks change, the missing hour reads 0 and the doubled one counts once.
   - Blocks and maintenance aren't taken off the available time, as before (ADR-0017).
 
@@ -2021,3 +2022,40 @@ new tables.
   - New problem reports (ADR-0037) aren't counted: they don't come to the inbox.
   - Devices that installed the app with Angular's worker take SmartDesk's with the next version,
     as every new version arrives (ADR-0054).
+
+## ADR-0059: The floor plan shows how much each place was used
+
+**Decision:**
+- An Admin switches the floor plan from **Availability** to **Usage** (`?view=usage`), and each
+  resource on it is coloured by the share of the office's hours it was booked for over the last
+  7, 30 or 90 days (`?days=`, 30 when left out), with the share beside its name. One out of use
+  keeps its dashed outline. The legend gives the steps, a link opens the usage report for the
+  same days, and the resources not on the plan are listed under it with their numbers.
+- The numbers are the usage report's (`GET /api/reports/usage`, ADR-0017, ADR-0044): each
+  resource's utilization, bookings and no-shows, over whole local days in the browser's zone,
+  today the last. There's no new endpoint: the page asks for the report and puts its rows on the
+  plan. Admins only, as the report is.
+- The colours are a scale of their own, which the report's heat map now shares: `--heat-1` to
+  `--heat-4` with the global `.heat-level-0` to `.heat-level-4` classes, and `heatLevel` and
+  `heatSteps` in `shared/utils/heat-scale.ts`. One indigo by quarters, checked as a palette:
+  the steps darken in order and far enough apart to tell, the lightest still shows against a
+  surface at 2:1, and the text on each keeps 4.5:1 - the page's on the first two, the primary
+  colour's on the last two. Dark mode has steps of its own, brighter for more use. They replace
+  ADR-0044's mix of the primary colour into the surface, whose lightest step all but vanished
+  on a white plan.
+
+**Why:**
+- "Which desks stand empty?" is what an office asks of its booking system before it buys or
+  moves furniture. The plan answers it where the desks are, at a glance; the report answers it
+  as a table.
+- Asking the report keeps one meaning of "used" - confirmed bookings in the office's hours - and
+  gives the numbers the Admin already reads there, one click away.
+- The share is written on each place and said in full to screen readers and on hover: colour is
+  never the only cue.
+- **Trade-offs:**
+  - The whole report is asked for to colour one floor. For an office's few hundred resources
+    that's one quick query, which the report runs on every request anyway (ADR-0017).
+  - It's a snapshot: a booking made while it's open shows when another period is picked or the
+    page is opened again.
+  - Managers don't get it, as they don't get the report; their own team's resources would be
+    the next step.

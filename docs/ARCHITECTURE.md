@@ -513,7 +513,9 @@ another way, the reason is here too.
    the resources on it by their fractions of its width and height, coloured by their state at
    any time and changing live. *Why:* the plan suggested an SVG drawn per office and Angular
    CDK drag and drop; an uploaded picture fits any office without drawing, and placing works by
-   pointer and by keyboard with no extra dependency (ADR-0041).
+   pointer and by keyboard with no extra dependency (ADR-0041). An Admin switches it to how
+   much each place was used over the last 7, 30 or 90 days, from the usage report, on a heat
+   scale the report's own heat map shares (ADR-0059).
 8. **Reports.** Utilization, a weekday-by-hour heat map, no-show and cancellation rates and the
    busiest people, and the same as an Excel workbook (ClosedXML). *Why:* computed in memory over
    at most 92 days rather than with `GroupBy` in SQL as the plan suggested, which keeps the time
@@ -540,8 +542,9 @@ logs to query in Seq, a line per request with whose it was (ADR-0053); an app to
 which opens without a network (ADR-0054); on a phone, the main screens in a bar at the bottom,
 where a thumb reaches (ADR-0055); notifications on phones and browsers with the app closed,
 which the API encrypts and sends itself (ADR-0056); signing in with Face ID, a fingerprint or
-Windows Hello instead of a password, with passkeys Identity checks itself (ADR-0057); and the
-unread messages counted on the installed app's icon, the app open or not (ADR-0058).
+Windows Hello instead of a password, with passkeys Identity checks itself (ADR-0057); the
+unread messages counted on the installed app's icon, the app open or not (ADR-0058); and how
+much each place was used, on the floor plan (ADR-0059).
 
 ## 9. Team ownership boundaries
 

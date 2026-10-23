@@ -366,6 +366,9 @@ plan by the lift.
   **Now** comes back.
 - As Zeynep, **Arrange** offers only Meeting Room B, her team's, and no upload: the plan is the
   admins'.
+- As the admin, **Usage** in the plan's toolbar: each room coloured by how much of the office's
+  hours it was booked over the last 30 days, the share beside its name, and **Period** for 7 or
+  90. The link under the legend opens the usage report for the same days (ADR-0059).
 - Point out: a floor is the location its resources already share, so there's nothing new to set
   up; places are kept as fractions of the plan, so a sharper picture replaces it without moving
   anything; and changing a resource's location takes it off the plan (ADR-0041).

@@ -16,17 +16,13 @@ import { StatusBadge } from '../../shared/components/status-badge/status-badge';
 import { ScrollRegion } from '../../shared/directives/scroll-region';
 import { addDays, parseDateParam, startOfDay, toDateParam } from '../../shared/utils/date-time';
 import { minutesOf } from '../../shared/utils/booking-rules';
+import { heatLevel, heatSteps } from '../../shared/utils/heat-scale';
 import { saveFile } from '../../shared/utils/save-file';
 import { resourceTypeLabel } from '../../core/i18n/labels';
 
 const DEFAULT_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-/** Where a share falls on the heat map's scale (ADR-0044): 0 for none, then by quarters. */
-export function heatLevel(share: number): 0 | 1 | 2 | 3 | 4 {
-  return share <= 0 ? 0 : (Math.min(4, Math.ceil(share * 4)) as 1 | 2 | 3 | 4);
-}
 
 type Preset = 'last7' | 'last30' | 'thisMonth' | 'lastMonth';
 
@@ -138,10 +134,7 @@ export class UsageReport {
           };
         }),
       })),
-      scale: [1, 2, 3, 4].map((level) => ({
-        level,
-        text: `${formatPercent((level - 1) / 4 + 0.01, this.locale)}–${formatPercent(level / 4, this.locale)}`,
-      })),
+      scale: heatSteps(this.locale),
     };
   });
 

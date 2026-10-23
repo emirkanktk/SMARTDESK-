@@ -1,4 +1,4 @@
-import { formatDate } from '@angular/common';
+import { formatDate, formatPercent } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -17,11 +17,14 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, catchError, finalize, forkJoin, interval, map, merge, of, switchMap } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { FLOOR_PLAN, Floor } from '../../core/models/floor-plan.model';
+import { ResourceUsage } from '../../core/models/report.model';
 import { Reservation } from '../../core/models/reservation.model';
 import { ResourceBlock } from '../../core/models/resource-block.model';
 import { Resource, ResourcePosition } from '../../core/models/resource.model';
 import { AuthService } from '../../core/services/auth.service';
+import { browserTimeZone } from '../../core/services/dashboard.service';
 import { FloorPlanService } from '../../core/services/floor-plan.service';
+import { ReportService } from '../../core/services/report.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceBlockService } from '../../core/services/resource-block.service';
@@ -33,8 +36,10 @@ import {
   fromDateTimeLocal,
   parseIso,
   startOfDay,
+  toDateParam,
   toDateTimeLocal,
 } from '../../shared/utils/date-time';
+import { HeatLevel, heatLevel, heatSteps } from '../../shared/utils/heat-scale';
 import { preparePhoto } from '../../shared/utils/photo';
 import { canManageResource } from '../../shared/utils/resource-access';
 import { RoomNow, roomNowFor } from '../../shared/utils/room-now';
@@ -51,6 +56,9 @@ const NUDGE = 0.01;
 const NUDGE_FAR = 0.05;
 /** The shape of a floor without a plan, drawn as a grid. */
 const GRID_RATIO = '16 / 10';
+/** The periods the plan shows each place's use over, in days, the last of them today (ADR-0059). */
+export const USAGE_PERIODS = [7, 30, 90] as const;
+const DEFAULT_USAGE_DAYS = 30;
 
 type Day = { bookings: Reservation[]; blocks: ResourceBlock[] };
 
@@ -69,12 +77,22 @@ export interface Spot {
   mayMove: boolean;
 }
 
+/** How much a resource was used over the period shown (ADR-0059): its step, and in words. */
+export interface UsageMark {
+  level: HeatLevel;
+  /** "42%": the share of the office's hours it was booked for. */
+  percent: string;
+  /** "Desk 3-01 - last 30 days: 42% of office hours booked, 18 bookings, 2 no-shows." */
+  label: string;
+}
+
 /**
  * Where everything is on a floor, and what it's doing at a chosen time (ADR-0041): each
  * resource sits on the plan an Admin uploaded, green when free, red when in use, grey when out
  * of use, and choosing one opens the booking form for it from when it's free. Bookings come in
  * live, and "now" follows the clock. Whoever may edit a resource arranges the floor: drags it
- * to its place, or moves it with the arrow keys; an Admin uploads the plan.
+ * to its place, or moves it with the arrow keys; an Admin uploads the plan. An Admin also sees
+ * how much each place was used over the last days instead (ADR-0059), from the usage report.
  */
 @Component({
   imports: [RouterLink],
@@ -86,9 +104,13 @@ export class FloorPlan {
   /** Query parameters: the floor (a location), and the time to show, now when left out. */
   readonly floor = input<string>();
   readonly at = input<string>();
+  /** "usage" for how much each place was used, over `days` (7, 30 or 90; 30 when left out). */
+  readonly view = input<string>();
+  readonly days = input<string>();
 
   private readonly floorPlans = inject(FloorPlanService);
   private readonly resourceService = inject(ResourceService);
+  private readonly reportService = inject(ReportService);
   private readonly reservationService = inject(ReservationService);
   private readonly blockService = inject(ResourceBlockService);
   private readonly hub = inject(ReservationHubService);
@@ -116,6 +138,37 @@ export class FloorPlan {
   protected readonly planUrl = signal<string | null>(null);
 
   protected readonly isAdmin = this.auth.isAdmin;
+
+  // --- How much each place was used (ADR-0059): for Admins, as the usage report is ---
+
+  protected readonly usagePeriods = USAGE_PERIODS;
+  protected readonly heatSteps = heatSteps(this.locale);
+  protected readonly noUse = formatPercent(0, this.locale);
+  protected readonly usageView = computed(() => this.isAdmin() && this.view() === 'usage');
+  protected readonly usageDays = computed((): number => {
+    const days = Number(this.days());
+    return (USAGE_PERIODS as readonly number[]).includes(days) ? days : DEFAULT_USAGE_DAYS;
+  });
+  /** The whole local days shown, the last of them today: the report's range for them. */
+  protected readonly usageRange = computed(() => {
+    const today = startOfDay(new Date(this.now()));
+    return {
+      from: toDateParam(addDays(today, 1 - this.usageDays())),
+      to: toDateParam(today),
+    };
+  });
+  /** Each resource's use, by its id; null while it's asked for, or out of the usage view. */
+  private readonly usage = signal<Map<string, ResourceUsage> | null>(null);
+  protected readonly usageFailed = signal(false);
+  private readonly usageRetries = new Subject<void>();
+  protected readonly usageMarks = computed((): Map<string, UsageMark> | null => {
+    const usage = this.usage();
+    if (!usage) return null;
+    const days = this.usageDays();
+    return new Map(
+      this.onFloor().map((r) => [r.id, usageMark(r, usage.get(r.id), days, this.locale)]),
+    );
+  });
 
   /**
    * The floor shown when none is asked for: the first with a plan, else the first, chosen as
@@ -243,6 +296,33 @@ export class FloorPlan {
       .subscribe((url) => this.showPlan(url));
     inject(DestroyRef).onDestroy(() => this.showPlan(null));
 
+    // Each place's use over the days shown, while the usage view is on: the usage report's own
+    // numbers, asked again for another period, on a new day, or to try again.
+    const usageAsk = computed(() => {
+      if (!this.usageView()) return null;
+      const range = this.usageRange();
+      return `${range.from}/${range.to}`;
+    });
+    merge(toObservable(usageAsk), this.usageRetries.pipe(map(() => usageAsk())))
+      .pipe(
+        switchMap((ask) => {
+          this.usage.set(null);
+          this.usageFailed.set(false);
+          if (!ask) return of(null);
+          return this.reportService
+            .getUsage({ ...this.usageRange(), timeZone: browserTimeZone() })
+            .pipe(
+              map((report) => new Map(report.resources.map((r) => [r.resourceId, r]))),
+              catchError(() => {
+                this.usageFailed.set(true);
+                return of(null);
+              }),
+            );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((usage) => this.usage.set(usage));
+
     interval(60_000)
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.now.set(Date.now()));
@@ -265,6 +345,21 @@ export class FloorPlan {
   protected followNow(): void {
     this.now.set(Date.now());
     this.navigate({ at: null });
+  }
+
+  /** What the floor is doing at a time, or how much each place was used (ADR-0059). */
+  protected showUsage(on: boolean): void {
+    this.arranging.set(false);
+    this.arrangeError.set(null);
+    this.navigate({ view: on ? 'usage' : null });
+  }
+
+  protected selectPeriod(event: Event): void {
+    this.navigate({ days: (event.target as HTMLSelectElement).value });
+  }
+
+  protected retryUsage(): void {
+    this.usageRetries.next();
   }
 
   /** Where a resource shows: where it's being dragged to, or its place. */
@@ -535,6 +630,32 @@ export function spotFor(
         label: $localize`:@@floorPlan.unavailable:${name}:resource: can't be booked: ${state.reason}:reason:.`,
       };
   }
+}
+
+/**
+ * How much `resource` was used over the last `days` days (ADR-0059), from the usage report's row
+ * for it - none when it has none: its step on the heat scale, and the numbers in words.
+ */
+export function usageMark(
+  resource: Resource,
+  usage: ResourceUsage | undefined,
+  days: number,
+  locale: string,
+): UsageMark {
+  const share = usage?.utilization ?? 0;
+  // A little, but not none, as the report says it.
+  const percent =
+    share > 0 && share < 0.005
+      ? `<${formatPercent(0.01, locale)}`
+      : formatPercent(share, locale, '1.0-0');
+  const name = resource.name;
+  const bookings = usage?.reservations ?? 0;
+  const noShows = usage?.noShows ?? 0;
+  return {
+    level: heatLevel(share),
+    percent,
+    label: $localize`:@@floorPlan.usageLabel:${name}:resource: - last ${days}:days: days: ${percent}:share: of office hours booked, ${bookings}:bookings: bookings, ${noShows}:noShows: no-shows.`,
+  };
 }
 
 /** When a resource in use until `until` is free again, past bookings and blocks back to back. */

@@ -132,6 +132,19 @@ test('an Admin draws up a floor, and an employee sees it fill up live', async ({
       new RegExp(`/reservations/new\\?resourceId=${resource.id}&start=`),
     );
     await expect(ayse.locator('#resource')).toHaveValue(resource.id);
+
+    // The Admin sees how much each place was used instead (ADR-0059), that booking counted. Its
+    // share depends on the office's hours it falls in, so only the step is checked.
+    await page.getByRole('button', { name: 'Usage' }).click();
+    await expect(page).toHaveURL(/view=usage/);
+    const used = page.locator('.plan .spot.usage', { hasText: resource.name });
+    await expect(used).toHaveClass(/\bheat-level-[0-4]\b/);
+    await expect(used).toHaveAttribute(
+      'aria-label',
+      new RegExp(
+        `^${resource.name} - last 30 days: .+ of office hours booked, 1 bookings, 0 no-shows\\.$`,
+      ),
+    );
   } finally {
     await admin.delete('floor-plans/image', { params: { location } });
     await retire(admin, resource.id);
