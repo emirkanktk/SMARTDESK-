@@ -4,11 +4,13 @@ import { Router, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { Floor } from '../../core/models/floor-plan.model';
+import { ResourceUsage, UsageReport } from '../../core/models/report.model';
 import { Reservation } from '../../core/models/reservation.model';
 import { ResourceBlock } from '../../core/models/resource-block.model';
 import { Resource, ResourcePosition } from '../../core/models/resource.model';
 import { AuthService } from '../../core/services/auth.service';
 import { FloorPlanService } from '../../core/services/floor-plan.service';
+import { ReportService } from '../../core/services/report.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
 import { ReservationService } from '../../core/services/reservation.service';
 import { ResourceBlockService } from '../../core/services/resource-block.service';
@@ -16,7 +18,7 @@ import { ResourceService } from '../../core/services/resource.service';
 import { fakeObjectUrls } from '../../../testing/object-urls';
 import { fakeReservation } from '../../../testing/reservation-fixtures';
 import { fakeResource } from '../../../testing/resource-fixtures';
-import { FloorPlan, clampPosition, spotFor } from './floor-plan';
+import { FloorPlan, clampPosition, spotFor, usageMark } from './floor-plan';
 
 // Local times on Monday 12 October, so what the page prints reads the same in every time zone.
 const at = (time: string, day = '2026-10-12') => new Date(`${day}T${time}`);
@@ -76,6 +78,35 @@ function booking(
 /** The desk is in use from ten to eleven; the room is booked from two. */
 const deskBooking = booking(desk, iso('10:00'), iso('11:00'));
 const roomBooking = booking(room, iso('14:00'), iso('15:00'));
+
+/** A row of the usage report (ADR-0059). */
+function usageRow(
+  resource: Resource,
+  utilization: number,
+  reservations: number,
+  noShows: number,
+): ResourceUsage {
+  return {
+    resourceId: resource.id,
+    resourceName: resource.name,
+    resourceTypeId: resource.resourceTypeId,
+    resourceTypeName: 'Meeting Room',
+    status: resource.status,
+    reservations,
+    cancelled: 0,
+    bookedHours: 0,
+    workingHoursBooked: 0,
+    utilization,
+    noShows,
+    checkedIn: 0,
+    noShowRate: 0,
+  };
+}
+
+/** The room well used over the last days, the desk hardly; the others not at all. */
+const usageReport = {
+  resources: [usageRow(room, 0.6, 12, 1), usageRow(desk, 0.1, 3, 0)],
+} as unknown as UsageReport;
 
 /** Visible text, its white space as it reads. */
 function text(element: Element): string {
@@ -177,6 +208,24 @@ describe('clampPosition', () => {
   });
 });
 
+describe('usageMark', () => {
+  it('puts a share on the heat scale, and says it with its numbers', () => {
+    expect(usageMark(room, usageRow(room, 0.6, 12, 1), 30, 'en-US')).toEqual({
+      level: 3,
+      percent: '60%',
+      label: 'Meeting Room A - last 30 days: 60% of office hours booked, 12 bookings, 1 no-shows.',
+    });
+    // A little, but not none.
+    const little = usageMark(desk, usageRow(desk, 0.003, 1, 0), 7, 'en-US');
+    expect([little.level, little.percent]).toEqual([1, '<1%']);
+    expect(usageMark(camera, undefined, 90, 'en-US')).toEqual({
+      level: 0,
+      percent: '0%',
+      label: 'Camera C-1 - last 90 days: 0% of office hours booked, 0 bookings, 0 no-shows.',
+    });
+  });
+});
+
 describe('FloorPlan', () => {
   const currentUser = signal<{ id: string } | null>(null);
   const isAdmin = signal(false);
@@ -189,6 +238,7 @@ describe('FloorPlan', () => {
   let setPosition: ReturnType<typeof vi.fn>;
   let getCalendar: ReturnType<typeof vi.fn>;
   let getBlocks: ReturnType<typeof vi.fn>;
+  let getUsage: ReturnType<typeof vi.fn>;
   let navigate: ReturnType<typeof vi.spyOn>;
   let hub: {
     created$: Subject<Reservation>;
@@ -219,6 +269,7 @@ describe('FloorPlan', () => {
     );
     getCalendar = vi.fn(() => of([deskBooking, roomBooking]));
     getBlocks = vi.fn(() => of([]));
+    getUsage = vi.fn(() => of(usageReport));
     hub = {
       created$: new Subject(),
       updated$: new Subject(),
@@ -233,6 +284,7 @@ describe('FloorPlan', () => {
         { provide: ResourceService, useValue: { getResources, setPosition } },
         { provide: ReservationService, useValue: { getCalendar } },
         { provide: ResourceBlockService, useValue: { getBlocks } },
+        { provide: ReportService, useValue: { getUsage } },
         { provide: ReservationHubService, useValue: hub },
         { provide: AuthService, useValue: { currentUser, isAdmin, isManager } },
       ],
@@ -249,7 +301,9 @@ describe('FloorPlan', () => {
     vi.restoreAllMocks();
   });
 
-  async function render(inputs: { floor?: string; at?: string } = {}): Promise<void> {
+  async function render(
+    inputs: { floor?: string; at?: string; view?: string; days?: string } = {},
+  ): Promise<void> {
     fixture = TestBed.createComponent(FloorPlan);
     for (const [name, value] of Object.entries(inputs)) {
       fixture.componentRef.setInput(name, value);
@@ -750,6 +804,91 @@ describe('FloorPlan', () => {
         expect(element.querySelector<HTMLSelectElement>('#floor')!.value).toBe(FLOOR);
         expect(spot('Meeting Room A')).not.toBeNull();
       });
+    });
+  });
+
+  describe('how much each place was used (ADR-0059)', () => {
+    const range = (from: string) => ({ from, to: '2026-10-12', timeZone: expect.any(String) });
+
+    it("shows an Admin each place's share of the office's hours over the last 30 days", async () => {
+      await render({ view: 'usage' });
+
+      expect(getUsage).toHaveBeenCalledWith(range('2026-09-13'));
+      const roomSpot = spot('Meeting Room A')!;
+      expect(roomSpot.classList).toContain('heat-level-3');
+      expect(text(roomSpot.querySelector('.share')!)).toBe('60%');
+      expect(roomSpot.getAttribute('aria-label')).toBe(
+        'Meeting Room A - last 30 days: 60% of office hours booked, 12 bookings, 1 no-shows.',
+      );
+      expect(spot('Desk D-1')!.classList).toContain('heat-level-1');
+      // Out of use and not booked at all: dashed, and nothing on the scale.
+      const projectorSpot = spot('Projector P-1')!;
+      expect(projectorSpot.classList).toContain('heat-level-0');
+      expect(projectorSpot.classList).toContain('unavailable');
+      expect(text(projectorSpot.querySelector('.share')!)).toBe('0%');
+      // Nothing to book from here, and no time to choose.
+      expect(element.querySelector('.plan a.spot')).toBeNull();
+      expect(element.querySelector('#at')).toBeNull();
+      expect(element.querySelector<HTMLSelectElement>('#period')!.value).toBe('30');
+      expect([...element.querySelectorAll('.legend li')].map(text)).toEqual([
+        '0%',
+        '1%–25%',
+        '26%–50%',
+        '51%–75%',
+        '76%–100%',
+      ]);
+      const report = [...element.querySelectorAll<HTMLAnchorElement>('a')].find((a) =>
+        text(a).includes('usage report'),
+      )!;
+      expect(report.getAttribute('href')).toBe('/admin/reports?from=2026-09-13&to=2026-10-12');
+      // The one not on the plan says it in the list below.
+      expect(text(element.querySelector('.unplaced li')!)).toBe(
+        'Camera C-1 - last 30 days: 0% of office hours booked, 0 bookings, 0 no-shows.',
+      );
+    });
+
+    it('asks again for another period, and says so when it could not, until it can', async () => {
+      getUsage.mockReturnValueOnce(throwError(() => new ApiError(500, 'Server error')));
+      await render({ view: 'usage' });
+
+      expect(text(element.querySelector('[role=alert]')!)).toBe(
+        'How much each one was used could not be loaded. Try again',
+      );
+      await click(button('Try again'));
+      expect(getUsage).toHaveBeenCalledTimes(2);
+      expect(spot('Meeting Room A')!.classList).toContain('heat-level-3');
+
+      const period = element.querySelector<HTMLSelectElement>('#period')!;
+      period.value = '7';
+      period.dispatchEvent(new Event('change'));
+      expect(navigate).toHaveBeenLastCalledWith(
+        [],
+        expect.objectContaining({ queryParams: { days: '7' } }),
+      );
+      fixture.componentRef.setInput('days', '7');
+      await fixture.whenStable();
+      expect(getUsage).toHaveBeenLastCalledWith(range('2026-10-06'));
+    });
+
+    it('switches between what the floor is doing and how much it was used, for Admins only', async () => {
+      await render();
+      await click(arrangeButton()!);
+
+      await click(button('Usage'));
+
+      expect(navigate).toHaveBeenLastCalledWith(
+        [],
+        expect.objectContaining({ queryParams: { view: 'usage' } }),
+      );
+      expect(element.querySelector('.arrange-panel')).toBeNull();
+
+      fixture.destroy();
+      isAdmin.set(false);
+      await render({ view: 'usage' });
+
+      expect(element.querySelector('.view-switch')).toBeNull();
+      expect(getUsage).not.toHaveBeenCalled();
+      expect(spot('Meeting Room A')!.classList).toContain('free');
     });
   });
 });

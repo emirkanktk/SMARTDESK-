@@ -285,13 +285,13 @@ describe('UsageReport', () => {
       '16:00',
       '17:00',
     ]);
-    expect([text(cell('10:00', 0)), cell('10:00', 0).className]).toEqual(['60%', 'level-3']);
-    expect([text(cell('08:00', 1)), cell('08:00', 1).className]).toEqual(['10%', 'level-1']);
-    expect([text(cell('09:00', 3)), cell('09:00', 3).className]).toEqual(['30%', 'level-2']);
-    expect([text(cell('14:00', 2)), cell('14:00', 2).className]).toEqual(['100%', 'level-4']);
+    expect([text(cell('10:00', 0)), cell('10:00', 0).className]).toEqual(['60%', 'heat-level-3']);
+    expect([text(cell('08:00', 1)), cell('08:00', 1).className]).toEqual(['10%', 'heat-level-1']);
+    expect([text(cell('09:00', 3)), cell('09:00', 3).className]).toEqual(['30%', 'heat-level-2']);
+    expect([text(cell('14:00', 2)), cell('14:00', 2).className]).toEqual(['100%', 'heat-level-4']);
     expect(text(cell('11:00', 4))).toBe('<1%');
     // An empty hour shows nothing, and reads as 0%.
-    expect([cell('12:00', 5).className, text(cell('12:00', 5))]).toEqual(['level-0', '0%']);
+    expect([cell('12:00', 5).className, text(cell('12:00', 5))]).toEqual(['heat-level-0', '0%']);
     expect(Array.from(element.querySelectorAll('.heat-scale li')).map(text)).toEqual([
       '1%–25%',
       '26%–50%',

@@ -28,27 +28,71 @@
         }
       </select>
     </div>
-    <div class="field">
-      <label for="at" i18n="@@floorPlan.at">At</label>
-      <input
-        id="at"
-        class="input"
-        type="datetime-local"
-        step="900"
-        [value]="momentInput()"
-        (change)="selectMoment($event)"
-      />
-    </div>
-    <button
-      type="button"
-      class="btn btn-secondary btn-sm"
-      [disabled]="live()"
-      (click)="followNow()"
-      i18n="@@floorPlan.now"
-    >
-      Now
-    </button>
-    @if (mayArrange()) {
+    @if (usageView()) {
+      <div class="field">
+        <label for="period" i18n="@@floorPlan.period">Period</label>
+        <select id="period" class="input" (change)="selectPeriod($event)">
+          @for (days of usagePeriods; track days) {
+            <option [value]="days" [selected]="days === usageDays()" i18n="@@floorPlan.lastDays">
+              Last {{ days }} days
+            </option>
+          }
+        </select>
+      </div>
+    } @else {
+      <div class="field">
+        <label for="at" i18n="@@floorPlan.at">At</label>
+        <input
+          id="at"
+          class="input"
+          type="datetime-local"
+          step="900"
+          [value]="momentInput()"
+          (change)="selectMoment($event)"
+        />
+      </div>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        [disabled]="live()"
+        (click)="followNow()"
+        i18n="@@floorPlan.now"
+      >
+        Now
+      </button>
+    }
+    @if (isAdmin()) {
+      <div
+        class="view-switch"
+        role="group"
+        aria-label="What the plan shows"
+        i18n-aria-label="@@floorPlan.view"
+      >
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-primary]="!usageView()"
+          [class.btn-secondary]="usageView()"
+          [attr.aria-pressed]="!usageView()"
+          (click)="showUsage(false)"
+          i18n="@@floorPlan.viewAvailability"
+        >
+          Availability
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-primary]="usageView()"
+          [class.btn-secondary]="!usageView()"
+          [attr.aria-pressed]="usageView()"
+          (click)="showUsage(true)"
+          i18n="@@floorPlan.viewUsage"
+        >
+          Usage
+        </button>
+      </div>
+    }
+    @if (mayArrange() && !usageView()) {
       <button
         type="button"
         class="btn btn-secondary btn-sm arrange"
@@ -64,20 +108,59 @@
     }
   </div>
 
-  <ul class="legend" aria-label="What the colours mean" i18n-aria-label="@@floorPlan.legend">
-    <li>
-      <span class="dot free" aria-hidden="true"></span
-      ><span i18n="@@floorPlan.legendFree">Free</span>
-    </li>
-    <li>
-      <span class="dot busy" aria-hidden="true"></span
-      ><span i18n="@@floorPlan.legendBusy">In use</span>
-    </li>
-    <li>
-      <span class="dot unavailable" aria-hidden="true"></span
-      ><span i18n="@@floorPlan.legendUnavailable">Not available</span>
-    </li>
-  </ul>
+  @if (usageView()) {
+    <p class="text-muted usage-note" i18n="@@floorPlan.usageNote">
+      How much of the office's hours each one was booked over the last {{ usageDays() }} days.
+    </p>
+    <ul class="legend" aria-label="What the colours mean" i18n-aria-label="@@floorPlan.legend">
+      <li>
+        <span class="swatch heat-level-0" aria-hidden="true"></span><span>{{ noUse }}</span>
+      </li>
+      @for (step of heatSteps; track step.level) {
+        <li>
+          <span class="swatch" [class]="'heat-level-' + step.level" aria-hidden="true"></span
+          ><span>{{ step.text }}</span>
+        </li>
+      }
+    </ul>
+    <p class="usage-note">
+      <a routerLink="/admin/reports" [queryParams]="usageRange()" i18n="@@floorPlan.usageReport"
+        >Every number, resource by resource, in the usage report</a
+      >
+    </p>
+    @if (usageFailed()) {
+      <div class="alert-error load-error" role="alert">
+        <span i18n="@@floorPlan.usageFailed">How much each one was used could not be loaded.</span>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          (click)="retryUsage()"
+          i18n="@@common.tryAgain"
+        >
+          Try again
+        </button>
+      </div>
+    } @else if (!usageMarks()) {
+      <p class="text-muted usage-note" role="status" i18n="@@floorPlan.usageLoading">
+        Adding up how much each one was used…
+      </p>
+    }
+  } @else {
+    <ul class="legend" aria-label="What the colours mean" i18n-aria-label="@@floorPlan.legend">
+      <li>
+        <span class="dot free" aria-hidden="true"></span
+        ><span i18n="@@floorPlan.legendFree">Free</span>
+      </li>
+      <li>
+        <span class="dot busy" aria-hidden="true"></span
+        ><span i18n="@@floorPlan.legendBusy">In use</span>
+      </li>
+      <li>
+        <span class="dot unavailable" aria-hidden="true"></span
+        ><span i18n="@@floorPlan.legendUnavailable">Not available</span>
+      </li>
+    </ul>
+  }
 
   @if (arranging()) {
     <section class="card arrange-panel" aria-labelledby="arrange-title">
@@ -170,7 +253,24 @@
       }
       @for (spot of placed(); track spot.resource.id) {
         @let position = shownPosition(spot);
-        @if (arranging() && spot.mayMove) {
+        @if (usageView()) {
+          @let mark = usageMarks()?.get(spot.resource.id);
+          <span
+            class="spot usage"
+            [class]="mark ? 'heat-level-' + mark.level : 'pending'"
+            [class.unavailable]="spot.resource.status !== 'Active'"
+            role="img"
+            [style.left.%]="percent(position.x)"
+            [style.top.%]="percent(position.y)"
+            [attr.aria-label]="mark?.label ?? spot.resource.name"
+            [title]="mark?.label ?? spot.resource.name"
+          >
+            <span class="name" aria-hidden="true">{{ spot.resource.name }}</span>
+            @if (mark) {
+              <span class="share" aria-hidden="true">{{ mark.percent }}</span>
+            }
+          </span>
+        } @else if (arranging() && spot.mayMove) {
           <button
             type="button"
             class="spot movable-spot"
@@ -243,18 +343,30 @@
       <h2 id="unplaced-title" i18n="@@floorPlan.unplaced">Not on the plan yet</h2>
       <ul>
         @for (spot of unplaced(); track spot.resource.id) {
-          <li
-            [class.free]="spot.state.kind === 'free'"
-            [class.busy]="spot.state.kind === 'busy'"
-            [class.unavailable]="spot.state.kind === 'unavailable'"
-          >
-            <span class="dot" aria-hidden="true"></span>
-            @if (spot.book; as params) {
-              <a routerLink="/reservations/new" [queryParams]="params">{{ spot.label }}</a>
-            } @else {
-              <span>{{ spot.label }}</span>
-            }
-          </li>
+          @if (usageView()) {
+            @let mark = usageMarks()?.get(spot.resource.id);
+            <li>
+              @if (mark) {
+                <span class="swatch" [class]="'heat-level-' + mark.level" aria-hidden="true"></span>
+                <span>{{ mark.label }}</span>
+              } @else {
+                <span>{{ spot.resource.name }}</span>
+              }
+            </li>
+          } @else {
+            <li
+              [class.free]="spot.state.kind === 'free'"
+              [class.busy]="spot.state.kind === 'busy'"
+              [class.unavailable]="spot.state.kind === 'unavailable'"
+            >
+              <span class="dot" aria-hidden="true"></span>
+              @if (spot.book; as params) {
+                <a routerLink="/reservations/new" [queryParams]="params">{{ spot.label }}</a>
+              } @else {
+                <span>{{ spot.label }}</span>
+              }
+            </li>
+          }
         }
       </ul>
     </section>

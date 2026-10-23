@@ -136,9 +136,8 @@
   }
 }
 
-// When it's busiest (ADR-0044): one hue, from the surface to the primary colour, by quarters.
-// The text in the first three steps is the page's own; on the last it's the one made for the
-// primary colour, which keeps 4.5:1 in both themes.
+// When it's busiest (ADR-0044): the global .heat-level-* steps, one hue by quarters, which the
+// floor plan's use of each place shares (ADR-0059).
 .heat-wrap {
   // The containing block for the visually hidden zeros: without it they escape the sideways
   // scroll and widen the whole page.
@@ -181,27 +180,6 @@
     border-radius: 4px;
     text-align: center;
   }
-}
-
-.level-0 {
-  background: var(--color-surface-2);
-}
-
-.level-1 {
-  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-surface));
-}
-
-.level-2 {
-  background: color-mix(in srgb, var(--color-primary) 40%, var(--color-surface));
-}
-
-.level-3 {
-  background: color-mix(in srgb, var(--color-primary) 60%, var(--color-surface));
-}
-
-.level-4 {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
 }
 
 .heat-scale {

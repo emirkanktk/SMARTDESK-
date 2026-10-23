@@ -267,7 +267,7 @@
                 <tr>
                   <th scope="row">{{ row.hour }}</th>
                   @for (cell of row.cells; track $index) {
-                    <td [class]="'level-' + cell.level">
+                    <td [class]="'heat-level-' + cell.level">
                       @if (cell.level > 0) {
                         {{ cell.text }}
                       } @else {
@@ -283,7 +283,7 @@
         <ul class="heat-scale" aria-label="Scale" i18n-aria-label="@@report.scale">
           @for (step of heat.scale; track step.level) {
             <li>
-              <span [class]="'swatch level-' + step.level" aria-hidden="true"></span>
+              <span [class]="'swatch heat-level-' + step.level" aria-hidden="true"></span>
               {{ step.text }}
             </li>
           }

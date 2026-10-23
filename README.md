@@ -69,7 +69,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   it: green when free, red in use, grey out of use, now or at a chosen time, and changing live.
   Choosing one opens the booking form from when it's free. Admins place resources by dragging
   them or with the arrow keys; a manager places their team's own
-  ([ADR-0041](docs/DECISIONS.md)).
+  ([ADR-0041](docs/DECISIONS.md)). An Admin switches it to **Usage**: each place coloured by how
+  much of the office's hours it was booked over the last 7, 30 or 90 days, so the desks that
+  stand empty show at a glance ([ADR-0059](docs/DECISIONS.md)).
 - **Reminders** - the owner can ask to be reminded 5, 15, 30 or 60 minutes before a reservation
   starts. The reminder arrives in the app, and as a desktop notification when allowed
   ([ADR-0018](docs/DECISIONS.md)).

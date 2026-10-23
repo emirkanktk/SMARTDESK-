@@ -27,6 +27,13 @@
   --color-success-soft: #f0faf3;
   --color-warning: #b45309;
   --color-warning-soft: #fdf3e1;
+  // How much something was used, a step for each quarter (.heat-level-*): one indigo, light to
+  // dark. The lightest still shows against a surface at 2:1, and the text on each step keeps
+  // 4.5:1: the page's on the first two, the primary colour's on the last two.
+  --heat-1: #a7a3f2;
+  --heat-2: #847eed;
+  --heat-3: #4f46e5;
+  --heat-4: #36309c;
 
   // Primary buttons, the logo, avatars: text on it keeps 5.7:1 at every stop.
   --gradient-brand: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #a21caf 100%);
@@ -91,6 +98,11 @@
   --color-success-soft: #16301f;
   --color-warning: #fbbf24;
   --color-warning-soft: #3a2c10;
+  // Dark to light here: more use is brighter against the dark surface.
+  --heat-1: #444b7f;
+  --heat-2: #585fa0;
+  --heat-3: #7980d9;
+  --heat-4: #aeb3fa;
 
   --gradient-brand: linear-gradient(135deg, #818cf8 0%, #a78bfa 55%, #e879f9 100%);
   --gradient-deep: linear-gradient(135deg, #2e2a78 0%, #45198a 55%, #661a6b 100%);
@@ -570,6 +582,33 @@ code {
   font-weight: 800;
   line-height: 1.35rem;
   text-align: center;
+}
+
+// The steps of how much something was used: the report's heat map of the office day (ADR-0044)
+// and the floor plan's use of each place (ADR-0059). 0 is nothing at all.
+.heat-level-0 {
+  background: var(--color-surface-2);
+}
+
+.heat-level-1 {
+  background: var(--heat-1);
+}
+
+.heat-level-2 {
+  background: var(--heat-2);
+}
+
+.heat-level-3,
+.heat-level-4 {
+  color: var(--color-on-primary);
+}
+
+.heat-level-3 {
+  background: var(--heat-3);
+}
+
+.heat-level-4 {
+  background: var(--heat-4);
 }
 
 // On a phone (ADR-0055). The tab bar (layout/tab-bar) takes the bottom of the screen, home
