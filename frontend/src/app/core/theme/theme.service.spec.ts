@@ -56,6 +56,16 @@ describe('ThemeService', () => {
     expect(themes.theme()).toBe('dark');
   });
 
+  it('takes a choice another tab made while this one was starting', () => {
+    // index.html's script saw dark; another tab switched to light before the app listened.
+    root.setAttribute('data-theme', 'dark');
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+
+    const themes = create();
+    expect(themes.theme()).toBe('light');
+    expect(root.getAttribute('data-theme')).toBe('light');
+  });
+
   it('follows the system until someone chooses', () => {
     const themes = create();
 
