@@ -46,6 +46,12 @@ export class ThemeService {
 
     view?.addEventListener('storage', onStorage);
     system?.addEventListener('change', onSystemChange);
+    // Another tab may have switched after index.html's script read the choice and before this
+    // listened: that tab's storage event went unheard, so the stored choice decides.
+    const stored = storedTheme();
+    if (stored && stored !== this.themeSignal()) {
+      this.apply(stored);
+    }
     inject(DestroyRef).onDestroy(() => {
       view?.removeEventListener('storage', onStorage);
       system?.removeEventListener('change', onSystemChange);
