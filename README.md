@@ -170,6 +170,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   ([ADR-0012](docs/DECISIONS.md)).
 - **Secure by default.** Every endpoint requires a signed-in user unless explicitly marked
   anonymous; account lockout plus a per-client login rate limit ([ADR-0008](docs/DECISIONS.md)).
+- **The page runs only its own scripts.** Its Content Security Policy allows the app's scripts
+  and, by its hash, the one inline script: a script slipped into a page doesn't run. The server
+  adds what a page can't say for itself: no other site may show the app in a frame
+  (clickjacking), and each file is what its type says ([ADR-0060](docs/DECISIONS.md)).
 - **Every error is RFC 7807 ProblemDetails**, and the 409 messages are written to be shown to
   users as-is.
 - **Logs you can query.** Every request is a line with its status, time and user, and every
@@ -353,6 +357,9 @@ build doesn't list them on the front page). That's the address `ng serve` uses, 
   addresses that go with it.
 - nginx's access log leaves out query strings, which carry SignalR's token and a password
   reset link's.
+- nginx sends security headers with each of the app's files (`frontend/security-headers.conf`,
+  ADR-0060): no framing by other sites, `nosniff`, `Referrer-Policy: same-origin` and a few
+  more. The API's answers keep their own.
 - Like the `api` profile, this is a local stand-in in Development with the demo data, not a
   production setup: there's no HTTPS, and the API's port 8080 is open too.
 
@@ -477,8 +484,9 @@ The same checks run on GitHub Actions for every pull request and every push to `
 (`.github/workflows/ci.yml`):
 - backend build + tests + a check that model changes come with a migration;
 - frontend: every text has its Turkish version (`npm run i18n:check`), the code is formatted
-  (`npm run format:check`), the specs and the browser tests type-check, build, tests, and the
-  tests again in other time zones;
+  (`npm run format:check`), the specs and the browser tests type-check, build, the page's
+  security policy allows each of its scripts (`npm run csp:check`), tests, and the tests again
+  in other time zones;
 - the browser tests (`npm run e2e`, see `frontend/README.md`): PostgreSQL, the API with the
   Development seed and `ng serve`, driven in Chromium. A failed run keeps the Playwright report,
   the traces and both logs as an artifact for a week.

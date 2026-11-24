@@ -468,6 +468,13 @@ picker drops seconds and any difference would count as a change.
   `:root[data-theme='dark']`, which a script in `index.html` sets before the first paint: the
   stored choice, or the system's setting. The typeface (Plus Jakarta Sans) is bundled with the
   app from `@fontsource-variable`, so no page asks a font service for anything.
+- **What the page may run (ADR-0060).** `index.html` has a Content Security Policy of its own:
+  the app's scripts from its own address and, by its hash, that theme script; nothing else. So
+  markup that ever got past Angular's escaping couldn't run a script. The production build adds
+  no inline script of its own (`inlineCritical: false`), and `npm run csp:check` checks the
+  hashes, in CI and in the frontend image's build. nginx and `serve-build` add the headers a page
+  can't set itself, from `security-headers.conf`: no framing by other sites, `nosniff`,
+  `Referrer-Policy`, `Cross-Origin-Opener-Policy` and `Permissions-Policy`.
 
 ## 8. What the ten-day plan added, and why
 

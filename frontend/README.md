@@ -38,9 +38,10 @@ so the session cookie is a same-site cookie in development too (ADR-0026):
 `frontend/Dockerfile` serves the `production` build with nginx, which passes `/api` and `/hubs` on
 to the API container: `docker compose --profile app up -d --build` runs the whole app at
 `http://localhost:4200` (ADR-0031, and "the whole app in Docker" in the main README).
-`nginx.conf` is its configuration. Without Docker, `npm run serve:build` does the same for a
-`npx ng build` on this machine (`scripts/serve-build.mjs`: port 4200, `/api` and `/hubs` on to
-`http://localhost:5291`; `--port`, `--api` and `--host` change them).
+`nginx.conf` is its configuration, and `security-headers.conf` the security headers it sends
+with each of the app's files (ADR-0060). Without Docker, `npm run serve:build` does the same for
+a `npx ng build` on this machine, with the same headers (`scripts/serve-build.mjs`: port 4200,
+`/api` and `/hubs` on to `http://localhost:5291`; `--port`, `--api` and `--host` change them).
 
 If the lists stay empty and the console shows a certificate error, the browser doesn't trust
 the dev certificate yet: `dotnet dev-certs https --trust`.
@@ -103,6 +104,7 @@ npm run test:time-zones                        # all unit tests, once per time z
 npx tsc -p tsconfig.spec.json --noEmit         # type-checks the specs too
 npm run format:check                           # formatting
 npm run i18n:check                             # every text has its Turkish version
+npm run csp:check                              # the page's policy allows its scripts
 ```
 
 CI runs all of these on every pull request, and the browser tests too (see Browser tests).
@@ -117,6 +119,11 @@ CI runs all of these on every pull request, and the browser tests too (see Brows
 - **`format:check`** checks the code, the configuration and `public/i18n` with Prettier.
   `.prettierrc` keeps each file's line endings (`endOfLine: auto`), since Windows checkouts
   have CRLF and Prettier would otherwise flag every file.
+- **`csp:check`:** the browser runs an inline script only when the page's Content Security
+  Policy lists its hash (ADR-0060). After editing the theme script in `src/index.html`, this
+  gives the new hash to put in its `<meta>` policy. CI also runs it on the build, so an Angular
+  release that put a script of its own on the page would fail there:
+  `npm run csp:check -- dist/frontend/browser/index.html`.
 
 ## Screens
 
@@ -246,7 +253,9 @@ temporary password that has to be replaced, and signing in with a passkey, with 
 virtual authenticator standing in for Face ID. `screens.spec.ts` also opens every
 screen in Turkish, in the light and the dark theme, runs
 [axe](https://github.com/dequelabs/axe-core) on it (WCAG 2.1 AA and best practices), and checks
-that nothing is wider than a 390px phone. They need the whole app
+that nothing is wider than a 390px phone. Whatever a test does, it fails if the page's security
+policy refused anything in its windows (ADR-0060); `security.spec.ts` checks that policy and,
+through nginx or `serve-build`, the headers. They need the whole app
 running with the Development seed:
 
 ```bash

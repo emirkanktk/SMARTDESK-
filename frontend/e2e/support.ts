@@ -119,12 +119,30 @@ interface Fixtures {
   resource: TestResource;
 }
 
+/**
+ * Notes in `refused` what the page's security policy refuses in the window (ADR-0060): which of
+ * its directives, what it kept out ("inline" for a script on the page itself) and on which path.
+ */
+export async function noteRefused(context: BrowserContext, refused: string[]): Promise<void> {
+  await context.exposeBinding('noteRefused', (_source, text: string) => refused.push(text));
+  await context.addInitScript(() =>
+    document.addEventListener('securitypolicyviolation', (event) =>
+      (window as unknown as { noteRefused(text: string): void }).noteRefused(
+        `${event.effectiveDirective} refused ${event.blockedURI} on ${location.pathname}`,
+      ),
+    ),
+  );
+}
+
 export const test = base.extend<Fixtures>({
   visit: async ({ browser }, use) => {
     const contexts: BrowserContext[] = [];
+    // Whatever a test does, the app never trips its own security policy.
+    const refused: string[] = [];
     await use(async (language = 'en') => {
       const context = await browser.newContext();
       contexts.push(context);
+      await noteRefused(context, refused);
       // Only a first visit gets it, so switching language in the test sticks.
       await context.addInitScript((lang) => {
         if (!localStorage.getItem('smartdesk_language')) {
@@ -134,6 +152,7 @@ export const test = base.extend<Fixtures>({
       return context.newPage();
     });
     await Promise.all(contexts.map((context) => context.close()));
+    expect(refused, "what the page's security policy refused").toEqual([]);
   },
 
   open: async ({ visit }, use) => {

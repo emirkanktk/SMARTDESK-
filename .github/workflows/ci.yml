@@ -93,6 +93,12 @@ jobs:
 
       - run: npx ng build
 
+      # The browser runs an inline script only when the page's policy lists its hash (ADR-0060):
+      # a changed theme script, or one a new Angular puts on the built page, would otherwise
+      # just not run.
+      - name: The page's security policy allows each of its scripts
+        run: npm run csp:check -- src/index.html dist/frontend/browser/index.html
+
       - run: npx ng test --watch=false
 
       # The runner is on UTC, where local and UTC dates are the same and zone bugs stay
@@ -260,11 +266,14 @@ jobs:
           npx playwright install --with-deps chromium
 
       # Signing in, a booking with a conflict, one showing up live in another window over
-      # SignalR's WebSocket, the language switch, and the app installed and opened offline, all
-      # through nginx.
+      # SignalR's WebSocket, the language switch, the app installed and opened offline, and
+      # nginx's security headers (ADR-0060), all through nginx. The page's own policy is on in
+      # each of them.
       - name: Browser tests through nginx
         working-directory: frontend
-        run: npx playwright test e2e/booking.spec.ts e2e/language.spec.ts e2e/pwa.spec.ts
+        run: >-
+          npx playwright test e2e/booking.spec.ts e2e/language.spec.ts e2e/pwa.spec.ts
+          e2e/security.spec.ts
 
       - name: Keep the containers' logs of a failed run
         if: failure()

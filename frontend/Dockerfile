@@ -6,10 +6,13 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npx ng build
+# The page's security policy must allow each script the build put on it (ADR-0060), or the
+# browser would refuse to run it.
+RUN npx ng build && node scripts/check-csp.mjs dist/frontend/browser/index.html
 
 # nginx as a user without privileges, listening on 8080, like the API's image.
 FROM nginxinc/nginx-unprivileged:1.30-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
 EXPOSE 8080
