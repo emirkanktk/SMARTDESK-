@@ -2059,3 +2059,56 @@ new tables.
     page is opened again.
   - Managers don't get it, as they don't get the report; their own team's resources would be
     the next step.
+
+## ADR-0060: The page runs only its own scripts, and no other site frames it
+
+**Decision:**
+- `index.html` carries a Content Security Policy in a `<meta>` tag: `script-src 'self'` and the
+  SHA-256 hash of its one inline script, the theme's, which has to run before anything is
+  drawn; `object-src 'none'`, `base-uri 'self'` and `form-action 'self'`. Script the app didn't
+  ship doesn't run: an inline `<script>`, an `onclick` written into the page, a `javascript:`
+  link, another site's file. Being part of the page, it holds wherever the page comes from:
+  `ng serve`, `serve-build`, nginx, or the service worker's copy offline.
+- The production build no longer inlines its critical CSS (`inlineCritical: false` in
+  `angular.json`). Angular loads the rest of the styles then with an inline script of its own,
+  which would need a hash that changes with Angular. The stylesheet is an ordinary `<link>`
+  now; for a page that shows nothing until the app has started, that costs no visible time.
+- `npm run csp:check` (`scripts/check-csp.mjs`) hashes each inline script of a page and fails
+  when the policy doesn't list it, giving the hash to add, or when the page has an inline event
+  handler, which the policy never runs. CI runs it on `src/index.html` and on the build, and
+  the frontend image's build on what it ships.
+- What a page can't say for itself comes from the server, the same from nginx and
+  `serve-build`, which reads nginx's `security-headers.conf`:
+  - `Content-Security-Policy: frame-ancestors 'none'` and `X-Frame-Options: DENY`: no other site
+    shows the app in a frame;
+  - `X-Content-Type-Options: nosniff`: each file is what its type says;
+  - `Referrer-Policy: same-origin`: other sites learn nothing of the page a link was on;
+  - `Cross-Origin-Opener-Policy: same-origin`: a window of another site gets no hold on the app;
+  - `Permissions-Policy`: no camera, microphone, location, payment or USB device.
+
+  They go with every file of the app; the API's answers keep the API's own headers.
+- In the browser tests, a test fails when the page's policy refused anything in one of its
+  windows (`visit` in `e2e/support.ts` notes it). `e2e/security.spec.ts` checks that a script
+  or a handler slipped into the page doesn't run, the headers on each kind of file, and that a
+  page of no site can't frame the sign-in. CI's Docker job runs it through nginx.
+
+**Why:**
+- Angular escapes what it puts on a page, and the app never steps around that (no
+  `bypassSecurityTrust...`, no `innerHTML`). The policy is the second line: should markup ever
+  slip through, a script in it still doesn't run, where it could act as the signed-in user.
+- Without `frame-ancestors`, any site could show the app in an invisible frame over its own
+  page and have a signed-in user press "Cancel" or "Approve" without knowing (clickjacking).
+- **Rejected:**
+  - Angular's `autoCsp`, which writes a hash-based policy into the build by itself. Its
+    `'strict-dynamic'` makes the browser ignore `'self'`, so whether the service worker may
+    still load rests on how each browser applies that keyword to workers. The worker carries
+    the notifications, the icon's count and the offline app on iPhones (ADR-0054, ADR-0056,
+    ADR-0058); `'self'` leaves no doubt.
+  - A list for every kind of request (`default-src`). Images, fonts and connections are all the
+    app's own anyway, and each one the list missed would break a feature without a word.
+- **Trade-offs:**
+  - Styles stay open (`style-src` isn't set): Angular gives each component's styles a `<style>`
+    of their own, which a policy could only allow with `'unsafe-inline'`.
+  - A `<meta>` policy can't set `frame-ancestors` or report what it refused to a server, so
+    framing is the server's to forbid, and `ng serve` doesn't.
+  - Changing the theme script means a new hash in the policy: `npm run csp:check` gives it.

@@ -2,6 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!-- What may run on the page (ADR-0060): the app's own scripts, from its own address, and the
+         theme script below by its hash. Nothing slipped into the page runs, and no plugin, <base>
+         or form takes it elsewhere. What a page can't say for itself, such as who may show it in
+         a frame, the server says (security-headers.conf). A changed theme script needs its new
+         hash here: npm run csp:check gives it. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="script-src 'self' 'sha256-5UXv8kE/EAJ2NyoSzRB33nsM+9eaRgoZxCtUFKQVitI='; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
     <title>SmartDesk</title>
     <base href="/" />
     <!-- viewport-fit=cover: the page reaches a phone's rounded edges, and the tab bar keeps its

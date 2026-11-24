@@ -1,11 +1,12 @@
-// Serves the production build as nginx does in Docker (ADR-0031): the files as built, the app's
-// own routes as index.html, and /api and /hubs - SignalR's WebSocket too - passed on to the API.
-// The service worker needs the files exactly as built (ADR-0054), which `ng serve` doesn't give,
-// so this is how the installable app that opens offline runs without Docker.
+// Serves the production build as nginx does in Docker (ADR-0031): the files as built, with the
+// same security headers (ADR-0060), the app's own routes as index.html, and /api and /hubs -
+// SignalR's WebSocket too - passed on to the API. The service worker needs the files exactly as
+// built (ADR-0054), which `ng serve` doesn't give, so this is how the installable app that opens
+// offline runs without Docker.
 //
 //   npx ng build && npm run serve:build                       # port 4200, the API on :5291
 //   npm run serve:build -- --port 4300 --api http://localhost:8080 --host 0.0.0.0
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import http from 'node:http';
 import net from 'node:net';
 import { extname, join, resolve, sep } from 'node:path';
@@ -54,6 +55,20 @@ const CHECKED_EVERY_TIME = new Set([
   '/manifest.webmanifest',
 ]);
 
+// nginx's security headers, read from the file it includes so the two can't drift: on every
+// file of the app, and none on the API's answers, which keep the API's own.
+const SECURITY_HEADERS = Object.fromEntries(
+  [
+    ...readFileSync(new URL('../security-headers.conf', import.meta.url), 'utf8').matchAll(
+      /^\s*add_header\s+([\w-]+)\s+"([^"]*)"/gm,
+    ),
+  ].map(([, name, value]) => [name.toLowerCase(), value]),
+);
+if (!Object.keys(SECURITY_HEADERS).length) {
+  console.error('No add_header lines in security-headers.conf.');
+  process.exit(1);
+}
+
 const passedOn = (path) => path.startsWith('/api/') || path.startsWith('/hubs/');
 
 // The client's address and scheme, which the API believes from a proxy on this machine
@@ -92,19 +107,20 @@ function passOn(req, res) {
 function serve(req, res, path) {
   let file = resolve(join(root, path));
   if (file !== root && !file.startsWith(root + sep)) {
-    res.writeHead(400).end();
+    res.writeHead(400, SECURITY_HEADERS).end();
     return;
   }
   if (!existsSync(file) || statSync(file).isDirectory()) {
     // A file that isn't there is a 404; anything else is one of the app's routes.
     if (extname(path)) {
-      res.writeHead(404).end();
+      res.writeHead(404, SECURITY_HEADERS).end();
       return;
     }
     file = join(root, 'index.html');
     path = '/index.html';
   }
   res.writeHead(200, {
+    ...SECURITY_HEADERS,
     'content-type': TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream',
     'content-length': statSync(file).size,
     'cache-control':
@@ -121,12 +137,12 @@ const server = http.createServer((req, res) => {
   try {
     path = decodeURIComponent(new URL(req.url ?? '/', 'http://local').pathname);
   } catch {
-    res.writeHead(400).end();
+    res.writeHead(400, SECURITY_HEADERS).end();
     return;
   }
   if (passedOn(path)) passOn(req, res);
   else if (req.method === 'GET' || req.method === 'HEAD') serve(req, res, path);
-  else res.writeHead(405).end();
+  else res.writeHead(405, SECURITY_HEADERS).end();
 });
 
 // SignalR's WebSocket: the handshake goes on to the API as it came, then the two sockets are
