@@ -11,6 +11,7 @@ import { applyServerErrors } from '../../shared/utils/server-errors';
 import { CalendarLink } from './calendar-link/calendar-link';
 import { Passkeys } from './passkeys/passkeys';
 import { PushSettings } from './push-settings/push-settings';
+import { Sessions } from './sessions/sessions';
 
 /** Mirrors the API's name rules (the same as signing up). */
 const MAX_NAME_LENGTH = 100;
@@ -21,7 +22,7 @@ const MAX_NAME_LENGTH = 100;
  * link (ADR-0048), and notifications on this device (ADR-0056).
  */
 @Component({
-  imports: [CalendarLink, Passkeys, PushSettings, ReactiveFormsModule, RouterLink],
+  imports: [CalendarLink, Passkeys, PushSettings, ReactiveFormsModule, RouterLink, Sessions],
   selector: 'app-profile',
   styleUrl: './profile.scss',
   templateUrl: './profile.html',

@@ -15,4 +15,11 @@ public interface ICurrentUserService
     // things on nobody's behalf. A request without a UserId is someone without an account
     // (ADR-0052).
     bool InRequest => true;
+
+    // The sign-in session the caller's token was issued under (ADR-0026).
+    Guid? SessionId => null;
+
+    // The calling browser's description of itself, its User-Agent header as sent; a session
+    // notes it when it starts (ADR-0061). Null outside a request, or when there's none.
+    string? UserAgent => null;
 }

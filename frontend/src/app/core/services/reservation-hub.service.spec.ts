@@ -1,12 +1,15 @@
-import { signal } from '@angular/core';
+import { WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import * as signalR from '@microsoft/signalr';
+import { of } from 'rxjs';
 import { InboxMessage } from '../models/inbox.model';
 import { IssueReport } from '../models/issue.model';
 import { Reservation } from '../models/reservation.model';
 import { fakeIssue } from '../../../testing/issue-fixtures';
 import { fakeReservation } from '../../../testing/reservation-fixtures';
 import { AuthService } from './auth.service';
+import { NotificationService } from './notification.service';
 import { ReservationHubService } from './reservation-hub.service';
 
 describe('ReservationHubService', () => {
@@ -24,18 +27,32 @@ describe('ReservationHubService', () => {
     stop: vi.fn(() => Promise.resolve()),
   };
   let hub: ReservationHubService;
+  let authenticated: WritableSignal<boolean>;
+  let renew: ReturnType<typeof vi.fn>;
+  let logout: ReturnType<typeof vi.fn>;
+  let notifications: { info: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     handlers.clear();
     vi.spyOn(signalR.HubConnectionBuilder.prototype, 'build').mockReturnValue(
       connection as unknown as signalR.HubConnection,
     );
+    authenticated = signal(true);
+    // A renewal that finds the session over signs the tab out, as AuthService's does.
+    renew = vi.fn(() => {
+      authenticated.set(false);
+      return of(null);
+    });
+    logout = vi.fn();
+    notifications = { info: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
         {
           provide: AuthService,
-          useValue: { getToken: () => 'token', isAuthenticated: signal(true) },
+          useValue: { getToken: () => 'token', isAuthenticated: authenticated, renew, logout },
         },
+        { provide: NotificationService, useValue: notifications },
       ],
     });
     hub = TestBed.inject(ReservationHubService);
@@ -152,6 +169,55 @@ describe('ReservationHubService', () => {
       await vi.advanceTimersByTimeAsync(30_000);
 
       expect(connection.start).toHaveBeenCalledTimes(1);
+    });
+
+    it('goes to sign in at once when the server refuses it and the session is over', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      reconnectWithFailures(0);
+      await vi.advanceTimersByTimeAsync(0);
+      // As SignalR reports a refused negotiation: an error of its own, the status in its text.
+      connection.start.mockImplementationOnce(() =>
+        Promise.reject(
+          new Error(
+            "Failed to complete negotiation with the server: Error: Unauthorized: Status code '401'",
+          ),
+        ),
+      );
+
+      closed!(); // this device was signed out from another one (ADR-0061)
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(renew).toHaveBeenCalledTimes(1);
+      expect(logout).toHaveBeenCalled();
+      expect(notifications.info).toHaveBeenCalledWith(
+        'Your session has expired. Please sign in again.',
+      );
+      expect(navigate).toHaveBeenCalledWith(['/login'], expect.anything());
+    });
+
+    it('carries on when the session goes on: a new token for the next attempt', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      renew.mockImplementation(() => of('renewed-token'));
+      reconnectWithFailures(0);
+      await vi.advanceTimersByTimeAsync(0);
+      connection.start.mockImplementationOnce(() =>
+        Promise.reject(new signalR.HttpError('Unauthorized', 401)),
+      );
+
+      closed!(); // e.g. the user's role changed, so the old token's roles no longer hold
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      expect(renew).toHaveBeenCalledTimes(1);
+      expect(logout).not.toHaveBeenCalled();
+      expect(navigate).not.toHaveBeenCalled();
+      expect(connection.start).toHaveBeenCalledTimes(3);
+    });
+
+    it('does not ask when the server is only out of reach', async () => {
+      reconnectWithFailures(2);
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      expect(renew).not.toHaveBeenCalled();
     });
 
     it('does not after a sign-out while it was still retrying', async () => {

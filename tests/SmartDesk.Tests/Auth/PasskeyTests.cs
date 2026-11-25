@@ -49,7 +49,7 @@ public class PasskeyTests
             .Setup(p => p.CreationOptionsAsync(UserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PasskeyChallenge("""{"challenge":"abc"}""", "token-1"));
         _sessions
-            .Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<SessionOrigin>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new IssuedSession(Guid.NewGuid(), "refresh-token", DateTime.UtcNow.AddDays(14)));
         _tokens
             .Setup(t => t.Generate(It.IsAny<UserProfile>(), It.IsAny<Guid>()))
@@ -138,7 +138,7 @@ public class PasskeyTests
         var act = () => SignIn().Handle(new PasskeySignInCommand(Credential, "token-1"), CancellationToken.None);
 
         await act.Should().ThrowAsync<UnauthorizedException>().WithMessage(message);
-        _sessions.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _sessions.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<SessionOrigin>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]
@@ -154,7 +154,7 @@ public class PasskeyTests
 
         await act.Should().ThrowAsync<ForbiddenAccessException>().WithMessage(
             status == AccountStatus.Disabled ? LoginCommandHandler.DisabledMessage : LoginCommandHandler.PendingApprovalMessage);
-        _sessions.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _sessions.Verify(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<SessionOrigin>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class PasskeyTests
 
         signedIn.Response.AccessToken.Should().Be("jwt-value");
         signedIn.RefreshToken.Should().Be("refresh-token");
-        _sessions.Verify(s => s.StartAsync(UserId, "stamp-1", It.IsAny<CancellationToken>()), Times.Once);
+        _sessions.Verify(s => s.StartAsync(UserId, "stamp-1", new SessionOrigin(SignInMethod.Passkey, null), It.IsAny<CancellationToken>()), Times.Once);
         _identity.Verify(i => i.RememberLanguageAsync(UserId, "en", It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -259,5 +259,5 @@ public class PasskeyTests
 
     private AddPasskeyCommandHandler Add() => new(_currentUser, _passkeys.Object);
 
-    private PasskeySignInCommandHandler SignIn() => new(_passkeys.Object, _identity.Object, _tokens.Object, _sessions.Object);
+    private PasskeySignInCommandHandler SignIn() => new(_passkeys.Object, _identity.Object, _tokens.Object, _sessions.Object, _currentUser);
 }

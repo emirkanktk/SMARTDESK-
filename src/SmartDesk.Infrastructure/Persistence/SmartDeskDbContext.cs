@@ -157,6 +157,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64);
             entity.Property(e => e.PreviousTokenHash).HasMaxLength(64);
             entity.Property(e => e.SessionStamp).IsRequired().HasMaxLength(32);
+            entity.Property(e => e.SignInMethod).HasConversion<string>().HasMaxLength(16);
+            entity.Property(e => e.UserAgent).HasMaxLength(UserSession.MaxUserAgentLength);
             entity.HasIndex(e => e.TokenHash).IsUnique();
             entity.HasIndex(e => e.PreviousTokenHash);
             entity.HasIndex(e => e.UserId);

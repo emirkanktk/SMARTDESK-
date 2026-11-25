@@ -23,6 +23,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) · [Data model](docs/DATA_MODEL.md) �
   in with Face ID, a fingerprint or Windows Hello in one tap, no email or password. The device
   keeps the key; the server keeps only what checks it, and only SmartDesk's own address can use
   it, so it can't be phished ([ADR-0057](docs/DECISIONS.md)).
+- **Signed-in devices** - the profile lists every device the account is signed in on, "Safari ·
+  iPhone" with when it was last used, and signs any of them out from there, or all the others at
+  once. The app open on that device goes to the sign-in page by itself, within seconds
+  ([ADR-0061](docs/DECISIONS.md)).
 - **Resources** - meeting rooms, desks, company cars, projectors, cameras - with type,
   capacity, location, features, a status (`Active` / `Inactive` / `Maintenance`) and a photo,
   or their type's picture until someone uploads one ([ADR-0027](docs/DECISIONS.md)).
@@ -432,6 +436,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 |---|---|
 | Auth | `POST /api/auth/login`, `GET /api/auth/me` |
 | Passkeys | `GET /api/auth/passkeys`, `POST /api/auth/passkeys/creation-options`, `POST /api/auth/passkeys`, `DELETE /api/auth/passkeys/{id}`; `POST /api/auth/passkeys/request-options` and `POST /api/auth/passkeys/sign-in` (no user) (ADR-0057) |
+| Signed-in devices | `GET /api/auth/sessions`, `DELETE /api/auth/sessions/{id}`, `POST /api/auth/sessions/end-others` (ADR-0061) |
 | Resources | `GET /api/resource-types`, `GET /api/resources`, `GET /api/resources/{id}`, `GET /api/resources/available`, `POST /api/resources` (Admin), `PUT /api/resources/{id}` (Admin), `PATCH /api/resources/{id}/status` (Admin) |
 | Favourites | `GET /api/favorites`, `PUT /api/favorites/{resourceId}`, `DELETE /api/favorites/{resourceId}` (ADR-0051) |
 | Resource blocks | `GET /api/resource-blocks?from=&to=`, `POST /api/resource-blocks` (Admin), `DELETE /api/resource-blocks/{id}` (Admin) |

@@ -3,6 +3,7 @@ using FluentValidation;
 using MediatR;
 using SmartDesk.Application.Common.Exceptions;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Auth.Commands.Login;
 using SmartDesk.Application.Features.Auth.Common;
 using SmartDesk.Application.Resources;
@@ -32,9 +33,11 @@ public sealed class ChangePasswordCommandHandler(
             throw new ValidationException(result.PasswordErrors.Select(error => new ValidationFailure(nameof(request.NewPassword), error)));
         }
 
-        // Every session ends, this one included; the answer starts a new one here (ADR-0026).
+        // Every session ends, this one included; the answer starts a new one here (ADR-0026),
+        // begun with the password just typed (ADR-0061).
         await sessions.EndAllAsync(userId, cancellationToken);
-        var session = await sessions.StartAsync(userId, result.User!.SessionStamp, cancellationToken);
+        var origin = new SessionOrigin(SignInMethod.Password, currentUser.UserAgent);
+        var session = await sessions.StartAsync(userId, result.User!.SessionStamp, origin, cancellationToken);
         return SessionIssuer.Answer(tokenGenerator, result.User, session);
     }
 }

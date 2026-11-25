@@ -19,9 +19,11 @@ public static class SessionIssuer
             session.ExpiresAt);
     }
 
-    // Signing in, once a password or a passkey (ADR-0057) has said whose account it is.
+    // Signing in, once a password or a passkey (ADR-0057) has said whose account it is. The
+    // session notes which, and on what device (ADR-0061).
     public static async Task<SignedIn> SignInAsync(
         UserProfile user,
+        SessionOrigin origin,
         IIdentityService identityService,
         IJwtTokenGenerator tokens,
         IUserSessions sessions,
@@ -41,7 +43,7 @@ public static class SessionIssuer
             await identityService.RememberLanguageAsync(user.Id, Languages.Current, cancellationToken);
         }
 
-        var session = await sessions.StartAsync(user.Id, user.SessionStamp, cancellationToken);
+        var session = await sessions.StartAsync(user.Id, user.SessionStamp, origin, cancellationToken);
         return Answer(tokens, user, session);
     }
 }

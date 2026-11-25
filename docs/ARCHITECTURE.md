@@ -201,6 +201,12 @@ served at, and carries each challenge's state to the browser and back in a token
 Data Protection, since Identity's own way keeps it in a cookie. A passkey sign-in ends in the
 same `SessionIssuer` as a password: the same account checks, and a session.
 
+Each session notes how it began and the browser's User-Agent (ADR-0061), so its owner sees their
+signed-in devices on the profile (`GET /api/auth/sessions`) and ends one, or all the others, from
+another. Ending one cuts the user's live connections; the app open on that device is refused when
+it connects again, renews, hears the session is over and goes to the sign-in page
+(`ReservationHubService`, with the error interceptor's `endSession`).
+
 ## 6. Real-time updates (SignalR)
 
 A single hub (`SmartDesk.API/Hubs/ReservationHub.cs`) broadcasts reservation

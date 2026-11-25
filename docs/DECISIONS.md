@@ -2112,3 +2112,43 @@ new tables.
   - A `<meta>` policy can't set `frame-ancestors` or report what it refused to a server, so
     framing is the server's to forbid, and `ng serve` doesn't.
   - Changing the theme script means a new hash in the policy: `npm run csp:check` gives it.
+
+## ADR-0061: Each user sees the devices they're signed in on, and signs any of them out
+
+**Decision:**
+- A sign-in session (ADR-0026) notes how it began, with the password or a passkey
+  (`SignInMethod`), and the browser's own User-Agent, cut at 512 characters (`UserAgent`; migration
+  `AddSessionDevices`). A session from before has neither. A password change's new session counts
+  as a password sign-in on the device that changed it.
+- `GET /api/auth/sessions` lists the caller's sessions that a renewal would still accept: not
+  ended, not expired, and begun under the account's current password. Theirs only, this one first
+  (`current`), then the others by their last use: the sign-in or the latest renewal.
+- `DELETE /api/auth/sessions/{id}` ends one of them (404 if it isn't the caller's or has ended),
+  and `POST /api/auth/sessions/end-others` all but this one, answering how many
+  (`{ "ended": 2 }`). The password stays as it is.
+- An ended session's tokens stop at once: each request checks its session (ADR-0026), and
+  ending one cuts the user's live connections (ADR-0021). The app open on that device tries to
+  connect again and is refused; it then asks for a new token and, told the session is over, goes
+  to the sign-in page saying so (`ReservationHubService`, `endSession` shared with the error
+  interceptor). Without that it would only find out at its next request.
+- Profile > **Signed-in devices** (`features/profile/sessions`) lists them as "Safari · iPhone",
+  read from the User-Agent in the browser (`core/utils/user-agent.ts`), with how and when each
+  signed in and was last used, "This device" on this one, a **Sign out** button on each other one,
+  and **Sign out everywhere else**.
+
+**Why:**
+- A phone left signed in on a lost device, or a shared office computer, stayed signed in for up
+  to 30 days (ADR-0026), and the only way out was changing the password. Passkeys (ADR-0057) and
+  the installed app (ADR-0054) make more devices sign in, and the list shows which.
+- The User-Agent is what the browser says of itself, and only its owner reads it back. It names
+  the browser and the system well enough to tell two devices apart, and it needs nothing kept
+  about where a request came from.
+- **Rejected:** the address the sign-in came from, or a place looked up from it. Behind the
+  phone tunnel or nginx it's that hop's address anyway, and a list of places a person has been is
+  more than a device list needs.
+- **Trade-offs:**
+  - The last use moves only when the session is renewed, about every quarter of an hour while the
+    app is open, so it's "within the last 15 minutes" rather than exact.
+  - An iPad set to show sites as on a computer says it's a Mac; its User-Agent alone can't tell.
+  - Not audited (ADR-0052): sessions aren't data a resource's history needs. A notice of each new
+    sign-in, by email or push, would be the next step.

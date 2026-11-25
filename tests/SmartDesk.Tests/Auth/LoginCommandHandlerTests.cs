@@ -19,10 +19,11 @@ public class LoginCommandHandlerTests
 
     public LoginCommandHandlerTests() =>
         _sessions
-            .Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(s => s.StartAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<SessionOrigin>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new IssuedSession(SessionId, "refresh-token", new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc)));
 
-    private LoginCommandHandler CreateHandler() => new(_identityService.Object, _tokenGenerator.Object, _sessions.Object);
+    private LoginCommandHandler CreateHandler() => new(
+        _identityService.Object, _tokenGenerator.Object, _sessions.Object, new FakeCurrentUser(null) { UserAgent = "Test browser" });
 
     [Fact]
     public async Task Handle_ValidCredentials_ReturnsGeneratedToken()
@@ -52,7 +53,7 @@ public class LoginCommandHandlerTests
 
         var signedIn = await CreateHandler().Handle(new LoginCommand("ayse@smartdesk.local", "Secret123!"), CancellationToken.None);
 
-        _sessions.Verify(s => s.StartAsync(user.Id, "stamp-1", It.IsAny<CancellationToken>()), Times.Once);
+        _sessions.Verify(s => s.StartAsync(user.Id, "stamp-1", new SessionOrigin(SignInMethod.Password, "Test browser"), It.IsAny<CancellationToken>()), Times.Once);
         signedIn.RefreshToken.Should().Be("refresh-token");
         signedIn.RefreshExpiresAt.Should().Be(new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc));
         signedIn.Response.AccessToken.Should().Be("jwt-value");
