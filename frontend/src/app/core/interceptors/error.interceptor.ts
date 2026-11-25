@@ -6,9 +6,9 @@ import { ApiError, SERVER_UNREACHABLE } from '../models/api-error.model';
 import { AuthService } from '../services/auth.service';
 import { NotificationService } from '../services/notification.service';
 import { isApiUrl } from '../utils/api-url';
+import { endSession } from '../utils/end-session';
 import { ANONYMOUS_REQUEST, SKIP_ERROR_NOTIFICATION } from './http-context.tokens';
 
-const SESSION_ENDED_MESSAGE = $localize`:@@error.sessionEnded:Your session has expired. Please sign in again.`;
 /** The ProblemDetails code the API sends while the password must be changed first. */
 const PASSWORD_CHANGE_REQUIRED = 'password-change-required';
 
@@ -84,33 +84,6 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(handle(req, false));
 };
-
-/**
- * Signs the user out and sends them to login. Safe to call for each of several requests
- * that fail together: the toast is de-duplicated by NotificationService, and only the first
- * call navigates.
- */
-function endSession(
-  authService: AuthService,
-  notifications: NotificationService,
-  router: Router,
-): void {
-  authService.logout();
-  notifications.info(SESSION_ENDED_MESSAGE);
-
-  if (isOnOrGoingToLogin(router)) {
-    return;
-  }
-  void router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
-}
-
-function isOnOrGoingToLogin(router: Router): boolean {
-  const navigation = router.currentNavigation();
-  const target = navigation
-    ? router.serializeUrl(navigation.finalUrl ?? navigation.extractedUrl)
-    : router.url;
-  return target === '/login' || target.startsWith('/login?');
-}
 
 function messageFor(error: ApiError): string | null {
   switch (true) {

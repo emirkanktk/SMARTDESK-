@@ -138,6 +138,40 @@ public sealed class AccountsTestHost : IDisposable
         _currentUser.Set(callerId, callerRole, callerId is { } caller ? Teams.TeamOf(caller, [callerRole], managerId) : null);
     }
 
+    // As SendAsync, from one of the caller's sign-in sessions: the one their token would name.
+    public async Task<TResponse> SendInSessionAsync<TResponse>(Guid callerId, string callerRole, Guid sessionId, IRequest<TResponse> request)
+    {
+        _currentUser.SessionId = sessionId;
+        try
+        {
+            return await SendAsync(callerId, callerRole, request);
+        }
+        finally
+        {
+            _currentUser.SessionId = null;
+        }
+    }
+
+    public async Task SendInSessionAsync(Guid callerId, string callerRole, Guid sessionId, IRequest request)
+    {
+        _currentUser.SessionId = sessionId;
+        try
+        {
+            await SendAsync(callerId, callerRole, request);
+        }
+        finally
+        {
+            _currentUser.SessionId = null;
+        }
+    }
+
+    // The browser's User-Agent on the requests that follow, as the API would read it.
+    public string? UserAgent
+    {
+        get => _currentUser.UserAgent;
+        set => _currentUser.UserAgent = value;
+    }
+
     // An anonymous request (sign-up, sign-in).
     public Task<TResponse> SendAnonymousAsync<TResponse>(IRequest<TResponse> request) => SendAsync(null, string.Empty, request);
 
@@ -185,6 +219,10 @@ public sealed class AccountsTestHost : IDisposable
         public Guid? UserId { get; private set; }
 
         public Guid? TeamId { get; private set; }
+
+        public Guid? SessionId { get; set; }
+
+        public string? UserAgent { get; set; }
 
         public bool IsInRole(string role) => UserId is not null && role == _role;
 

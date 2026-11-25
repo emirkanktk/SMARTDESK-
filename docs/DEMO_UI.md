@@ -521,6 +521,17 @@ plan by the lift.
   session can't plant one; and the checks are ASP.NET Core Identity's own, new in .NET 10
   (ADR-0057). As the admin, **History** shows the passkey added under its name.
 
+### 31. Signing out a phone from the computer
+
+- Ayşe is signed in on the phone and on the computer. On the computer: **Profile**, then
+  **Signed-in devices**: "Edge · Windows" marked **This device**, and "Safari · iPhone", signed in
+  with a passkey, with when each was last used.
+- **Sign out** beside the iPhone and confirm. Within seconds the phone, untouched, shows the
+  sign-in page: "Your session has expired. Please sign in again."
+- Point out: for a lost phone or a shared computer there's no need to change the password;
+  **Sign out everywhere else** ends every other device at once. The phone's tokens stop on the
+  server at once, and its open app finds out over its live connection (ADR-0061).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

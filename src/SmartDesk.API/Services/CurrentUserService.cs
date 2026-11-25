@@ -19,4 +19,10 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
     public bool IsInRole(string role) => User?.IsInRole(role) ?? false;
 
     public bool InRequest => httpContextAccessor.HttpContext is not null;
+
+    public Guid? SessionId =>
+        Guid.TryParse(User?.FindFirstValue(SmartDeskClaims.Session), out var session) ? session : null;
+
+    public string? UserAgent =>
+        httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString() is { Length: > 0 } agent ? agent : null;
 }

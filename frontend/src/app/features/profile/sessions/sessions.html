@@ -1,0 +1,87 @@
+<section id="sessions" class="card sessions" aria-labelledby="sessions-title">
+  <h2 id="sessions-title" class="section-title" i18n="@@sessions.title">Signed-in devices</h2>
+  <p class="text-muted intro" i18n="@@sessions.intro">
+    Where your account is signed in. Sign out a device you've lost, shared or don't recognise: it
+    has to sign in again, and SmartDesk open on it closes at once.
+  </p>
+
+  @if (loadFailed()) {
+    <div class="alert-error load-error" role="alert">
+      <span i18n="@@sessions.loadFailed">Your devices could not be loaded.</span>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        (click)="load()"
+        i18n="@@common.tryAgain"
+      >
+        Try again
+      </button>
+    </div>
+  } @else if (sessions(); as list) {
+    <ul class="list">
+      @for (session of list; track session.id) {
+        <li class="item">
+          <app-icon [name]="iconFor(session)" class="item-icon" />
+          <span class="what">
+            <span class="name">
+              {{ deviceName(session) }}
+              @if (session.current) {
+                <span class="badge" i18n="@@sessions.thisDevice">This device</span>
+              }
+            </span>
+            <span class="text-muted meta">
+              @switch (session.method) {
+                @case ('Passkey') {
+                  <ng-container i18n="@@sessions.byPasskey"
+                    >Signed in with a passkey
+                    {{ session.startedAt | date: 'EEE d MMM, HH:mm' }}</ng-container
+                  >
+                }
+                @case ('Password') {
+                  <ng-container i18n="@@sessions.byPassword"
+                    >Signed in with the password
+                    {{ session.startedAt | date: 'EEE d MMM, HH:mm' }}</ng-container
+                  >
+                }
+                @default {
+                  <ng-container i18n="@@sessions.signedIn"
+                    >Signed in {{ session.startedAt | date: 'EEE d MMM, HH:mm' }}</ng-container
+                  >
+                }
+              }
+              ·
+              <ng-container i18n="@@sessions.lastActive"
+                >last active {{ session.lastActiveAt | date: 'EEE d MMM, HH:mm' }}</ng-container
+              >
+            </span>
+          </span>
+          @if (!session.current) {
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              [disabled]="busy()"
+              [attr.aria-label]="endLabel(session)"
+              (click)="end(session)"
+              i18n="@@sessions.end"
+            >
+              Sign out
+            </button>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (hasOthers()) {
+      <div class="actions">
+        <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="endOthers()">
+          <app-icon name="logout" />
+          <ng-container i18n="@@sessions.endOthers">Sign out everywhere else</ng-container>
+        </button>
+      </div>
+    } @else {
+      <p class="state" i18n="@@sessions.onlyHere">You're signed in on this device only.</p>
+    }
+  } @else {
+    <p class="text-muted" role="status" i18n="@@sessions.loading">Loading your devices…</p>
+  }
+</section>

@@ -1,11 +1,14 @@
 import { Injectable, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import * as signalR from '@microsoft/signalr';
 import { Observable, Subject, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { InboxMessage } from '../models/inbox.model';
 import { IssueReport } from '../models/issue.model';
 import { Reservation } from '../models/reservation.model';
+import { endSession } from '../utils/end-session';
 import { AuthService } from './auth.service';
+import { NotificationService } from './notification.service';
 
 // First waits, then every further retry stays at 30s. Never returns null, so a drop
 // does not end the connection for good.
@@ -15,9 +18,23 @@ function nextDelay(attempt: number): number {
   return retryDelaysMs[attempt] ?? 30_000;
 }
 
+/**
+ * Whether the server refused the connection's token. SignalR reports a refused negotiation as an
+ * error of its own that it doesn't export, keeping the status only in the message: "Failed to
+ * complete negotiation with the server: Error: Unauthorized: Status code '401'".
+ */
+function refusedToken(error: unknown): boolean {
+  if (error instanceof signalR.HttpError) {
+    return error.statusCode === 401;
+  }
+  return error instanceof Error && error.message.includes("Status code '401'");
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReservationHubService {
   private readonly authService = inject(AuthService);
+  private readonly notifications = inject(NotificationService);
+  private readonly router = inject(Router);
   private connection: signalR.HubConnection | null = null;
   private startTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
@@ -147,9 +164,19 @@ export class ReservationHubService {
           this.reconnected.next();
         }
       },
-      () => {
+      (error: unknown) => {
         if (this.stopped || this.connection !== connection) {
           return;
+        }
+        // Refused: the token's session may be over - signed out from another device (ADR-0061),
+        // or the account changed. A renewal tells: a new token for the next attempt, or the
+        // sign-in page now rather than at this tab's next request.
+        if (refusedToken(error)) {
+          this.authService.renew().subscribe((token) => {
+            if (!token && !this.authService.isAuthenticated()) {
+              endSession(this.authService, this.notifications, this.router);
+            }
+          });
         }
         this.startTimer = setTimeout(
           () => this.startWithRetry(connection, attempt + 1),

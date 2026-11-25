@@ -128,6 +128,17 @@ are two calls each: the options, whose `token` goes back with the browser's answ
 - The history (ADR-0052) keeps each passkey added or removed as a `Passkey` entry: the
   account's id and the passkey's name.
 
+## Signed-in devices (ADR-0061)
+
+The caller's own sign-in sessions (ADR-0026): which devices their account is signed in on, and
+signing one or all the others out from here.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/auth/sessions` | any authenticated user | `GetMySessionsQuery` | → `[{ id, userAgent, method, startedAt, lastActiveAt, current }]`: the sessions a renewal would still accept (not ended, not expired, begun under the current password). `current` first, the others by `lastActiveAt`, newest first. `method`: `"Password"` or `"Passkey"`; it and `userAgent` (the browser's own, at most 512 characters) are null for a session from before they were noted. `lastActiveAt`: the sign-in or the latest renewal |
+| DELETE | `/api/auth/sessions/{id}` | any authenticated user | `EndSessionCommand` | → 204. The session's tokens stop working at once and the user's live connections are cut, so the app open on that device finds out (ADR-0021). 404 when the caller has no open session with that id. The caller's own works too, as a sign-out without clearing the cookie |
+| POST | `/api/auth/sessions/end-others` | any authenticated user | `EndOtherSessionsCommand` | no body → `{ ended }`: how many sessions it ended, every one but the caller's. The password stays as it is |
+
 ## Users (Admin)
 
 Every account, for Admins (ADR-0020). An account is returned as:

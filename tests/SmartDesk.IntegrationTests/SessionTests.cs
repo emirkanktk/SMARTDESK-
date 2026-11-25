@@ -68,6 +68,56 @@ public sealed class SessionTests(PostgresApiFixture fixture)
         none.Headers.Contains("Set-Cookie").Should().BeFalse();
     }
 
+    // ADR-0061: every sign-in is a device in its owner's list, and any of them signs another out.
+    [Fact]
+    public async Task The_list_names_each_device_and_one_signs_another_out_at_once()
+    {
+        var run = Guid.NewGuid().ToString("N")[..8];
+        var laptop = await SignInOnAsync($"Laptop browser {run}");
+        var phone = await SignInOnAsync($"Phone browser {run}");
+
+        var list = await Bearer(laptop).GetFromJsonAsync<List<SessionBody>>("/api/auth/sessions");
+        var these = list!.Where(s => s.UserAgent?.EndsWith(run, StringComparison.Ordinal) == true).ToList();
+        these.Select(s => (s.UserAgent, s.Method, s.Current)).Should().BeEquivalentTo(new[]
+        {
+            ($"Laptop browser {run}", "Password", true),
+            ($"Phone browser {run}", "Password", false),
+        });
+        var phoneSession = these.Single(s => !s.Current).Id;
+
+        (await Bearer(laptop).DeleteAsync($"/api/auth/sessions/{phoneSession}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        (await Bearer(phone).GetAsync("/api/auth/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized, "its session is over");
+        (await Bearer(laptop).GetAsync("/api/auth/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await Bearer(laptop).DeleteAsync($"/api/auth/sessions/{phoneSession}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Anonymous().GetAsync("/api/auth/sessions")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Signing_out_everywhere_else_keeps_only_this_device()
+    {
+        var run = Guid.NewGuid().ToString("N")[..8];
+        var here = await SignInOnAsync($"This browser {run}");
+        var elsewhere = await SignInOnAsync($"Another browser {run}");
+
+        var ended = await Bearer(here).PostAsync("/api/auth/sessions/end-others", null);
+
+        ended.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ended.Content.ReadFromJsonAsync<EndedBody>())!.Ended.Should().BeGreaterThanOrEqualTo(1);
+        (await Bearer(elsewhere).GetAsync("/api/auth/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var list = await Bearer(here).GetFromJsonAsync<List<SessionBody>>("/api/auth/sessions");
+        list.Should().ContainSingle().Which.UserAgent.Should().Be($"This browser {run}");
+    }
+
+    private async Task<string> SignInOnAsync(string userAgent)
+    {
+        var client = Anonymous();
+        client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", userAgent);
+        var login = await client.PostAsJsonAsync("/api/auth/login", new { email = "employee2@smartdesk.local", password = IdentityDataSeeder.DemoPassword });
+        login.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await login.Content.ReadFromJsonAsync<LoginBody>())!.AccessToken;
+    }
+
     // The test server speaks plain http, where a client wouldn't send a Secure cookie back, so
     // the cookie is read and sent by hand.
     private HttpClient Anonymous() => fixture.CreateClient(new() { HandleCookies = false });
@@ -92,4 +142,8 @@ public sealed class SessionTests(PostgresApiFixture fixture)
     private static string CookieValue(string setCookie) => setCookie[(CookieName.Length + 1)..].Split(';')[0];
 
     private sealed record LoginBody(string AccessToken, DateTime ExpiresAt);
+
+    private sealed record SessionBody(Guid Id, string? UserAgent, string? Method, DateTime StartedAt, DateTime LastActiveAt, bool Current);
+
+    private sealed record EndedBody(int Ended);
 }

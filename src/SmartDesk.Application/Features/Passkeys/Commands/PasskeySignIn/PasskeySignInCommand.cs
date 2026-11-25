@@ -25,7 +25,11 @@ public sealed class PasskeySignInCommandValidator : AbstractValidator<PasskeySig
 }
 
 public sealed class PasskeySignInCommandHandler(
-    IPasskeys passkeys, IIdentityService identityService, IJwtTokenGenerator tokenGenerator, IUserSessions sessions)
+    IPasskeys passkeys,
+    IIdentityService identityService,
+    IJwtTokenGenerator tokenGenerator,
+    IUserSessions sessions,
+    ICurrentUserService currentUser)
     : IRequestHandler<PasskeySignInCommand, SignedIn>
 {
     public async Task<SignedIn> Handle(PasskeySignInCommand request, CancellationToken cancellationToken)
@@ -39,6 +43,7 @@ public sealed class PasskeySignInCommandHandler(
             _ => throw new UnauthorizedException(Messages.Passkey_Failed),
         };
 
-        return await SessionIssuer.SignInAsync(user, identityService, tokenGenerator, sessions, cancellationToken);
+        var origin = new SessionOrigin(SignInMethod.Passkey, currentUser.UserAgent);
+        return await SessionIssuer.SignInAsync(user, origin, identityService, tokenGenerator, sessions, cancellationToken);
     }
 }

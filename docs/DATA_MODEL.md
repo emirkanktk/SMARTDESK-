@@ -32,7 +32,9 @@ A sign-in session. The refresh token itself is never stored.
 | CreatedAt | DateTime (UTC) | |
 | ExpiresAt | DateTime (UTC) | moves forward with every renewal (`Sessions:IdleDays`), up to `AbsoluteExpiresAt` |
 | AbsoluteExpiresAt | DateTime (UTC) | `CreatedAt` + `Sessions:MaxDays` |
-| RevokedAt | DateTime? (UTC) | set on sign-out, on a password change, or when a replaced token is used again |
+| RevokedAt | DateTime? (UTC) | set on sign-out, on a password change, when the user signs that device out from another (ADR-0061), or when a replaced token is used again |
+| SignInMethod | string? (16) | `Password` or `Passkey`: how the session began (ADR-0061); null for one from before |
+| UserAgent | string? (512) | the browser's own User-Agent when it signed in, cut at 512 characters (ADR-0061) |
 
 A user's sessions that ended or expired more than `Sessions:MaxDays` ago are deleted when
 they next sign in.
@@ -320,6 +322,7 @@ erDiagram
         uuid UserId FK
         string TokenHash UK "SHA-256 of the refresh token"
         datetime ExpiresAt
+        string UserAgent "the browser it signed in on"
     }
     AspNetUserPasskeys {
         bytea CredentialId PK
