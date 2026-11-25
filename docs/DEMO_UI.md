@@ -532,6 +532,20 @@ plan by the lift.
   **Sign out everywhere else** ends every other device at once. The phone's tokens stop on the
   server at once, and its open app finds out over its live connection (ADR-0061).
 
+### 32. Hearing of a sign-in on a new device
+
+- Ayşe has notifications on on the computer (**Profile** > **Notifications**). Sign in as her on
+  the phone, in a browser she hasn't used SmartDesk in (or a private window).
+- The computer shows "New sign-in: Safari · iPhone" with the time and "with a password". Click
+  it: **Profile** opens at **Signed-in devices**, where the iPhone is listed and can be signed
+  out. Mailpit (http://localhost:8025) has the same as an email, in Ayşe's language, with the
+  link.
+- Sign out on the phone and in again: nothing is sent this time, the browser is known now.
+- Point out: the browser is known by a cookie of its own, kept as a hash, not by its address or
+  its User-Agent, so two laptops with the same browser are still two; the email reaches Ayşe
+  even if someone else is in her account; an account's first browser isn't told of
+  (ADR-0062).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

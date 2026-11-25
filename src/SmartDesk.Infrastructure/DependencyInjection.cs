@@ -151,6 +151,7 @@ public static class DependencyInjection
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IUserAccessChecker, UserAccessChecker>();
         services.AddScoped<IUserSessions, UserSessions>();
+        services.AddScoped<IKnownDevices, KnownDevices>();
         services.AddOptions<SessionOptions>()
             .Bind(configuration.GetSection(SessionOptions.SectionName))
             .Validate(o => o.IdleDays > 0 && o.MaxDays >= o.IdleDays && o.ReuseGraceSeconds >= 0,

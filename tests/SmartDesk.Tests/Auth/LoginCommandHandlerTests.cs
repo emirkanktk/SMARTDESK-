@@ -23,7 +23,8 @@ public class LoginCommandHandlerTests
             .ReturnsAsync(new IssuedSession(SessionId, "refresh-token", new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc)));
 
     private LoginCommandHandler CreateHandler() => new(
-        _identityService.Object, _tokenGenerator.Object, _sessions.Object, new FakeCurrentUser(null) { UserAgent = "Test browser" });
+        _identityService.Object,
+        SessionIssuers.Over(_identityService.Object, _tokenGenerator.Object, _sessions.Object, new FakeCurrentUser(null) { UserAgent = "Test browser" }));
 
     [Fact]
     public async Task Handle_ValidCredentials_ReturnsGeneratedToken()
@@ -57,6 +58,7 @@ public class LoginCommandHandlerTests
         signedIn.RefreshToken.Should().Be("refresh-token");
         signedIn.RefreshExpiresAt.Should().Be(new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Utc));
         signedIn.Response.AccessToken.Should().Be("jwt-value");
+        signedIn.DeviceToken.Should().Be(SessionIssuers.DeviceToken, "the browser's cookie says which it is (ADR-0062)");
     }
 
     [Fact]

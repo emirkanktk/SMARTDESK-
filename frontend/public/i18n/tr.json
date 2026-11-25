@@ -276,6 +276,7 @@
     "passkeys.addFailed": "Geçiş anahtarı eklenemedi. Lütfen yeniden deneyin.",
     "sessions.title": "Oturum açık cihazlar",
     "sessions.intro": "Hesabınızın açık olduğu yerler. Kaybettiğiniz, başkasıyla paylaştığınız ya da tanımadığınız bir cihazdan çıkış yapın: yeniden giriş yapması gerekir, orada açık olan SmartDesk de hemen kapanır.",
+    "sessions.newDeviceNotice": "Hesabınıza daha önce kullanılmadığı bir cihazdan giriş yapılırsa size e-posta gönderir, bildirimleri açık cihazlarınıza da haber veririz.",
     "sessions.loadFailed": "Cihazlarınız yüklenemedi.",
     "sessions.loading": "Cihazlarınız yükleniyor…",
     "sessions.thisDevice": "Bu cihaz",

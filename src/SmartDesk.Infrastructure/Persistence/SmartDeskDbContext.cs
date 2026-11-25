@@ -40,6 +40,8 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
+    public DbSet<KnownDevice> KnownDevices => Set<KnownDevice>();
+
     // Identity's tables as of version 3, which adds AspNetUserPasskeys (ADR-0057). Identity reads
     // the version from the app's options (StoreOptions.SchemaVersion), so a context made without
     // them - as the integration tests' migrator is - has to be given them too.
@@ -162,6 +164,19 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.HasIndex(e => e.TokenHash).IsUnique();
             entity.HasIndex(e => e.PreviousTokenHash);
             entity.HasIndex(e => e.UserId);
+            entity.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // The browsers each account signed in on (ADR-0062): found by the account and the SHA-256
+        // of the token a browser presents, 64 hex digits, which several accounts may share.
+        builder.Entity<KnownDevice>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64);
+            entity.HasIndex(e => new { e.UserId, e.TokenHash }).IsUnique();
             entity.HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId)

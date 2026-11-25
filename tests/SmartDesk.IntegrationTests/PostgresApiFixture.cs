@@ -52,8 +52,11 @@ public sealed class PostgresApiFixture : WebApplicationFactory<Program>, IAsyncL
         builder.UseSetting("WebPush:PrivateKey", string.Empty);
         // So a test can wait for a reminder the real job sends, instead of up to 30 seconds.
         builder.UseSetting("Reminders:IntervalSeconds", "1");
-        // The tests' logs stay out of a developer's own Seq (ADR-0053).
+        // The tests' logs stay out of a developer's own Seq (ADR-0053), and their emails out of
+        // the mail catcher Development sends to: every sign-in on a browser without a cookie is
+        // one to tell its owner of (ADR-0062). Without a mail server, emails go to the log.
         builder.UseSetting("Seq:ServerUrl", string.Empty);
+        builder.UseSetting("Email:Smtp:Host", string.Empty);
         builder.UseEnvironment("Development");
     }
 }

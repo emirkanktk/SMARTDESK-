@@ -27,6 +27,10 @@ public interface IFrontendLinks
     // A booking's page, which a calendar entry links back to (ADR-0048).
     string Reservation(Guid reservationId);
 
+    // Profile's list of the devices the account is signed in on (ADR-0061), which the notice of a
+    // sign-in on a new one points to (ADR-0062).
+    string SignedInDevices();
+
     // Someone's personal calendar feed (ADR-0048), an .ics address: the API's, reached through
     // the app's own address, which passes /api on. The token goes in the query string, which
     // the container's web server leaves out of its log; it's hex, so URL-safe.

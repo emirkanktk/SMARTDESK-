@@ -14,7 +14,7 @@ examples below are the English ones.
 
 | Method | Path | Auth | Command/Query | Notes |
 |---|---|---|---|---|
-| POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt, passwordChangeRequired }`, and a new **session** in the `smartdesk_session` cookie (see Sessions below). 400 if a field is missing/malformed, 401 on wrong credentials. With the right password, 403 for an account that isn't active yet or any more (see below). `passwordChangeRequired: true` means the password was set by someone else and must be changed first (ADR-0021). |
+| POST | `/api/auth/login` | none | `LoginCommand` | body: `{ email, password }` → `{ accessToken, expiresAt, passwordChangeRequired }`, and a new **session** in the `smartdesk_session` cookie, with the browser's own token in `smartdesk_device` (see Sessions below). 400 if a field is missing/malformed, 401 on wrong credentials. With the right password, 403 for an account that isn't active yet or any more (see below). `passwordChangeRequired: true` means the password was set by someone else and must be changed first (ADR-0021). |
 | POST | `/api/auth/refresh` | none (the session cookie) | `RefreshSessionCommand` | no body → the same answer as login, for the session in the cookie, whose refresh token is replaced. 204 when there's no cookie at all: nothing to renew, and no failed request for a guest's browser to show. 401 `"Your session has ended. Sign in again."`, and the cookie deleted, when its session ended, expired, or was used from a copy (see Sessions). Not rate limited. |
 | POST | `/api/auth/logout` | none (the session cookie) | `LogoutCommand` | no body → 204. Ends the cookie's session on the server, so its access tokens stop working too, and deletes the cookie. Fine without a session, and fine twice. |
 | POST | `/api/auth/register` | none | `RegisterCommand` | body: `{ firstName, lastName, email, password, managerEmail? }` → **202** for valid input, whether or not the email already has an account. Without `managerEmail`: a **Manager** who waits for an Admin's approval (ADR-0020). With it: an **Employee** asking to join that manager's team, who waits for that manager's approval (ADR-0021). 400 for missing/malformed fields (`managerEmail` must be a valid address and not the applicant's own), or with `Password`: Identity's reasons for refusing it. |
@@ -40,6 +40,13 @@ examples below are the English ones.
     `smartdesk_session` cookie: `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/api/auth`. No
     script can read it, and it goes nowhere but the renew and sign-out calls. Responses that
     carry tokens are `Cache-Control: no-store`.
+  - Signing in, with the password or a passkey, also writes the `smartdesk_device` cookie
+    (ADR-0062): a random token the browser is known by to the accounts that signed in on it,
+    locked down like the session's but kept for 400 days (`Max-Age`), and left by signing out.
+    A sign-in on a browser the account doesn't know, when it knows another, is emailed to its
+    owner and sent to their devices with notifications on (`New sign-in: Safari · iPhone`), with
+    a link to Profile > Signed-in devices. An account's first browser isn't told of; renewing
+    and changing the password don't look at the browser.
   - Each renewal replaces the refresh token. The one it replaced still works for
     `Sessions:ReuseGraceSeconds` (30), so two tabs renewing at once both get through. Used
     after that, it can only be a copy, and the whole session ends.

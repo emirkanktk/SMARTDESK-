@@ -12,7 +12,8 @@ namespace SmartDesk.Application.Features.Passkeys.Commands.PasskeySignIn;
 
 // Signs in with a passkey (POST /api/auth/passkeys/sign-in, ADR-0057): Credential is what
 // navigator.credentials.get() gave, Token the one that came with its options. The rest is as
-// signing in with a password: the same account checks, and a session (ADR-0026).
+// signing in with a password: the same account checks, a session (ADR-0026), and a word to the
+// owner if the browser is new to the account (ADR-0062).
 public sealed record PasskeySignInCommand(JsonElement Credential, string Token) : IRequest<SignedIn>;
 
 public sealed class PasskeySignInCommandValidator : AbstractValidator<PasskeySignInCommand>
@@ -24,12 +25,7 @@ public sealed class PasskeySignInCommandValidator : AbstractValidator<PasskeySig
     }
 }
 
-public sealed class PasskeySignInCommandHandler(
-    IPasskeys passkeys,
-    IIdentityService identityService,
-    IJwtTokenGenerator tokenGenerator,
-    IUserSessions sessions,
-    ICurrentUserService currentUser)
+public sealed class PasskeySignInCommandHandler(IPasskeys passkeys, SessionIssuer issuer)
     : IRequestHandler<PasskeySignInCommand, SignedIn>
 {
     public async Task<SignedIn> Handle(PasskeySignInCommand request, CancellationToken cancellationToken)
@@ -43,7 +39,6 @@ public sealed class PasskeySignInCommandHandler(
             _ => throw new UnauthorizedException(Messages.Passkey_Failed),
         };
 
-        var origin = new SessionOrigin(SignInMethod.Passkey, currentUser.UserAgent);
-        return await SessionIssuer.SignInAsync(user, origin, identityService, tokenGenerator, sessions, cancellationToken);
+        return await issuer.SignInAsync(user, SignInMethod.Passkey, cancellationToken);
     }
 }

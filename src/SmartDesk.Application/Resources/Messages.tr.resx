@@ -201,6 +201,9 @@
   <data name="CheckIn_WrongCode" xml:space="preserve">
     <value>Bu QR kod artık geçerli değil. {0} için güncel kodu okutun.</value>
   </data>
+  <data name="Device_Unknown" xml:space="preserve">
+    <value>bilinmeyen bir tarayıcı</value>
+  </data>
   <data name="Duration_Day" xml:space="preserve">
     <value>1 gün</value>
   </data>
@@ -269,6 +272,24 @@
   </data>
   <data name="Email_JoinRequestReceived_Body" xml:space="preserve">
     <value>Kaydolduğunuz için teşekkürler. Ekip yöneticinizin ekibine katılma isteğiniz onay bekliyor; hesabınız kullanıma hazır olur olmaz size e-posta göndereceğiz.</value>
+  </data>
+  <data name="Email_NewSignIn_Body" xml:space="preserve">
+    <value>Hesabınıza daha önce kullanılmadığı bir cihazdan giriş yapıldı: {0}, {1}, {2}.</value>
+  </data>
+  <data name="Email_NewSignIn_IfYou" xml:space="preserve">
+    <value>Giriş yapan sizseniz bir şey yapmanıza gerek yok.</value>
+  </data>
+  <data name="Email_NewSignIn_Link" xml:space="preserve">
+    <value>Oturum açık cihazlarınız</value>
+  </data>
+  <data name="Email_NewSignIn_NotYouPasskey" xml:space="preserve">
+    <value>Siz değilseniz hemen profilinizden o cihazın oturumunu kapatın ve orada tanımadığınız geçiş anahtarlarını silin.</value>
+  </data>
+  <data name="Email_NewSignIn_NotYouPassword" xml:space="preserve">
+    <value>Siz değilseniz hemen profilinizden o cihazın oturumunu kapatın ve parolanızı değiştirin.</value>
+  </data>
+  <data name="Email_NewSignIn_Subject" xml:space="preserve">
+    <value>SmartDesk hesabınıza yeni bir cihazdan giriş yapıldı</value>
   </data>
   <data name="Email_NewSignUpForAdmin_Body" xml:space="preserve">
     <value>{0} ({1}) ekip yöneticisi olarak kaydoldu ve onay bekliyor.</value>
@@ -849,6 +870,12 @@
   <data name="Series_UntilBeforeStart" xml:space="preserve">
     <value>Seri, başladığı gün ya da daha sonra bitmeli.</value>
   </data>
+  <data name="SignIn_WithPasskey" xml:space="preserve">
+    <value>geçiş anahtarıyla</value>
+  </data>
+  <data name="SignIn_WithPassword" xml:space="preserve">
+    <value>parolayla</value>
+  </data>
   <data name="Status_Active" xml:space="preserve">
     <value>Etkin</value>
   </data>
@@ -977,6 +1004,12 @@
   </data>
   <data name="Push_Inbox_WaitlistBooked" xml:space="preserve">
     <value>Beklediğiniz bir saat boşaldı ve sizin için rezerve edildi</value>
+  </data>
+  <data name="Push_NewSignIn_Body" xml:space="preserve">
+    <value>{0}, {1}. Siz değilseniz profilinizden oturumunu kapatın.</value>
+  </data>
+  <data name="Push_NewSignIn_Title" xml:space="preserve">
+    <value>Yeni cihazdan giriş: {0}</value>
   </data>
   <data name="Push_Off" xml:space="preserve">
     <value>Bu sunucuda bildirimler ayarlanmamış.</value>

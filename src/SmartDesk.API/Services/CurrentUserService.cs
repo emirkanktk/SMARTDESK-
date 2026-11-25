@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using SmartDesk.API.Authentication;
 using SmartDesk.Application.Common.Interfaces;
 using SmartDesk.Application.Common.Security;
 
@@ -25,4 +26,7 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
 
     public string? UserAgent =>
         httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString() is { Length: > 0 } agent ? agent : null;
+
+    public string? DeviceToken =>
+        httpContextAccessor.HttpContext?.Request is { } request && DeviceCookie.Read(request) is { Length: > 0 } token ? token : null;
 }

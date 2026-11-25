@@ -207,6 +207,13 @@ another. Ending one cuts the user's live connections; the app open on that devic
 it connects again, renews, hears the session is over and goes to the sign-in page
 (`ReservationHubService`, with the error interceptor's `endSession`).
 
+Signing in also tells the account's owner when it happens on a browser their account hasn't
+been used on (ADR-0062). The browser is known by a random token in a long-lived cookie of its own
+(`smartdesk_device`), and `KnownDevices` keeps its hash once for each account that signed in with
+it. `SessionIssuer` asks it on each sign-in; a browser new to an account that knows another gets
+the owner an email (`AccountEmails.NewSignIn`) and a notification on their devices
+(`PushTopic.NewSignIn`), both only queued, with a link to the device list.
+
 ## 6. Real-time updates (SignalR)
 
 A single hub (`SmartDesk.API/Hubs/ReservationHub.cs`) broadcasts reservation

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Features.Push.Common;
 
 namespace SmartDesk.Infrastructure;
 
@@ -36,6 +37,8 @@ public sealed class FrontendLinks(IOptions<AppOptions> options) : IFrontendLinks
     public string Team() => $"{Base}/team";
 
     public string Reservation(Guid reservationId) => $"{Base}/reservations/{reservationId}/edit";
+
+    public string SignedInDevices() => $"{Base}{PushTexts.SignedInDevicesUrl}";
 
     public string CalendarFeed(string token) => $"{Base}/api/calendar/feed.ics?token={Uri.EscapeDataString(token)}";
 }

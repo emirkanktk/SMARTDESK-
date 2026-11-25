@@ -993,6 +993,34 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("SmartDesk.Infrastructure.Identity.KnownDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("KnownDevices");
+                });
+
             modelBuilder.Entity("SmartDesk.Infrastructure.Identity.UserSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1298,6 +1326,15 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("ManagerId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("SmartDesk.Infrastructure.Identity.KnownDevice", b =>
+                {
+                    b.HasOne("SmartDesk.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SmartDesk.Infrastructure.Identity.UserSession", b =>

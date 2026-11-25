@@ -1,5 +1,6 @@
 using System.Globalization;
 using FluentAssertions;
+using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Inbox.Common;
 using SmartDesk.Application.Features.Push.Common;
 using SmartDesk.Application.Features.Reservations.Common;
@@ -144,5 +145,33 @@ public sealed class PushTextsTests
 
         test.Title.Should().Be("Bildirimler açık");
         test.Url.Should().Be(PushTexts.ProfileUrl);
+    }
+
+    // ADR-0062: the account signed in on a browser it hadn't been used on.
+    [Fact]
+    public void A_sign_in_on_a_new_device_says_which_when_and_how_and_opens_the_devices()
+    {
+        var session = Guid.NewGuid();
+        var phone = new NewSignIn(
+            session,
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1",
+            SignInMethod.Password,
+            Start);
+        PushContent Notice(NewSignIn signIn, CultureInfo culture) =>
+            PushTexts.Compose(new PushNotice(PushTopic.NewSignIn, [Guid.NewGuid()]) { SignIn = signIn }, culture, Istanbul, Grace);
+
+        var turkish = Notice(phone, Turkish);
+        var english = Notice(phone, English);
+
+        turkish.Title.Should().Be("Yeni cihazdan giriş: Safari · iPhone");
+        turkish.Body.Should().Be("21 Eki Çar 14:00, parolayla. Siz değilseniz profilinizden oturumunu kapatın.");
+        english.Title.Should().Be("New sign-in: Safari · iPhone");
+        english.Body.Should().Be("21 Oct Wed 14:00, with a password. Not you? Sign it out on your profile.");
+        english.Url.Should().Be("/profile#sessions");
+        english.Tag.Should().Be($"sign-in-{session}");
+
+        var unknown = Notice(phone with { UserAgent = null, Method = SignInMethod.Passkey }, English);
+        unknown.Title.Should().Be("New sign-in: an unknown browser");
+        unknown.Body.Should().StartWith("21 Oct Wed 14:00, with a passkey.");
     }
 }

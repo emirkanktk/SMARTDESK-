@@ -39,6 +39,23 @@ A sign-in session. The refresh token itself is never stored.
 A user's sessions that ended or expired more than `Sessions:MaxDays` ago are deleted when
 they next sign in.
 
+### KnownDevice (`SmartDesk.Infrastructure.Identity`, ADR-0062)
+
+A browser an account has signed in on, so that a sign-in on one it hasn't is told to its owner.
+The browser holds a random token in its `smartdesk_device` cookie; the token itself is never
+stored. A browser several accounts signed in on has a row for each, with the same hash.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | |
+| UserId | Guid | FK → `ApplicationUser.Id` (cascade delete) |
+| TokenHash | string (64) | SHA-256 of the browser's token, hex; unique with `UserId` |
+| FirstSeenAt | DateTime (UTC) | its first sign-in for this account |
+| LastSeenAt | DateTime (UTC) | its latest sign-in for this account |
+
+A user's browsers not seen for 400 days, as long as the cookie lasts, are deleted when they next
+sign in.
+
 ### Passkey (`AspNetUserPasskeys`, ASP.NET Core Identity's own, ADR-0057)
 
 A passkey someone signs in with, as Identity keeps it (`IdentityUserPasskey<Guid>`, version 3 of
@@ -324,6 +341,12 @@ erDiagram
         datetime ExpiresAt
         string UserAgent "the browser it signed in on"
     }
+    KnownDevice {
+        uuid Id PK
+        uuid UserId FK
+        string TokenHash "SHA-256 of the browser's token"
+        datetime LastSeenAt
+    }
     AspNetUserPasskeys {
         bytea CredentialId PK
         uuid UserId FK
@@ -443,6 +466,7 @@ erDiagram
 
     ApplicationUser |o--o{ ApplicationUser : manages
     ApplicationUser ||--o{ UserSession : "signs in with"
+    ApplicationUser ||--o{ KnownDevice : "has signed in on"
     ApplicationUser ||--o{ AspNetUserPasskeys : "signs in with"
     ResourceType ||--o{ Resource : types
     Resource ||--o{ ResourceFeature : has
@@ -478,6 +502,8 @@ erDiagram
 - `AspNetUsers(ManagerId)` - a Manager's team.
 - `UserSessions(TokenHash)` - unique; `UserSessions(PreviousTokenHash)`, `UserSessions(UserId)` -
   finding the session a refresh token belongs to, and a user's open sessions.
+- `KnownDevices(UserId, TokenHash)` - unique: whether an account knows the browser signing in,
+  and an account's browsers (ADR-0062).
 - `AspNetUserPasskeys(UserId)` - someone's passkeys, for their profile and the ones a new one
   mustn't repeat (ADR-0057). A sign-in finds its passkey by the key, `CredentialId`.
 - `ResourceTypes(Name)` - unique.
