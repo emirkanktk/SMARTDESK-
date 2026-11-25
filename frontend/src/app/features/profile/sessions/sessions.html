@@ -1,8 +1,17 @@
 <section id="sessions" class="card sessions" aria-labelledby="sessions-title">
-  <h2 id="sessions-title" class="section-title" i18n="@@sessions.title">Signed-in devices</h2>
+  <h2 id="sessions-title" class="section-title" tabindex="-1" i18n="@@sessions.title">
+    Signed-in devices
+  </h2>
   <p class="text-muted intro" i18n="@@sessions.intro">
     Where your account is signed in. Sign out a device you've lost, shared or don't recognise: it
     has to sign in again, and SmartDesk open on it closes at once.
+  </p>
+  <p class="text-muted intro notice-hint">
+    <app-icon name="bell" />
+    <ng-container i18n="@@sessions.newDeviceNotice"
+      >If your account is signed in on a device it hasn't been used on before, we email you and tell
+      your devices that have notifications on.</ng-container
+    >
   </p>
 
   @if (loadFailed()) {

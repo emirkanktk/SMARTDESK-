@@ -201,6 +201,9 @@
   <data name="CheckIn_WrongCode" xml:space="preserve">
     <value>This QR code is no longer valid. Scan the current code for {0}.</value>
   </data>
+  <data name="Device_Unknown" xml:space="preserve">
+    <value>an unknown browser</value>
+  </data>
   <data name="Duration_Day" xml:space="preserve">
     <value>1 day</value>
   </data>
@@ -269,6 +272,24 @@
   </data>
   <data name="Email_JoinRequestReceived_Body" xml:space="preserve">
     <value>Thanks for signing up. Your request to join your manager's team is waiting for approval, and we'll email you as soon as your account is ready to use.</value>
+  </data>
+  <data name="Email_NewSignIn_Body" xml:space="preserve">
+    <value>Your account was signed in to on a device it hasn't been used on before: {0}, {1}, {2}.</value>
+  </data>
+  <data name="Email_NewSignIn_IfYou" xml:space="preserve">
+    <value>If it was you, there's nothing to do.</value>
+  </data>
+  <data name="Email_NewSignIn_Link" xml:space="preserve">
+    <value>Your signed-in devices</value>
+  </data>
+  <data name="Email_NewSignIn_NotYouPasskey" xml:space="preserve">
+    <value>If it wasn't you, sign that device out on your profile straight away, and delete any passkey there you don't recognise.</value>
+  </data>
+  <data name="Email_NewSignIn_NotYouPassword" xml:space="preserve">
+    <value>If it wasn't you, sign that device out on your profile straight away, and change your password.</value>
+  </data>
+  <data name="Email_NewSignIn_Subject" xml:space="preserve">
+    <value>New sign-in to your SmartDesk account</value>
   </data>
   <data name="Email_NewSignUpForAdmin_Body" xml:space="preserve">
     <value>{0} ({1}) signed up as a manager and is waiting for approval.</value>
@@ -849,6 +870,12 @@
   <data name="Series_UntilBeforeStart" xml:space="preserve">
     <value>The series has to end on or after the day it starts.</value>
   </data>
+  <data name="SignIn_WithPasskey" xml:space="preserve">
+    <value>with a passkey</value>
+  </data>
+  <data name="SignIn_WithPassword" xml:space="preserve">
+    <value>with a password</value>
+  </data>
   <data name="Status_Active" xml:space="preserve">
     <value>Active</value>
   </data>
@@ -977,6 +1004,12 @@
   </data>
   <data name="Push_Inbox_WaitlistBooked" xml:space="preserve">
     <value>A time you were waiting for freed up, and it's booked for you</value>
+  </data>
+  <data name="Push_NewSignIn_Body" xml:space="preserve">
+    <value>{0}, {1}. Not you? Sign it out on your profile.</value>
+  </data>
+  <data name="Push_NewSignIn_Title" xml:space="preserve">
+    <value>New sign-in: {0}</value>
   </data>
   <data name="Push_Off" xml:space="preserve">
     <value>Notifications aren't set up on this server.</value>

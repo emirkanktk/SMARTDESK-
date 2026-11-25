@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using SmartDesk.Application.Common.Localization;
 using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Resources;
 
@@ -38,6 +39,21 @@ public static class AccountEmails
         new Text(T(culture, nameof(Messages.Email_TemporaryPassword_Body),
             setBy ?? T(culture, nameof(Messages.Email_AnAdministrator)))),
         new Text(T(culture, nameof(Messages.Email_TemporaryPassword_NotExpected))));
+
+    // To an account's owner when it signs in on a browser it hadn't been used on (ADR-0062): on
+    // what, when - in the office's zone, which it names - and how, and where to sign it out. If it
+    // was a passkey, a new password wouldn't keep anyone out: the passkey has to go.
+    public static EmailMessage NewSignIn(CultureInfo culture, UserProfile user, NewSignIn signIn, TimeZoneInfo zone, string devicesLink) => Compose(
+        culture, user.Email, user.FirstName, T(culture, nameof(Messages.Email_NewSignIn_Subject)),
+        new Text(T(culture, nameof(Messages.Email_NewSignIn_Body),
+            DeviceNames.Describe(signIn.UserAgent) ?? T(culture, nameof(Messages.Device_Unknown)),
+            $"{TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(signIn.At, DateTimeKind.Utc), zone).ToString("d MMMM yyyy, HH:mm", culture)} ({zone.Id})",
+            T(culture, signIn.Method == SignInMethod.Passkey ? nameof(Messages.SignIn_WithPasskey) : nameof(Messages.SignIn_WithPassword)))),
+        new Text(T(culture, nameof(Messages.Email_NewSignIn_IfYou))),
+        new Text(T(culture, signIn.Method == SignInMethod.Passkey
+            ? nameof(Messages.Email_NewSignIn_NotYouPasskey)
+            : nameof(Messages.Email_NewSignIn_NotYouPassword))),
+        new Link(T(culture, nameof(Messages.Email_NewSignIn_Link)), devicesLink));
 
     // To an employee who asked to join a team. The same text whether or not the manager's email
     // matched anyone, so it can't be used to find out who the managers are.

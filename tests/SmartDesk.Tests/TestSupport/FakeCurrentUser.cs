@@ -15,5 +15,7 @@ public sealed class FakeCurrentUser(Guid? userId, params string[] roles) : ICurr
 
     public string? UserAgent { get; init; }
 
+    public string? DeviceToken { get; init; }
+
     public bool IsInRole(string role) => roles.Contains(role);
 }

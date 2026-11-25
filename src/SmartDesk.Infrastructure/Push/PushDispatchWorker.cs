@@ -191,8 +191,9 @@ public sealed class PushDispatchWorker(
         _ => TimeSpan.FromDays(1),
     };
 
+    // A sign-in on a new device too (ADR-0062): if it wasn't them, every minute counts.
     private static bool IsUrgent(PushTopic topic) =>
-        topic is PushTopic.StartingSoon or PushTopic.ReleaseWarning or PushTopic.EndingSoon;
+        topic is PushTopic.StartingSoon or PushTopic.ReleaseWarning or PushTopic.EndingSoon or PushTopic.NewSignIn;
 
     private static async Task<TimeZoneInfo> OfficeZoneAsync(SmartDeskDbContext db, CancellationToken cancellationToken)
     {

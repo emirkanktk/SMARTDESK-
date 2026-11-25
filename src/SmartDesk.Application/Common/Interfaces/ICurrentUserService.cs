@@ -22,4 +22,8 @@ public interface ICurrentUserService
     // The calling browser's description of itself, its User-Agent header as sent; a session
     // notes it when it starts (ADR-0061). Null outside a request, or when there's none.
     string? UserAgent => null;
+
+    // The token the calling browser is known by to the accounts that signed in on it, from its
+    // cookie (ADR-0062). Null when it has none, or outside a request.
+    string? DeviceToken => null;
 }

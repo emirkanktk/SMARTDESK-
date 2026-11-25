@@ -7,11 +7,7 @@ using SmartDesk.Application.Resources;
 
 namespace SmartDesk.Application.Features.Auth.Commands.Login;
 
-public sealed class LoginCommandHandler(
-    IIdentityService identityService,
-    IJwtTokenGenerator tokenGenerator,
-    IUserSessions sessions,
-    ICurrentUserService currentUser)
+public sealed class LoginCommandHandler(IIdentityService identityService, SessionIssuer issuer)
     : IRequestHandler<LoginCommand, SignedIn>
 {
     public static string PendingApprovalMessage => Messages.Auth_PendingApproval;
@@ -22,7 +18,6 @@ public sealed class LoginCommandHandler(
         var user = await identityService.CheckCredentialsAsync(request.Email, request.Password, cancellationToken)
             ?? throw new UnauthorizedException(Messages.Auth_InvalidCredentials);
 
-        var origin = new SessionOrigin(SignInMethod.Password, currentUser.UserAgent);
-        return await SessionIssuer.SignInAsync(user, origin, identityService, tokenGenerator, sessions, cancellationToken);
+        return await issuer.SignInAsync(user, SignInMethod.Password, cancellationToken);
     }
 }

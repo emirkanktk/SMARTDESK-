@@ -23,6 +23,12 @@ public static class SessionCookie
             response.Cookies.Append(Name, signedIn.RefreshToken, Options(signedIn.RefreshExpiresAt));
         }
 
+        // A sign-in also says which browser this is from now on (ADR-0062).
+        if (signedIn.DeviceToken is not null)
+        {
+            DeviceCookie.Write(response, signedIn.DeviceToken);
+        }
+
         // A response with a token in it is never kept by a browser or proxy cache.
         response.Headers.CacheControl = "no-store";
     }

@@ -259,5 +259,6 @@ public class PasskeyTests
 
     private AddPasskeyCommandHandler Add() => new(_currentUser, _passkeys.Object);
 
-    private PasskeySignInCommandHandler SignIn() => new(_passkeys.Object, _identity.Object, _tokens.Object, _sessions.Object, _currentUser);
+    private PasskeySignInCommandHandler SignIn() =>
+        new(_passkeys.Object, SessionIssuers.Over(_identity.Object, _tokens.Object, _sessions.Object, _currentUser));
 }

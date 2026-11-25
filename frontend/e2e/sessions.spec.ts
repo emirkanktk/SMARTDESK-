@@ -46,3 +46,38 @@ test('a phone signed out from the profile on a laptop goes to the sign-in page b
     await phoneContext.close();
   }
 });
+
+// ADR-0062: a sign-in names the browser in a cookie of its own, which signing out leaves, so the
+// next sign-in there is one the account knows; the link in a new sign-in's notice opens the list.
+test('a browser keeps its own token across sign-outs, and the notice link opens the device list', async ({
+  open,
+}) => {
+  const page = await open('mehmet');
+  const deviceCookie = async () =>
+    (await page.context().cookies()).find((cookie) => cookie.name === 'smartdesk_device');
+  const first = await deviceCookie();
+  expect(first, "the browser's own token").toBeDefined();
+  expect(first).toMatchObject({
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Strict',
+    path: '/api/auth',
+  });
+
+  await page.locator('app-profile-menu .trigger').first().click();
+  await page.getByRole('menuitem', { name: 'Sign out' }).click();
+  await page.waitForURL((url) => url.pathname === '/');
+  expect((await deviceCookie())?.value, 'still there after signing out').toBe(first!.value);
+  await signIn(page, 'mehmet');
+  expect((await deviceCookie())?.value, 'the same browser, the same token').toBe(first!.value);
+
+  // Where the notice's link leads, on a phone: the list, scrolled to, its heading focused.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/profile#sessions');
+  const heading = page.getByRole('heading', { name: 'Signed-in devices' });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  await expect(page.getByRole('region', { name: 'Signed-in devices' })).toContainText(
+    "If your account is signed in on a device it hasn't been used on before, we email you",
+  );
+});

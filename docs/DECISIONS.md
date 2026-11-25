@@ -2151,4 +2151,62 @@ new tables.
     app is open, so it's "within the last 15 minutes" rather than exact.
   - An iPad set to show sites as on a computer says it's a Mac; its User-Agent alone can't tell.
   - Not audited (ADR-0052): sessions aren't data a resource's history needs. A notice of each new
-    sign-in, by email or push, would be the next step.
+    sign-in, by email or push, would be the next step (ADR-0062).
+
+## ADR-0062: A sign-in on a device the account hasn't been used on is told to its owner
+
+**Decision:**
+- Signing in, with the password or a passkey, notes the browser it happens on. The browser is
+  known by a random token, 256 bits, in a cookie of its own, `smartdesk_device`: `HttpOnly`,
+  `Secure`, `SameSite=Strict` and `Path=/api/auth` like the session's (ADR-0026), but kept for
+  400 days (`Max-Age`, the most a browser keeps one) and left alone by signing out. Each sign-in
+  writes it again.
+- The server keeps only the token's SHA-256 hash, once for each account that signed in with it
+  (`KnownDevices`: `UserId`, `TokenHash`, `FirstSeenAt`, `LastSeenAt`; migration
+  `AddKnownDevices`). A browser not seen for 400 days is forgotten at that account's next
+  sign-in, as its cookie would be gone by then.
+- A browser whose token the account doesn't know - none, another account's, one it forgot, or
+  one that isn't a token of ours, which is replaced - is new to it. When the account knows
+  another, its owner is told (`IKnownDevices`, `SessionIssuer`):
+  - by email: which browser ("Safari · iPhone", read from the User-Agent by the device list's
+    rules: `DeviceNames` mirrors `user-agent.ts`), when, in the office's zone, which it names,
+    and how, with the password or a passkey; that if it wasn't them they should sign that
+    device out and change the password, or delete the passkey; and a link to Profile >
+    Signed-in devices (`/profile#sessions`). It's written in the language the account's emails
+    were in before this sign-in, which makes the browser's language theirs (ADR-0023): whoever
+    signed in may not be them.
+  - on their devices with notifications on (ADR-0056): "New sign-in: Safari · iPhone", with
+    the time and how, sent as urgent. Tapping it opens the same list.
+- An account's first browser - a new account, or the first sign-in since this change - is
+  noted without a word: there's nothing to tell it from, and everyone would otherwise hear of
+  the laptop they always use.
+- Renewing a session and changing the password don't look at the browser: neither signs in on
+  one.
+- The list on the profile says that a sign-in on a new device is emailed and notified. Opened at
+  `/profile#sessions`, it scrolls to the list once it's in and moves the focus to its heading,
+  as the guide does with its parts.
+- The integration tests send their emails to the log, not to the mail catcher Development
+  uses: each of their sign-ins without the cookie is a new browser.
+
+**Why:**
+- The device list (ADR-0061) helps only those who look. Someone with the password, or with a
+  phone that has the passkey, could sign in and go unnoticed for up to 30 days. Told at once,
+  the owner can sign that device out and change the password while it still matters.
+- A cookie of its own tells one browser from another however alike they are, and outlives the
+  sessions, which is the point. Two laptops with the same Chrome on Windows say the same
+  User-Agent, and every browser update changes it.
+- The email reaches the owner even while someone else is in their account: the app, its inbox
+  and its notifications are that person's to see too.
+- **Rejected:**
+  - Telling a browser by its User-Agent: the most common one, Chrome on Windows, would hide the
+    most common attacker, and each browser update would look like a new device.
+  - The address a sign-in came from, or a place looked up from it, for ADR-0061's reasons.
+  - A message in the inbox (ADR-0032): it's about meetings and bookings, and whoever signed in
+    could read it and mark it read there.
+- **Trade-offs:**
+  - A browser that keeps no cookies, such as a private window or one whose site data was
+    cleared, is new every time, so its owner hears of every sign-in there.
+  - Each account's first sign-in after this change is silent, an attacker's too if theirs
+    comes first.
+  - The notification is written in the account's language as it is when it goes out, so after
+    a sign-in in another language, in that one; the email keeps the one before.

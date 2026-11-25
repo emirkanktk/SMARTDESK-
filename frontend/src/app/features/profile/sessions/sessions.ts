@@ -1,5 +1,14 @@
-import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { DOCUMENT, DatePipe } from '@angular/common';
+import {
+  Component,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error.model';
 import { SignInSession } from '../../../core/models/session.model';
@@ -18,7 +27,8 @@ const DEVICE_ICONS: Record<DeviceDescription['kind'], IconName> = {
  * The devices the user is signed in on (ADR-0061), on their profile: this one first, then the
  * others by their last use, each with its browser and how it signed in. One that's lost, shared or
  * not recognised is signed out from here, or every other one at once; SmartDesk open there goes to
- * the sign-in page straight away.
+ * the sign-in page straight away. A sign-in on a device the account hadn't been used on is emailed
+ * and notified to its owner with a link here (ADR-0062).
  */
 @Component({
   selector: 'app-sessions',
@@ -29,6 +39,15 @@ const DEVICE_ICONS: Record<DeviceDescription['kind'], IconName> = {
 export class Sessions implements OnInit {
   private readonly service = inject(SessionService);
   private readonly notifications = inject(NotificationService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
+  private readonly document = inject(DOCUMENT);
+
+  /**
+   * Opened at `/profile#sessions`, where the notice of a sign-in on a new device points (ADR-0062):
+   * the list is shown once it's in.
+   */
+  private showWhenLoaded = this.route.snapshot.fragment === 'sessions';
 
   protected readonly sessions = signal<SignInSession[] | null>(null);
   protected readonly loadFailed = signal(false);
@@ -42,9 +61,31 @@ export class Sessions implements OnInit {
   protected load(): void {
     this.loadFailed.set(false);
     this.service.list().subscribe({
-      next: (sessions) => this.sessions.set(sessions),
+      next: (sessions) => {
+        this.sessions.set(sessions);
+        if (this.showWhenLoaded) {
+          this.showWhenLoaded = false;
+          afterNextRender(() => this.show(), { injector: this.injector });
+        }
+      },
       error: () => this.loadFailed.set(true),
     });
+  }
+
+  /**
+   * Scrolls to the list and moves the focus to its heading, as the guide does to its parts, so the
+   * keyboard and a screen reader carry on from there.
+   */
+  private show(): void {
+    const heading = this.document.getElementById('sessions-title');
+    if (!heading) {
+      return;
+    }
+    const still = this.document.defaultView?.matchMedia?.(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    heading.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+    heading.focus({ preventScroll: true });
   }
 
   /** "Safari · iPhone": the browser and what it runs on, whichever of them is known. */

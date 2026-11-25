@@ -49,6 +49,8 @@ public sealed class AccountsTestHost : IDisposable
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IUserAccessChecker, UserAccessChecker>();
         services.AddScoped<IUserSessions, UserSessions>();
+        services.AddScoped<IKnownDevices, KnownDevices>();
+        services.AddSingleton<IPushSender>(Push);
         services.AddSingleton(Options.Create(new SessionOptions()));
         services.AddScoped<UserAccessCache>();
         services.AddSingleton<IRealtimeSessions>(RealtimeSessions);
@@ -69,6 +71,9 @@ public sealed class AccountsTestHost : IDisposable
     }
 
     public CapturingEmailSender Emails { get; } = new();
+
+    // Notifications for people's devices (ADR-0056), e.g. of a sign-in on a new one (ADR-0062).
+    public CapturingPushSender Push { get; } = new();
 
     public RecordingRealtimeSessions RealtimeSessions { get; } = new();
 
@@ -172,6 +177,14 @@ public sealed class AccountsTestHost : IDisposable
         set => _currentUser.UserAgent = value;
     }
 
+    // The token in the browser's own cookie on the requests that follow (ADR-0062): null for a
+    // browser that has none, e.g. one nobody signed in on yet.
+    public string? DeviceToken
+    {
+        get => _currentUser.DeviceToken;
+        set => _currentUser.DeviceToken = value;
+    }
+
     // An anonymous request (sign-up, sign-in).
     public Task<TResponse> SendAnonymousAsync<TResponse>(IRequest<TResponse> request) => SendAsync(null, string.Empty, request);
 
@@ -223,6 +236,8 @@ public sealed class AccountsTestHost : IDisposable
         public Guid? SessionId { get; set; }
 
         public string? UserAgent { get; set; }
+
+        public string? DeviceToken { get; set; }
 
         public bool IsInRole(string role) => UserId is not null && role == _role;
 

@@ -1,4 +1,6 @@
 using System.Globalization;
+using SmartDesk.Application.Common.Localization;
+using SmartDesk.Application.Common.Models;
 using SmartDesk.Application.Features.Inbox.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
@@ -24,6 +26,9 @@ public static class PushTexts
     public const string ApprovalsUrl = "/admin/approvals";
     public const string ProfileUrl = "/profile";
 
+    // Profile's list of signed-in devices (ADR-0061), where a sign-in someone doesn't recognise ends.
+    public const string SignedInDevicesUrl = "/profile#sessions";
+
     public static PushContent Compose(PushNotice notice, CultureInfo culture, TimeZoneInfo zone, TimeSpan checkInGrace) =>
         notice.Topic switch
         {
@@ -33,6 +38,10 @@ public static class PushTexts
                 zone),
             PushTopic.Test => new PushContent(
                 T(culture, nameof(Messages.Push_Test_Title)), T(culture, nameof(Messages.Push_Test_Body)), ProfileUrl, "test"),
+            PushTopic.NewSignIn => ForSignIn(
+                notice.SignIn ?? throw new ArgumentException("A sign-in notice carries its sign-in.", nameof(notice)),
+                culture,
+                zone),
             _ => ForBooking(
                 notice.Topic,
                 notice.Reservation ?? throw new ArgumentException("A booking notice carries its booking.", nameof(notice)),
@@ -63,6 +72,20 @@ public static class PushTexts
 
         // One tag per booking and notice: a warning doesn't silently take the reminder's place.
         return new PushContent(T(culture, title), body, BookingsUrl, $"{topic}:{booking.Id}");
+    }
+
+    // "New sign-in: Safari · iPhone" / "25 Nov Wed 10:42, with a password. Not you? ...": on the
+    // devices the account already had, the moment another one signs in (ADR-0062).
+    private static PushContent ForSignIn(NewSignIn signIn, CultureInfo culture, TimeZoneInfo zone)
+    {
+        var device = DeviceNames.Describe(signIn.UserAgent) ?? T(culture, nameof(Messages.Device_Unknown));
+        var at = Local(signIn.At, zone);
+        var how = T(culture, signIn.Method == SignInMethod.Passkey ? nameof(Messages.SignIn_WithPasskey) : nameof(Messages.SignIn_WithPassword));
+        return new PushContent(
+            T(culture, nameof(Messages.Push_NewSignIn_Title), device),
+            T(culture, nameof(Messages.Push_NewSignIn_Body), $"{at.ToString("d MMM ddd", culture)} {Clock(at)}", how),
+            SignedInDevicesUrl,
+            $"sign-in-{signIn.Session}");
     }
 
     private static PushContent ForMessage(InboxMessageDto message, CultureInfo culture, TimeZoneInfo zone)

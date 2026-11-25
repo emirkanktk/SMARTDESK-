@@ -27,6 +27,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   iPhone" with when it was last used, and signs any of them out from there, or all the others at
   once. The app open on that device goes to the sign-in page by itself, within seconds
   ([ADR-0061](docs/DECISIONS.md)).
+- **New sign-in notices** - a sign-in on a device the account hasn't been used on before is
+  emailed to its owner, and sent to their phones and browsers with notifications on: which
+  device, when, how, and a link to sign it out. The browser is known by a cookie of its own,
+  not by where it is ([ADR-0062](docs/DECISIONS.md)).
 - **Resources** - meeting rooms, desks, company cars, projectors, cameras - with type,
   capacity, location, features, a status (`Active` / `Inactive` / `Maintenance`) and a photo,
   or their type's picture until someone uploads one ([ADR-0027](docs/DECISIONS.md)).

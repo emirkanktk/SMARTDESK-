@@ -25,3 +25,24 @@ public sealed record SignInSessionDto(
 
 // What "sign out everywhere else" did: how many sessions it ended.
 public sealed record EndedSessionsDto(int Ended);
+
+// Whether an account knew the browser it just signed in on (ADR-0062).
+public enum DeviceFamiliarity
+{
+    // It has signed in on it before.
+    Known,
+
+    // It hasn't, but it has on others: its owner is told.
+    New,
+
+    // It knows no browser at all - a new account, or one that hasn't signed in since browsers
+    // were noted - so there's nothing to tell this one from, and nobody is told.
+    First,
+}
+
+// Token: the browser's own, which its cookie keeps.
+public sealed record DeviceCheck(DeviceFamiliarity Familiarity, string Token);
+
+// A sign-in on a browser its account didn't know (ADR-0062), as its owner is told of it: on what,
+// when, and how. Session: the one it started, which they can end from their list of devices.
+public sealed record NewSignIn(Guid Session, string? UserAgent, SignInMethod Method, DateTime At);

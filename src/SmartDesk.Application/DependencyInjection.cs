@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SmartDesk.Application.Common.Behaviors;
 using SmartDesk.Application.Features.Accounts.Common;
 using SmartDesk.Application.Features.Approvals.Common;
+using SmartDesk.Application.Features.Auth.Common;
 using SmartDesk.Application.Features.BookingRules.Common;
 using SmartDesk.Application.Features.Issues.Common;
 using SmartDesk.Application.Features.Meetings.Common;
@@ -33,6 +34,10 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(typeof(AssemblyReference).Assembly);
         services.AddScoped<AccountCreation>();
+
+        // Signing in with a password or a passkey: a session, and a word to the account's owner
+        // when it's on a browser the account didn't know (ADR-0062).
+        services.AddScoped<SessionIssuer>();
         services.AddScoped<ResourceReader>();
         services.AddScoped<IssueReader>();
         services.AddScoped<Invitees>();

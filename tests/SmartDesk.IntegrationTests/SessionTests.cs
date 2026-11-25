@@ -1,7 +1,13 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using SmartDesk.Application.Common.Interfaces;
+using SmartDesk.Application.Common.Models;
 using SmartDesk.Infrastructure.Identity;
 
 namespace SmartDesk.IntegrationTests;
@@ -109,6 +115,75 @@ public sealed class SessionTests(PostgresApiFixture fixture)
         list.Should().ContainSingle().Which.UserAgent.Should().Be($"This browser {run}");
     }
 
+    // ADR-0062: a sign-in names the browser in a cookie of its own, which outlives its sessions,
+    // and a sign-in on a browser the account hasn't been used on is emailed to its owner.
+    [Fact]
+    public async Task A_sign_in_names_the_browser_in_a_cookie_that_signing_out_leaves()
+    {
+        var login = await Anonymous().PostAsJsonAsync("/api/auth/login", new { email = "employee2@smartdesk.local", password = IdentityDataSeeder.DemoPassword });
+
+        var device = SetCookie(login, DeviceCookieName);
+        device.ToLowerInvariant().Should().Contain("httponly").And.Contain("secure").And.Contain("samesite=strict")
+            .And.Contain("path=/api/auth").And.Contain("max-age=34560000");
+        var signedOut = await WithCookie(CookieValue(SetCookie(login))).PostAsync("/api/auth/logout", null);
+        signedOut.Headers.GetValues("Set-Cookie").Should().NotContain(c => c.StartsWith(DeviceCookieName + "=", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_sign_in_on_a_browser_the_account_hasnt_used_is_emailed_to_its_owner()
+    {
+        var emails = new EmailsSent();
+        await using var host = fixture.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services => services.AddSingleton<IEmailSender>(emails)));
+        var run = Guid.NewGuid().ToString("N")[..8];
+
+        // Other tests' sign-ins are other browsers of this account's, so this one may be new too.
+        var laptop = await SignInWithAsync(host, $"Laptop browser {run}", deviceToken: null);
+        var laptopToken = CookieValue(SetCookie(laptop, DeviceCookieName));
+        emails.Clear();
+
+        var again = await SignInWithAsync(host, $"Laptop browser {run}", laptopToken);
+
+        again.StatusCode.Should().Be(HttpStatusCode.OK);
+        emails.To("employee2@smartdesk.local").Should().BeEmpty("it signed in on this browser before");
+        CookieValue(SetCookie(again, DeviceCookieName)).Should().Be(laptopToken, "the browser keeps its token");
+
+        var phone = await SignInWithAsync(host, $"Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) Version/26.1 Mobile/15E148 Safari/604.1 {run}", deviceToken: null);
+
+        phone.StatusCode.Should().Be(HttpStatusCode.OK);
+        var notice = emails.To("employee2@smartdesk.local").Should().ContainSingle().Subject;
+        notice.Subject.Should().Be("New sign-in to your SmartDesk account");
+        notice.Text.Should().Contain("Safari · iPhone").And.Contain("/profile#sessions");
+        CookieValue(SetCookie(phone, DeviceCookieName)).Should().NotBe(laptopToken);
+    }
+
+    private const string DeviceCookieName = "smartdesk_device";
+
+    // In English, so the account's emails are too from the next one on (ADR-0023).
+    private static async Task<HttpResponseMessage> SignInWithAsync(WebApplicationFactory<Program> host, string userAgent, string? deviceToken)
+    {
+        var client = host.CreateClient(new() { HandleCookies = false });
+        client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", userAgent);
+        client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en");
+        if (deviceToken is not null)
+        {
+            client.DefaultRequestHeaders.Add("Cookie", $"{DeviceCookieName}={deviceToken}");
+        }
+
+        return await client.PostAsJsonAsync("/api/auth/login", new { email = "employee2@smartdesk.local", password = IdentityDataSeeder.DemoPassword });
+    }
+
+    private sealed class EmailsSent : IEmailSender
+    {
+        private readonly ConcurrentQueue<EmailMessage> _sent = new();
+
+        public void Queue(EmailMessage message) => _sent.Enqueue(message);
+
+        public IReadOnlyList<EmailMessage> To(string address) => _sent.Where(m => m.To == address).ToList();
+
+        public void Clear() => _sent.Clear();
+    }
+
     private async Task<string> SignInOnAsync(string userAgent)
     {
         var client = Anonymous();
@@ -136,10 +211,10 @@ public sealed class SessionTests(PostgresApiFixture fixture)
         return client;
     }
 
-    private static string SetCookie(HttpResponseMessage response) =>
-        response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith(CookieName + "=", StringComparison.Ordinal));
+    private static string SetCookie(HttpResponseMessage response, string name = CookieName) =>
+        response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith(name + "=", StringComparison.Ordinal));
 
-    private static string CookieValue(string setCookie) => setCookie[(CookieName.Length + 1)..].Split(';')[0];
+    private static string CookieValue(string setCookie) => setCookie[(setCookie.IndexOf('=') + 1)..].Split(';')[0];
 
     private sealed record LoginBody(string AccessToken, DateTime ExpiresAt);
 

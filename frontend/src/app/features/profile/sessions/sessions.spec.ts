@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { of, throwError } from 'rxjs';
 import { ApiError } from '../../../core/models/api-error.model';
 import { SignInSession } from '../../../core/models/session.model';
@@ -42,14 +44,21 @@ describe('Sessions', () => {
   let fixture: ComponentFixture<Sessions>;
   let element: HTMLElement;
 
-  async function render(): Promise<void> {
-    await TestBed.configureTestingModule({
+  let scrollIntoView: ReturnType<typeof vi.fn>;
+
+  function configure(): void {
+    TestBed.configureTestingModule({
       imports: [Sessions],
       providers: [
+        provideRouter([{ path: 'profile', component: Sessions }]),
         { provide: SessionService, useValue: service },
         { provide: NotificationService, useValue: notifications },
       ],
-    }).compileComponents();
+    });
+  }
+
+  async function render(): Promise<void> {
+    configure();
     fixture = TestBed.createComponent(Sessions);
     element = fixture.nativeElement;
     await fixture.whenStable();
@@ -62,9 +71,15 @@ describe('Sessions', () => {
       endOthers: vi.fn(() => of({ ended: 2 })),
     };
     notifications = { success: vi.fn(), error: vi.fn() };
+    scrollIntoView = vi.fn();
+    // jsdom draws nothing, so it has no scrolling to do.
+    Element.prototype.scrollIntoView = scrollIntoView as unknown as Element['scrollIntoView'];
   });
 
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
 
   const names = () =>
     Array.from(element.querySelectorAll('.item .name')).map((n) =>
@@ -170,5 +185,24 @@ describe('Sessions', () => {
     await fixture.whenStable();
 
     expect(names()).toHaveLength(3);
+  });
+
+  it('says that a sign-in on a new device is emailed and notified', async () => {
+    await render();
+
+    expect(element.querySelector('.notice-hint')!.textContent).toContain(
+      "If your account is signed in on a device it hasn't been used on before, we email you",
+    );
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("opens at the list from a new sign-in's notice, once it's in", async () => {
+    configure();
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/profile#sessions', Sessions);
+
+    expect(harness.routeNativeElement!.querySelectorAll('.item')).toHaveLength(3);
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(document.activeElement?.id).toBe('sessions-title');
   });
 });
