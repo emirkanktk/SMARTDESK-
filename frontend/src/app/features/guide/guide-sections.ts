@@ -44,6 +44,18 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
     link: { path: '/floor-plan', label: $localize`:@@guide.floor.link:Open the floor plan` },
   },
   {
+    // ADR-0063.
+    id: 'whos-in',
+    icon: 'user-check',
+    title: $localize`:@@guide.whosIn.title:See who's in`,
+    steps: [
+      $localize`:@@guide.whosIn.list:Who's in lists everyone in the office on a day, with where and when: what they booked, and the meetings they said they'd come to.`,
+      $localize`:@@guide.whosIn.team:Choose My team to see just your team, and pick a day you're in together. Or look someone up by name.`,
+      $localize`:@@guide.whosIn.plan:Choose a place to see it on the floor plan.`,
+    ],
+    link: { path: '/whos-in', label: $localize`:@@guide.whosIn.link:Open Who's in` },
+  },
+  {
     id: 'book',
     icon: 'calendar-plus',
     title: $localize`:@@guide.book.title:Book it`,

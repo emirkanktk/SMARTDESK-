@@ -546,6 +546,18 @@ plan by the lift.
   even if someone else is in her account; an account's first browser isn't told of
   (ADR-0062).
 
+### 33. Who's in the office
+
+- As Zeynep (the manager): **Who's in**. Today's people are listed with what each booked, a desk
+  all day, a room for an hour, and the meetings they said they'd come to, "Meeting organized by
+  Zeynep Kaya"; "Your team" marks hers, and the count says how many of them are hers.
+- **›** to tomorrow, then **My team**: is the team in together? Type a name to find someone.
+  Choose a place: the floor plan opens at that floor and time.
+- In another window, Ayşe books a desk for that day: Zeynep's list shows her within seconds.
+- Point out: it's the bookings arranged by person, nothing new about anyone - the dashboard
+  already names who booked what; only resources Zeynep may use count; a booking still waiting
+  for approval, or released, doesn't bring anyone in (ADR-0063).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

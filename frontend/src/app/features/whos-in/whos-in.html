@@ -1,0 +1,170 @@
+<div class="page-header">
+  <h1 i18n="@@whosIn.title">Who's in</h1>
+  <a class="btn btn-light" routerLink="/floor-plan">
+    <app-icon name="map" />
+    <ng-container i18n="@@nav.floorPlan">Floor plan</ng-container>
+  </a>
+</div>
+
+<div class="card toolbar">
+  <div class="day-nav">
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="goBy(-1)"
+      aria-label="Previous day"
+      i18n-aria-label="@@whosIn.previousDay"
+    >
+      ‹
+    </button>
+    <input
+      type="date"
+      class="input day"
+      [value]="dayValue()"
+      (change)="pickDay($event)"
+      aria-label="Day"
+      i18n-aria-label="@@whosIn.day"
+    />
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="goBy(1)"
+      aria-label="Next day"
+      i18n-aria-label="@@whosIn.nextDay"
+    >
+      ›
+    </button>
+    @if (!isToday()) {
+      <button type="button" class="btn btn-light btn-sm" (click)="goToday()" i18n="@@whosIn.today">
+        Today
+      </button>
+    }
+  </div>
+
+  <div class="narrow">
+    @if (whosIn()?.hasTeam) {
+      <div class="show-switch" role="group" aria-label="Show" i18n-aria-label="@@whosIn.show">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          [class.active]="!teamOnly()"
+          [attr.aria-pressed]="!teamOnly()"
+          (click)="teamOnly.set(false)"
+          i18n="@@whosIn.everyone"
+        >
+          Everyone
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          [class.active]="teamOnly()"
+          [attr.aria-pressed]="teamOnly()"
+          (click)="teamOnly.set(true)"
+          i18n="@@whosIn.myTeam"
+        >
+          My team
+        </button>
+      </div>
+    }
+    <input
+      type="search"
+      class="input search"
+      [value]="search()"
+      (input)="setSearch($event)"
+      placeholder="Search by name"
+      i18n-placeholder="@@whosIn.searchPlaceholder"
+      aria-label="Search by name"
+      i18n-aria-label="@@whosIn.searchPlaceholder"
+    />
+  </div>
+</div>
+
+@if (loadFailed()) {
+  <div class="alert-error load-error" role="alert">
+    <span i18n="@@whosIn.loadFailed">Who's in could not be loaded.</span>
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      (click)="retry()"
+      i18n="@@common.tryAgain"
+    >
+      Try again
+    </button>
+  </div>
+} @else if (whosIn(); as whosIn) {
+  <p class="summary" role="status">
+    {{ summary() }}
+    @if (whosIn.hasTeam && whosIn.people.length > 0) {
+      <span class="text-muted" i18n="@@whosIn.fromYourTeam"
+        >{{ teamCount() }} of them from your team.</span
+      >
+    }
+  </p>
+
+  @if (rows().length === 0) {
+    <div class="card empty-note">
+      <span class="empty-icon"><app-icon name="user-check" /></span>
+      @if (!narrowedToNone()) {
+        <p class="text-muted" i18n="@@whosIn.empty">Nobody has booked anything for this day yet.</p>
+      } @else if (teamOnly() && !search().trim()) {
+        <p class="text-muted" i18n="@@whosIn.noTeam">Nobody from your team is in that day.</p>
+      } @else {
+        <p class="text-muted" i18n="@@whosIn.noMatch">Nobody in that day matches.</p>
+      }
+    </div>
+  } @else {
+    <ul class="people">
+      @for (row of rows(); track row.person.userId) {
+        <li class="card person" [class.me]="row.person.isMe">
+          <span class="avatar" aria-hidden="true">{{ row.initials }}</span>
+          <div class="who">
+            <span class="name">
+              {{ row.person.name }}
+              @if (row.person.isMe) {
+                <span class="badge" i18n="@@whosIn.you">You</span>
+              } @else if (row.person.inMyTeam) {
+                <span class="badge team" i18n="@@whosIn.yourTeam">Your team</span>
+              }
+            </span>
+            <ul class="visits">
+              @for (item of row.visits; track item.visit.reservationId) {
+                <li class="visit">
+                  <a
+                    class="place"
+                    routerLink="/floor-plan"
+                    [queryParams]="item.plan"
+                    title="Show on the floor plan"
+                    i18n-title="@@whosIn.onThePlan"
+                    >{{ item.visit.resourceName }}</a
+                  >
+                  <span class="text-muted">{{ item.visit.location }}</span>
+                  <span class="time">
+                    {{ item.visit.startDateTime | date: item.startFormat }}–{{
+                      item.visit.endDateTime | date: item.endFormat
+                    }}
+                  </span>
+                  @if (item.now) {
+                    <span class="pill now" i18n="@@whosIn.now">Now</span>
+                  }
+                  @if (item.visit.invited) {
+                    @if (item.visit.organizerName; as organizer) {
+                      <span class="text-muted meeting" i18n="@@whosIn.organizedBy"
+                        >Meeting organized by {{ organizer }}</span
+                      >
+                    } @else {
+                      <span class="text-muted meeting" i18n="@@whosIn.meeting">Meeting</span>
+                    }
+                  } @else if (item.visit.checkedIn) {
+                    <span class="pill checked-in" i18n="@@whosIn.checkedIn">Checked in</span>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+} @else {
+  <p class="text-muted" role="status" i18n="@@whosIn.loading">Loading who's in…</p>
+}

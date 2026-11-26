@@ -909,6 +909,9 @@
   <data name="Type_Projector" xml:space="preserve">
     <value>Projektör</value>
   </data>
+  <data name="Validation_DayOutOfRange" xml:space="preserve">
+    <value>2000 ile 2100 yılları arasında bir gün seçin.</value>
+  </data>
   <data name="Validation_EndAfterStart" xml:space="preserve">
     <value>Bitiş zamanı başlangıç zamanından sonra olmalı.</value>
   </data>

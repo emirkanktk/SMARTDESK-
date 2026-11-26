@@ -909,6 +909,9 @@
   <data name="Type_Projector" xml:space="preserve">
     <value>Projector</value>
   </data>
+  <data name="Validation_DayOutOfRange" xml:space="preserve">
+    <value>Choose a day between the years 2000 and 2100.</value>
+  </data>
   <data name="Validation_EndAfterStart" xml:space="preserve">
     <value>'End Date Time' must be after 'Start Date Time'.</value>
   </data>

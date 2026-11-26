@@ -941,6 +941,42 @@ still count as yesterday. Omitted → UTC. Unknown id → 400.
 Every list holds the reservation shape shown under Reservations. `stats.myUpcomingReservations`
 is the full count, while `myUpcoming` is capped at 5.
 
+## Who's in (ADR-0063)
+
+Who's in the office on a day, arranged by person: everyone a confirmed booking brings in that day,
+and everyone who accepted an invitation to one, with each place and time.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/whos-in?date=2026-11-27&timeZone=Europe/Istanbul` | any authenticated user | `GetWhosInQuery` | the bookings overlapping that local day: Confirmed only (not cancelled, released or waiting for approval), on resources the caller may use (ADR-0022), as on the dashboard. `date` omitted → today in `timeZone`; `timeZone` works as on the dashboard (omitted → UTC, unknown → 400). A date that isn't one, or outside the years 2000-2100 → 400. |
+
+```json
+{
+  "date": "2026-11-27",
+  "timeZone": "Europe/Istanbul",
+  "hasTeam": true,                 // the caller is in a team: a Manager's own, or an Employee's
+  "people": [                      // in the order of the request's language (Turkish: Işıl, İpek)
+    {
+      "userId": "…", "name": "Ayşe Yılmaz",
+      "isMe": false,
+      "inMyTeam": true,            // the caller's Manager, or an active Employee in that team
+      "visits": [                  // earliest first
+        {
+          "reservationId": "…", "resourceId": "…", "resourceName": "Board Room",
+          "resourceTypeName": "Meeting Room", "location": "5th Floor",
+          "startDateTime": "2026-11-27T11:00:00Z", "endDateTime": "2026-11-27T12:00:00Z",
+          "checkedIn": false,
+          "invited": true,           // someone else's meeting she said she'd come to
+          "organizerName": "Zeynep Kaya"  // null for her own booking, or an organizer whose account is gone
+        }
+      ]
+    }
+  ]
+}
+```
+
+Invitees who haven't answered, or can't come, aren't listed; nor is anyone whose account is gone.
+
 ## Reports
 
 | Method | Path | Auth | Command/Query | Notes |
