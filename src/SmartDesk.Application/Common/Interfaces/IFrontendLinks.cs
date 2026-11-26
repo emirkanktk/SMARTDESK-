@@ -31,6 +31,13 @@ public interface IFrontendLinks
     // sign-in on a new one points to (ADR-0062).
     string SignedInDevices();
 
+    // The app's front door, which a lobby screen's QR code opens on a phone (ADR-0064).
+    string Home();
+
+    // The page a lobby screen opens (ADR-0064). As a door screen's, the token goes after '#', so
+    // it never reaches a server or its logs; it's hex, so URL-safe.
+    string LobbyScreen(string token);
+
     // Someone's personal calendar feed (ADR-0048), an .ics address: the API's, reached through
     // the app's own address, which passes /api on. The token goes in the query string, which
     // the container's web server leaves out of its log; it's hex, so URL-safe.

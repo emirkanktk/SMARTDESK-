@@ -1,0 +1,274 @@
+// A screen across a lobby, read from a few metres away: big type, the rooms at a glance, the rest
+// at the side. Sized to the screen, from a tablet to a TV.
+:host {
+  display: block;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.lobby {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 2rem);
+  min-height: 100vh;
+  padding: clamp(1rem, 2.5vw, 3rem);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+
+  .brand {
+    margin: 0;
+    color: var(--color-primary);
+    font-size: clamp(0.875rem, 1.2vw, 1.25rem);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .name {
+    margin: 0;
+    font-size: clamp(1.75rem, 3.5vw, 3.5rem);
+  }
+
+  .where {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-muted);
+    font-size: clamp(1rem, 1.6vw, 1.5rem);
+  }
+}
+
+.clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+
+  .time {
+    font-size: clamp(2.5rem, 6vw, 6rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .date {
+    color: var(--color-text-muted);
+    font-size: clamp(1rem, 1.6vw, 1.5rem);
+  }
+}
+
+.body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+  gap: clamp(1rem, 2vw, 2rem);
+  // The rows keep their own height, stacked or side by side, rather than share the screen's.
+  align-content: start;
+  align-items: start;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: clamp(1rem, 1.4vw, 1.375rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.free-count {
+  color: var(--color-success);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: clamp(0.75rem, 1.2vw, 1.25rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Each room in the colours its door screen uses (ADR-0034): green free, red in use, amber out of use.
+.room {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: clamp(0.875rem, 1.4vw, 1.5rem);
+  border-left: 0.5rem solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+
+  &.free {
+    border-left-color: var(--color-success);
+
+    .room-state {
+      color: var(--color-success);
+    }
+  }
+
+  &.busy {
+    border-left-color: var(--color-danger);
+
+    .room-state {
+      color: var(--color-danger);
+    }
+  }
+
+  &.unavailable {
+    border-left-color: var(--color-warning);
+
+    .room-state {
+      color: var(--color-warning);
+    }
+  }
+}
+
+.room-name {
+  font-size: clamp(1.25rem, 2vw, 2rem);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.room-where {
+  color: var(--color-text-muted);
+  font-size: clamp(0.875rem, 1.1vw, 1.125rem);
+}
+
+.room-state {
+  margin-top: var(--space-2);
+  font-size: clamp(1.5rem, 2.4vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.room-detail {
+  font-size: clamp(1rem, 1.4vw, 1.375rem);
+}
+
+.side {
+  display: grid;
+  gap: clamp(0.75rem, 1.2vw, 1.25rem);
+}
+
+.people,
+.panel {
+  padding: clamp(0.875rem, 1.4vw, 1.5rem);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.people {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.people-count {
+  color: var(--color-primary);
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.people-label {
+  font-size: clamp(1rem, 1.4vw, 1.375rem);
+  font-weight: 600;
+}
+
+.panel {
+  ul {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 var(--space-3);
+    font-size: clamp(1rem, 1.3vw, 1.25rem);
+  }
+}
+
+.desk-count,
+.agenda-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.agenda li {
+  justify-content: flex-start;
+}
+
+.agenda-room {
+  font-weight: 600;
+}
+
+.agenda-where {
+  color: var(--color-text-muted);
+}
+
+.app {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+
+  .qr {
+    flex: none;
+    width: clamp(6rem, 9vw, 9rem);
+  }
+
+  p {
+    margin: 0;
+    font-size: clamp(1rem, 1.3vw, 1.25rem);
+  }
+}
+
+.none {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: clamp(1rem, 1.3vw, 1.25rem);
+}
+
+.offline {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-weight: 600;
+  text-align: center;
+}
+
+.setup {
+  max-width: 40rem;
+  margin: auto;
+  text-align: center;
+}
+
+.loading {
+  margin: auto;
+  color: var(--color-text-muted);
+}

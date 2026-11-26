@@ -37,6 +37,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<FavoriteResource> FavoriteResources => Set<FavoriteResource>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<LobbyScreen> LobbyScreens => Set<LobbyScreen>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -128,6 +129,16 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
         // Personal calendar links (ADR-0048), one per account: keyed by the account id, with no
         // foreign key across the Identity boundary. A calendar app's fetch finds its link by the
         // SHA-256 of the token it presents, 64 hex digits.
+        // Lobby screens (ADR-0064): each found by the SHA-256 of the token it presents, 64 hex
+        // digits. Location is a floor's name, as resources keep it.
+        builder.Entity<LobbyScreen>(entity =>
+        {
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(LobbyScreenRules.MaxNameLength);
+            entity.Property(e => e.Location).HasMaxLength(200);
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64);
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+        });
+
         builder.Entity<CalendarFeed>(entity =>
         {
             entity.HasKey(e => e.UserId);

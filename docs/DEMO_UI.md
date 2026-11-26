@@ -558,6 +558,21 @@ plan by the lift.
   already names who booked what; only resources Zeynep may use count; a booking still waiting
   for approval, or released, doesn't bring anyone in (ADR-0063).
 
+### 34. A screen in the lobby
+
+- As the admin: **Admin** > **Lobby screens**, name it "Entrance", leave **The whole office**, and
+  **Set up the screen**. The link is shown once: **Open it here** (on a second monitor or a TV,
+  full screen with F11).
+- The screen shows each meeting room in big type, green **Free until 14:00**, red **In use until
+  12:30**, the meetings coming up today, the free desks on each floor, how many people are in
+  today, and a QR code: scan it with the phone to open SmartDesk.
+- Book a room for now on the laptop: within half a minute the screen turns it red.
+- Back on **Lobby screens**, the screen shows as **On now**. **Take down**: the screen says it
+  isn't set up any more.
+- Point out: nobody is signed in on the TV, and it shows no names; it proves itself with a token
+  of its own, kept only as a hash, like a door screen; it keeps the TV from going dark
+  (ADR-0064).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

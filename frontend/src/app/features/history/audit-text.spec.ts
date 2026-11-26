@@ -143,6 +143,35 @@ describe('audit text', () => {
     ).toEqual([{ label: 'Password', text: 'set' }]);
   });
 
+  it('names a lobby screen set up or taken down, and never its link (ADR-0064)', () => {
+    const screen = (action: AuditEntry['action'], changes: AuditEntry['changes']) =>
+      entry({
+        entityType: 'LobbyScreen',
+        entityId: 'screen-1',
+        resourceId: null,
+        label: 'Entrance',
+        action,
+        changes,
+      });
+    const created = screen('Created', [
+      { property: 'Name', old: null, new: 'Entrance' },
+      { property: 'Location', old: null, new: '5th Floor' },
+      { property: 'TokenHash', old: null, new: '***' },
+      { property: 'CreatedAt', old: null, new: utc('2026-11-26T10:00') },
+    ]);
+
+    expect(entityLabel('LobbyScreen')).toBe('Lobby screen');
+    expect(subject(created, context)).toBe('Entrance');
+    expect(changeLines(created, context)).toEqual([
+      { label: 'Name', text: 'Entrance' },
+      { label: 'Location', text: '5th Floor' },
+      { label: 'Screen link', text: 'set up' },
+    ]);
+    expect(
+      changeLines(screen('Deleted', [{ property: 'TokenHash', old: '***', new: null }]), context),
+    ).toEqual([{ label: 'Screen link', text: 'turned off' }]);
+  });
+
   it('leaves out what the subject already says, and what nobody needs to read', () => {
     const created = changeLines(
       entry({

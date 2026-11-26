@@ -42,6 +42,10 @@ public static class RateLimitingSetup
     // to every device the caller has: someone checks a new phone once or twice, not by the minute.
     public const string PushTestPolicy = "push-test";
 
+    // A lobby screen (ADR-0064) asks without a user, so it's limited by its address: one asks
+    // twice a minute, and an office's few screens usually share one address.
+    public const string LobbyScreenPolicy = "lobby-screen";
+
     // Identity's lockout (5 failures -> 5 minutes) protects one account at a time; this caps
     // how many sign-in attempts one client can make across all accounts, which is what a
     // password-spraying or credential-stuffing run looks like.
@@ -58,6 +62,7 @@ public static class RateLimitingSetup
         var doorPagePermitsPerMinute = configuration.GetValue("RateLimiting:DoorPagePermitsPerMinute", 300);
         var calendarFeedPermitsPerMinute = configuration.GetValue("RateLimiting:CalendarFeedPermitsPerMinute", 120);
         var pushTestPermitsPerMinute = configuration.GetValue("RateLimiting:PushTestPermitsPerMinute", 5);
+        var lobbyScreenPermitsPerMinute = configuration.GetValue("RateLimiting:LobbyScreenPermitsPerMinute", 120);
 
         services.AddRateLimiter(options =>
         {
@@ -137,6 +142,15 @@ public static class RateLimitingSetup
                     QueueLimit = 0,
                 }));
 
+            options.AddPolicy(LobbyScreenPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = lobbyScreenPermitsPerMinute,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                }));
+
             // Same ProblemDetails shape as every other error, plus Retry-After.
             options.OnRejected = async (context, cancellationToken) =>
             {
@@ -160,6 +174,7 @@ public static class RateLimitingSetup
                                 AssistantPolicy => Messages.Error_TooManyAssistantRequests,
                                 CheckInPolicy => Messages.Error_TooManyCheckIns,
                                 DoorScreenPolicy => Messages.Error_TooManyDoorScreenRequests,
+                                LobbyScreenPolicy => Messages.Error_TooManyLobbyScreenRequests,
                                 DoorPagePolicy => Messages.Error_TooManyDoorPageRequests,
                                 IssueReportPolicy => Messages.Error_TooManyIssueReports,
                                 CalendarFeedPolicy => Messages.Error_TooManyCalendarFeedRequests,

@@ -72,4 +72,7 @@ public static class ConflictCodes
 
     // Adding a passkey with PasskeyRules.MaxPerUser on the account already (ADR-0057).
     public const string PasskeysFull = "passkeys-full";
+
+    // Setting up a lobby screen with LobbyScreenRules.MaxScreens set up already (ADR-0064).
+    public const string LobbyScreensFull = "lobby-screens-full";
 }

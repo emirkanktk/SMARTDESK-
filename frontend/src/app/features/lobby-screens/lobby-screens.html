@@ -1,0 +1,152 @@
+<div class="page-header">
+  <h1 i18n="@@admin.lobbyScreens">Lobby screens</h1>
+  <a class="btn btn-secondary" routerLink="/admin" i18n="@@report.backToAdmin">Back to admin</a>
+</div>
+
+<p class="text-muted intro" i18n="@@lobbyScreens.intro">
+  A TV in the lobby or by the kitchen shows which meeting rooms are free now and until when, the
+  meetings still to come today, the free desks on each floor and how many people are in, with nobody
+  signed in on it and no names. Set one up, then open its link on the screen.
+</p>
+
+<section aria-labelledby="new-screen-heading">
+  <h2 id="new-screen-heading" class="section-title" i18n="@@lobbyScreens.newTitle">
+    Set up a screen
+  </h2>
+  <form class="card form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (formError(); as message) {
+      <div class="alert-error" role="alert">{{ message }}</div>
+    }
+    <div class="row">
+      <div class="field">
+        <label for="screen-name" i18n="@@lobbyScreens.name">Name</label>
+        <input
+          id="screen-name"
+          class="input"
+          formControlName="name"
+          [maxlength]="maxName"
+          placeholder="Entrance"
+          i18n-placeholder="@@lobbyScreens.namePlaceholder"
+          [class.invalid]="nameError()"
+          [attr.aria-invalid]="!!nameError()"
+          aria-describedby="screen-name-error"
+        />
+        @if (nameError(); as error) {
+          <span id="screen-name-error" class="field-error">{{ error }}</span>
+        }
+      </div>
+      <div class="field">
+        <label for="screen-floor" i18n="@@lobbyScreens.floor">Shows</label>
+        <select id="screen-floor" class="input" formControlName="location">
+          <option value="" i18n="@@lobby.wholeOffice">The whole office</option>
+          @for (floor of floors(); track floor) {
+            <option [value]="floor">{{ floor }}</option>
+          }
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) {
+          <ng-container i18n="@@common.saving">Saving…</ng-container>
+        } @else {
+          <ng-container i18n="@@lobbyScreens.create">Set up the screen</ng-container>
+        }
+      </button>
+    </div>
+  </form>
+
+  @if (created(); as created) {
+    <div class="card new-link" role="status">
+      <span i18n="@@lobbyScreens.shownOnce"
+        >Open this link on {{ created.screen.name }}. It's shown only now: copy it, or open it here
+        on the screen itself.</span
+      >
+      <input
+        class="input link"
+        readonly
+        [value]="created.link"
+        aria-label="The screen's link"
+        i18n-aria-label="@@lobbyScreens.linkLabel"
+        (focus)="$any($event.target).select()"
+      />
+      <div class="actions">
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          (click)="copy(created.link)"
+          i18n="@@checkInCode.copy"
+        >
+          Copy link
+        </button>
+        <a
+          class="btn btn-secondary btn-sm"
+          [href]="created.link"
+          target="_blank"
+          rel="noopener"
+          i18n="@@lobbyScreens.openHere"
+          >Open it here</a
+        >
+      </div>
+    </div>
+  }
+</section>
+
+<section aria-labelledby="screens-heading">
+  <h2 id="screens-heading" class="section-title" i18n="@@lobbyScreens.listTitle">Screens set up</h2>
+  @if (loadFailed()) {
+    <div class="alert-error load-error" role="alert">
+      <span i18n="@@lobbyScreens.loadFailed">The screens could not be loaded.</span>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        (click)="load()"
+        i18n="@@common.tryAgain"
+      >
+        Try again
+      </button>
+    </div>
+  } @else if (screens(); as list) {
+    @if (list.length === 0) {
+      <p class="card text-muted empty" i18n="@@lobbyScreens.none">No screen is set up yet.</p>
+    } @else {
+      <ul class="screens">
+        @for (screen of list; track screen.id) {
+          <li class="card screen">
+            <span class="dot" [class.on]="isOn(screen)" aria-hidden="true"></span>
+            <span class="what">
+              <span class="name">{{ screen.name }}</span>
+              <span class="text-muted meta">
+                @if (screen.location) {
+                  {{ screen.location }}
+                } @else {
+                  <ng-container i18n="@@lobby.wholeOffice">The whole office</ng-container>
+                }
+                ·
+                @if (isOn(screen)) {
+                  <ng-container i18n="@@lobbyScreens.on">On now</ng-container>
+                } @else if (screen.lastSeenAt) {
+                  <ng-container i18n="@@lobbyScreens.lastSeen"
+                    >last seen {{ screen.lastSeenAt | date: 'EEE d MMM, HH:mm' }}</ng-container
+                  >
+                } @else {
+                  <ng-container i18n="@@lobbyScreens.neverSeen">not opened yet</ng-container>
+                }
+              </span>
+            </span>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              (click)="remove(screen)"
+              i18n="@@lobbyScreens.remove"
+            >
+              Take down
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    <p class="text-muted" role="status" i18n="@@common.loading">Loading…</p>
+  }
+</section>

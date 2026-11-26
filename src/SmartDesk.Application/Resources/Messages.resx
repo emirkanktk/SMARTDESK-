@@ -399,6 +399,9 @@
   <data name="Error_TooManyIssueReports" xml:space="preserve">
     <value>Too many problem reports in a short time. Wait a minute and try again.</value>
   </data>
+  <data name="Error_TooManyLobbyScreenRequests" xml:space="preserve">
+    <value>The lobby screen asked too often. It tries again in a minute.</value>
+  </data>
   <data name="Error_TooManySignIns" xml:space="preserve">
     <value>Too many sign-in attempts. Please wait a minute and try again.</value>
   </data>
@@ -449,6 +452,12 @@
   </data>
   <data name="Issues_DescriptionMissing" xml:space="preserve">
     <value>Describe the problem in a few words.</value>
+  </data>
+  <data name="LobbyScreen_Full" xml:space="preserve">
+    <value>An office can have at most {0} lobby screens. Take one down first.</value>
+  </data>
+  <data name="LobbyScreen_UnknownFloor" xml:space="preserve">
+    <value>No resource is on that floor.</value>
   </data>
   <data name="Meetings_AnswerCancelled" xml:space="preserve">
     <value>This meeting was cancelled, so there's nothing to answer.</value>
