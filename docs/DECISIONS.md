@@ -2254,3 +2254,50 @@ new tables.
   - Someone whose booking is on a resource only another team may use doesn't show to the caller,
     as on the dashboard.
   - Nobody can hide their days in, as nobody can hide their bookings on the dashboard.
+
+## ADR-0064: A lobby screen: the office at a glance, with nobody signed in
+
+**Decision:**
+- Admins set up lobby screens on `/admin/lobby-screens`: a name and, for a screen on one floor,
+  that floor (a resources' `Location`), or the whole office. Each proves itself with a token of
+  its own, as a door screen does (ADR-0034): 32 random bytes in its link, `/lobby#<token>`, shown
+  once, after `#` so no server logs it; only its SHA-256 is kept (`LobbyScreens`, migration
+  `AddLobbyScreens`). Taking one down stops its link at once. 20 at most.
+- `GET /api/lobby`, with the token in `X-Lobby-Token` and no user, answers with what the screen
+  shows: its meeting rooms - kind `ResourceTypeIds.MeetingRoom`, retired ones left out - each with
+  the rest of today as its door screen has it (`DoorDay`, times only) and its blocked windows; for
+  each floor, how many active desks (`ResourceTypeIds.Desk`) there are and how many nobody has right
+  now; how many people are in today, across the office (as ADR-0063 counts them); and the app's
+  address. A token that isn't a screen's is a 404, as for a door screen. Limited by address, 120 a
+  minute.
+- Each answer notes when the screen last asked, once a minute at most, so Admins see which ones
+  are on. The history (ADR-0052) keeps a screen set up and taken down, under its name, never its
+  token, nor each time it asks.
+- `/lobby`, outside the shell: the screen's name and floor, a big clock; each meeting room in the
+  door screen's colours, with its state from the door screen's own `doorState` (free until when,
+  in use until when, or out of use and why); how many rooms are free; the meetings still to come
+  today in any room; the free desks per floor; the people in; and a QR code for the app. It asks
+  every 30 seconds, says so when it can't reach the server and keeps what it showed, asks the
+  browser to keep the screen on (Screen Wake Lock), and lays itself out for a TV, a tablet or a
+  phone.
+- The kinds of resource every office has now have their ids in `Domain/Constants/ResourceTypeIds`;
+  the seed data uses them.
+
+**Why:**
+- A door screen tells one room's day to those at its door. People arriving, or looking for a room
+  now, want the whole office at a glance, without signing in on a phone. A TV by the entrance is
+  where offices put that.
+- Times and numbers only: a lobby is a public place, with visitors in it. Who booked what is for
+  the app, behind a sign-in (ADR-0063).
+- A token rather than a signed-in user: nobody should stay signed in on a TV in the lobby, and the
+  token can do nothing but show that screen.
+- Meeting rooms and desks by their kind's id: they're the places in the office; the kinds are
+  fixed reference data, seeded with the same ids everywhere.
+- **Rejected:** live updates over SignalR. The hub is for signed-in users; a screen read from
+  across a room loses nothing by asking every half minute, and it keeps the screen's access to one
+  read-only call.
+- **Trade-offs:**
+  - A change shows up to half a minute late.
+  - Anyone who sees the screen learns which rooms are taken and when, not by whom, as at the door.
+  - Desks show as numbers per floor, not each one: a lobby screen is no floor plan; the app has
+    that (ADR-0041).

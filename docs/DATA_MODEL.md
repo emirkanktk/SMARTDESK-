@@ -318,6 +318,20 @@ turned them on there last.
 | Auth | string (32) | the device's authentication secret, base64url |
 | SavedAt | DateTime | UTC, when notifications were last turned on there, or found on by its profile page |
 
+### LobbyScreen (ADR-0064)
+
+A screen in the office showing its rooms, its free desks and how many are in, with nobody signed
+in on it. It proves itself with a token of its own, which is never stored: only its hash.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | key |
+| Name | string (60) | what the Admins call it: "Entrance" |
+| Location | string? (200) | the floor it shows, a resources' `Location`; null for the whole office |
+| TokenHash | string (64) | SHA-256 of the screen's token, hex; unique |
+| CreatedAt | DateTime | UTC |
+| LastSeenAt | DateTime? | UTC, when it last asked, noted once a minute at most; null until it's opened |
+
 ## Relationships
 
 Solid lines are foreign keys in the database. Dotted lines are account ids kept as plain values,
@@ -463,6 +477,12 @@ erDiagram
         string Endpoint UK "its push service's address"
         datetime SavedAt
     }
+    LobbyScreen {
+        uuid Id PK
+        string Name
+        string Location "the floor it shows, or none"
+        string TokenHash UK "SHA-256 of its token"
+    }
 
     ApplicationUser |o--o{ ApplicationUser : manages
     ApplicationUser ||--o{ UserSession : "signs in with"
@@ -531,6 +551,7 @@ erDiagram
   token it presents (ADR-0048).
 - `PushSubscriptions(Endpoint)` - unique: a device that turns notifications on again finds its
   row; `PushSubscriptions(UserId)` - someone's devices, when a notification goes out (ADR-0056).
+- `LobbyScreens(TokenHash)` - unique: the screen a token belongs to, when it asks (ADR-0064).
 
 ## Constraints
 

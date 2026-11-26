@@ -418,6 +418,12 @@ picker drops seconds and any difference would count as a change.
   room's state (`doorState`) and the QR code. The resource form's `<app-check-in-code>` sets
   the screen up. The check-in page reads the code once and drops it from the address, and
   offers what can be done at the door: run longer, end, or book on the spot.
+- **The lobby screen (ADR-0064).** `/lobby`, outside the shell and without a user, like the door
+  screen: it keeps the token from its link, asks `GET /api/lobby` through `LobbyService` every 30
+  seconds, and draws each meeting room with the door screen's own `doorState`, so the two never
+  disagree. It asks the browser to keep the screen on (Screen Wake Lock). Admins set screens up and
+  take them down on `/admin/lobby-screens`. On the server, `DoorDay.LoadManyAsync` loads the rest
+  of the day for all the rooms in two queries.
 - **The page without an account (ADR-0050).** While nobody is signed in, `visitorGuard` (a
   `canMatch`) gives `/check-in/:resourceId` a page of its own outside the shell, `DoorVisit`. It
   asks `GET /api/door/{id}/visit` with the code in a header through `DoorVisitService`, draws

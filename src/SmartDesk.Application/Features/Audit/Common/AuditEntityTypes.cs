@@ -17,11 +17,12 @@ public static class AuditEntityTypes
     public const string User = "User";
     public const string UserRole = "UserRole";
     public const string Passkey = "Passkey";
+    public const string LobbyScreen = "LobbyScreen";
 
     public static readonly IReadOnlyDictionary<string, string[]> Areas = new Dictionary<string, string[]>
     {
         ["bookings"] = [Reservation, Attendee],
-        ["resources"] = [Resource, ResourceFeature, ResourceTeam, ResourcePhoto, ResourceBlock, FloorPlan],
+        ["resources"] = [Resource, ResourceFeature, ResourceTeam, ResourcePhoto, ResourceBlock, FloorPlan, LobbyScreen],
         ["rules"] = [ResourceType, OfficeHours],
         ["problems"] = [IssueReport],
         ["accounts"] = [User, UserRole, Passkey],

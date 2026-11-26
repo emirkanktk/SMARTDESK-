@@ -1,3 +1,4 @@
+using SmartDesk.Domain.Constants;
 using SmartDesk.Domain.Entities;
 
 namespace SmartDesk.Infrastructure.Persistence.Seed;
@@ -7,11 +8,11 @@ namespace SmartDesk.Infrastructure.Persistence.Seed;
 // migration.
 public static class ResourceTypeSeedData
 {
-    public static readonly Guid MeetingRoomId = new("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a01");
-    public static readonly Guid DeskId = new("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a02");
-    public static readonly Guid CompanyCarId = new("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a03");
-    public static readonly Guid ProjectorId = new("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a04");
-    public static readonly Guid CameraId = new("3f2b6a1e-8c4d-4e0f-9a51-2d7b6c1e0a05");
+    public static readonly Guid MeetingRoomId = ResourceTypeIds.MeetingRoom;
+    public static readonly Guid DeskId = ResourceTypeIds.Desk;
+    public static readonly Guid CompanyCarId = ResourceTypeIds.CompanyCar;
+    public static readonly Guid ProjectorId = ResourceTypeIds.Projector;
+    public static readonly Guid CameraId = ResourceTypeIds.Camera;
 
     public static IReadOnlyList<ResourceType> All =>
     [

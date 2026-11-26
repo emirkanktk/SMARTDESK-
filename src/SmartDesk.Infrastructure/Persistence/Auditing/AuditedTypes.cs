@@ -69,6 +69,12 @@ internal static class AuditedTypes
         [typeof(ResourceType)] = Of<ResourceType>(AuditEntityTypes.ResourceType, label: (_, t) => t.Name),
         [typeof(OfficeHours)] = Of<OfficeHours>(AuditEntityTypes.OfficeHours),
         [typeof(FloorPlan)] = Of<FloorPlan>(AuditEntityTypes.FloorPlan, ignore: [nameof(FloorPlan.Data)], label: (_, p) => p.Location),
+        // A lobby screen set up or taken down (ADR-0064), under its name; not each time it asks.
+        [typeof(LobbyScreen)] = Of<LobbyScreen>(
+            AuditEntityTypes.LobbyScreen,
+            ignore: [nameof(LobbyScreen.LastSeenAt)],
+            secrets: [nameof(LobbyScreen.TokenHash)],
+            label: (_, s) => s.Name),
         [typeof(IssueReport)] = Of<IssueReport>(
             AuditEntityTypes.IssueReport, resource: (_, i) => i.ResourceId, label: (_, i) => i.Category.ToString()),
         // An account: who it is and what they may do, not the bookkeeping of signing in.

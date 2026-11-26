@@ -1,0 +1,105 @@
+:host {
+  display: block;
+  max-width: 56rem;
+}
+
+.intro {
+  margin: 0 0 var(--space-5);
+}
+
+section {
+  margin-bottom: var(--space-6);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.new-link {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  border-color: var(--color-primary);
+}
+
+.link {
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.empty {
+  margin: 0;
+}
+
+.screens {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.screen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+// Green while it asks, grey otherwise.
+.dot {
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+
+  &.on {
+    background: var(--color-success);
+  }
+}
+
+.what {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  font-size: 0.875rem;
+}

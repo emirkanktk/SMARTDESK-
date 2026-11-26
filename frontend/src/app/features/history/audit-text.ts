@@ -62,6 +62,8 @@ export function entityLabel(entityType: string): string {
       return $localize`:@@history.entity.role:Role`;
     case 'Passkey':
       return $localize`:@@history.entity.passkey:Passkey`;
+    case 'LobbyScreen':
+      return $localize`:@@history.entity.lobbyScreen:Lobby screen`;
     default:
       return entityType;
   }
@@ -163,6 +165,7 @@ const HIDDEN: Record<string, string[]> = {
   FloorPlan: ['ContentType', 'Width', 'Height', 'UpdatedAt'],
   ResourceBlock: ['CreatedByUserId'],
   Attendee: ['ReservationId'],
+  LobbyScreen: ['CreatedAt'],
 };
 
 function shown(entry: AuditEntry, change: AuditChange): boolean {
@@ -225,6 +228,9 @@ function propertyLabel(property: string): string {
       return $localize`:@@history.field.qrCode:QR code`;
     case 'DoorScreenTokenHash':
       return $localize`:@@history.field.doorScreen:Door screen`;
+    // A lobby screen's own link (ADR-0064).
+    case 'TokenHash':
+      return $localize`:@@history.field.screenLink:Screen link`;
     case 'TeamId':
       return $localize`:@@history.field.team:Team of`;
     case 'MaxDurationMinutes':
@@ -271,7 +277,7 @@ function propertyLabel(property: string): string {
 /** A secret says only that it was made, replaced, set up or turned off. */
 function secretText(change: AuditChange): string | null {
   if (change.old !== '***' && change.new !== '***') return null;
-  if (change.property === 'DoorScreenTokenHash') {
+  if (change.property === 'DoorScreenTokenHash' || change.property === 'TokenHash') {
     return change.old === null
       ? $localize`:@@history.secret.setUp:set up`
       : change.new === null

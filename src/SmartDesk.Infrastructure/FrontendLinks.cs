@@ -40,5 +40,9 @@ public sealed class FrontendLinks(IOptions<AppOptions> options) : IFrontendLinks
 
     public string SignedInDevices() => $"{Base}{PushTexts.SignedInDevicesUrl}";
 
+    public string Home() => $"{Base}/";
+
+    public string LobbyScreen(string token) => $"{Base}/lobby#{token}";
+
     public string CalendarFeed(string token) => $"{Base}/api/calendar/feed.ics?token={Uri.EscapeDataString(token)}";
 }

@@ -68,6 +68,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/qr-labels/qr-labels').then((m) => m.QrLabels),
   },
   {
+    // A screen in the office's lobby (ADR-0064): no user and no shell, just the rooms, the free
+    // desks and who's in, as numbers. The link it's opened with carries the screen's own token.
+    path: 'lobby',
+    title: $localize`:@@title.lobby:Lobby screen · SmartDesk`,
+    loadComponent: () => import('./features/lobby/lobby').then((m) => m.Lobby),
+  },
+  {
     // The screen at a resource's door (ADR-0034): no user and no shell, just the room and its
     // changing QR code. The link it's opened with carries the screen's own token.
     path: 'door/:resourceId',
@@ -216,6 +223,14 @@ export const routes: Routes = [
         title: $localize`:@@title.approvals:Approvals · SmartDesk`,
         canActivate: [adminGuard],
         loadComponent: () => import('./features/approvals/approvals').then((m) => m.Approvals),
+      },
+      {
+        // The office's lobby screens, set up and taken down (ADR-0064).
+        path: 'admin/lobby-screens',
+        title: $localize`:@@title.lobbyScreens:Lobby screens · SmartDesk`,
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/lobby-screens/lobby-screens').then((m) => m.LobbyScreens),
       },
       {
         // Who changed what, and when (ADR-0052); ?resourceId= for one resource's.

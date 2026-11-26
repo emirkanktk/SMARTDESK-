@@ -1,0 +1,138 @@
+<main class="lobby">
+  @if (notSetUp()) {
+    <section class="setup" role="alert">
+      <h1 i18n="@@lobby.notSetUpTitle">This screen isn't set up</h1>
+      <p i18n="@@lobby.notSetUp">
+        Open a lobby screen's link from Admin, Lobby screens, on this device. A screen that was
+        taken down no longer works.
+      </p>
+    </section>
+  } @else if (lobby(); as lobby) {
+    <header class="head">
+      <div>
+        <p class="brand">SmartDesk</p>
+        <h1 class="name">{{ lobby.screenName }}</h1>
+        <p class="where">
+          @if (lobby.location) {
+            {{ lobby.location }}
+          } @else {
+            <ng-container i18n="@@lobby.wholeOffice">The whole office</ng-container>
+          }
+        </p>
+      </div>
+      <div class="clock">
+        <span class="time">{{ clock() }}</span>
+        <span class="date">{{ date() }}</span>
+      </div>
+    </header>
+
+    <div class="body">
+      <section class="rooms" aria-labelledby="rooms-title">
+        <h2 id="rooms-title">
+          <span i18n="@@lobby.rooms">Meeting rooms</span>
+          <span class="free-count" i18n="@@lobby.freeNow">{{ freeRooms() }} free now</span>
+        </h2>
+        @if (rooms().length === 0) {
+          <p class="none" i18n="@@lobby.noRooms">No meeting rooms here.</p>
+        } @else {
+          <ul class="room-grid">
+            @for (row of rooms(); track row.room.id) {
+              <li [class]="'room ' + row.state.kind">
+                <span class="room-name">{{ row.room.name }}</span>
+                <span class="room-where">
+                  {{ row.room.location }} ·
+                  @if (row.room.capacity === 1) {
+                    <ng-container i18n="@@availability.onePerson">1 person</ng-container>
+                  } @else {
+                    <ng-container i18n="@@availability.people.count"
+                      >{{ row.room.capacity }} people</ng-container
+                    >
+                  }
+                </span>
+                @switch (row.state.kind) {
+                  @case ('free') {
+                    <span class="room-state" i18n="@@door.free">Free</span>
+                    @if (row.state.kind === 'free' && row.state.until; as until) {
+                      <span class="room-detail" i18n="@@door.freeUntil"
+                        >until {{ time(until) }}</span
+                      >
+                    } @else {
+                      <span class="room-detail" i18n="@@door.freeAllDay"
+                        >for the rest of the day</span
+                      >
+                    }
+                  }
+                  @case ('busy') {
+                    <span class="room-state" i18n="@@door.busy">In use</span>
+                    @if (row.state.kind === 'busy') {
+                      <span class="room-detail" i18n="@@door.busyUntil"
+                        >until {{ time(row.state.until) }}</span
+                      >
+                    }
+                  }
+                  @case ('unavailable') {
+                    <span class="room-state" i18n="@@door.unavailable">Not available</span>
+                    @if (row.state.kind === 'unavailable') {
+                      <span class="room-detail">{{ row.state.reason }}</span>
+                    }
+                  }
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <aside class="side">
+        <section class="people">
+          <span class="people-count">{{ lobby.peopleToday }}</span>
+          <span class="people-label">{{ peopleLabel() }}</span>
+        </section>
+
+        @if (lobby.desks.length > 0) {
+          <section class="panel desks" aria-labelledby="desks-title">
+            <h2 id="desks-title" i18n="@@lobby.desks">Free desks now</h2>
+            <ul>
+              @for (floor of lobby.desks; track floor.location) {
+                <li>
+                  <span>{{ floor.location }}</span>
+                  <span class="desk-count">{{ floor.free }} / {{ floor.total }}</span>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        <section class="panel agenda" aria-labelledby="agenda-title">
+          <h2 id="agenda-title" i18n="@@lobby.comingUp">Coming up today</h2>
+          @if (agenda().length === 0) {
+            <p class="none" i18n="@@lobby.nothingLater">No more meetings today.</p>
+          } @else {
+            <ul>
+              @for (item of agenda(); track $index) {
+                <li>
+                  <span class="agenda-time">{{ time(item.start) }}–{{ time(item.end) }}</span>
+                  <span class="agenda-room">{{ item.room }}</span>
+                  <span class="agenda-where">{{ item.location }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <section class="panel app">
+          <app-qr-code class="qr" [value]="lobby.appUrl" [label]="qrLabel" />
+          <p i18n="@@lobby.openApp">Scan to book a room or a desk in SmartDesk on your phone.</p>
+        </section>
+      </aside>
+    </div>
+
+    @if (offline()) {
+      <p class="offline" role="status" i18n="@@lobby.offline">
+        Can't reach SmartDesk right now; trying again.
+      </p>
+    }
+  } @else {
+    <p class="loading" role="status" i18n="@@common.loading">Loading…</p>
+  }
+</main>

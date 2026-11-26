@@ -399,6 +399,9 @@
   <data name="Error_TooManyIssueReports" xml:space="preserve">
     <value>Kısa sürede çok fazla sorun bildirildi. Bir dakika bekleyip tekrar deneyin.</value>
   </data>
+  <data name="Error_TooManyLobbyScreenRequests" xml:space="preserve">
+    <value>Lobi ekranı çok sık istekte bulundu. Bir dakika sonra yeniden deneyecek.</value>
+  </data>
   <data name="Error_TooManySignIns" xml:space="preserve">
     <value>Çok fazla giriş denemesi yapıldı. Lütfen bir dakika bekleyip tekrar deneyin.</value>
   </data>
@@ -449,6 +452,12 @@
   </data>
   <data name="Issues_DescriptionMissing" xml:space="preserve">
     <value>Sorunu birkaç kelimeyle anlatın.</value>
+  </data>
+  <data name="LobbyScreen_Full" xml:space="preserve">
+    <value>Bir ofiste en fazla {0} lobi ekranı olabilir. Önce birini kaldırın.</value>
+  </data>
+  <data name="LobbyScreen_UnknownFloor" xml:space="preserve">
+    <value>O katta hiç kaynak yok.</value>
   </data>
   <data name="Meetings_AnswerCancelled" xml:space="preserve">
     <value>Bu toplantı iptal edildi; yanıtlanacak bir şey yok.</value>

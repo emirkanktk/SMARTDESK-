@@ -28,6 +28,7 @@ public interface IApplicationDbContext
     DbSet<FavoriteResource> FavoriteResources { get; }
     DbSet<AuditEntry> AuditEntries { get; }
     DbSet<PushSubscription> PushSubscriptions { get; }
+    DbSet<LobbyScreen> LobbyScreens { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

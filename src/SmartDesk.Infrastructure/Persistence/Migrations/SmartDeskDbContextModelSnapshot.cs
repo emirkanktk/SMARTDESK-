@@ -420,6 +420,40 @@ namespace SmartDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("IssueReportPhotos");
                 });
 
+            modelBuilder.Entity("SmartDesk.Domain.Entities.LobbyScreen", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("LobbyScreens");
+                });
+
             modelBuilder.Entity("SmartDesk.Domain.Entities.OfficeHours", b =>
                 {
                     b.Property<int>("Id")

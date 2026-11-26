@@ -756,6 +756,40 @@ Push). Off until the API has its VAPID keys.
   booking notices, an hour for a release, a day for a message - and an `Urgency`. A device its
   push service answers 404 or 410 for is forgotten.
 
+## Lobby screens (ADR-0064)
+
+A screen in the office - a TV in the lobby - showing its meeting rooms, its free desks and how many
+people are in, with nobody signed in on it. Admins set them up; each proves itself with a token
+of its own, given out once in its link (`/lobby#<token>`, after `#`, so it reaches no server's
+log) and kept only as its SHA-256.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/lobby-screens` | Admin | `GetLobbyScreensQuery` | → `[{ id, name, location, createdAt, lastSeenAt }]` by name. `location`: the floor it shows, null for the whole office. `lastSeenAt`: when it last asked, noted once a minute at most; null until it's opened |
+| POST | `/api/lobby-screens` | Admin | `CreateLobbyScreenCommand` | body `{ name, location? }` → 201 `{ screen, link }`, `Cache-Control: no-store`: the link is shown this once. 400: `name` missing, over 60 characters or not on one line; `location` a floor no resource is on. 409 `lobby-screens-full` with 20 set up already |
+| DELETE | `/api/lobby-screens/{id}` | Admin | `DeleteLobbyScreenCommand` | → 204: its link stops working, and the screen says so on its next ask. 404 for none |
+| GET | `/api/lobby?timeZone=Europe/Istanbul` | none (the screen's token in `X-Lobby-Token`) | `GetLobbyQuery` | → what the screen shows (below). 404, as for no screen at all, when the token isn't one's. Limited by address: `RateLimiting:LobbyScreenPermitsPerMinute`, 120 by default; a screen asks every 30 seconds |
+
+```json
+{
+  "screenName": "Entrance",
+  "location": null,                       // its floor, or null for the whole office
+  "now": "2026-11-26T08:36:00Z",          // the server's clock
+  "appUrl": "https://smartdesk.example/", // for the QR code that opens SmartDesk on a phone
+  "peopleToday": 17,                      // in today across the office, whatever its floor (ADR-0063)
+  "rooms": [                              // meeting rooms in use or in maintenance, by floor and name
+    {
+      "id": "…", "name": "Board Room", "location": "5th Floor", "capacity": 16, "status": "Active",
+      "bookings": [ /* the rest of today, as a door screen's: times only, at most 6 */ ],
+      "blocks": [ /* today's blocked windows still to come or under way */ ]
+    }
+  ],
+  "desks": [ { "location": "3rd Floor", "free": 4, "total": 6 } ]   // active desks, free right now
+}
+```
+
+No names anywhere: a lobby is no place for them, as a corridor isn't (ADR-0034).
+
 ## Check-in (ADR-0030)
 
 A resource with `checkInRequired` has a QR code at its door. Whoever booked it scans the code,
