@@ -58,6 +58,7 @@ export class Shell {
     { path: '/availability', label: $localize`:@@nav.availability:Availability`, icon: 'search' },
     { path: '/calendar', label: $localize`:@@nav.calendar:Calendar`, icon: 'calendar' },
     { path: '/floor-plan', label: $localize`:@@nav.floorPlan:Floor plan`, icon: 'map' },
+    { path: '/whos-in', label: $localize`:@@nav.whosIn:Who's in`, icon: 'user-check' },
     {
       path: '/reservations/new',
       label: $localize`:@@nav.newReservation:New reservation`,

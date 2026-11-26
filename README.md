@@ -80,6 +80,10 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   ([ADR-0041](docs/DECISIONS.md)). An Admin switches it to **Usage**: each place coloured by how
   much of the office's hours it was booked over the last 7, 30 or 90 days, so the desks that
   stand empty show at a glance ([ADR-0059](docs/DECISIONS.md)).
+- **Who's in** - everyone in the office on a day, today or any other: what each person booked
+  and the meetings they said they'd come to, with where and when. **My team** narrows it to your
+  team, to pick a day you're in together, a name finds someone, and a place opens the floor
+  plan at it ([ADR-0063](docs/DECISIONS.md)).
 - **Reminders** - the owner can ask to be reminded 5, 15, 30 or 60 minutes before a reservation
   starts. The reminder arrives in the app, and as a desktop notification when allowed
   ([ADR-0018](docs/DECISIONS.md)).
@@ -456,6 +460,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |
 | Inbox | `GET /api/inbox`, `GET /api/inbox/unread-count`, `POST /api/inbox/{id}/read`, `POST /api/inbox/read-all` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
+| Who's in | `GET /api/whos-in?date=&timeZone=` (ADR-0063) |
 | Reports | `GET /api/reports/usage?from=&to=&timeZone=` (Admin) |
 | History | `GET /api/audit?area=&resourceId=&userId=&from=&to=&before=` (Admin) (ADR-0052) |
 | Assistant | `GET /api/assistant`, `POST /api/assistant/messages` (optional, ADR-0029) |

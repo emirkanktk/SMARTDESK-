@@ -133,6 +133,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/floor-plan/floor-plan').then((m) => m.FloorPlan),
       },
       {
+        // Who's in the office on a day (ADR-0063).
+        path: 'whos-in',
+        title: $localize`:@@title.whosIn:Who's in · SmartDesk`,
+        loadComponent: () => import('./features/whos-in/whos-in').then((m) => m.WhosIn),
+      },
+      {
         path: 'reservations/new',
         title: $localize`:@@title.newReservation:Book a resource · SmartDesk`,
         loadComponent: () =>

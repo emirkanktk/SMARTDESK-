@@ -2210,3 +2210,47 @@ new tables.
     comes first.
   - The notification is written in the account's language as it is when it goes out, so after
     a sign-in in another language, in that one; the email keeps the one before.
+
+## ADR-0063: Who's in the office on a day, for everyone, arranged by person
+
+**Decision:**
+- `GET /api/whos-in?date=&timeZone=` (`GetWhosInQuery`) lists who's in on a day: the owner of
+  each Confirmed booking overlapping that local day, and each person who accepted an invitation
+  to one (ADR-0032), with every place and time, earliest first. Cancelled and released bookings,
+  and ones still waiting for an Admin's approval (ADR-0049), bring nobody in; invitees who
+  haven't answered or can't come aren't counted. Only bookings on resources the caller may use
+  count (ADR-0022), as on the dashboard.
+- The day is a local one in the browser's zone, today when `date` is left out. A date outside the
+  years 2000-2100 is a 400: near the ends of the calendar a day in some zone has no instant to
+  begin or end at.
+- Each person comes with `isMe` and `inMyTeam` (the caller's Manager and the active Employees of
+  that team, the caller included), and the answer with `hasTeam`. Names come in the order of the
+  request's language, which only that list's sort uses: the code's own formatting and comparing
+  stays English's (ADR-0023).
+- `/whos-in` ("Who's in", under Floor plan; in Menu on a phone): the day, a day back or on, a
+  date to pick and Today (`?date=`); how many are in and how many of them are in your team;
+  **Everyone** / **My team**, and a search by name. Each person has their initials, "You" or "Your
+  team", and their places: the resource, a link to the floor plan at that floor (at its time, or
+  now while it's under way), the floor, the times, Now, Checked in, or whose meeting it is. A
+  booking made, moved, checked in or cancelled anywhere asks again, a burst once, as does coming
+  back after a lost connection.
+- The dashboard's Today links to it, and the guide has a part for it.
+
+**Why:**
+- Hybrid offices choose their days in by who else is in. The dashboard already names, to everyone
+  who may use a resource, who booked it today; this is the same arranged by person, on any day,
+  with who's coming to meetings. Nothing is shown that wasn't to be seen already.
+- By person rather than by booking: a desk all day and a meeting in the afternoon are one person
+  in the office.
+- **Rejected:**
+  - Desks only: telling which kinds of resource are places in the office would be one more
+    setting for Admins, and a car or a projector is picked up at the office too. Each place says
+    what it is.
+  - Days in the office set by hand: a second record beside the bookings, and one that goes
+    stale.
+- **Trade-offs:**
+  - A booking says someone means to come, not that they came; Checked in says that, where a
+    booking asks for it (ADR-0030).
+  - Someone whose booking is on a resource only another team may use doesn't show to the caller,
+    as on the dashboard.
+  - Nobody can hide their days in, as nobody can hide their bookings on the dashboard.

@@ -1,0 +1,183 @@
+:host {
+  display: block;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.day-nav,
+.narrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.day {
+  width: auto;
+}
+
+.search {
+  width: 16rem;
+  max-width: 100%;
+}
+
+// On a phone the switch and the search take a line of their own, the search all of it.
+@media (max-width: 640px) {
+  .narrow,
+  .search {
+    width: 100%;
+  }
+}
+
+// Everyone or just the team, joined as the calendar's week and month are.
+.show-switch {
+  display: inline-flex;
+
+  .btn {
+    border-radius: 0;
+  }
+
+  .btn:first-child {
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
+  .btn:last-child {
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .active {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+  }
+}
+
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.summary {
+  margin: 0 0 var(--space-3);
+  font-weight: 600;
+
+  .text-muted {
+    font-weight: 400;
+  }
+}
+
+.people {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.person {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+
+  &.me {
+    border-color: var(--color-primary);
+  }
+}
+
+// Their initials in a circle: who it is at a glance, without a photo.
+.avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.who {
+  display: grid;
+  flex: 1;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.team {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.visits {
+  display: grid;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.visit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+}
+
+.place {
+  font-weight: 600;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+// Under way now: a still dot, so the list never keeps the page animating.
+.now {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+
+  &::before {
+    content: '';
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: currentColor;
+  }
+}
+
+.checked-in {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
