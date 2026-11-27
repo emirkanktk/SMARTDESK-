@@ -1,4 +1,5 @@
 using SmartDesk.Application.Common.Models;
+using SmartDesk.Application.Features.Announcements.Common;
 using SmartDesk.Application.Features.Inbox.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 
@@ -16,6 +17,9 @@ public sealed record PushNotice(PushTopic Topic, IReadOnlyCollection<Guid> Recip
 
     // The sign-in a NewSignIn notice is about.
     public NewSignIn? SignIn { get; init; }
+
+    // The news an Announcement notice carries.
+    public AnnouncementDto? Announcement { get; init; }
 }
 
 public enum PushTopic
@@ -40,4 +44,7 @@ public enum PushTopic
 
     // Their account signed in on a browser it hadn't been used on (ADR-0062).
     NewSignIn,
+
+    // News for the whole office from its Admins (ADR-0065).
+    Announcement,
 }

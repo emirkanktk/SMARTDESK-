@@ -15,6 +15,7 @@ import { ResourceBlockService } from '../../core/services/resource-block.service
 import { FavoriteToggle } from '../../shared/components/favorite-toggle/favorite-toggle';
 import { Icon, IconName } from '../../shared/components/icon/icon';
 import { roomNowFor } from '../../shared/utils/room-now';
+import { DashboardAnnouncements } from './dashboard-announcements';
 
 const TIME = 'HH:mm';
 const DAY_AND_TIME = 'EEE d MMM, HH:mm';
@@ -49,13 +50,14 @@ interface Tile {
 }
 
 /**
- * Today at a glance: counts, the user's favourite resources and whether each is free (ADR-0051),
+ * Today at a glance: the announcements showing (ADR-0065), counts, the user's favourite resources
+ * and whether each is free (ADR-0051),
  * what's in use right now, everything booked today and the user's next reservations. "Today" is
  * the browser's day (its time zone is sent to the API). Kept current by refetching on every
  * reservation event and once a minute, as bookings start and end.
  */
 @Component({
-  imports: [RouterLink, DatePipe, NgTemplateOutlet, Icon, FavoriteToggle],
+  imports: [RouterLink, DatePipe, NgTemplateOutlet, Icon, FavoriteToggle, DashboardAnnouncements],
   selector: 'app-dashboard',
   styleUrl: './dashboard.scss',
   templateUrl: './dashboard.html',

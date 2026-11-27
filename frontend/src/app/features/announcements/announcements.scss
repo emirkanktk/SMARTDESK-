@@ -1,0 +1,276 @@
+:host {
+  display: block;
+  max-width: 72rem;
+}
+
+.intro {
+  max-width: 48rem;
+  margin: 0 0 var(--space-5);
+}
+
+section {
+  margin-bottom: var(--space-6);
+}
+
+// The form, with what it will look like beside it where there's room, and under it where not.
+.compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-5);
+
+  @media (max-width: 960px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.form {
+  display: grid;
+}
+
+.optional {
+  margin-left: var(--space-1);
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.count {
+  align-self: flex-end;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  margin-bottom: 0.375rem;
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.tone-options,
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+// Each look as a chip in its own colour, with the radio button itself out of sight.
+.tone {
+  --tone: var(--color-primary);
+  --tone-soft: var(--color-primary-soft);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+
+  &[data-tone='Good'] {
+    --tone: var(--color-success);
+    --tone-soft: var(--color-success-soft);
+  }
+
+  &[data-tone='Warning'] {
+    --tone: var(--color-warning);
+    --tone-soft: var(--color-warning-soft);
+  }
+
+  app-icon {
+    color: var(--tone);
+  }
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:hover {
+    border-color: var(--tone);
+  }
+
+  &:has(input:checked) {
+    border-color: var(--tone);
+    background: var(--tone-soft);
+    box-shadow: inset 0 0 0 1px var(--tone);
+  }
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.days {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.day {
+  width: auto;
+}
+
+.chip {
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+
+  &:hover {
+    border-color: var(--color-primary);
+  }
+
+  &[aria-pressed='true'] {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+  }
+}
+
+.check-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-weight: 600;
+  cursor: pointer;
+
+  input {
+    margin-top: 0.3rem;
+  }
+
+  .hint {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 400;
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+
+  .btn {
+    gap: var(--space-2);
+  }
+}
+
+// Kept in sight while the form is filled in, on a wide screen.
+.preview {
+  position: sticky;
+  top: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+
+  @media (max-width: 960px) {
+    position: static;
+  }
+}
+
+.preview-label {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.empty {
+  margin: 0;
+}
+
+.posted {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// The ones showing in their colour, the ones that ended in grey.
+.item {
+  --tone: var(--color-primary);
+  --tone-soft: var(--color-primary-soft);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-left: 4px solid var(--tone);
+
+  &[data-tone='Good'] {
+    --tone: var(--color-success);
+    --tone-soft: var(--color-success-soft);
+  }
+
+  &[data-tone='Warning'] {
+    --tone: var(--color-warning);
+    --tone-soft: var(--color-warning-soft);
+  }
+
+  &.ended {
+    --tone: var(--color-text-muted);
+    --tone-soft: var(--color-bg);
+    border-left-color: var(--color-border-strong);
+  }
+}
+
+.item-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--tone-soft);
+  color: var(--tone);
+}
+
+.what {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  font-size: 0.875rem;
+}

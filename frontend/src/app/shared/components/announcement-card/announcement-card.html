@@ -1,0 +1,38 @@
+<article class="announcement">
+  <span class="badge"><app-icon [name]="icon()" /></span>
+  <div class="text">
+    <span class="kind">{{ kind() }}</span>
+    <h3 class="title">{{ announcement().title }}</h3>
+    @if (announcement().body; as body) {
+      <p class="body" [class.clamped]="long() && !expanded()">{{ body }}</p>
+      @if (long()) {
+        <button
+          type="button"
+          class="more"
+          [attr.aria-expanded]="expanded()"
+          (click)="expanded.set(!expanded())"
+        >
+          @if (expanded()) {
+            <ng-container i18n="@@announcement.less">Show less</ng-container>
+          } @else {
+            <ng-container i18n="@@announcement.more">Read more</ng-container>
+          }
+        </button>
+      }
+    }
+    @if (meta()) {
+      <p class="meta">{{ meta() }}</p>
+    }
+  </div>
+  @if (dismissible()) {
+    <button
+      type="button"
+      class="dismiss"
+      [attr.aria-label]="hideLabel()"
+      [title]="hideLabel()"
+      (click)="dismissed.emit()"
+    >
+      <app-icon name="close" />
+    </button>
+  }
+</article>

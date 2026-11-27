@@ -2301,3 +2301,44 @@ new tables.
   - Anyone who sees the screen learns which rooms are taken and when, not by whom, as at the door.
   - Desks show as numbers per floor, not each one: a lobby screen is no floor plan; the app has
     that (ADR-0041).
+
+## ADR-0065: Announcements for the whole office, on every dashboard and lobby screen
+
+**Decision:**
+- Admins post announcements on `/admin/announcements`: a title on one line (100 characters at
+  most), maybe a text of a few lines (1000), a look - `Info` (news), `Good` (good news) or
+  `Warning` (a heads-up) - and when it ends, at most 60 days on (`Announcements`, migration
+  `AddAnnouncements`). The page asks for a last day, today to 59 days on, with a click for today,
+  tomorrow, a week or two, and sends the moment the next day starts in the browser's time zone,
+  never later than the API takes. A card beside the form shows the announcement as it will look
+  on the dashboard while it's written. Below, every one posted, showing or ended, each to take
+  down.
+- `GET /api/announcements` gives anyone signed in the ones showing now, newest first, at most 5.
+  The dashboard shows them at the top as cards in their look's colour, each with its icon and its
+  kind written out, its text, and who posted it when; side by side where there's room, in a row
+  to swipe through on a phone. It asks again every minute. Each person can hide one: kept in
+  `localStorage`, by account, until it ends.
+- The lobby screen (ADR-0064) gets the newest 3 in its own answer, without their author, and runs
+  them along its top one at a time, 12 seconds each, with dots for how many.
+- With `notify`, posting also sends it to every device with notifications on (ADR-0056) but its
+  author's: "Announcement: Breakfast on Friday" with its first words, opening the dashboard.
+- The history (ADR-0052) keeps them, under a new area, `announcements`, by title.
+
+**Why:**
+- Offices tell everyone things that aren't bookings: a breakfast, a lift out of order, a new
+  room. Email gets lost, and a poster in the kitchen isn't seen from home. The dashboard is what
+  everyone opens, and the lobby screen is what everyone passes.
+- A look of three, each with its own icon and name, never the colour alone: enough to tell good
+  news from a warning at a glance, few enough to keep them meaning something.
+- An end for every announcement, and 60 days at most: nobody remembers to take one down, and a
+  stale announcement teaches people to skip them all.
+- Hiding on the device, not on the server: one tap and it's gone, with no table of who hid what.
+- A notification only when asked: most news can wait for the next look at the dashboard, and
+  every unasked one makes people turn notifications off.
+- **Rejected:** read receipts, comments and reactions - a chat app's work - and announcements by
+  Managers to their teams, which can come later as an audience on the same row.
+- **Trade-offs:**
+  - Hidden on one device, it still shows on the person's others.
+  - A new one reaches an open dashboard within a minute, and a lobby screen within half a
+    minute; only a notification is immediate.
+  - Past the newest 5, older ones wait until newer ones end.

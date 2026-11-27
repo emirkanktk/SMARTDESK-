@@ -232,6 +232,43 @@ public sealed class LobbyScreenTests : IDisposable
         lobby.PeopleToday.Should().Be(1);
     }
 
+    // ADR-0065: the office's news, newest first, as many as fit, and not who posted it.
+    [Fact]
+    public async Task It_shows_the_announcements_still_showing_newest_first()
+    {
+        await using (var context = _database.CreateContext())
+        {
+            for (var i = 0; i < GetLobbyQueryHandler.MaxAnnouncements + 1; i++)
+            {
+                context.Announcements.Add(new Announcement
+                {
+                    Id = Guid.NewGuid(),
+                    Title = $"News {i}",
+                    Tone = AnnouncementTone.Info,
+                    CreatedAt = NowUtc.AddMinutes(-10 + i),
+                    EndsAt = NowUtc.AddDays(1),
+                    CreatedByUserId = Guid.NewGuid(),
+                });
+            }
+
+            context.Announcements.Add(new Announcement
+            {
+                Id = Guid.NewGuid(),
+                Title = "Over",
+                Tone = AnnouncementTone.Warning,
+                CreatedAt = NowUtc.AddDays(-2),
+                EndsAt = NowUtc.AddMinutes(-1),
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var created = await CreateAsync();
+
+        var lobby = await LobbyAsync(TokenOf(created));
+
+        lobby.Announcements.Select(a => a.Title).Should().Equal("News 3", "News 2", "News 1");
+    }
+
     [Fact]
     public async Task It_notes_when_the_screen_last_asked_once_a_minute_at_most()
     {

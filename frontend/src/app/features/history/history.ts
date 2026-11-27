@@ -18,6 +18,7 @@ const AREA_LABELS: Record<AuditArea, () => string> = {
   rules: () => $localize`:@@history.area.rules:Booking rules`,
   problems: () => $localize`:@@history.area.problems:Problems`,
   accounts: () => $localize`:@@history.area.accounts:Accounts`,
+  announcements: () => $localize`:@@history.area.announcements:Announcements`,
 };
 
 /**

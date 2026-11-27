@@ -1,0 +1,191 @@
+<div class="page-header">
+  <h1 i18n="@@admin.announcements">Announcements</h1>
+  <a class="btn btn-secondary" routerLink="/admin" i18n="@@report.backToAdmin">Back to admin</a>
+</div>
+
+<p class="text-muted intro" i18n="@@announcements.intro">
+  Tell the whole office something: it shows at the top of everyone's dashboard and on the lobby
+  screens until its last day, and can go to the phones with notifications on as well.
+</p>
+
+<section aria-labelledby="new-announcement-heading">
+  <h2 id="new-announcement-heading" class="section-title" i18n="@@announcements.newTitle">
+    Post an announcement
+  </h2>
+  <div class="compose">
+    <form class="card form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (formError(); as message) {
+        <div class="alert-error" role="alert">{{ message }}</div>
+      }
+      <div class="field">
+        <label for="announcement-title" i18n="@@announcements.titleLabel">Title</label>
+        <input
+          id="announcement-title"
+          class="input"
+          formControlName="title"
+          [maxlength]="maxTitle"
+          placeholder="Breakfast on Friday"
+          i18n-placeholder="@@announcements.titlePlaceholder"
+          [class.invalid]="titleError()"
+          [attr.aria-invalid]="!!titleError()"
+          aria-describedby="announcement-title-error"
+        />
+        @if (titleError(); as error) {
+          <span id="announcement-title-error" class="field-error">{{ error }}</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="announcement-body">
+          <ng-container i18n="@@announcements.bodyLabel">Text</ng-container>
+          <span class="optional" i18n="@@announcements.optional">(optional)</span>
+        </label>
+        <textarea
+          id="announcement-body"
+          class="input"
+          rows="4"
+          formControlName="body"
+          [maxlength]="maxBody"
+          placeholder="Croissants and coffee on the 5th floor, from 9:00."
+          i18n-placeholder="@@announcements.bodyPlaceholder"
+          aria-describedby="announcement-body-count"
+        ></textarea>
+        <span id="announcement-body-count" class="count text-muted"
+          >{{ bodyLength() }} / {{ maxBody }}</span
+        >
+      </div>
+
+      <fieldset class="field tones">
+        <legend i18n="@@announcements.toneLabel">Kind</legend>
+        <div class="tone-options">
+          @for (tone of tones; track tone) {
+            <label class="tone" [attr.data-tone]="tone">
+              <input type="radio" formControlName="tone" [value]="tone" />
+              <app-icon [name]="icon(tone)" />
+              <span>{{ toneLabel(tone) }}</span>
+            </label>
+          }
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="announcement-last-day" i18n="@@announcements.lastDayLabel">Last day</label>
+        <div class="days">
+          <input
+            id="announcement-last-day"
+            class="input day"
+            type="date"
+            formControlName="lastDay"
+            [min]="firstDay"
+            [max]="lastDay"
+            [class.invalid]="lastDayError()"
+            [attr.aria-invalid]="!!lastDayError()"
+            aria-describedby="announcement-last-day-error"
+          />
+          <div
+            class="quick"
+            role="group"
+            aria-label="Quick picks"
+            i18n-aria-label="@@announcements.quickPicks"
+          >
+            @for (quick of quickDays; track quick.day) {
+              <button
+                type="button"
+                class="chip"
+                [attr.aria-pressed]="form.controls.lastDay.value === quick.day"
+                (click)="form.controls.lastDay.setValue(quick.day)"
+              >
+                {{ quick.label }}
+              </button>
+            }
+          </div>
+        </div>
+        @if (lastDayError(); as error) {
+          <span id="announcement-last-day-error" class="field-error">{{ error }}</span>
+        }
+      </div>
+
+      <label class="check-option">
+        <input type="checkbox" formControlName="notify" />
+        <span>
+          <ng-container i18n="@@announcements.notify"
+            >Also send it to the phones with notifications on</ng-container
+          >
+          <span class="hint text-muted" i18n="@@announcements.notifyHint"
+            >Only to those who turned on notifications in SmartDesk, and not to you.</span
+          >
+        </span>
+      </label>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          @if (saving()) {
+            <ng-container i18n="@@common.saving">Saving…</ng-container>
+          } @else {
+            <app-icon name="megaphone" />
+            <ng-container i18n="@@announcements.post">Post it</ng-container>
+          }
+        </button>
+      </div>
+    </form>
+
+    <div class="preview" aria-live="off">
+      <p class="preview-label" i18n="@@announcements.previewLabel">How it shows on the dashboard</p>
+      <app-announcement-card [announcement]="preview()" />
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="announcements-list-heading">
+  <h2 id="announcements-list-heading" class="section-title" i18n="@@announcements.listTitle">
+    Posted
+  </h2>
+  @if (loadFailed()) {
+    <div class="alert-error load-error" role="alert">
+      <span i18n="@@announcements.loadFailed">The announcements could not be loaded.</span>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        (click)="load()"
+        i18n="@@common.tryAgain"
+      >
+        Try again
+      </button>
+    </div>
+  } @else if (announcements(); as list) {
+    @if (list.length === 0) {
+      <p class="card text-muted empty" i18n="@@announcements.none">Nothing posted yet.</p>
+    } @else {
+      <ul class="posted">
+        @for (announcement of list; track announcement.id) {
+          <li
+            class="card item"
+            [attr.data-tone]="announcement.tone"
+            [class.ended]="ended(announcement)"
+          >
+            <span class="item-icon"><app-icon [name]="icon(announcement.tone)" /></span>
+            <span class="what">
+              <span class="name">{{ announcement.title }}</span>
+              <span class="text-muted meta">
+                {{ toneLabel(announcement.tone) }} ·
+                @if (announcement.authorName) {
+                  {{ announcement.authorName }} ·
+                }
+                {{ when(announcement) }}
+              </span>
+            </span>
+            <button type="button" class="btn btn-secondary btn-sm" (click)="remove(announcement)">
+              @if (ended(announcement)) {
+                <ng-container i18n="@@announcements.delete">Delete</ng-container>
+              } @else {
+                <ng-container i18n="@@announcements.remove">Take down</ng-container>
+              }
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    <p class="text-muted" role="status" i18n="@@common.loading">Loading…</p>
+  }
+</section>

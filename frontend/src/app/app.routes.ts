@@ -225,6 +225,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/approvals/approvals').then((m) => m.Approvals),
       },
       {
+        // Announcements on everyone's dashboard and the lobby screens (ADR-0065).
+        path: 'admin/announcements',
+        title: $localize`:@@title.announcements:Announcements · SmartDesk`,
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/announcements/announcements').then((m) => m.AnnouncementsAdmin),
+      },
+      {
         // The office's lobby screens, set up and taken down (ADR-0064).
         path: 'admin/lobby-screens',
         title: $localize`:@@title.lobbyScreens:Lobby screens · SmartDesk`,

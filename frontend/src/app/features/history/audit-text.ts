@@ -1,6 +1,7 @@
 import { formatDate } from '@angular/common';
 import {
   accountStatusLabel,
+  announcementToneLabel,
   attendeeResponseLabel,
   issueCategoryLabel,
   issueStatusLabel,
@@ -10,6 +11,7 @@ import {
   roleLabel,
 } from '../../core/i18n/labels';
 import { AccountStatus } from '../../core/models/account.model';
+import { AnnouncementTone } from '../../core/models/announcement.model';
 import { AuditAction, AuditChange, AuditEntry, AuditPage } from '../../core/models/audit.model';
 import { Role } from '../../core/constants/roles';
 import { IssueCategory, IssueStatus } from '../../core/models/issue.model';
@@ -64,6 +66,8 @@ export function entityLabel(entityType: string): string {
       return $localize`:@@history.entity.passkey:Passkey`;
     case 'LobbyScreen':
       return $localize`:@@history.entity.lobbyScreen:Lobby screen`;
+    case 'Announcement':
+      return $localize`:@@history.entity.announcement:Announcement`;
     default:
       return entityType;
   }
@@ -166,6 +170,8 @@ const HIDDEN: Record<string, string[]> = {
   ResourceBlock: ['CreatedByUserId'],
   Attendee: ['ReservationId'],
   LobbyScreen: ['CreatedAt'],
+  // Its author is who posted it, which the entry says.
+  Announcement: ['CreatedAt', 'CreatedByUserId'],
 };
 
 function shown(entry: AuditEntry, change: AuditChange): boolean {
@@ -269,6 +275,15 @@ function propertyLabel(property: string): string {
       return $localize`:@@history.field.temporaryPassword:Temporary password`;
     case 'PasswordHash':
       return $localize`:@@history.field.password:Password`;
+    // An announcement's (ADR-0065).
+    case 'Title':
+      return $localize`:@@history.field.title:Title`;
+    case 'Body':
+      return $localize`:@@history.field.body:Text`;
+    case 'Tone':
+      return $localize`:@@history.field.kind:Kind`;
+    case 'EndsAt':
+      return $localize`:@@history.field.endsAt:Shows until`;
     default:
       return property;
   }
@@ -307,6 +322,7 @@ function value(
   }
   if (property === 'Category') return issueCategoryLabel(raw as IssueCategory);
   if (property === 'Response') return attendeeResponseLabel(raw as AttendeeResponse);
+  if (property === 'Tone') return announcementToneLabel(raw as AnnouncementTone);
   if (property === 'Status') return statusLabel(entry.entityType, raw);
   if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) {
     return formatDate(raw, 'EEE d MMM y, HH:mm', context.locale);

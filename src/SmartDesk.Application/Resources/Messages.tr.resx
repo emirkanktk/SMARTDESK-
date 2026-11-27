@@ -66,6 +66,12 @@
   <data name="Accounts_UnknownRole" xml:space="preserve">
     <value>Rol şunlardan biri olmalı: {0}.</value>
   </data>
+  <data name="Announcement_EndsInPast" xml:space="preserve">
+    <value>Bitiş şu andan sonra olmalı.</value>
+  </data>
+  <data name="Announcement_TooLong" xml:space="preserve">
+    <value>Bir duyuru en fazla {0} gün gösterilir.</value>
+  </data>
   <data name="Approval_CantRepeat" xml:space="preserve">
     <value>{0} rezervasyonları bir sistem yöneticisinin onayını bekler, bu yüzden tekrarlanamaz: her tarih için ayrı ayrı isteyin.</value>
   </data>
@@ -531,6 +537,9 @@
   <data name="Property_AttendeeIds" xml:space="preserve">
     <value>Katılımcılar</value>
   </data>
+  <data name="Property_Body" xml:space="preserve">
+    <value>Metin</value>
+  </data>
   <data name="Property_Capacity" xml:space="preserve">
     <value>Kapasite</value>
   </data>
@@ -554,6 +563,9 @@
   </data>
   <data name="Property_EndDateTime" xml:space="preserve">
     <value>Bitiş zamanı</value>
+  </data>
+  <data name="Property_EndsAt" xml:space="preserve">
+    <value>Bitiş</value>
   </data>
   <data name="Property_Features" xml:space="preserve">
     <value>Özellikler</value>
@@ -636,11 +648,17 @@
   <data name="Property_TimeZone" xml:space="preserve">
     <value>Saat dilimi</value>
   </data>
+  <data name="Property_Title" xml:space="preserve">
+    <value>Başlık</value>
+  </data>
   <data name="Property_To" xml:space="preserve">
     <value>Bitiş</value>
   </data>
   <data name="Property_Token" xml:space="preserve">
     <value>Bağlantı</value>
+  </data>
+  <data name="Property_Tone" xml:space="preserve">
+    <value>Tür</value>
   </data>
   <data name="Property_Until" xml:space="preserve">
     <value>Bitiş günü</value>
@@ -947,6 +965,12 @@
   </data>
   <data name="Waitlist_TooMany" xml:space="preserve">
     <value>Aynı anda en fazla {0} zaman için bekleyebilirsiniz. Önce birinden çıkın.</value>
+  </data>
+  <data name="Push_Announcement_Open" xml:space="preserve">
+    <value>Okumak için SmartDesk'i açın.</value>
+  </data>
+  <data name="Push_Announcement_Title" xml:space="preserve">
+    <value>Duyuru: {0}</value>
   </data>
   <data name="Push_BadKey" xml:space="preserve">
     <value>Tarayıcının bildirim anahtarları geçerli değil.</value>

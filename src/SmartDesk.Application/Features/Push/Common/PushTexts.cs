@@ -1,6 +1,7 @@
 using System.Globalization;
 using SmartDesk.Application.Common.Localization;
 using SmartDesk.Application.Common.Models;
+using SmartDesk.Application.Features.Announcements.Common;
 using SmartDesk.Application.Features.Inbox.Common;
 using SmartDesk.Application.Features.Reservations.Common;
 using SmartDesk.Application.Resources;
@@ -25,6 +26,7 @@ public static class PushTexts
     public const string InboxUrl = "/inbox";
     public const string ApprovalsUrl = "/admin/approvals";
     public const string ProfileUrl = "/profile";
+    public const string DashboardUrl = "/dashboard";
 
     // Profile's list of signed-in devices (ADR-0061), where a sign-in someone doesn't recognise ends.
     public const string SignedInDevicesUrl = "/profile#sessions";
@@ -42,6 +44,9 @@ public static class PushTexts
                 notice.SignIn ?? throw new ArgumentException("A sign-in notice carries its sign-in.", nameof(notice)),
                 culture,
                 zone),
+            PushTopic.Announcement => ForAnnouncement(
+                notice.Announcement ?? throw new ArgumentException("An announcement notice carries it.", nameof(notice)),
+                culture),
             _ => ForBooking(
                 notice.Topic,
                 notice.Reservation ?? throw new ArgumentException("A booking notice carries its booking.", nameof(notice)),
@@ -87,6 +92,17 @@ public static class PushTexts
             SignedInDevicesUrl,
             $"sign-in-{signIn.Session}");
     }
+
+    // "Announcement: Breakfast on Friday", with its first words below (ADR-0065). It opens the
+    // dashboard, where it shows in full.
+    private static PushContent ForAnnouncement(AnnouncementDto announcement, CultureInfo culture) =>
+        new(
+            T(culture, nameof(Messages.Push_Announcement_Title), announcement.Title),
+            string.IsNullOrWhiteSpace(announcement.Body)
+                ? T(culture, nameof(Messages.Push_Announcement_Open))
+                : Cut(announcement.Body.ReplaceLineEndings(" ")),
+            DashboardUrl,
+            $"announcement-{announcement.Id}");
 
     private static PushContent ForMessage(InboxMessageDto message, CultureInfo culture, TimeZoneInfo zone)
     {

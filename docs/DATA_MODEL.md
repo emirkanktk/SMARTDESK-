@@ -332,6 +332,21 @@ in on it. It proves itself with a token of its own, which is never stored: only 
 | CreatedAt | DateTime | UTC |
 | LastSeenAt | DateTime? | UTC, when it last asked, noted once a minute at most; null until it's opened |
 
+### Announcement (ADR-0065)
+
+News for the whole office from its Admins, on everyone's dashboard and on the lobby screens from
+when it's posted until it ends.
+
+| Field | Type | Notes |
+|---|---|---|
+| Id | Guid | key |
+| Title | string (100) | one line: "Breakfast on Friday" |
+| Body | string? (1000) | a few lines more, or none |
+| Tone | AnnouncementTone | its look, kept by name: `Info` (news), `Good` (good news), `Warning` (a heads-up) |
+| CreatedAt | DateTime | UTC, when it was posted, and so when it starts showing |
+| EndsAt | DateTime | UTC, when it stops showing: later than `CreatedAt`, 60 days after it at most |
+| CreatedByUserId | Guid? | the Admin who posted it, with no FK across the Identity boundary |
+
 ## Relationships
 
 Solid lines are foreign keys in the database. Dotted lines are account ids kept as plain values,
@@ -483,6 +498,13 @@ erDiagram
         string Location "the floor it shows, or none"
         string TokenHash UK "SHA-256 of its token"
     }
+    Announcement {
+        uuid Id PK
+        string Title
+        string Tone "Info, Good or Warning"
+        datetime EndsAt "when it stops showing"
+        uuid CreatedByUserId "the Admin who posted it"
+    }
 
     ApplicationUser |o--o{ ApplicationUser : manages
     ApplicationUser ||--o{ UserSession : "signs in with"
@@ -510,6 +532,7 @@ erDiagram
     ApplicationUser ||..o{ WaitlistEntry : "waits in"
     ApplicationUser ||..o| CalendarFeed : "subscribes with"
     ApplicationUser ||..o{ PushSubscription : "is notified on"
+    ApplicationUser |o..o{ Announcement : posts
 ```
 
 - A resource with no `ResourceTeam` rows is shared by everyone (ADR-0022).
@@ -552,6 +575,8 @@ erDiagram
 - `PushSubscriptions(Endpoint)` - unique: a device that turns notifications on again finds its
   row; `PushSubscriptions(UserId)` - someone's devices, when a notification goes out (ADR-0056).
 - `LobbyScreens(TokenHash)` - unique: the screen a token belongs to, when it asks (ADR-0064).
+- `Announcements(EndsAt)` - the ones still showing, for every dashboard and lobby screen
+  (ADR-0065).
 
 ## Constraints
 

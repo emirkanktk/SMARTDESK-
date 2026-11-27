@@ -29,6 +29,7 @@ public interface IApplicationDbContext
     DbSet<AuditEntry> AuditEntries { get; }
     DbSet<PushSubscription> PushSubscriptions { get; }
     DbSet<LobbyScreen> LobbyScreens { get; }
+    DbSet<Announcement> Announcements { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

@@ -102,6 +102,11 @@ Docs: [Architecture](docs/ARCHITECTURE.md) Â· [Data model](docs/DATA_MODEL.md) Â
   people are in, with a QR code that opens SmartDesk on a phone. Nobody signs in on it and it
   shows no names: an Admin sets it up, for the whole office or one floor, from a link shown once,
   and takes it down from there ([ADR-0064](docs/DECISIONS.md)).
+- **Announcements** - an Admin tells the whole office something: breakfast on Friday, a lift out
+  of order. It shows at the top of everyone's dashboard as a card in its own colour - news, good
+  news or a heads-up - and runs along the top of the lobby screens, until its last day. It can go
+  to the phones with notifications on too, and each person can hide it for themselves. The Admin
+  sees it as it will show while writing it ([ADR-0065](docs/DECISIONS.md)).
 - **Reporting a problem at the door** - the QR code at a resource's door also opens a way to
   report a problem with it: what it's about, a few words, a photo from the phone's camera, and
   whether it can't be used meanwhile. The page lists the problems already reported and not fixed
@@ -463,6 +468,7 @@ Full shapes, rules and error codes: [`docs/API_CONTRACTS.md`](docs/API_CONTRACTS
 | Door screen | `POST`/`DELETE /api/resources/{id}/door-screen`, `GET /api/door/{id}` (the screen's token, no user), `POST /api/reservations/{id}/end` (ADR-0034) |
 | Door page | `GET /api/door/{id}/visit`, `POST /api/door/{id}/check-in`, `POST /api/door/{id}/issues` (the QR code's code, no user) (ADR-0050) |
 | Lobby screens | `GET`/`POST /api/lobby-screens`, `DELETE /api/lobby-screens/{id}` (Admin); `GET /api/lobby` (the screen's token, no user) (ADR-0064) |
+| Announcements | `GET /api/announcements`; `GET /api/announcements/all`, `POST /api/announcements`, `DELETE /api/announcements/{id}` (Admin) (ADR-0065) |
 | Meetings | `GET /api/reservations/invitees`, `GET /api/reservations/invited`, `POST /api/reservations/{id}/response` (ADR-0032) |
 | Inbox | `GET /api/inbox`, `GET /api/inbox/unread-count`, `POST /api/inbox/{id}/read`, `POST /api/inbox/read-all` |
 | Dashboard | `GET /api/dashboard?timeZone=Europe/Istanbul` |
