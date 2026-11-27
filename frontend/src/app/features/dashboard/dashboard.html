@@ -11,6 +11,8 @@
   </a>
 </div>
 
+<app-dashboard-announcements />
+
 @if (loading()) {
   <p class="text-muted" role="status" i18n="@@dashboard.loading">Loading today's overview…</p>
 } @else if (loadFailed()) {

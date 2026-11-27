@@ -4,6 +4,7 @@ import { ApiError } from '../../core/models/api-error.model';
 import { Lobby as LobbyData, LobbyRoom } from '../../core/models/lobby.model';
 import { LobbyService } from '../../core/services/lobby.service';
 import { LOBBY_AGENDA, LOBBY_REFRESH_MS, Lobby } from './lobby';
+import { LOBBY_NEWS_MS } from './lobby-news';
 
 // Local times, so what the screen prints reads the same in every time zone the tests run in.
 const at = (time: string) => new Date(`2026-11-26T${time}`);
@@ -56,6 +57,7 @@ function lobby(overrides: Partial<LobbyData> = {}): LobbyData {
       { location: '3rd Floor', free: 4, total: 6 },
       { location: '5th Floor', free: 0, total: 8 },
     ],
+    announcements: [],
     ...overrides,
   };
 }
@@ -181,6 +183,59 @@ describe('Lobby', () => {
     fixture.detectChanges();
     expect(text()).not.toContain("Can't reach SmartDesk");
     expect(people()).toBe('1 person in the office today');
+  });
+
+  it('runs the announcements along the top one at a time, newest first, with dots', async () => {
+    localStorage.setItem('smartdesk_lobby', TOKEN);
+    get.mockReturnValue(
+      of(
+        lobby({
+          announcements: [
+            { id: 'ann-2', title: 'Lifts out of order', body: 'Take the stairs.', tone: 'Warning' },
+            { id: 'ann-1', title: 'Breakfast on Friday', body: null, tone: 'Good' },
+          ],
+        }),
+      ),
+    );
+    await render();
+    const band = () => element.querySelector<HTMLElement>('app-lobby-news')!;
+    const dots = () =>
+      [...band().querySelectorAll('.news-dot')].map((d) => d.classList.contains('on'));
+
+    expect(band().dataset['tone']).toBe('Warning');
+    expect(text(band().querySelector('.news-kind')!)).toBe('Heads-up');
+    expect(text(band().querySelector('.news-title')!)).toBe('Lifts out of order');
+    expect(text(band().querySelector('.news-body')!)).toBe('Take the stairs.');
+    expect(dots()).toEqual([true, false]);
+
+    vi.advanceTimersByTime(LOBBY_NEWS_MS);
+    fixture.detectChanges();
+    expect(band().dataset['tone']).toBe('Good');
+    expect(text(band().querySelector('.news-title')!)).toBe('Breakfast on Friday');
+    expect(band().querySelector('.news-body')).toBeNull();
+    expect(dots()).toEqual([false, true]);
+
+    vi.advanceTimersByTime(LOBBY_NEWS_MS);
+    fixture.detectChanges();
+    expect(text(band().querySelector('.news-title')!)).toBe('Lifts out of order');
+  });
+
+  it('shows one announcement without dots, and none without a band', async () => {
+    localStorage.setItem('smartdesk_lobby', TOKEN);
+    get.mockReturnValue(
+      of(
+        lobby({
+          announcements: [{ id: 'ann-1', title: 'Breakfast on Friday', body: null, tone: 'Good' }],
+        }),
+      ),
+    );
+    await render();
+    expect(element.querySelector('app-lobby-news .news-dots')).toBeNull();
+
+    fixture.destroy();
+    get.mockReturnValue(of(lobby()));
+    await render();
+    expect(element.querySelector('app-lobby-news')).toBeNull();
   });
 
   it('forgets a token whose screen was taken down, and says so', async () => {

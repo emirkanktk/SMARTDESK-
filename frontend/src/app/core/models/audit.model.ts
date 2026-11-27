@@ -1,6 +1,13 @@
 // Shapes of the history of changes, GET /api/audit (ADR-0052) - see docs/API_CONTRACTS.md, History.
 
-export const AUDIT_AREAS = ['bookings', 'resources', 'rules', 'problems', 'accounts'] as const;
+export const AUDIT_AREAS = [
+  'bookings',
+  'resources',
+  'rules',
+  'problems',
+  'accounts',
+  'announcements',
+] as const;
 export type AuditArea = (typeof AUDIT_AREAS)[number];
 
 export type AuditAction = 'Created' | 'Updated' | 'Deleted';

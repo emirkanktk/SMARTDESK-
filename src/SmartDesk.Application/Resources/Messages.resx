@@ -66,6 +66,12 @@
   <data name="Accounts_UnknownRole" xml:space="preserve">
     <value>Role must be one of: {0}.</value>
   </data>
+  <data name="Announcement_EndsInPast" xml:space="preserve">
+    <value>The end has to be later than now.</value>
+  </data>
+  <data name="Announcement_TooLong" xml:space="preserve">
+    <value>An announcement shows for {0} days at most.</value>
+  </data>
   <data name="Approval_CantRepeat" xml:space="preserve">
     <value>{0} bookings wait for an Admin's approval, so they can't repeat: ask for each date on its own.</value>
   </data>
@@ -531,6 +537,9 @@
   <data name="Property_AttendeeIds" xml:space="preserve">
     <value>Attendee Ids</value>
   </data>
+  <data name="Property_Body" xml:space="preserve">
+    <value>Body</value>
+  </data>
   <data name="Property_Capacity" xml:space="preserve">
     <value>Capacity</value>
   </data>
@@ -554,6 +563,9 @@
   </data>
   <data name="Property_EndDateTime" xml:space="preserve">
     <value>End Date Time</value>
+  </data>
+  <data name="Property_EndsAt" xml:space="preserve">
+    <value>Ends At</value>
   </data>
   <data name="Property_Features" xml:space="preserve">
     <value>Features</value>
@@ -636,11 +648,17 @@
   <data name="Property_TimeZone" xml:space="preserve">
     <value>Time Zone</value>
   </data>
+  <data name="Property_Title" xml:space="preserve">
+    <value>Title</value>
+  </data>
   <data name="Property_To" xml:space="preserve">
     <value>To</value>
   </data>
   <data name="Property_Token" xml:space="preserve">
     <value>Token</value>
+  </data>
+  <data name="Property_Tone" xml:space="preserve">
+    <value>Tone</value>
   </data>
   <data name="Property_Until" xml:space="preserve">
     <value>Until</value>
@@ -947,6 +965,12 @@
   </data>
   <data name="Waitlist_TooMany" xml:space="preserve">
     <value>You can wait for at most {0} times at once. Leave one first.</value>
+  </data>
+  <data name="Push_Announcement_Open" xml:space="preserve">
+    <value>Open SmartDesk to read it.</value>
+  </data>
+  <data name="Push_Announcement_Title" xml:space="preserve">
+    <value>Announcement: {0}</value>
   </data>
   <data name="Push_BadKey" xml:space="preserve">
     <value>The browser's notification keys aren't valid.</value>

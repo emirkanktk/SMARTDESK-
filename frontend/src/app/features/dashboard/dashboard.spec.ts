@@ -5,6 +5,7 @@ import { Subject, of, throwError } from 'rxjs';
 import { ApiError } from '../../core/models/api-error.model';
 import { Dashboard as DashboardData } from '../../core/models/dashboard.model';
 import { Reservation } from '../../core/models/reservation.model';
+import { AnnouncementService } from '../../core/services/announcement.service';
 import { AuthService } from '../../core/services/auth.service';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { ReservationHubService } from '../../core/services/reservation-hub.service';
@@ -91,6 +92,7 @@ describe('Dashboard', () => {
           useValue: { displayName: signal('Ayşe Yılmaz'), currentUser: signal({ id: OWNER_ID }) },
         },
         { provide: ResourceBlockService, useValue: { getBlocks } },
+        { provide: AnnouncementService, useValue: { current: () => of([]) } },
         favoritesStub(favorites),
       ],
     }).compileComponents();

@@ -160,6 +160,7 @@ export const GUIDE_SECTIONS: readonly GuideSection[] = [
       $localize`:@@guide.admin.users:Approve sign-ups, change roles and disable accounts in Users; see how the resources are used in the usage report.`,
       $localize`:@@guide.admin.history:Who cancelled a booking, or changed a room? History, under Admin, keeps every change: who made it, when, and what it was before.`,
       $localize`:@@guide.admin.lobby:A TV in the lobby can show the free rooms, the free desks and who's in, with nobody signed in: set it up under Lobby screens and open its link on the TV.`,
+      $localize`:@@guide.admin.announcements:Tell the whole office something under Announcements: it shows at the top of everyone's dashboard and on the lobby screens until its last day, and can go to their phones too.`,
     ],
     link: { path: '/admin', label: $localize`:@@guide.admin.link:Open Admin` },
     roles: [Roles.Admin],

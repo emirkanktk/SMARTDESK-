@@ -424,6 +424,11 @@ picker drops seconds and any difference would count as a change.
   disagree. It asks the browser to keep the screen on (Screen Wake Lock). Admins set screens up and
   take them down on `/admin/lobby-screens`. On the server, `DoorDay.LoadManyAsync` loads the rest
   of the day for all the rooms in two queries.
+- **Announcements (ADR-0065).** One card, `<app-announcement-card>`, draws an announcement in its
+  look's colour and icon wherever it shows: on the dashboard (`DashboardAnnouncements`, which asks
+  `GET /api/announcements` every minute and keeps the ones a person hid in `localStorage`, by
+  account) and as the live preview on `/admin/announcements`. The lobby screen gets them in its own
+  answer and runs them one at a time (`LobbyNews`).
 - **The page without an account (ADR-0050).** While nobody is signed in, `visitorGuard` (a
   `canMatch`) gives `/check-in/:resourceId` a page of its own outside the shell, `DoorVisit`. It
   asks `GET /api/door/{id}/visit` with the code in a header through `DoorVisitService`, draws

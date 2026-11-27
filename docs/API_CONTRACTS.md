@@ -784,11 +784,41 @@ log) and kept only as its SHA-256.
       "blocks": [ /* today's blocked windows still to come or under way */ ]
     }
   ],
-  "desks": [ { "location": "3rd Floor", "free": 4, "total": 6 } ]   // active desks, free right now
+  "desks": [ { "location": "3rd Floor", "free": 4, "total": 6 } ],  // active desks, free right now
+  "announcements": [                      // showing now, newest first, at most 3 (ADR-0065)
+    { "id": "…", "title": "Breakfast on Friday", "body": "Croissants on the 5th floor.", "tone": "Good" }
+  ]
 }
 ```
 
-No names anywhere: a lobby is no place for them, as a corridor isn't (ADR-0034).
+No names anywhere: a lobby is no place for them, as a corridor isn't (ADR-0034). An
+announcement comes without its author for the same reason.
+
+## Announcements (ADR-0065)
+
+News for the whole office from its Admins: at the top of everyone's dashboard and on the lobby
+screens, from when it's posted until `endsAt`, and to the phones with notifications on when its
+Admin asks.
+
+| Method | Path | Auth | Command/Query | Notes |
+|---|---|---|---|---|
+| GET | `/api/announcements` | any signed-in user | `GetCurrentAnnouncementsQuery` | → the ones showing now, newest first, at most 5 |
+| GET | `/api/announcements/all` | Admin | `GetAllAnnouncementsQuery` | → every one, the ones that ended too, newest first, the last 100 |
+| POST | `/api/announcements` | Admin | `CreateAnnouncementCommand` | body `{ title, body?, tone, endsAt, notify }` → 201 with it. 400: `title` missing, over 100 characters or not on one line; `body` over 1000 characters, or with control characters other than line breaks and tabs; `tone` none of `Info`, `Good`, `Warning`; `endsAt` not later than now, or more than 60 days on. `notify: true` also sends it to every device with notifications on (ADR-0056) but its author's: "Announcement: Breakfast on Friday" with its first words, opening `/dashboard` |
+| DELETE | `/api/announcements/{id}` | Admin | `DeleteAnnouncementCommand` | → 204: it goes from every dashboard and lobby screen on their next ask. 404 for none |
+
+```json
+{
+  "id": "…",
+  "title": "Breakfast on Friday",
+  "body": "Croissants on the 5th floor.\nFrom 9:00.",  // its lines kept; null for a title alone
+  "tone": "Good",                          // Info, Good or Warning
+  "createdAt": "2026-11-27T07:00:00Z",     // when it was posted, and started showing
+  "endsAt": "2026-12-04T21:00:00Z",        // when it stops: the app sends the end of a last day
+  "authorId": "…",
+  "authorName": "Zeynep Kaya"              // null once the account is gone
+}
+```
 
 ## Check-in (ADR-0030)
 

@@ -172,6 +172,32 @@ describe('audit text', () => {
     ).toEqual([{ label: 'Screen link', text: 'turned off' }]);
   });
 
+  it('names an announcement by its title, with its kind and last moment in words (ADR-0065)', () => {
+    const posted = entry({
+      entityType: 'Announcement',
+      entityId: 'ann-1',
+      resourceId: null,
+      label: 'Breakfast on Friday',
+      changes: [
+        { property: 'Title', old: null, new: 'Breakfast on Friday' },
+        { property: 'Body', old: null, new: 'Croissants on the 5th floor.' },
+        { property: 'Tone', old: null, new: 'Good' },
+        { property: 'CreatedAt', old: null, new: utc('2026-11-27T10:00') },
+        { property: 'EndsAt', old: null, new: utc('2026-12-04T00:00') },
+        { property: 'CreatedByUserId', old: null, new: 'u-ayse' },
+      ],
+    });
+
+    expect(entityLabel('Announcement')).toBe('Announcement');
+    expect(subject(posted, context)).toBe('Breakfast on Friday');
+    expect(changeLines(posted, context)).toEqual([
+      { label: 'Title', text: 'Breakfast on Friday' },
+      { label: 'Text', text: 'Croissants on the 5th floor.' },
+      { label: 'Kind', text: 'Good news' },
+      { label: 'Shows until', text: 'Fri 4 Dec 2026, 00:00' },
+    ]);
+  });
+
   it('leaves out what the subject already says, and what nobody needs to read', () => {
     const created = changeLines(
       entry({

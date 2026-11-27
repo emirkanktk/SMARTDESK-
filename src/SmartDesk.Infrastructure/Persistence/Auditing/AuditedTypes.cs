@@ -69,6 +69,8 @@ internal static class AuditedTypes
         [typeof(ResourceType)] = Of<ResourceType>(AuditEntityTypes.ResourceType, label: (_, t) => t.Name),
         [typeof(OfficeHours)] = Of<OfficeHours>(AuditEntityTypes.OfficeHours),
         [typeof(FloorPlan)] = Of<FloorPlan>(AuditEntityTypes.FloorPlan, ignore: [nameof(FloorPlan.Data)], label: (_, p) => p.Location),
+        // An announcement posted or taken down (ADR-0065), under its title.
+        [typeof(Announcement)] = Of<Announcement>(AuditEntityTypes.Announcement, label: (_, a) => a.Title),
         // A lobby screen set up or taken down (ADR-0064), under its name; not each time it asks.
         [typeof(LobbyScreen)] = Of<LobbyScreen>(
             AuditEntityTypes.LobbyScreen,

@@ -1,0 +1,146 @@
+// In its look's colour: indigo for news, green for good news, amber for a heads-up. The colour
+// fades into the card from the side, with the icon in a ring of it; the kind is written too.
+:host {
+  --tone: var(--color-primary);
+  --tone-soft: var(--color-primary-soft);
+  display: block;
+  animation: announcement-in 0.4s var(--ease-out) both;
+}
+
+:host([data-tone='Good']) {
+  --tone: var(--color-success);
+  --tone-soft: var(--color-success-soft);
+}
+
+:host([data-tone='Warning']) {
+  --tone: var(--color-warning);
+  --tone-soft: var(--color-warning-soft);
+}
+
+@keyframes announcement-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+
+.announcement {
+  display: flex;
+  gap: var(--space-4);
+  height: 100%;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--tone) 28%, var(--color-border));
+  border-left: 4px solid var(--tone);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(100deg, var(--tone-soft), var(--color-surface) 75%);
+  box-shadow: var(--shadow-xs);
+
+  @media (max-width: 560px) {
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+.badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 16%, transparent);
+  color: var(--tone);
+  font-size: 1.25rem;
+
+  @media (max-width: 560px) {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.05rem;
+  }
+}
+
+.text {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.kind {
+  color: var(--tone);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.body {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+
+  &.clamped {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+  }
+}
+
+.more {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.meta {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+// A round button in the corner, as big as a finger.
+.dismiss {
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: flex-start;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+
+  &:hover {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+}

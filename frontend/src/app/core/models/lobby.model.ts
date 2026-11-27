@@ -1,3 +1,4 @@
+import { AnnouncementTone } from './announcement.model';
 import { DoorBlock, DoorBooking } from './door-screen.model';
 import { ResourceStatus } from './resource.model';
 
@@ -16,6 +17,8 @@ export interface Lobby {
   peopleToday: number;
   rooms: LobbyRoom[];
   desks: LobbyDesks[];
+  /** The announcements showing now, newest first (ADR-0065). */
+  announcements: LobbyAnnouncement[];
 }
 
 /** A meeting room with the rest of today, as its door screen shows it. */
@@ -34,6 +37,14 @@ export interface LobbyDesks {
   location: string;
   free: number;
   total: number;
+}
+
+/** An announcement as a lobby screen shows it: its words and its look, and no author. */
+export interface LobbyAnnouncement {
+  id: string;
+  title: string;
+  body: string | null;
+  tone: AnnouncementTone;
 }
 
 /** A lobby screen as an Admin sees it. */

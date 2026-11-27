@@ -1,4 +1,5 @@
 import { Role, Roles } from '../constants/roles';
+import { AnnouncementTone } from '../models/announcement.model';
 import { AccountStatus } from '../models/account.model';
 import { IssueCategory, IssueStatus } from '../models/issue.model';
 import { AttendeeResponse, ReservationStatus } from '../models/reservation.model';
@@ -119,5 +120,17 @@ export function issueStatusLabel(status: IssueStatus): string {
       return $localize`:@@issue.status.inProgress:In progress`;
     case 'Resolved':
       return $localize`:@@issue.status.resolved:Resolved`;
+  }
+}
+
+/** How an announcement looks (ADR-0065). */
+export function announcementToneLabel(tone: AnnouncementTone): string {
+  switch (tone) {
+    case 'Info':
+      return $localize`:@@announcement.tone.info:News`;
+    case 'Good':
+      return $localize`:@@announcement.tone.good:Good news`;
+    case 'Warning':
+      return $localize`:@@announcement.tone.warning:Heads-up`;
   }
 }

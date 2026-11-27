@@ -7,6 +7,7 @@ import { browserTimeZone } from '../../core/services/dashboard.service';
 import { LobbyService } from '../../core/services/lobby.service';
 import { QrCode } from '../../shared/components/qr-code/qr-code';
 import { DoorState, doorState } from '../door-screen/door-screen';
+import { LobbyNews } from './lobby-news';
 
 /** How often the screen asks again. */
 export const LOBBY_REFRESH_MS = 30_000;
@@ -34,12 +35,13 @@ interface AgendaRow {
  * A lobby screen (`/lobby`, ADR-0064): a TV in the office showing, from across the room, which
  * meeting rooms are free now and until when, the meetings still to come today, how many desks are
  * free on each floor, and how many people are in, with a QR code that opens SmartDesk on a phone.
+ * The announcements showing (ADR-0065) run along the top, one at a time.
  * Nobody is signed in on it, and it shows no names: the link it was opened with carries the
  * screen's own token after '#', kept here and then taken out of the address. It asks again every
  * 30 seconds, and keeps the TV from going dark while it's shown.
  */
 @Component({
-  imports: [QrCode],
+  imports: [LobbyNews, QrCode],
   selector: 'app-lobby',
   styleUrl: './lobby.scss',
   templateUrl: './lobby.html',

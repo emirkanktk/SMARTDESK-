@@ -23,6 +23,8 @@ public sealed record GetLobbyQuery(string? Token, string? TimeZone = null) : IRe
 
 // PeopleToday: everyone a booking brings in today, or a meeting they said they'd come to, across
 // the office whatever the screen's floor (ADR-0063 lists them; a screen only counts them).
+// Announcements: the office's news showing now (ADR-0065), newest first, at most
+// MaxAnnouncements, without who posted them.
 public sealed record LobbyDto(
     string ScreenName,
     string? Location,
@@ -30,7 +32,10 @@ public sealed record LobbyDto(
     string AppUrl,
     int PeopleToday,
     IReadOnlyList<LobbyRoomDto> Rooms,
-    IReadOnlyList<LobbyDesksDto> Desks);
+    IReadOnlyList<LobbyDesksDto> Desks,
+    IReadOnlyList<LobbyAnnouncementDto> Announcements);
+
+public sealed record LobbyAnnouncementDto(Guid Id, string Title, string? Body, AnnouncementTone Tone);
 
 // A meeting room, out of use or not, with the rest of today's bookings - at most
 // LobbyScreenRules.MaxBookingsPerRoom - and blocked windows, earliest first.
@@ -60,6 +65,9 @@ public sealed class GetLobbyQueryValidator : AbstractValidator<GetLobbyQuery>
 public sealed class GetLobbyQueryHandler(IApplicationDbContext db, IFrontendLinks links, TimeProvider timeProvider)
     : IRequestHandler<GetLobbyQuery, LobbyDto>
 {
+    // A screen read from across a room has space for two or three.
+    public const int MaxAnnouncements = 3;
+
     public async Task<LobbyDto> Handle(GetLobbyQuery request, CancellationToken cancellationToken)
     {
         var hash = LobbyScreenRules.IsWellFormed(request.Token) ? LobbyScreenRules.HashToken(request.Token!) : null;
@@ -114,6 +122,14 @@ public sealed class GetLobbyQueryHandler(IApplicationDbContext db, IFrontendLink
         var todays = db.Reservations
             .AsNoTracking()
             .Where(r => r.Status == ReservationStatus.Confirmed && r.StartDateTime < dayEnd && r.EndDateTime > dayStart);
+        var announcements = await db.Announcements
+            .AsNoTracking()
+            .Where(a => a.EndsAt > now)
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(MaxAnnouncements)
+            .Select(a => new LobbyAnnouncementDto(a.Id, a.Title, a.Body, a.Tone))
+            .ToListAsync(cancellationToken);
+
         var owners = await todays.Select(r => r.UserId).Distinct().ToListAsync(cancellationToken);
         var coming = await todays
             .SelectMany(r => r.Attendees.Where(a => a.Response == AttendeeResponse.Accepted).Select(a => a.UserId))
@@ -131,6 +147,7 @@ public sealed class GetLobbyQueryHandler(IApplicationDbContext db, IFrontendLink
                 .GroupBy(d => d.Location)
                 .OrderBy(g => g.Key, StringComparer.Ordinal)
                 .Select(g => new LobbyDesksDto(g.Key, g.Count(d => !d.Taken), g.Count()))
-                .ToList());
+                .ToList(),
+            announcements);
     }
 }

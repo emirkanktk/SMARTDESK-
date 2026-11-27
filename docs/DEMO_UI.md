@@ -573,6 +573,24 @@ plan by the lift.
   of its own, kept only as a hash, like a door screen; it keeps the TV from going dark
   (ADR-0064).
 
+### 35. Telling the whole office
+
+- As the admin: **Admin** > **Announcements**. Title "Breakfast on Friday", a line of text, pick
+  **Good news**, and **A week**. The card beside the form shows it as it will look on the
+  dashboard, changing as you type and as you pick its kind.
+- Tick **Also send it to the phones with notifications on** and **Post it**.
+- On the phone, signed in as Ayşe with notifications on, the notification comes in:
+  "Announcement: Breakfast on Friday"; tapping it opens the dashboard, where the card is at the
+  top. On a phone, several announcements sit in a row to swipe through.
+- **×** hides it for Ayşe: it stays hidden on that device until it ends, and stays on everyone
+  else's dashboard.
+- With the lobby screen of step 34 open, the announcement runs along its top within half a
+  minute, in big type; with several, they take turns, with dots for how many.
+- Back on **Announcements**, **Take down**: it goes from every dashboard and the lobby screen.
+  **History**, **Announcements** shows who posted it and when.
+- Point out: it's an Admin's to post, each person's to hide, and never the colour alone - each
+  kind has its icon and its name (ADR-0065).
+
 ## Talking points
 
 - **Structure:** standalone components and signals, one folder per screen, typed API clients in

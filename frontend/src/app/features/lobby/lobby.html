@@ -26,6 +26,10 @@
       </div>
     </header>
 
+    @if (lobby.announcements.length > 0) {
+      <app-lobby-news [announcements]="lobby.announcements" />
+    }
+
     <div class="body">
       <section class="rooms" aria-labelledby="rooms-title">
         <h2 id="rooms-title">

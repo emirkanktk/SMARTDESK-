@@ -10,6 +10,9 @@ const rect = (x: number, y: number, w: number, h: number, r: number) =>
 const calendar = rect(3, 4.5, 18, 16.5, 2.5) + 'M16 2.5v4M8 2.5v4M3 10h18';
 
 const ICONS = {
+  // A warning triangle with an exclamation mark.
+  alert:
+    'M10.3 4.2L2.6 17.5a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0zM12 9.5v4M12 17h.01',
   'arrow-right': 'M5 12h14M13 6l6 6-6 6',
   bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
   building:
@@ -45,6 +48,9 @@ const ICONS = {
   logout: 'M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9',
   map: 'M3 6.5L9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20V6.5zM9 4v13.5M15 6.5V20',
   'map-pin': 'M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z' + circle(12, 9.5, 2.5),
+  // A loudhailer with its handle, and a sound wave.
+  megaphone:
+    'M4 9h3l9-5v16l-9-5H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1zM7 15l1.5 5.5H11L9.6 16M19 9a4 4 0 0 1 0 6',
   menu: 'M4 6.5h16M4 12h16M4 17.5h16',
   // A person and a key, as passkeys are drawn (ADR-0057).
   passkey:

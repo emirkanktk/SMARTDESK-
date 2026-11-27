@@ -52,6 +52,7 @@ const ADMIN: Screen[] = [
   { path: '/admin/rules' },
   { path: '/admin/approvals' },
   { path: '/admin/history' },
+  { path: '/admin/announcements' },
   { path: '/issues' },
   { path: '/resources/qr-labels' },
   { path: '/guide' },
@@ -161,12 +162,28 @@ for (const theme of ['light', 'dark'] as const) {
       }
     });
 
-    test("an admin's screens", async ({ open }) => {
+    test("an admin's screens", async ({ open, admin }) => {
       // Some twenty screens, each checked with axe and at phone width: more than the usual minute.
       test.slow();
+      // One announcement on show, so the dashboard's card is checked too (ADR-0065).
+      const posted = await admin.post('announcements', {
+        data: {
+          title: `E2E screens ${Date.now().toString(36)}`,
+          body: 'Checked with axe, in both themes.',
+          tone: 'Warning',
+          endsAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+          notify: false,
+        },
+      });
+      expect(posted.status(), 'post an announcement').toBe(201);
+      const { id } = (await posted.json()) as { id: string };
       const page = await open('admin', 'tr');
       await useTheme(page, theme);
-      await check(page, ADMIN);
+      try {
+        await check(page, ADMIN);
+      } finally {
+        await admin.delete(`announcements/${id}`);
+      }
     });
 
     test("a manager's screens", async ({ open }) => {

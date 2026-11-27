@@ -38,6 +38,7 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<LobbyScreen> LobbyScreens => Set<LobbyScreen>();
+    public DbSet<Announcement> Announcements => Set<Announcement>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
@@ -126,9 +127,16 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.HasIndex(e => e.UserId);
         });
 
-        // Personal calendar links (ADR-0048), one per account: keyed by the account id, with no
-        // foreign key across the Identity boundary. A calendar app's fetch finds its link by the
-        // SHA-256 of the token it presents, 64 hex digits.
+        // Announcements (ADR-0065): the ones still showing are found by their end. The tone is
+        // kept by name, as other enums written for people to read are.
+        builder.Entity<Announcement>(entity =>
+        {
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(AnnouncementRules.MaxTitleLength);
+            entity.Property(e => e.Body).HasMaxLength(AnnouncementRules.MaxBodyLength);
+            entity.Property(e => e.Tone).HasConversion<string>().HasMaxLength(16);
+            entity.HasIndex(e => e.EndsAt);
+        });
+
         // Lobby screens (ADR-0064): each found by the SHA-256 of the token it presents, 64 hex
         // digits. Location is a floor's name, as resources keep it.
         builder.Entity<LobbyScreen>(entity =>
@@ -139,6 +147,9 @@ public class SmartDeskDbContext(DbContextOptions<SmartDeskDbContext> options)
             entity.HasIndex(e => e.TokenHash).IsUnique();
         });
 
+        // Personal calendar links (ADR-0048), one per account: keyed by the account id, with no
+        // foreign key across the Identity boundary. A calendar app's fetch finds its link by the
+        // SHA-256 of the token it presents, 64 hex digits.
         builder.Entity<CalendarFeed>(entity =>
         {
             entity.HasKey(e => e.UserId);
